@@ -26,21 +26,21 @@ const SupplementCard = ({ item, index }: { item: SupplementItem; index: number }
               <span className="text-precision text-xs text-clinical-charcoal font-bold">{item.rank}</span>
             </div>
             <div>
-              <h4 className="text-body text-clinical-charcoal font-semibold">{item.nutrient}</h4>
-              <p className="text-precision text-[0.6rem] text-clinical-stone tracking-wide">{item.form}</p>
+              <h4 className="text-body text-clinical-charcoal font-semibold break-words">{item.nutrient}</h4>
+              <p className="text-precision text-[0.6rem] text-clinical-stone tracking-wide break-words">{item.form}</p>
             </div>
           </div>
           <span className={`${cfg.badge} text-precision text-[0.55rem] font-bold px-2 py-0.5`} style={{ borderRadius: '2px' }}>{cfg.text}</span>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <div className="bg-clinical-cream rounded-lg p-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+          <div className="bg-clinical-cream rounded-lg p-3 overflow-hidden">
             <p className="text-precision text-[0.6rem] text-clinical-stone uppercase tracking-widest mb-1">Dose</p>
-            <p className="text-body text-clinical-charcoal text-sm font-medium">{item.dose}</p>
+            <p className="text-body text-clinical-charcoal text-sm font-medium break-words">{item.dose}</p>
           </div>
-          <div className="bg-clinical-cream rounded-lg p-3">
+          <div className="bg-clinical-cream rounded-lg p-3 overflow-hidden">
             <p className="text-precision text-[0.6rem] text-clinical-stone uppercase tracking-widest mb-1">Timing</p>
-            <p className="text-body text-clinical-charcoal text-sm font-medium">{item.timing}</p>
+            <p className="text-body text-clinical-charcoal text-sm font-medium break-words">{item.timing}</p>
           </div>
         </div>
 
