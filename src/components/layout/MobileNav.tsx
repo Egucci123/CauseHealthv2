@@ -3,8 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 
 const MOBILE_ITEMS = [
   { label: 'Home',      icon: 'grid_view',   path: '/dashboard' },
+  { label: 'Chat',      icon: 'chat',        path: '/chat' },
   { label: 'Labs',      icon: 'biotech',     path: '/labs' },
-  { label: 'Wellness',  icon: 'favorite',    path: '/wellness' },
   { label: 'Prep',      icon: 'description', path: '/doctor-prep' },
   { label: 'More',      icon: 'menu',        path: '/settings' },
 ];
