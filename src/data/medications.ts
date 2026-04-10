@@ -95,6 +95,88 @@ export const MEDICATIONS: MedicationEntry[] = [
   { generic: 'Minoxidil',       brands: ['Rogaine'],                category: 'Hair',      depletes: [] },
   { generic: 'Isotretinoin',    brands: ['Accutane'],               category: 'Acne',      depletes: ['vitamin_a', 'zinc'] },
   { generic: 'Leflunomide',     brands: ['Arava'],                  category: 'Rheumatology', depletes: [] },
+  // Benzodiazepines
+  { generic: 'Alprazolam',      brands: ['Xanax'],                  category: 'Benzodiazepine', depletes: ['melatonin'] },
+  { generic: 'Lorazepam',       brands: ['Ativan'],                 category: 'Benzodiazepine', depletes: ['melatonin'] },
+  { generic: 'Clonazepam',      brands: ['Klonopin'],               category: 'Benzodiazepine', depletes: ['melatonin'] },
+  { generic: 'Diazepam',        brands: ['Valium'],                 category: 'Benzodiazepine', depletes: ['melatonin'] },
+  // Sleep
+  { generic: 'Zolpidem',        brands: ['Ambien'],                 category: 'Sleep Aid',      depletes: [] },
+  { generic: 'Trazodone',       brands: ['Desyrel'],                category: 'Sleep Aid',      depletes: [] },
+  { generic: 'Suvorexant',      brands: ['Belsomra'],               category: 'Sleep Aid',      depletes: [] },
+  // Antihistamines
+  { generic: 'Cetirizine',      brands: ['Zyrtec'],                 category: 'Antihistamine',  depletes: [] },
+  { generic: 'Loratadine',      brands: ['Claritin'],               category: 'Antihistamine',  depletes: [] },
+  { generic: 'Fexofenadine',    brands: ['Allegra'],                category: 'Antihistamine',  depletes: [] },
+  { generic: 'Diphenhydramine', brands: ['Benadryl'],               category: 'Antihistamine',  depletes: [] },
+  { generic: 'Montelukast',     brands: ['Singulair'],              category: 'Allergy/Asthma', depletes: [] },
+  // Seizure / Anticonvulsants
+  { generic: 'Levetiracetam',   brands: ['Keppra'],                 category: 'Anticonvulsant', depletes: ['calcium', 'vitamin_d'] },
+  { generic: 'Lamotrigine',     brands: ['Lamictal'],               category: 'Anticonvulsant', depletes: ['folate'] },
+  { generic: 'Valproic Acid',   brands: ['Depakote', 'Depakene'],   category: 'Anticonvulsant', depletes: ['folate', 'carnitine', 'zinc', 'selenium'] },
+  { generic: 'Topiramate',      brands: ['Topamax'],                category: 'Anticonvulsant', depletes: ['b12', 'folate'] },
+  { generic: 'Carbamazepine',   brands: ['Tegretol'],               category: 'Anticonvulsant', depletes: ['folate', 'vitamin_d', 'calcium', 'b12'] },
+  { generic: 'Phenytoin',       brands: ['Dilantin'],               category: 'Anticonvulsant', depletes: ['folate', 'vitamin_d', 'calcium', 'b12', 'vitamin_k'] },
+  // Migraine
+  { generic: 'Sumatriptan',     brands: ['Imitrex'],                category: 'Migraine',       depletes: [] },
+  { generic: 'Rizatriptan',     brands: ['Maxalt'],                 category: 'Migraine',       depletes: [] },
+  { generic: 'Propranolol',     brands: ['Inderal'],                category: 'Beta Blocker',   depletes: ['coq10', 'melatonin'] },
+  { generic: 'Amitriptyline',   brands: ['Elavil'],                 category: 'TCA',            depletes: ['coq10', 'b2'] },
+  // Osteoporosis
+  { generic: 'Alendronate',     brands: ['Fosamax'],                category: 'Bisphosphonate', depletes: ['calcium', 'magnesium'] },
+  { generic: 'Risedronate',     brands: ['Actonel'],                category: 'Bisphosphonate', depletes: ['calcium'] },
+  { generic: 'Denosumab',       brands: ['Prolia'],                 category: 'Osteoporosis',   depletes: [] },
+  // Asthma
+  { generic: 'Albuterol',       brands: ['ProAir', 'Ventolin'],     category: 'Bronchodilator', depletes: ['potassium', 'magnesium'] },
+  { generic: 'Fluticasone',     brands: ['Flovent', 'Flonase'],     category: 'Corticosteroid', depletes: ['calcium', 'vitamin_d'] },
+  { generic: 'Budesonide/Formoterol', brands: ['Symbicort'],        category: 'Inhaler',        depletes: ['calcium', 'vitamin_d', 'potassium'] },
+  // Opioids
+  { generic: 'Oxycodone',       brands: ['OxyContin', 'Percocet'],  category: 'Opioid',         depletes: ['testosterone', 'vitamin_d'] },
+  { generic: 'Hydrocodone',     brands: ['Vicodin', 'Norco'],       category: 'Opioid',         depletes: ['testosterone', 'vitamin_d'] },
+  { generic: 'Tramadol',        brands: ['Ultram'],                 category: 'Opioid',         depletes: [] },
+  { generic: 'Buprenorphine',   brands: ['Suboxone', 'Subutex'],    category: 'Opioid',         depletes: ['testosterone'] },
+  // Muscle relaxants
+  { generic: 'Cyclobenzaprine', brands: ['Flexeril'],               category: 'Muscle Relaxant', depletes: [] },
+  { generic: 'Baclofen',        brands: ['Lioresal'],               category: 'Muscle Relaxant', depletes: [] },
+  { generic: 'Tizanidine',      brands: ['Zanaflex'],               category: 'Muscle Relaxant', depletes: [] },
+  // Cancer / Oncology
+  { generic: 'Tamoxifen',       brands: ['Nolvadex'],               category: 'Oncology',       depletes: ['vitamin_d', 'calcium'] },
+  { generic: 'Letrozole',       brands: ['Femara'],                 category: 'Oncology',       depletes: ['vitamin_d', 'calcium'] },
+  { generic: 'Anastrozole',     brands: ['Arimidex'],               category: 'Oncology',       depletes: ['vitamin_d'] },
+  // Rheumatology JAK inhibitors
+  { generic: 'Tofacitinib',     brands: ['Xeljanz'],                category: 'JAK Inhibitor',  depletes: [] },
+  { generic: 'Baricitinib',     brands: ['Olumiant'],               category: 'JAK Inhibitor',  depletes: [] },
+  { generic: 'Upadacitinib',    brands: ['Rinvoq'],                 category: 'JAK Inhibitor',  depletes: [] },
+  // Other biologics
+  { generic: 'Secukinumab',     brands: ['Cosentyx'],               category: 'Biologic',       depletes: [] },
+  { generic: 'Dupilumab',       brands: ['Dupixent'],               category: 'Biologic',       depletes: [] },
+  { generic: 'Rituximab',       brands: ['Rituxan'],                category: 'Biologic',       depletes: [] },
+  { generic: 'Risankizumab',    brands: ['Skyrizi'],                category: 'Biologic',       depletes: [] },
+  { generic: 'Guselkumab',      brands: ['Tremfya'],                category: 'Biologic',       depletes: [] },
+  // Diabetes expanded
+  { generic: 'Insulin Glargine', brands: ['Lantus', 'Basaglar'],    category: 'Insulin',        depletes: ['magnesium'] },
+  { generic: 'Insulin Lispro',  brands: ['Humalog'],                category: 'Insulin',        depletes: [] },
+  { generic: 'Empagliflozin',   brands: ['Jardiance'],              category: 'SGLT2 Inhibitor', depletes: ['magnesium'] },
+  { generic: 'Dapagliflozin',   brands: ['Farxiga'],                category: 'SGLT2 Inhibitor', depletes: ['magnesium'] },
+  { generic: 'Canagliflozin',   brands: ['Invokana'],               category: 'SGLT2 Inhibitor', depletes: ['magnesium', 'phosphorus'] },
+  { generic: 'Sitagliptin',     brands: ['Januvia'],                category: 'DPP-4 Inhibitor', depletes: [] },
+  { generic: 'Pioglitazone',    brands: ['Actos'],                  category: 'Diabetes',       depletes: [] },
+  // Blood pressure expanded
+  { generic: 'Enalapril',       brands: ['Vasotec'],                category: 'ACE Inhibitor',  depletes: ['zinc'] },
+  { generic: 'Ramipril',        brands: ['Altace'],                 category: 'ACE Inhibitor',  depletes: ['zinc'] },
+  { generic: 'Carvedilol',      brands: ['Coreg'],                  category: 'Beta Blocker',   depletes: ['coq10'] },
+  { generic: 'Nebivolol',       brands: ['Bystolic'],               category: 'Beta Blocker',   depletes: ['coq10'] },
+  { generic: 'Diltiazem',       brands: ['Cardizem'],               category: 'Calcium Channel Blocker', depletes: [] },
+  { generic: 'Nifedipine',      brands: ['Procardia'],              category: 'Calcium Channel Blocker', depletes: [] },
+  { generic: 'Irbesartan',      brands: ['Avapro'],                 category: 'ARB',            depletes: [] },
+  { generic: 'Olmesartan',      brands: ['Benicar'],                category: 'ARB',            depletes: [] },
+  { generic: 'Clonidine',       brands: ['Catapres'],               category: 'Antihypertensive', depletes: ['coq10'] },
+  // GI expanded
+  { generic: 'Ondansetron',     brands: ['Zofran'],                 category: 'Anti-nausea',    depletes: [] },
+  { generic: 'Sucralfate',      brands: ['Carafate'],               category: 'GI',             depletes: [] },
+  { generic: 'Dicyclomine',     brands: ['Bentyl'],                 category: 'GI',             depletes: [] },
+  { generic: 'Sulfasalazine',   brands: ['Azulfidine'],             category: 'IBD',            depletes: ['folate'] },
+  { generic: 'Balsalazide',     brands: ['Colazal'],                category: 'IBD',            depletes: ['folate'] },
 ];
 
 export function searchMedications(query: string): MedicationEntry[] {
