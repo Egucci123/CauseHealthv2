@@ -9,13 +9,15 @@ import { QuickActions } from '../components/dashboard/QuickActions';
 import { RecentActivity } from '../components/dashboard/RecentActivity';
 import { PrimaryCard } from '../components/ui/Card';
 import { useAuthStore } from '../store/authStore';
-import { useLatestLabValues } from '../hooks/useLabData';
+import { useLatestLabValues, useLabDraws } from '../hooks/useLabData';
 import { useHealthScore } from '../hooks/useHealthScore';
 
 export const Dashboard = () => {
   const { profile } = useAuthStore();
   const { data: latestValues, isLoading: valuesLoading } = useLatestLabValues();
+  const { data: allDraws } = useLabDraws();
   const healthScore = useHealthScore(latestValues, undefined);
+  const hasProcessingDraw = allDraws?.some(d => d.processingStatus === 'processing');
 
   const greeting = () => {
     const hour = new Date().getHours();
@@ -44,7 +46,7 @@ export const Dashboard = () => {
           <div className="lg:col-span-4 space-y-6">
             <PrimaryCard status="brand" padding="lg">
               <p className="text-precision text-[0.68rem] font-bold text-clinical-stone tracking-widest uppercase mb-6">Health Intelligence Score</p>
-              <HealthScoreRing score={healthScore} loading={valuesLoading} />
+              <HealthScoreRing score={healthScore} loading={valuesLoading} analyzing={hasProcessingDraw} />
             </PrimaryCard>
             <PrimaryCard status="brand" padding="lg">
               <SupplementChecklist />

@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { HealthScore } from '../../types';
 
-interface HealthScoreRingProps { score: HealthScore | null; loading?: boolean; }
+interface HealthScoreRingProps { score: HealthScore | null; loading?: boolean; analyzing?: boolean; }
 
 const RingSkeleton = () => (
   <div className="flex flex-col items-center gap-4">
@@ -21,7 +21,17 @@ const RingEmpty = () => (
   </div>
 );
 
-export const HealthScoreRing = ({ score, loading }: HealthScoreRingProps) => {
+const RingAnalyzing = () => (
+  <div className="flex flex-col items-center gap-3 py-4">
+    <div className="w-32 h-32 rounded-full border-4 border-primary-container/30 flex items-center justify-center">
+      <span className="material-symbols-outlined text-primary-container text-4xl animate-pulse">analytics</span>
+    </div>
+    <p className="text-precision text-[0.68rem] text-primary-container tracking-widest uppercase text-center font-bold">Analyzing your labs...</p>
+    <p className="text-precision text-[0.6rem] text-clinical-stone text-center">Your score will update automatically</p>
+  </div>
+);
+
+export const HealthScoreRing = ({ score, loading, analyzing }: HealthScoreRingProps) => {
   const [animatedScore, setAnimatedScore] = useState(0);
   const animRef = useRef<number | null>(null);
 
@@ -39,6 +49,7 @@ export const HealthScoreRing = ({ score, loading }: HealthScoreRingProps) => {
   }, [score?.score]);
 
   if (loading) return <RingSkeleton />;
+  if (analyzing && !score) return <RingAnalyzing />;
   if (!score) return <RingEmpty />;
 
   const size = 128, strokeWidth = 10, radius = (size - strokeWidth) / 2;

@@ -23,14 +23,20 @@ const mapValue = (row: Record<string, unknown>): LabValue => ({
 
 export function useLabDraws() {
   const user = useAuthStore(s => s.user);
-  return useQuery({
+  const query = useQuery({
     queryKey: ['labDraws', user?.id], enabled: !!user?.id,
     queryFn: async () => {
       const { data, error } = await supabase.from('lab_draws').select('*').eq('user_id', user!.id).order('draw_date', { ascending: false }).limit(100);
       if (error) throw error;
       return (data ?? []).map(mapDraw);
     },
+    // Poll every 5s while any draw is still processing
+    refetchInterval: (query) => {
+      const draws = query.state.data;
+      return draws?.some(d => d.processingStatus === 'processing') ? 5000 : false;
+    },
   });
+  return query;
 }
 
 export function useLatestLabDraw() {
