@@ -162,15 +162,15 @@ export const DEPLETIONS: Record<string, Depletion> = {
     mechanism:    'Valproic acid and certain anticonvulsants impair carnitine biosynthesis and increase renal excretion.',
     symptoms:     ['Fatigue', 'Muscle weakness', 'Brain fog', 'Low exercise tolerance'],
     intervention: 'Acetyl-L-carnitine 500-1000mg daily. Take with food.',
-    evidence:     'high',
+    evidence:     'strong',
   },
   testosterone: {
     nutrient:     'Testosterone',
-    severity:     'significant',
+    severity:     'critical',
     mechanism:    'Chronic opioid use suppresses the hypothalamic-pituitary-gonadal axis, reducing testosterone production.',
     symptoms:     ['Fatigue', 'Low libido', 'Muscle loss', 'Depression', 'Weight gain'],
     intervention: 'Monitor total and free testosterone. Discuss with endocrinologist if low. Consider opioid rotation or reduction.',
-    evidence:     'high',
+    evidence:     'strong',
   },
   phosphorus: {
     nutrient:     'Phosphorus',
