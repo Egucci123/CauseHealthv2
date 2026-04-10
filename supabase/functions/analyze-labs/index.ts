@@ -83,6 +83,28 @@ serve(async (req) => {
       }
     }
 
+    // Log detections — track every value outside optimal that standard labs call "normal"
+    if (labValues && labValues.length > 0) {
+      const detections = labValues
+        .filter((v: any) => v.optimal_flag && v.optimal_flag !== 'optimal' && (!v.standard_flag || v.standard_flag === 'normal'))
+        .map((v: any) => ({
+          user_id: userId,
+          detection_type: 'suboptimal_within_standard',
+          marker_name: v.marker_name,
+          value: v.value,
+          optimal_high: v.optimal_high,
+          standard_high: v.standard_high,
+          condition_flagged: analysis.priority_findings?.find((f: any) => f.marker?.toLowerCase().includes(v.marker_name?.toLowerCase()))?.headline || null,
+          test_recommended: analysis.missing_tests?.[0]?.test_name || null,
+          severity: v.optimal_flag === 'deficient' || v.optimal_flag === 'elevated' ? 'critical' : v.optimal_flag === 'suboptimal_low' || v.optimal_flag === 'suboptimal_high' ? 'moderate' : 'moderate',
+          was_within_standard_range: true,
+        }));
+      if (detections.length > 0) {
+        await supabase.from('detections').delete().eq('user_id', userId);
+        await supabase.from('detections').insert(detections);
+      }
+    }
+
     return new Response(JSON.stringify(analysis), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (err) {
     return new Response(JSON.stringify({ error: String(err) }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });

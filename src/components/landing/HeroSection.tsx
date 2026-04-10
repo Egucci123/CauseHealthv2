@@ -1,5 +1,6 @@
 // src/components/landing/HeroSection.tsx
 import { motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
 import { Button } from '../ui/Button';
 
 const AppMockup = () => (
@@ -97,6 +98,29 @@ const AppMockup = () => (
   </div>
 );
 
+const DetectionCounter = () => {
+  const [count, setCount] = useState<number | null>(null);
+  useEffect(() => {
+    fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/detection-count`, {
+      headers: { 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
+    }).then(r => r.json()).then(d => setCount(d.count)).catch(() => {});
+  }, []);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ delay: 0.8, duration: 0.4, ease: 'easeOut' }}
+      className="inline-flex items-center gap-2 bg-[#131313]/90 backdrop-blur-sm border border-[#D4A574]/40 rounded-full px-4 py-2"
+    >
+      <div className="w-2 h-2 rounded-full bg-[#D4A574] animate-pulse" />
+      <span className="text-precision text-[0.68rem] text-[#D4A574] tracking-wide font-bold">
+        {count !== null && count > 0 ? `${count.toLocaleString()} findings flagged` : 'Early detection engine active'}
+      </span>
+    </motion.div>
+  );
+};
+
 const StatPill = ({ label, delay }: { label: string; delay: number }) => (
   <motion.div
     initial={{ opacity: 0, y: 8, scale: 0.95 }}
@@ -179,9 +203,9 @@ export const HeroSection = () => (
           </p>
 
           <div className="flex flex-wrap gap-3 mt-10">
-            <StatPill label="Triglycerides 327 → 98 in 90 days" delay={0.8} />
-            <StatPill label="Hair regrowth — mesalamine depletion found" delay={1.0} />
-            <StatPill label="8 tests covered — ICD-10 prep document" delay={1.2} />
+            <DetectionCounter />
+            <StatPill label="ICD-10 coded doctor prep documents" delay={1.0} />
+            <StatPill label="Medication depletion mapping" delay={1.2} />
           </div>
         </motion.div>
 
