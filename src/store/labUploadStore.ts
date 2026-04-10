@@ -291,6 +291,17 @@ function getOptimalRanges(): Record<string, { optimal_low: number; optimal_high:
     mch: { optimal_low: 28, optimal_high: 32 }, mchc: { optimal_low: 32, optimal_high: 36 },
     rdw: { optimal_low: 11.5, optimal_high: 13.0 }, 'red cell distribution': { optimal_low: 11.5, optimal_high: 13.0 },
     mpv: { optimal_low: 7.5, optimal_high: 11.5 },
+    // CBC differentials
+    neutrophils: { optimal_low: 40, optimal_high: 60 }, 'neutrophils (absolute)': { optimal_low: 1.8, optimal_high: 5.0 },
+    lymphs: { optimal_low: 20, optimal_high: 40 }, lymphocytes: { optimal_low: 20, optimal_high: 40 },
+    'lymphs (absolute)': { optimal_low: 1.0, optimal_high: 3.5 }, 'lymphocytes (absolute)': { optimal_low: 1.0, optimal_high: 3.5 },
+    monocytes: { optimal_low: 2, optimal_high: 8 }, 'monocytes (absolute)': { optimal_low: 0.2, optimal_high: 0.8 },
+    eos: { optimal_low: 0, optimal_high: 3 }, eosinophils: { optimal_low: 0, optimal_high: 3 },
+    'eos (absolute)': { optimal_low: 0, optimal_high: 0.3 }, 'eosinophils (absolute)': { optimal_low: 0, optimal_high: 0.3 },
+    basophils: { optimal_low: 0, optimal_high: 1 }, 'basophils (absolute)': { optimal_low: 0, optimal_high: 0.1 },
+    // Thyroid expanded
+    'thyroxine (t4)': { optimal_low: 6.0, optimal_high: 10.0 }, t4: { optimal_low: 6.0, optimal_high: 10.0 },
+    'total t4': { optimal_low: 6.0, optimal_high: 10.0 }, 'total t3': { optimal_low: 80, optimal_high: 180 },
     'hs-crp': { optimal_low: 0, optimal_high: 0.5 }, crp: { optimal_low: 0, optimal_high: 0.5 },
     esr: { optimal_low: 0, optimal_high: 10 }, homocysteine: { optimal_low: 5, optimal_high: 8 },
     'uric acid': { optimal_low: 3.5, optimal_high: 5.5 },
