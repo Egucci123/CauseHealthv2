@@ -67,14 +67,14 @@ export const DoctorPrep = () => {
               <span className="material-symbols-outlined text-primary-container text-[20px]">check_circle</span>
               <div>
                 <p className="text-body text-clinical-charcoal font-semibold text-sm">Document ready</p>
-                <p className="text-precision text-[0.6rem] text-clinical-stone">Generated {format(new Date(doc.generated_at), 'MMMM d, yyyy · h:mm a')}</p>
+                <p className="text-precision text-[0.6rem] text-clinical-stone">Generated {doc.generated_at ? format(new Date(doc.generated_at), 'MMMM d, yyyy · h:mm a') : 'recently'}</p>
               </div>
             </div>
             <div className="flex gap-2">
-              {doc.tests_to_request?.filter(t => t.priority === 'urgent').length > 0 && (
+              {Array.isArray(doc.tests_to_request) && doc.tests_to_request.filter(t => t.priority === 'urgent').length > 0 && (
                 <span className="text-precision text-[0.6rem] font-bold px-2 py-1 bg-[#C94F4F] text-white" style={{ borderRadius: '3px' }}>{doc.tests_to_request.filter(t => t.priority === 'urgent').length} PRIORITY</span>
               )}
-              <span className="text-precision text-[0.6rem] font-bold px-2 py-1 bg-surface-container text-on-surface-variant" style={{ borderRadius: '3px' }}>{doc.tests_to_request?.length ?? 0} SUGGESTIONS</span>
+              <span className="text-precision text-[0.6rem] font-bold px-2 py-1 bg-surface-container text-on-surface-variant" style={{ borderRadius: '3px' }}>{Array.isArray(doc.tests_to_request) ? doc.tests_to_request.length : 0} SUGGESTIONS</span>
             </div>
           </div>
 
@@ -89,7 +89,7 @@ export const DoctorPrep = () => {
           </div>
 
           {activeTab === 'summary' && <ClinicalSummary doc={doc} />}
-          {activeTab === 'tests' && <TestsToRequest tests={doc.tests_to_request ?? []} />}
+          {activeTab === 'tests' && <TestsToRequest tests={Array.isArray(doc.tests_to_request) ? doc.tests_to_request : []} />}
         </div>
       )}
     </AppShell>

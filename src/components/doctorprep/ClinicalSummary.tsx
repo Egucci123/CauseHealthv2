@@ -12,7 +12,7 @@ const DocSection = ({ label, children }: { label: string; children: React.ReactN
 function flagColor(f: string) { return (f === 'deficient' || f === 'elevated') ? '#C94F4F' : '#E8922A'; }
 
 export const ClinicalSummary = ({ doc }: { doc: DoctorPrepDocument }) => {
-  const rosPositive = Object.entries(doc.review_of_systems).filter(([_, v]) => v && v.toLowerCase() !== 'negative');
+  const rosPositive = doc.review_of_systems ? Object.entries(doc.review_of_systems).filter(([_, v]) => v && v.toLowerCase() !== 'negative') : [];
 
   return (
     <div className="space-y-0">
@@ -25,7 +25,7 @@ export const ClinicalSummary = ({ doc }: { doc: DoctorPrepDocument }) => {
           </div>
           <div className="text-right">
             <p className="text-precision text-[0.6rem] text-on-surface-variant">PREPARED</p>
-            <p className="text-precision text-sm text-on-surface font-medium">{format(new Date(doc.document_date), 'MMMM d, yyyy')}</p>
+            <p className="text-precision text-sm text-on-surface font-medium">{doc.document_date ? format(new Date(doc.document_date), 'MMMM d, yyyy') : 'Today'}</p>
           </div>
         </div>
       </div>
@@ -56,7 +56,7 @@ export const ClinicalSummary = ({ doc }: { doc: DoctorPrepDocument }) => {
 
         <DocSection label="Current Medications">
           <div className="space-y-2">
-            {doc.medications.map((med, i) => (
+            {(doc.medications ?? []).map((med, i) => (
               <div key={i} className="flex items-start gap-3">
                 <span className="text-body text-clinical-charcoal text-sm w-4 flex-shrink-0">·</span>
                 <div>

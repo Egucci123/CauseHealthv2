@@ -77,13 +77,13 @@ export const WellnessPlanPage = () => {
           <div className="bg-[#131313] rounded-[10px] p-6">
             <div className="flex justify-between items-start mb-4">
               <SectionLabel light icon="auto_awesome" className="text-on-surface-variant">AI Analysis</SectionLabel>
-              <span className="text-precision text-[0.6rem] text-on-surface-variant">Generated {format(new Date(plan.generated_at), 'MMM d, yyyy')}</span>
+              <span className="text-precision text-[0.6rem] text-on-surface-variant">Generated {plan.generated_at ? format(new Date(plan.generated_at), 'MMM d, yyyy') : 'recently'}</span>
             </div>
             <p className="text-body text-on-surface leading-relaxed text-lg">{plan.summary}</p>
           </div>
-          <SupplementStack supplements={plan.supplement_stack} />
-          <LifestyleInterventions interventions={plan.lifestyle_interventions} />
-          <ActionPlan actionPlan={plan.action_plan} retestTimeline={plan.retest_timeline} />
+          <SupplementStack supplements={plan.supplement_stack ?? []} />
+          <LifestyleInterventions interventions={plan.lifestyle_interventions ?? { diet: [], sleep: [], exercise: [], stress: [] }} />
+          <ActionPlan actionPlan={plan.action_plan ?? { phase_1: { name: '', focus: '', actions: [] }, phase_2: { name: '', focus: '', actions: [] }, phase_3: { name: '', focus: '', actions: [] } }} retestTimeline={plan.retest_timeline ?? []} />
           <div className="border border-outline-variant/10 rounded-lg p-5">
             <p className="text-precision text-[0.6rem] text-clinical-stone tracking-wide leading-relaxed">{plan.disclaimer}</p>
           </div>
