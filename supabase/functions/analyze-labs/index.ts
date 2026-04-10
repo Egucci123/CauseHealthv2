@@ -43,8 +43,9 @@ serve(async (req) => {
         system: `You are CauseHealth AI — a clinical health intelligence system. Return ONLY valid JSON. CRITICAL RULES:
 1. Flag EVERY value outside optimal range as a priority finding — do not skip any.
 2. PATTERN RECOGNITION: Connect abnormal values across organ systems. Look for multi-marker patterns that suggest undiagnosed conditions (e.g., elevated platelets + elevated RDW = iron deficiency or myeloproliferative disorder; low HDL + borderline glucose = metabolic syndrome). Each pattern should be in the "patterns" array with markers_involved, description, and likely_cause.
-3. AGE/SEX CONTEXT: Apply age and sex-appropriate reasoning. A finding that is borderline in a 50-year-old may be urgent in an 18-year-old.
-4. EARLY DETECTION is the primary goal — find what a 12-minute doctor appointment would miss.
+3. VALUES ABOVE OPTIMAL BUT WITHIN STANDARD RANGE ARE NOT SAFE. If a value exceeds optimal range, investigate it. Elevated platelets above optimal (>300) → always recommend peripheral smear + JAK2 V617F mutation screening. Elevated RDW → iron + B12/folate. Borderline glucose → insulin/HOMA-IR. No "within normal limits" dismissals.
+4. AGE/SEX CONTEXT: Apply age and sex-appropriate reasoning. A finding borderline in a 50-year-old may be urgent in an 18-year-old.
+5. EARLY DETECTION is the primary goal — find what a 12-minute doctor appointment would miss.
 5. Frame as educational information for discussion with a healthcare provider.`,
         messages: [{ role: 'user', content: `Analyze these labs:\n\nPatient: ${profile?.sex ?? 'unknown'}\nMedications: ${medsStr || 'None'}\nSymptoms: ${sympStr || 'None'}\n\nLab Results:\n${labStr}\n\nReturn JSON: { "priority_findings": [{ "marker": "", "value": "", "flag": "urgent|monitor|optimal", "headline": "", "explanation": "" }], "patterns": [{ "pattern_name": "", "severity": "critical|high|medium", "markers_involved": [], "description": "", "likely_cause": "" }], "medication_connections": [{ "medication": "", "lab_finding": "", "connection": "" }], "missing_tests": [{ "test_name": "", "why_needed": "", "icd10": "", "priority": "urgent|high|moderate" }], "immediate_actions": [], "summary": "" }` }],
       }),
