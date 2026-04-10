@@ -88,14 +88,21 @@ export function useGenerateWellnessPlan() {
     if (!userId) throw new Error('Not authenticated');
     if (activeGeneration) return activeGeneration;
 
-    const { data: { session } } = await supabase.auth.getSession();
-
     generatingFlag = true;
     setGenerating(true);
 
+    let token = '';
+    try {
+      const { data: { session } } = await Promise.race([
+        supabase.auth.getSession(),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('session timeout')), 5000)),
+      ]);
+      token = session?.access_token ?? '';
+    } catch {}
+
     activeGeneration = fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-wellness-plan`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
       body: JSON.stringify({ userId }),
     }).then(async (res) => {
       const data = await res.json();

@@ -70,14 +70,22 @@ export function useGenerateDoctorPrep() {
     if (!userId) throw new Error('Not authenticated');
     if (activeGeneration) return activeGeneration; // Already in flight
 
-    const { data: { session } } = await supabase.auth.getSession();
-
     generatingFlag = true;
     setGenerating(true);
 
+    // Get session — with timeout so it doesn't hang
+    let token = '';
+    try {
+      const { data: { session } } = await Promise.race([
+        supabase.auth.getSession(),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('session timeout')), 5000)),
+      ]);
+      token = session?.access_token ?? '';
+    } catch { /* use empty token — Edge Function will handle auth */ }
+
     activeGeneration = fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-doctor-prep`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
       body: JSON.stringify({ userId }),
     }).then(async (res) => {
       const data = await res.json();
