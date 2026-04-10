@@ -177,9 +177,8 @@ interface AuthCheckboxProps {
 
 export const AuthCheckbox = ({ checked, onChange, children, error }: AuthCheckboxProps) => (
   <div>
-    <label className="flex items-start gap-3 cursor-pointer group">
+    <label className="flex items-start gap-3 cursor-pointer group" onClick={(e) => { if ((e.target as HTMLElement).tagName === 'A') return; e.preventDefault(); onChange(!checked); }}>
       <div
-        onClick={() => onChange(!checked)}
         className={`
           flex-shrink-0 w-4 h-4 mt-0.5
           border transition-colors
