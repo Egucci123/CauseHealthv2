@@ -3,9 +3,9 @@ import type { TestToRequest } from '../../hooks/useDoctorPrep';
 import { SectionLabel } from '../ui/SectionLabel';
 
 function priorityCfg(p: string) {
-  if (p === 'urgent') return { border: 'border-t-[3px] border-[#C94F4F]', badge: 'bg-[#C94F4F] text-white', text: 'ORDER NOW' };
-  if (p === 'high') return { border: 'border-t-[3px] border-[#E8922A]', badge: 'bg-[#614018] text-[#FFDCBC]', text: 'HIGH PRIORITY' };
-  return { border: 'border-t-[3px] border-[#D4A574]', badge: 'bg-surface-container text-on-surface-variant', text: 'ROUTINE' };
+  if (p === 'urgent') return { border: 'border-t-[3px] border-[#C94F4F]', badge: 'bg-[#C94F4F] text-white', text: 'DISCUSS PROMPTLY' };
+  if (p === 'high') return { border: 'border-t-[3px] border-[#E8922A]', badge: 'bg-[#614018] text-[#FFDCBC]', text: 'RECOMMENDED' };
+  return { border: 'border-t-[3px] border-[#D4A574]', badge: 'bg-surface-container text-on-surface-variant', text: 'CONSIDER' };
 }
 
 export const TestsToRequest = ({ tests }: { tests: TestToRequest[] }) => {
@@ -15,8 +15,8 @@ export const TestsToRequest = ({ tests }: { tests: TestToRequest[] }) => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <SectionLabel icon="biotech">Tests to Request</SectionLabel>
-        <p className="text-body text-clinical-stone text-sm">{tests.length} test{tests.length > 1 ? 's' : ''} recommended</p>
+        <SectionLabel icon="biotech">Tests to Discuss with Your Doctor</SectionLabel>
+        <p className="text-body text-clinical-stone text-sm">{tests.length} suggestion{tests.length > 1 ? 's' : ''}</p>
       </div>
       <div className="space-y-4">
         {ordered.map((test, i) => {

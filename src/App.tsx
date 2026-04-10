@@ -3,7 +3,8 @@ import { Routes, Route } from 'react-router-dom';
 
 // Public pages
 import { Landing } from './pages/Landing';
-// import { DesignVerification } from './pages/DesignVerification';
+import { Terms } from './pages/legal/Terms';
+import { Privacy } from './pages/legal/Privacy';
 
 // Auth pages
 import { Register } from './pages/auth/Register';
@@ -66,7 +67,8 @@ function App() {
     <Routes>
       {/* Public */}
       <Route path="/" element={<Landing />} />
-      {/* <Route path="/design" element={<DesignVerification />} /> */}
+      <Route path="/terms" element={<Terms />} />
+      <Route path="/privacy" element={<Privacy />} />
 
       {/* Auth */}
       <Route path="/register" element={<PublicOnlyRoute><Register /></PublicOnlyRoute>} />

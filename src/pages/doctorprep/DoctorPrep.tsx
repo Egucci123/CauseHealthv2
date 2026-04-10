@@ -10,7 +10,7 @@ import { useAuthStore } from '../../store/authStore';
 import { exportDoctorPrepPDF } from '../../lib/exportPDF';
 import { format } from 'date-fns';
 
-const TABS = [{ id: 'summary', label: 'Clinical Summary', icon: 'description' }, { id: 'tests', label: 'Tests to Request', icon: 'biotech' }];
+const TABS = [{ id: 'summary', label: 'Clinical Summary', icon: 'description' }, { id: 'tests', label: 'Suggested Tests', icon: 'biotech' }];
 
 export const DoctorPrep = () => {
   const { profile } = useAuthStore();
@@ -72,9 +72,9 @@ export const DoctorPrep = () => {
             </div>
             <div className="flex gap-2">
               {doc.tests_to_request?.filter(t => t.priority === 'urgent').length > 0 && (
-                <span className="text-precision text-[0.6rem] font-bold px-2 py-1 bg-[#C94F4F] text-white" style={{ borderRadius: '3px' }}>{doc.tests_to_request.filter(t => t.priority === 'urgent').length} URGENT TESTS</span>
+                <span className="text-precision text-[0.6rem] font-bold px-2 py-1 bg-[#C94F4F] text-white" style={{ borderRadius: '3px' }}>{doc.tests_to_request.filter(t => t.priority === 'urgent').length} PRIORITY</span>
               )}
-              <span className="text-precision text-[0.6rem] font-bold px-2 py-1 bg-surface-container text-on-surface-variant" style={{ borderRadius: '3px' }}>{doc.tests_to_request?.length ?? 0} TESTS TOTAL</span>
+              <span className="text-precision text-[0.6rem] font-bold px-2 py-1 bg-surface-container text-on-surface-variant" style={{ borderRadius: '3px' }}>{doc.tests_to_request?.length ?? 0} SUGGESTIONS</span>
             </div>
           </div>
 
