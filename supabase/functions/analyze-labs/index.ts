@@ -40,7 +40,12 @@ serve(async (req) => {
       headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001', max_tokens: 8000,
-        system: 'You are CauseHealth AI — a clinical health intelligence system. Identify root causes, not just symptoms. Frame as educational information for discussion with a healthcare provider. Return ONLY valid JSON.',
+        system: `You are CauseHealth AI — a clinical health intelligence system. Return ONLY valid JSON. CRITICAL RULES:
+1. Flag EVERY value outside optimal range as a priority finding — do not skip any.
+2. PATTERN RECOGNITION: Connect abnormal values across organ systems. Look for multi-marker patterns that suggest undiagnosed conditions (e.g., elevated platelets + elevated RDW = iron deficiency or myeloproliferative disorder; low HDL + borderline glucose = metabolic syndrome). Each pattern should be in the "patterns" array with markers_involved, description, and likely_cause.
+3. AGE/SEX CONTEXT: Apply age and sex-appropriate reasoning. A finding that is borderline in a 50-year-old may be urgent in an 18-year-old.
+4. EARLY DETECTION is the primary goal — find what a 12-minute doctor appointment would miss.
+5. Frame as educational information for discussion with a healthcare provider.`,
         messages: [{ role: 'user', content: `Analyze these labs:\n\nPatient: ${profile?.sex ?? 'unknown'}\nMedications: ${medsStr || 'None'}\nSymptoms: ${sympStr || 'None'}\n\nLab Results:\n${labStr}\n\nReturn JSON: { "priority_findings": [{ "marker": "", "value": "", "flag": "urgent|monitor|optimal", "headline": "", "explanation": "" }], "patterns": [{ "pattern_name": "", "severity": "critical|high|medium", "markers_involved": [], "description": "", "likely_cause": "" }], "medication_connections": [{ "medication": "", "lab_finding": "", "connection": "" }], "missing_tests": [{ "test_name": "", "why_needed": "", "icd10": "", "priority": "urgent|high|moderate" }], "immediate_actions": [], "summary": "" }` }],
       }),
     });

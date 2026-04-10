@@ -43,7 +43,17 @@ serve(async (req) => {
         model: 'claude-haiku-4-5-20251001', max_tokens: 12000,
         system: `You are CauseHealth AI. Return ONLY valid JSON. Write a concise clinical visit prep document.
 
-CRITICAL RULE: EVERY lab value outside optimal range MUST be addressed — in executive_summary, in discussion_points, and in tests_to_request. Do NOT skip ANY abnormal finding, even if it seems unrelated to the chief complaint. Doctors miss connections between seemingly unrelated abnormalities — that is exactly what this document is for. If platelets are high, discuss it. If RDW is elevated, discuss it. If globulin is high, discuss it. Every single monitor/urgent value gets attention.
+CRITICAL RULES:
+1. EVERY lab value outside optimal range MUST be addressed. Do NOT skip ANY abnormal finding, even if it seems unrelated to the chief complaint. Every monitor/urgent value gets a discussion point and test recommendation.
+2. PATTERN RECOGNITION: Look for multi-marker patterns that point to specific undiagnosed conditions. Connect abnormal values across organ systems. Examples of patterns to detect (apply universally, not just these):
+   - Elevated platelets + elevated RDW + fatigue → iron deficiency anemia, chronic inflammation, or myeloproliferative disorder — order iron panel, peripheral smear, JAK2 if persistent
+   - Elevated globulin + low albumin → chronic infection, autoimmune disease, or liver dysfunction
+   - Low HDL + elevated triglycerides + borderline glucose → metabolic syndrome / insulin resistance
+   - Elevated liver enzymes + elevated bilirubin → hepatotoxicity, hemolysis, or biliary disease
+   - Low CO2 + low chloride → metabolic acidosis, chronic diarrhea, or renal tubular issue
+   - Elevated WBC + elevated RDW + fatigue → occult infection, stress response, or hematologic process
+   Flag EVERY pattern you find in the executive_summary and dedicate a discussion_point to each. The goal is EARLY DETECTION — find what the doctor's 12-minute appointment will miss.
+3. AGE AND SEX CONTEXT: Always consider the patient's age and sex when evaluating findings. A value that is "normal" for a 50-year-old male may be concerning in an 18-year-old female. Apply age/sex-appropriate clinical reasoning.
 
 FORMAT: executive_summary (3-5 bullets), HPI (3-5 sentences — mention ALL abnormal values), ROS (1-2 sentences/system), discussion_points (5-8 items covering EVERY abnormal finding, 2-3 sentences each, lead with the ask), patient_questions (3-5 plain language), functional_medicine_note (3-4 sentences).
 

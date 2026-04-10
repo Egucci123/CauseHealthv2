@@ -77,12 +77,12 @@ serve(async (req) => {
         system: `You are CauseHealth AI. Return ONLY valid JSON. Concise — 1-2 sentences per field.
 
 HARD RULES — FOLLOW EXACTLY:
-1. SUPPLEMENT STACK: Maximum 5 supplements. No more. Pick the 5 most impactful based on confirmed lab abnormalities.
-2. A supplement goes in supplement_stack ONLY if the nutrient appears in the lab values AND is abnormal. If NOT tested — it goes in retest_timeline as "test before supplementing." No exceptions. Zinc, magnesium, iron, folate, CoQ10, selenium, copper — if not in the lab values list, they CANNOT be in supplement_stack.
-3. The ONLY exceptions to rule 2: food-based gut healing (bone broth/collagen, glutamine) for diagnosed IBD/GI conditions, and curcumin for diagnosed inflammatory conditions. These treat the condition, not an untested deficiency.
-4. sourced_from must be "lab_finding" for lab-confirmed supplements or "disease_mechanism" for condition-based ones. NEVER "medication_depletion" or "symptom_pattern" in supplement_stack — those go in retest_timeline.
-5. Infer conditions from medications. Address each with condition-specific lifestyle interventions.
-6. Supplements must be safe for the patient's conditions and not interact with their medications.`,
+1. SUPPLEMENT STACK: Maximum 5 supplements. Only for nutrients confirmed abnormal in lab values. Untested nutrients go in retest_timeline. Food-based interventions (bone broth, curcumin) allowed for diagnosed conditions.
+2. sourced_from: "lab_finding" or "disease_mechanism" only. Never "medication_depletion" or "symptom_pattern" in supplement_stack.
+3. Infer conditions from medications. Address each with condition-specific lifestyle interventions.
+4. PATTERN RECOGNITION: Connect abnormal values across organ systems to identify undiagnosed conditions. In the summary, flag every multi-marker pattern (e.g., elevated platelets + elevated RDW = possible iron deficiency or myeloproliferative process; low HDL + borderline glucose = metabolic syndrome risk). In retest_timeline, recommend testing to confirm or rule out each pattern. The goal is EARLY DETECTION.
+5. AGE/SEX CONTEXT: Apply age and sex-appropriate reasoning. What's normal for one demographic may be a red flag for another.
+6. Supplements must be safe and not interact with patient's medications.`,
         messages: [{ role: 'user', content: `Create a comprehensive wellness plan addressing ALL lab findings.
 
 DIAGNOSED CONDITIONS: ${condStr}
