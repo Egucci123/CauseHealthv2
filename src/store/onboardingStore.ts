@@ -256,34 +256,58 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
     const profile = useAuthStore.getState().profile;
     if (!profile || !user) return;
 
-    // Restore profile data
-    if (profile.firstName) {
-      set({ firstName: profile.firstName ?? '', lastName: profile.lastName ?? '' });
-    }
+    // Restore ALL existing data into the store so forms are pre-filled
+    const updates: Partial<OnboardingState> = {};
 
-    // Check what data already exists in DB to determine which step to resume at
-    // Only skip steps if the data was clearly set during onboarding (not just from registration)
+    // Step 1 data from profile
+    if (profile.firstName) updates.firstName = profile.firstName;
+    if (profile.lastName) updates.lastName = profile.lastName;
+    if (profile.dateOfBirth) updates.dateOfBirth = profile.dateOfBirth;
+    if (profile.sex) updates.sex = profile.sex;
+    if (profile.heightCm) {
+      const totalInches = profile.heightCm / 2.54;
+      updates.heightFt = String(Math.floor(totalInches / 12));
+      updates.heightIn = String(Math.round(totalInches % 12));
+    }
+    if (profile.weightKg) updates.weightLbs = String(Math.round(profile.weightKg / 0.453592));
+
+    // Determine which step to resume at based on saved data
     let resumeStep = 1;
+
     try {
-      // Step 1 done only if DOB + sex are set (these come from onboarding, not registration)
       if (profile.dateOfBirth && profile.sex) resumeStep = 2;
 
-      if (resumeStep >= 2) {
-        const { data: conditions } = await supabase.from('conditions').select('name').eq('user_id', user.id).limit(1);
-        if (conditions && conditions.length > 0) resumeStep = 3;
+      // Load conditions (step 2)
+      const { data: conditions } = await supabase.from('conditions').select('*').eq('user_id', user.id).eq('is_active', true);
+      if (conditions && conditions.length > 0) {
+        updates.conditions = conditions.map(c => ({ id: c.id, name: c.name, icd10: c.icd10 }));
+        resumeStep = 3;
       }
-      if (resumeStep >= 3) {
-        const { data: meds } = await supabase.from('medications').select('name').eq('user_id', user.id).limit(1);
-        if (meds && meds.length > 0) resumeStep = 4;
+
+      // Load medications (step 3)
+      const { data: meds } = await supabase.from('medications').select('*').eq('user_id', user.id).eq('is_active', true);
+      if (meds && meds.length > 0) {
+        updates.medications = meds.map(m => ({
+          id: m.id, generic: m.name, brand: m.brand_name, dose: m.dose,
+          duration: m.duration_category ?? '1_6_months', condition: m.prescribing_condition, depletes: [],
+        }));
+        resumeStep = 4;
       }
-      if (resumeStep >= 4) {
-        const { data: symptoms } = await supabase.from('symptoms').select('symptom').eq('user_id', user.id).limit(1);
-        if (symptoms && symptoms.length > 0) resumeStep = 5;
+
+      // Load symptoms (step 4)
+      const { data: symptoms } = await supabase.from('symptoms').select('*').eq('user_id', user.id);
+      if (symptoms && symptoms.length > 0) {
+        updates.symptoms = symptoms.map(s => ({
+          id: s.id, symptom: s.symptom, category: s.category ?? '', severity: s.severity, duration: s.duration ?? '1_6_months',
+        }));
+        resumeStep = 5;
       }
     } catch {
-      // If any check fails, start from beginning
+      // If any check fails, still apply what we have
     }
 
+    // Apply all loaded data and resume at the right step
+    if (Object.keys(updates).length > 0) set(updates);
     if (resumeStep > 1 && get().currentStep === 1) {
       set({ currentStep: resumeStep });
     }
