@@ -11,6 +11,17 @@ const DocSection = ({ label, children }: { label: string; children: React.ReactN
 
 function flagColor(f: string) { return (f === 'deficient' || f === 'elevated') ? '#C94F4F' : '#E8922A'; }
 
+// Safely render a value that might be a string or an object
+function renderText(val: unknown): string {
+  if (typeof val === 'string') return val;
+  if (val && typeof val === 'object') {
+    // Handle {ask: "...", reason: "..."} or {text: "..."} or any object
+    const obj = val as Record<string, unknown>;
+    return Object.values(obj).filter(v => typeof v === 'string').join(' — ');
+  }
+  return String(val ?? '');
+}
+
 export const ClinicalSummary = ({ doc }: { doc: DoctorPrepDocument }) => {
   const rosPositive = doc.review_of_systems ? Object.entries(doc.review_of_systems).filter(([_, v]) => v && v.toLowerCase() !== 'negative') : [];
 
@@ -43,7 +54,7 @@ export const ClinicalSummary = ({ doc }: { doc: DoctorPrepDocument }) => {
               {doc.executive_summary.map((item, i) => (
                 <li key={i} className="flex items-start gap-3">
                   <span className="material-symbols-outlined text-primary-container text-[14px] mt-0.5 flex-shrink-0">arrow_right</span>
-                  <p className="text-body text-clinical-charcoal text-sm leading-relaxed">{item}</p>
+                  <p className="text-body text-clinical-charcoal text-sm leading-relaxed">{renderText(item)}</p>
                 </li>
               ))}
             </ul>
@@ -62,7 +73,7 @@ export const ClinicalSummary = ({ doc }: { doc: DoctorPrepDocument }) => {
                 <div>
                   <span className="text-body text-clinical-charcoal text-sm font-medium">{med.name}</span>
                   {med.dose && <span className="text-body text-clinical-stone text-sm"> — {med.dose}</span>}
-                  {med.notable_depletion && <span className="text-precision text-[0.6rem] text-[#E8922A] ml-2">⚠ {med.notable_depletion}</span>}
+                  {med.notable_depletion && <span className="text-precision text-[0.6rem] text-[#E8922A] ml-2">⚠ {renderText(med.notable_depletion)}</span>}
                 </div>
               </div>
             ))}
@@ -143,7 +154,7 @@ export const ClinicalSummary = ({ doc }: { doc: DoctorPrepDocument }) => {
                         <span className="text-precision text-sm font-bold" style={{ color: flagColor(f.flag) }}>{f.value}</span>
                         <span className="text-precision text-[0.55rem] font-bold px-1.5 py-0.5 text-white" style={{ borderRadius: '2px', backgroundColor: flagColor(f.flag) }}>{f.flag.toUpperCase()}</span>
                       </div>
-                      <p className="text-body text-clinical-stone text-xs mt-0.5">{f.clinical_note}</p>
+                      <p className="text-body text-clinical-stone text-xs mt-0.5">{renderText(f.clinical_note)}</p>
                     </div>
                   </div>
                 ))}
@@ -168,7 +179,7 @@ export const ClinicalSummary = ({ doc }: { doc: DoctorPrepDocument }) => {
               {doc.discussion_points.map((p, i) => (
                 <li key={i} className="flex items-start gap-3">
                   <span className="material-symbols-outlined text-primary-container text-[16px] mt-0.5 flex-shrink-0">arrow_right</span>
-                  <p className="text-body text-clinical-charcoal text-sm leading-relaxed">{p}</p>
+                  <p className="text-body text-clinical-charcoal text-sm leading-relaxed">{renderText(p)}</p>
                 </li>
               ))}
             </ul>
@@ -186,7 +197,7 @@ export const ClinicalSummary = ({ doc }: { doc: DoctorPrepDocument }) => {
               {doc.patient_questions.map((q, i) => (
                 <li key={i} className="flex items-start gap-3">
                   <span className="text-precision text-sm font-bold text-primary-container w-5 flex-shrink-0">{i + 1}.</span>
-                  <p className="text-body text-clinical-charcoal text-sm leading-relaxed">{q}</p>
+                  <p className="text-body text-clinical-charcoal text-sm leading-relaxed">{renderText(q)}</p>
                 </li>
               ))}
             </ol>
