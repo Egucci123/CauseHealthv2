@@ -108,6 +108,22 @@ Return JSON:
       }
     } catch (e) { console.error('ICD-10 correction error:', e); }
 
+    // Validate required fields before saving — never save corrupt/partial documents
+    if (!doc.chief_complaint && !doc.hpi && !doc.executive_summary) {
+      return new Response(JSON.stringify({ error: 'Generated document is incomplete — missing required fields' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    // Ensure arrays are arrays, not undefined
+    if (!Array.isArray(doc.tests_to_request)) doc.tests_to_request = [];
+    if (!Array.isArray(doc.medications)) doc.medications = [];
+    if (!Array.isArray(doc.discussion_points)) doc.discussion_points = [];
+    if (!Array.isArray(doc.executive_summary)) doc.executive_summary = [];
+    if (!Array.isArray(doc.patient_questions)) doc.patient_questions = [];
+    if (!Array.isArray(doc.medication_alternatives)) doc.medication_alternatives = [];
+    if (!doc.review_of_systems) doc.review_of_systems = {};
+    if (!doc.lab_summary) doc.lab_summary = { draw_date: '', lab_name: '', urgent_findings: [], other_abnormal: [] };
+    if (!doc.generated_at) doc.generated_at = new Date().toISOString();
+    if (!doc.document_date) doc.document_date = new Date().toISOString().split('T')[0];
+
     await supabase.from('doctor_prep_documents').insert({ user_id: userId, document_data: doc });
     return new Response(JSON.stringify(doc), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (err) {

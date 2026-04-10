@@ -1,5 +1,5 @@
 // src/pages/doctorprep/DoctorPrep.tsx
-import { useState } from 'react';
+import { useState, Component, type ReactNode } from 'react';
 import { AppShell } from '../../components/layout/AppShell';
 import { SectionHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -95,3 +95,27 @@ export const DoctorPrep = () => {
     </AppShell>
   );
 };
+
+// Error boundary prevents blank screen — shows error message instead of crashing
+class DoctorPrepErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: string }> {
+  state = { hasError: false, error: '' };
+  static getDerivedStateFromError(error: Error) { return { hasError: true, error: error.message }; }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <AppShell pageTitle="Clinical Prep">
+          <div className="bg-[#C94F4F]/10 border border-[#C94F4F]/30 rounded-[10px] p-8 text-center">
+            <span className="material-symbols-outlined text-[#C94F4F] text-4xl mb-3 block">error</span>
+            <p className="text-body text-clinical-charcoal font-semibold mb-2">Something went wrong loading this document.</p>
+            <p className="text-body text-clinical-stone text-sm mb-4">{this.state.error}</p>
+            <button onClick={() => { this.setState({ hasError: false }); window.location.reload(); }}
+              className="text-precision text-[0.68rem] text-primary-container font-bold tracking-widest uppercase hover:underline">Try Again</button>
+          </div>
+        </AppShell>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+export const DoctorPrepPage = () => <DoctorPrepErrorBoundary><DoctorPrep /></DoctorPrepErrorBoundary>;

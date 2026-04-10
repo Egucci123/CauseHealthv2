@@ -35,7 +35,7 @@ import { MedicationChecker } from './pages/medications/MedicationChecker';
 import { SymptomMapper } from './pages/symptoms/SymptomMapper';
 
 // Doctor Prep
-import { DoctorPrep } from './pages/doctorprep/DoctorPrep';
+import { DoctorPrepPage } from './pages/doctorprep/DoctorPrep';
 
 // Progress
 import { ProgressTracking } from './pages/progress/ProgressTracking';
@@ -94,7 +94,7 @@ function App() {
       <Route path="/wellness" element={<ProtectedRoute><WellnessPlanPage /></ProtectedRoute>} />
       <Route path="/medications" element={<ProtectedRoute><MedicationChecker /></ProtectedRoute>} />
       <Route path="/symptoms" element={<ProtectedRoute><SymptomMapper /></ProtectedRoute>} />
-      <Route path="/doctor-prep" element={<ProtectedRoute><DoctorPrep /></ProtectedRoute>} />
+      <Route path="/doctor-prep" element={<ProtectedRoute><DoctorPrepPage /></ProtectedRoute>} />
       <Route path="/progress" element={<ProtectedRoute><ProgressTracking /></ProtectedRoute>} />
       <Route path="/insurance" element={<ProtectedRoute><PageStub title="Insurance Guide" /></ProtectedRoute>} />
 

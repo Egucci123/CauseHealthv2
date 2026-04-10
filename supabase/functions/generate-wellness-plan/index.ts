@@ -113,6 +113,16 @@ Return JSON: {"generated_at":"${new Date().toISOString()}","summary":"3 sentence
       plan.supplement_stack = plan.supplement_stack.slice(0, 5);
     }
 
+    // Validate before saving — never save corrupt/partial plans
+    if (!plan.summary && !plan.supplement_stack) {
+      return new Response(JSON.stringify({ error: 'Generated plan is incomplete' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    if (!Array.isArray(plan.supplement_stack)) plan.supplement_stack = [];
+    if (!plan.lifestyle_interventions) plan.lifestyle_interventions = { diet: [], sleep: [], exercise: [], stress: [] };
+    if (!plan.action_plan) plan.action_plan = { phase_1: { name: '', focus: '', actions: [] }, phase_2: { name: '', focus: '', actions: [] }, phase_3: { name: '', focus: '', actions: [] } };
+    if (!Array.isArray(plan.retest_timeline)) plan.retest_timeline = [];
+    if (!plan.generated_at) plan.generated_at = new Date().toISOString();
+
     await supabase.from('wellness_plans').delete().eq('user_id', userId);
     await supabase.from('wellness_plans').insert({ user_id: userId, draw_id: drawId, plan_data: plan, generation_status: 'complete' });
 
