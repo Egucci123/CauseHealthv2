@@ -86,7 +86,7 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
 
         const combinedText = allTexts.join('\n---NEW DOCUMENT---\n');
         if (!combinedText || combinedText.length < 100) {
-          set({ phase: 'manual', statusMessage: `Could not read text from ${plural ? 'these PDFs' : 'this PDF'}. Please enter values manually.`, isRunning: false });
+          set({ phase: 'error', errorMessage: `PDF text extraction returned ${combinedText?.length ?? 0} characters. This may be a scanned PDF (image-based) which cannot be read automatically. Try a different PDF or use manual entry.`, isRunning: false });
           return;
         }
         if (!anyLooksLikeLab) {
