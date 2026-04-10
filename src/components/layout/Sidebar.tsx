@@ -4,7 +4,6 @@ import { useAuthStore } from '../../store/authStore';
 
 const NAV_ITEMS = [
   { label: 'Intelligence Hub',  icon: 'analytics',    path: '/dashboard' },
-  { label: 'Health Chat',       icon: 'chat',          path: '/chat' },
   { label: 'Lab Analytics',     icon: 'biotech',       path: '/labs' },
   { label: 'Wellness Protocol', icon: 'favorite',      path: '/wellness' },
   { label: 'Medications',       icon: 'medication',    path: '/medications' },

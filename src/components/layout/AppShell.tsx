@@ -2,6 +2,7 @@
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { MobileNav } from './MobileNav';
+import { FloatingChat } from '../chat/FloatingChat';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -20,5 +21,6 @@ export const AppShell = ({ children, pageTitle, pageSubtitle }: AppShellProps) =
       </div>
     </main>
     <MobileNav />
+    <FloatingChat />
   </div>
 );
