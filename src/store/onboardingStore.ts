@@ -137,19 +137,9 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
   prevStep: () => set(s => ({ currentStep: Math.max(1, s.currentStep - 1) })),
 
   nextStep: async () => {
-    try {
-      // Timeout after 8 seconds — don't let a hanging save block the user
-      await Promise.race([
-        get().saveCurrentStep(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Save timeout')), 8000)),
-      ]);
-    } catch (err) {
-      console.error('[Onboarding] nextStep save failed, continuing anyway:', err);
-    }
-    set({ loading: false });
+    // Auto-save handles DB writes — just advance the step
     const next = Math.min(get().totalSteps, get().currentStep + 1);
-    set({ currentStep: next });
-    if (next === 7) get().generateQuickInsights();
+    set({ currentStep: next, loading: false });
   },
 
   updateStep1: (data) => set(data),
@@ -184,80 +174,7 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
   })),
 
   saveCurrentStep: async () => {
-    const user = useAuthStore.getState().user;
-    if (!user) return;
-    const state = get();
-    set({ loading: true });
-    try {
-      // Refresh session to prevent stale token hangs
-      await supabase.auth.getSession();
-      const step = state.currentStep;
-      const profileUpdate: Record<string, unknown> = {};
-
-      if (step === 1) {
-        const heightCm = state.heightFt && state.heightIn
-          ? (parseInt(state.heightFt) * 30.48) + (parseInt(state.heightIn) * 2.54) : null;
-        const weightKg = state.weightLbs ? parseFloat(state.weightLbs) * 0.453592 : null;
-        Object.assign(profileUpdate, {
-          first_name: state.firstName, last_name: state.lastName,
-          date_of_birth: state.dateOfBirth || null, sex: state.sex || null,
-          height_cm: heightCm, weight_kg: weightKg,
-        });
-      }
-
-      if (Object.keys(profileUpdate).length > 0) {
-        console.log('[Onboarding] Saving step', step, 'profile update:', profileUpdate);
-        const { error: profileErr } = await supabase.from('profiles').update(profileUpdate).eq('id', user.id);
-        console.log('[Onboarding] Profile save:', profileErr?.message ?? 'ok');
-      }
-
-      if (step === 2 && state.conditions.length > 0) {
-        await supabase.from('conditions').delete().eq('user_id', user.id);
-        const { error: condErr } = await supabase.from('conditions').insert(
-          state.conditions.map(c => ({
-            user_id: user.id, name: c.name, icd10: c.icd10 || null, is_active: true,
-          }))
-        );
-        console.log('[Onboarding] Conditions insert:', condErr?.message ?? `ok (${state.conditions.length} conditions)`);
-      }
-
-      if (step === 3 && state.medications.length > 0) {
-        const { error: delErr } = await supabase.from('medications').delete().eq('user_id', user.id);
-        console.log('[Onboarding] Meds delete:', delErr?.message ?? 'ok');
-        const { error: insErr } = await supabase.from('medications').insert(
-          state.medications.map(m => ({
-            user_id: user.id, name: m.generic, brand_name: m.brand,
-            dose: m.dose, duration_category: m.duration,
-            prescribing_condition: m.condition, is_active: true,
-          }))
-        );
-        console.log('[Onboarding] Meds insert:', insErr?.message ?? `ok (${state.medications.length} meds)`);
-      }
-
-      if (step === 4 && state.symptoms.length > 0) {
-        const { error: delErr } = await supabase.from('symptoms').delete().eq('user_id', user.id);
-        console.log('[Onboarding] Symptoms delete:', delErr?.message ?? 'ok');
-        const { error: insErr } = await supabase.from('symptoms').insert(
-          state.symptoms.map(s => ({
-            user_id: user.id, symptom: s.symptom,
-            severity: s.severity, duration: s.duration,
-            category: s.category || null,
-          }))
-        );
-        console.log('[Onboarding] Symptoms insert:', insErr?.message ?? `ok (${state.symptoms.length} symptoms)`);
-      }
-
-      // Step 6: Save primary goal to profile immediately (in case they don't hit Finish)
-      if (step === 6 && state.primaryGoal) {
-        await supabase.from('profiles').update({
-          primary_goals: [state.primaryGoal].filter(Boolean),
-        }).eq('id', user.id);
-      }
-    } catch (err) {
-      console.error('Onboarding save error:', err);
-    } finally {
-      set({ loading: false });
-    }
+    // Now a no-op — auto-save handles everything
   },
 
   loadSavedProgress: async () => {
@@ -402,6 +319,83 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
     set({ quickInsights: generateLocalInsights(state), insightsLoading: false });
   },
 }));
+
+// ── Auto-save: debounced save on any state change ─────────────────────────
+let autoSaveTimer: ReturnType<typeof setTimeout> | undefined;
+let isSaving = false;
+
+async function autoSaveToDB() {
+  if (isSaving) return;
+  const user = useAuthStore.getState().user;
+  if (!user) return;
+  const state = useOnboardingStore.getState();
+
+  isSaving = true;
+  try {
+    // Save profile fields
+    const heightCm = state.heightFt && state.heightIn
+      ? (parseInt(state.heightFt) * 30.48) + (parseInt(state.heightIn) * 2.54) : null;
+    const weightKg = state.weightLbs ? parseFloat(state.weightLbs) * 0.453592 : null;
+
+    const profileData: Record<string, unknown> = {};
+    if (state.firstName) profileData.first_name = state.firstName;
+    if (state.lastName) profileData.last_name = state.lastName;
+    if (state.dateOfBirth) profileData.date_of_birth = state.dateOfBirth;
+    if (state.sex) profileData.sex = state.sex;
+    if (heightCm) profileData.height_cm = heightCm;
+    if (weightKg) profileData.weight_kg = weightKg;
+    if (state.primaryGoal) profileData.primary_goals = [state.primaryGoal];
+
+    if (Object.keys(profileData).length > 0) {
+      await supabase.from('profiles').update(profileData).eq('id', user.id);
+    }
+
+    // Save conditions
+    if (state.conditions.length > 0) {
+      await supabase.from('conditions').delete().eq('user_id', user.id);
+      await supabase.from('conditions').insert(
+        state.conditions.map(c => ({ user_id: user.id, name: c.name, icd10: c.icd10 || null, is_active: true }))
+      );
+    }
+
+    // Save medications
+    if (state.medications.length > 0) {
+      await supabase.from('medications').delete().eq('user_id', user.id);
+      await supabase.from('medications').insert(
+        state.medications.map(m => ({ user_id: user.id, name: m.generic, brand_name: m.brand, dose: m.dose, duration_category: m.duration, prescribing_condition: m.condition, is_active: true }))
+      );
+    }
+
+    // Save symptoms
+    if (state.symptoms.length > 0) {
+      await supabase.from('symptoms').delete().eq('user_id', user.id);
+      await supabase.from('symptoms').insert(
+        state.symptoms.map(s => ({ user_id: user.id, symptom: s.symptom, severity: s.severity, duration: s.duration, category: s.category || null }))
+      );
+    }
+  } catch (err) {
+    console.warn('[AutoSave] Error:', err);
+  } finally {
+    isSaving = false;
+  }
+}
+
+// Subscribe to store changes — auto-save 2 seconds after last change
+useOnboardingStore.subscribe((state, prevState) => {
+  // Only auto-save if meaningful data changed (not loading/currentStep)
+  const changed = state.firstName !== prevState.firstName || state.lastName !== prevState.lastName ||
+    state.dateOfBirth !== prevState.dateOfBirth || state.sex !== prevState.sex ||
+    state.heightFt !== prevState.heightFt || state.heightIn !== prevState.heightIn ||
+    state.weightLbs !== prevState.weightLbs || state.primaryGoal !== prevState.primaryGoal ||
+    state.conditions.length !== prevState.conditions.length ||
+    state.medications.length !== prevState.medications.length ||
+    state.symptoms.length !== prevState.symptoms.length;
+
+  if (changed) {
+    clearTimeout(autoSaveTimer);
+    autoSaveTimer = setTimeout(autoSaveToDB, 2000);
+  }
+});
 
 function generateLocalInsights(state: OnboardingState): string[] {
   const insights: string[] = [];
