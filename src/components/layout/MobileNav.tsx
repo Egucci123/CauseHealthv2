@@ -2,11 +2,11 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 
 const MOBILE_ITEMS = [
-  { label: 'Dashboard', icon: 'grid_view',  path: '/dashboard' },
-  { label: 'Labs',      icon: 'biotech',    path: '/labs' },
+  { label: 'Home',      icon: 'grid_view',   path: '/dashboard' },
+  { label: 'Labs',      icon: 'biotech',     path: '/labs' },
+  { label: 'Wellness',  icon: 'favorite',    path: '/wellness' },
   { label: 'Prep',      icon: 'description', path: '/doctor-prep' },
-  { label: 'Progress',  icon: 'trending_up', path: '/progress' },
-  { label: 'Settings',  icon: 'person',      path: '/settings' },
+  { label: 'More',      icon: 'menu',        path: '/settings' },
 ];
 
 interface MobileNavProps { currentPath?: string; }
