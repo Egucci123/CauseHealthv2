@@ -46,9 +46,7 @@ export function useLatestDoctorPrep() {
       if (error) throw error;
       return data ? (data.document_data as DoctorPrepDocument) : null;
     },
-    enabled: !!userId, staleTime: 0, refetchOnMount: 'always',
-    // Poll every 3s while generating so the UI updates when done
-    refetchInterval: generatingFlag ? 3000 : false,
+    enabled: !!userId, staleTime: 5 * 60 * 1000,
   });
 }
 

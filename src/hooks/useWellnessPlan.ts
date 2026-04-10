@@ -45,8 +45,7 @@ export function useWellnessPlan() {
       return data ? (data.plan_data as WellnessPlanData) : null;
     },
     enabled: !!userId,
-    staleTime: 0, refetchOnMount: 'always',
-    refetchInterval: generatingFlag ? 3000 : false,
+    staleTime: 5 * 60 * 1000,
   });
 }
 
