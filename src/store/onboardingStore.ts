@@ -138,7 +138,11 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
 
   nextStep: async () => {
     try {
-      await get().saveCurrentStep();
+      // Timeout after 8 seconds — don't let a hanging save block the user
+      await Promise.race([
+        get().saveCurrentStep(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Save timeout')), 8000)),
+      ]);
     } catch (err) {
       console.error('[Onboarding] nextStep save failed, continuing anyway:', err);
     }
