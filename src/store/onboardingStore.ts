@@ -189,6 +189,8 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
     const state = get();
     set({ loading: true });
     try {
+      // Refresh session to prevent stale token hangs
+      await supabase.auth.getSession();
       const step = state.currentStep;
       const profileUpdate: Record<string, unknown> = {};
 
@@ -244,6 +246,13 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
         );
         console.log('[Onboarding] Symptoms insert:', insErr?.message ?? `ok (${state.symptoms.length} symptoms)`);
       }
+
+      // Step 6: Save primary goal to profile immediately (in case they don't hit Finish)
+      if (step === 6 && state.primaryGoal) {
+        await supabase.from('profiles').update({
+          primary_goals: [state.primaryGoal].filter(Boolean),
+        }).eq('id', user.id);
+      }
     } catch (err) {
       console.error('Onboarding save error:', err);
     } finally {
@@ -270,6 +279,7 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
       updates.heightIn = String(Math.round(totalInches % 12));
     }
     if (profile.weightKg) updates.weightLbs = String(Math.round(profile.weightKg / 0.453592));
+    if (profile.primaryGoals && profile.primaryGoals.length > 0) updates.primaryGoal = profile.primaryGoals[0];
 
     // Determine which step to resume at — only skip forward if later steps have data
     let resumeStep = 1;
@@ -324,6 +334,9 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
     const state = get();
 
     try {
+      // Refresh auth session in case token went stale during onboarding
+      await supabase.auth.getSession();
+
       // Fire all saves in parallel — don't let one block the others
       const saves = [];
 
