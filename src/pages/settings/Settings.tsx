@@ -35,7 +35,7 @@ export const Settings = () => {
           {isPro && <span className="text-precision text-[0.65rem] uppercase tracking-wider bg-primary-container/10 text-primary-container px-3 py-1.5" style={{ borderRadius: '2px' }}>Pro</span>}
         </div>
 
-        <div className="flex gap-1 mb-7">
+        <div className="flex gap-1 mb-7 overflow-x-auto pb-1 -mx-1 px-1">
           {TABS.map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
               className={`text-precision text-[0.68rem] uppercase tracking-widest px-4 py-2.5 whitespace-nowrap transition-colors relative ${activeTab === tab.id ? 'bg-primary-container text-white' : 'bg-clinical-white text-clinical-stone hover:bg-clinical-cream'}`} style={{ borderRadius: '6px' }}>
