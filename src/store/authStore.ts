@@ -98,9 +98,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   },
 
   signIn: async (email, password) => {
-    set({ loading: true });
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    set({ loading: false });
     if (error) return { error: 'Email or password is incorrect.' };
     return { error: null };
   },
