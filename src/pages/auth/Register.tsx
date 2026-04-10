@@ -60,7 +60,9 @@ export const Register = () => {
       return;
     }
 
-    navigate('/auth/verify-email', { state: { email: data.email } });
+    // Email confirmation off — user is authenticated immediately, go to onboarding
+    // To re-enable: change this to navigate('/auth/verify-email', { state: { email: data.email } });
+    navigate('/onboarding', { replace: true });
   };
 
   const handleGoogle = async () => {
