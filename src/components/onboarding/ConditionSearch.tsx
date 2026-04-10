@@ -1,26 +1,36 @@
 // src/components/onboarding/ConditionSearch.tsx
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { searchConditions, COMMON_CONDITIONS, CONDITIONS, type Condition } from '../../data/conditions';
+import { COMMON_CONDITIONS, CONDITIONS } from '../../data/conditions';
+import { searchConditionsAPI, type ConditionSearchResult } from '../../lib/medicalSearch';
 import { useOnboardingStore } from '../../store/onboardingStore';
 
 export const ConditionSearch = () => {
-  const [query, setQuery]     = useState('');
-  const [results, setResults] = useState<Condition[]>([]);
-  const [open, setOpen]       = useState(false);
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<ConditionSearchResult[]>([]);
+  const [open, setOpen] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const { conditions, addCondition, removeCondition } = useOnboardingStore();
 
-  const handleSearch = (q: string) => {
-    setQuery(q);
-    if (q.length >= 2) { setResults(searchConditions(q)); setOpen(true); }
-    else setOpen(false);
-  };
+  useEffect(() => {
+    if (query.length < 2) { setResults([]); setOpen(false); return; }
+    setSearching(true);
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      const apiResults = await searchConditionsAPI(query);
+      setResults(apiResults);
+      setOpen(true);
+      setSearching(false);
+    }, 300);
+    return () => clearTimeout(debounceRef.current);
+  }, [query]);
 
   const handleSelect = (name: string, icd10?: string) => {
     addCondition({ name, icd10 }); setQuery(''); setOpen(false);
   };
 
-  const isAdded = (name: string) => conditions.some(c => c.name === name);
+  const isAdded = (name: string) => conditions.some(c => c.name.toLowerCase() === name.toLowerCase());
 
   return (
     <div className="space-y-6">
@@ -44,34 +54,29 @@ export const ConditionSearch = () => {
       </div>
 
       <div className="relative">
-        <label className="text-precision text-[0.68rem] font-bold text-clinical-stone tracking-widest uppercase mb-1.5 block">Search for Other Conditions</label>
+        <label className="text-precision text-[0.68rem] font-bold text-clinical-stone tracking-widest uppercase mb-1.5 block">Search Any Condition</label>
         <div className="relative">
-          <input type="text" value={query} onChange={e => handleSearch(e.target.value)} placeholder="Type condition name..." style={{ borderRadius: '4px' }}
+          <input type="text" value={query} onChange={e => setQuery(e.target.value)} placeholder="Type any condition, disease, or diagnosis..." style={{ borderRadius: '4px' }}
             className="w-full pl-10 pr-4 py-3 bg-clinical-cream border border-outline-variant/20 text-clinical-charcoal placeholder-clinical-stone/50 text-body text-sm focus:border-primary-container focus:ring-1 focus:ring-primary-container focus:outline-none transition-colors" />
-          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-clinical-stone text-[18px]">search</span>
+          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-clinical-stone text-[18px]">{searching ? 'hourglass_empty' : 'search'}</span>
         </div>
         <AnimatePresence>
           {open && (
             <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-              className="absolute top-full left-0 right-0 z-20 bg-clinical-white border border-outline-variant/20 shadow-card-md mt-1" style={{ borderRadius: '4px' }}>
-              {results.map(cond => (
-                <button key={cond.name} onClick={() => handleSelect(cond.name, cond.icd10)} disabled={isAdded(cond.name)}
-                  className="w-full text-left px-4 py-3 border-b border-outline-variant/5 last:border-0 hover:bg-clinical-cream transition-colors disabled:opacity-40">
-                  <p className="text-body text-clinical-charcoal text-sm">{cond.name}</p>
-                  <p className="text-precision text-[0.6rem] text-clinical-stone tracking-wide">{cond.category}{cond.icd10 ? ` · ${cond.icd10}` : ''}</p>
-                </button>
-              ))}
-              {query.length >= 2 && !results.some(r => r.name.toLowerCase() === query.toLowerCase()) && !isAdded(query) && (
-                <button onClick={() => { handleSelect(query.trim()); }} className="w-full text-left px-4 py-3 border-t border-outline-variant/10 hover:bg-clinical-cream transition-colors">
-                  <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-primary-container text-[16px]">add_circle</span>
-                    <div>
-                      <p className="text-body text-primary-container text-sm font-medium">Add "{query.trim()}"</p>
-                      <p className="text-precision text-[0.6rem] text-clinical-stone tracking-wide">Custom condition</p>
-                    </div>
-                  </div>
-                </button>
+              className="absolute top-full left-0 right-0 z-20 bg-clinical-white border border-outline-variant/20 shadow-card-md mt-1 max-h-64 overflow-y-auto" style={{ borderRadius: '4px' }}>
+              {results.length === 0 && !searching && (
+                <div className="px-4 py-3 text-body text-clinical-stone text-sm">No results found. Try different spelling.</div>
               )}
+              {results.map(cond => {
+                const added = isAdded(cond.name);
+                return (
+                  <button key={`${cond.icd10}-${cond.name}`} onClick={() => handleSelect(cond.name, cond.icd10)} disabled={added}
+                    className={`w-full text-left px-4 py-3 border-b border-outline-variant/5 last:border-0 hover:bg-clinical-cream transition-colors ${added ? 'opacity-40' : ''}`}>
+                    <p className="text-body text-clinical-charcoal text-sm">{cond.name}</p>
+                    <p className="text-precision text-[0.6rem] text-clinical-stone tracking-wide">{cond.icd10}</p>
+                  </button>
+                );
+              })}
             </motion.div>
           )}
         </AnimatePresence>

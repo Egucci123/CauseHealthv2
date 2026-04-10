@@ -7,6 +7,7 @@ import { useMedications, useSaveMedications } from '../../hooks/useMedications';
 import { useConditions, useSaveConditions } from '../../hooks/useConditions';
 import { useSymptoms, useSaveSymptoms } from '../../hooks/useSymptoms';
 import { searchMedications, type MedicationEntry } from '../../data/medications';
+import { searchMedicationsAPI, type MedSearchResult } from '../../lib/medicalSearch';
 import { SYMPTOM_CATEGORIES } from '../../data/symptoms';
 
 // ─── Medications Section ─────────────────────────────────────────────────────
@@ -33,10 +34,24 @@ const MedicationsEditor = () => {
     }
   }, [savedMeds]);
 
+  const [apiResults, setApiResults] = useState<MedSearchResult[]>([]);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
   useEffect(() => {
-    if (query.length >= 2) { setResults(searchMedications(query)); setOpen(true); }
-    else { setResults([]); setOpen(false); }
+    if (query.length >= 2) {
+      setResults(searchMedications(query));
+      setOpen(true);
+      clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(async () => {
+        const api = await searchMedicationsAPI(query);
+        setApiResults(api);
+      }, 300);
+    } else { setResults([]); setApiResults([]); setOpen(false); }
+    return () => clearTimeout(debounceRef.current);
   }, [query]);
+
+  const localNames = new Set(results.map(r => r.generic.toLowerCase()));
+  const filteredAPI = apiResults.filter(r => !localNames.has(r.name.toLowerCase()));
 
   const addMed = (med: MedicationEntry) => {
     if (meds.some(m => m.name === med.generic)) { setQuery(''); setOpen(false); return; }
@@ -96,18 +111,18 @@ const MedicationsEditor = () => {
                   </button>
                 );
               })}
-              {query.length >= 2 && !results.some(r => r.generic.toLowerCase() === query.toLowerCase()) && !meds.some(m => m.name.toLowerCase() === query.trim().toLowerCase()) && (
-                <button onClick={() => { setMeds(prev => [...prev, { name: query.trim(), duration_category: '1_6_months' }]); setQuery(''); setOpen(false); setSaved(false); }}
-                  className="w-full text-left px-4 py-3 border-t border-outline-variant/10 hover:bg-clinical-cream transition-colors">
-                  <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-primary-container text-[16px]">add_circle</span>
+              {filteredAPI.map(med => {
+                const added = meds.some(m => m.name.toLowerCase() === med.name.toLowerCase());
+                return (
+                  <button key={med.name} onClick={() => { if (!added) { setMeds(prev => [...prev, { name: med.name, duration_category: '1_6_months' }]); setQuery(''); setOpen(false); setSaved(false); } }} disabled={added}
+                    className={`w-full text-left px-4 py-3 border-b border-outline-variant/5 last:border-0 flex items-center justify-between transition-colors ${added ? 'opacity-40' : 'hover:bg-clinical-cream cursor-pointer'}`}>
                     <div>
-                      <p className="text-body text-primary-container text-sm font-medium">Add "{query.trim()}"</p>
-                      <p className="text-precision text-[0.6rem] text-clinical-stone tracking-wide">Custom medication</p>
+                      <p className="text-body text-clinical-charcoal text-sm font-medium">{med.name}</p>
+                      {med.form && <p className="text-precision text-[0.6rem] text-clinical-stone tracking-wide">{med.form}</p>}
                     </div>
-                  </div>
-                </button>
-              )}
+                  </button>
+                );
+              })}
             </motion.div>
           )}
         </AnimatePresence>

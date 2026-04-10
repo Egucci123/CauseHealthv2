@@ -2,28 +2,54 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { searchMedications, type MedicationEntry } from '../../data/medications';
+import { searchMedicationsAPI, type MedSearchResult } from '../../lib/medicalSearch';
 import { DEPLETIONS } from '../../data/depletions';
 import { useOnboardingStore, type AddedMedication } from '../../store/onboardingStore';
 import { SeverityBadge } from '../ui/Badge';
 import { InterventionBox } from '../ui/Card';
 
 export const MedicationSearch = () => {
-  const [query, setQuery]     = useState('');
-  const [results, setResults] = useState<MedicationEntry[]>([]);
-  const [open, setOpen]       = useState(false);
-  const inputRef              = useRef<HTMLInputElement>(null);
+  const [query, setQuery] = useState('');
+  const [localResults, setLocalResults] = useState<MedicationEntry[]>([]);
+  const [apiResults, setApiResults] = useState<MedSearchResult[]>([]);
+  const [open, setOpen] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const { medications, addMedication, removeMedication } = useOnboardingStore();
 
   useEffect(() => {
-    if (query.length >= 2) { setResults(searchMedications(query)); setOpen(true); }
-    else { setResults([]); setOpen(false); }
+    if (query.length < 2) { setLocalResults([]); setApiResults([]); setOpen(false); return; }
+    // Immediate local search
+    setLocalResults(searchMedications(query));
+    setOpen(true);
+    // Debounced API search for everything else
+    setSearching(true);
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      const results = await searchMedicationsAPI(query);
+      setApiResults(results);
+      setSearching(false);
+    }, 300);
+    return () => clearTimeout(debounceRef.current);
   }, [query]);
 
-  const handleSelect = (med: MedicationEntry) => {
+  const handleSelectLocal = (med: MedicationEntry) => {
     if (medications.some(m => m.generic === med.generic)) { setQuery(''); setOpen(false); return; }
     addMedication({ generic: med.generic, brand: med.brands[0], duration: '1_6_months', depletes: med.depletes });
     setQuery(''); setOpen(false); inputRef.current?.focus();
   };
+
+  const handleSelectAPI = (med: MedSearchResult) => {
+    if (medications.some(m => m.generic.toLowerCase() === med.name.toLowerCase())) { setQuery(''); setOpen(false); return; }
+    addMedication({ generic: med.name, duration: '1_6_months', depletes: [] });
+    setQuery(''); setOpen(false); inputRef.current?.focus();
+  };
+
+  // Merge results: local first (has depletion data), then API results not already in local
+  const localNames = new Set(localResults.map(r => r.generic.toLowerCase()));
+  const addedNames = new Set(medications.map(m => m.generic.toLowerCase()));
+  const filteredAPI = apiResults.filter(r => !localNames.has(r.name.toLowerCase()));
 
   return (
     <div className="space-y-4">
@@ -33,16 +59,17 @@ export const MedicationSearch = () => {
           <input ref={inputRef} type="text" value={query} onChange={e => setQuery(e.target.value)}
             placeholder="Type medication name or brand (e.g. Atorvastatin, Lipitor)" style={{ borderRadius: '4px' }}
             className="w-full pl-10 pr-4 py-3 bg-clinical-cream border border-outline-variant/20 text-clinical-charcoal placeholder-clinical-stone/50 text-body text-sm focus:border-primary-container focus:ring-1 focus:ring-primary-container focus:outline-none transition-colors" />
-          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-clinical-stone text-[18px]">search</span>
+          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-clinical-stone text-[18px]">{searching ? 'hourglass_empty' : 'search'}</span>
         </div>
         <AnimatePresence>
           {open && (
             <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.15 }}
-              className="absolute top-full left-0 right-0 z-20 bg-clinical-white border border-outline-variant/20 shadow-card-md mt-1 overflow-hidden" style={{ borderRadius: '4px' }}>
-              {results.map((med) => {
-                const alreadyAdded = medications.some(m => m.generic === med.generic);
+              className="absolute top-full left-0 right-0 z-20 bg-clinical-white border border-outline-variant/20 shadow-card-md mt-1 overflow-hidden max-h-64 overflow-y-auto" style={{ borderRadius: '4px' }}>
+              {/* Local results first — these have depletion data */}
+              {localResults.map((med) => {
+                const alreadyAdded = addedNames.has(med.generic.toLowerCase());
                 return (
-                  <button key={med.generic} onClick={() => handleSelect(med)} disabled={alreadyAdded}
+                  <button key={med.generic} onClick={() => handleSelectLocal(med)} disabled={alreadyAdded}
                     className={`w-full text-left px-4 py-3 border-b border-outline-variant/5 last:border-0 flex items-center justify-between transition-colors ${alreadyAdded ? 'opacity-40 cursor-not-allowed' : 'hover:bg-clinical-cream cursor-pointer'}`}>
                     <div>
                       <p className="text-body text-clinical-charcoal text-sm font-medium">{med.generic}</p>
@@ -53,17 +80,22 @@ export const MedicationSearch = () => {
                   </button>
                 );
               })}
-              {query.length >= 2 && !results.some(r => r.generic.toLowerCase() === query.toLowerCase()) && !medications.some(m => m.generic.toLowerCase() === query.trim().toLowerCase()) && (
-                <button onClick={() => { addMedication({ generic: query.trim(), duration: '1_6_months', depletes: [] }); setQuery(''); setOpen(false); }}
-                  className="w-full text-left px-4 py-3 border-t border-outline-variant/10 hover:bg-clinical-cream transition-colors">
-                  <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-primary-container text-[16px]">add_circle</span>
+              {/* API results — comprehensive drug database */}
+              {filteredAPI.map((med) => {
+                const alreadyAdded = addedNames.has(med.name.toLowerCase());
+                return (
+                  <button key={med.name} onClick={() => handleSelectAPI(med)} disabled={alreadyAdded}
+                    className={`w-full text-left px-4 py-3 border-b border-outline-variant/5 last:border-0 flex items-center justify-between transition-colors ${alreadyAdded ? 'opacity-40 cursor-not-allowed' : 'hover:bg-clinical-cream cursor-pointer'}`}>
                     <div>
-                      <p className="text-body text-primary-container text-sm font-medium">Add "{query.trim()}"</p>
-                      <p className="text-precision text-[0.6rem] text-clinical-stone tracking-wide">Custom medication</p>
+                      <p className="text-body text-clinical-charcoal text-sm font-medium">{med.name}</p>
+                      {med.form && <p className="text-precision text-[0.6rem] text-clinical-stone tracking-wide">{med.form}</p>}
                     </div>
-                  </div>
-                </button>
+                    {alreadyAdded && <span className="text-precision text-[0.6rem] text-primary-container font-bold tracking-wider">ADDED</span>}
+                  </button>
+                );
+              })}
+              {localResults.length === 0 && filteredAPI.length === 0 && !searching && (
+                <div className="px-4 py-3 text-body text-clinical-stone text-sm">No results found. Try different spelling.</div>
               )}
             </motion.div>
           )}
@@ -113,7 +145,6 @@ const MedicationCard = ({ medication, onRemove }: { medication: AddedMedication;
           </select>
         </div>
 
-        {/* THE WOW MOMENT — Depletion Reveal */}
         <AnimatePresence>
           {revealed && hasDepletions && (
             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.4, ease: [0.04, 0.62, 0.23, 0.98] }}>
