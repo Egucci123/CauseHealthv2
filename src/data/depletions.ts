@@ -1,0 +1,159 @@
+// src/data/depletions.ts
+export type Severity = 'critical' | 'moderate' | 'low';
+
+export interface Depletion {
+  nutrient:     string;
+  severity:     Severity;
+  mechanism:    string;
+  symptoms:     string[];
+  intervention: string;
+  evidence:     'strong' | 'moderate' | 'emerging';
+  note?:        string;
+}
+
+export const DEPLETIONS: Record<string, Depletion> = {
+  coq10: {
+    nutrient:     'CoQ10 (Coenzyme Q10)',
+    severity:     'critical',
+    mechanism:    'Statins block HMG-CoA reductase — the same pathway that produces CoQ10.',
+    symptoms:     ['Muscle pain', 'Muscle weakness', 'Fatigue', 'Exercise intolerance'],
+    intervention: 'CoQ10 (ubiquinol form) 200mg daily with food.',
+    evidence:     'strong',
+    note:         'Use ubiquinol form if over 40 — pre-converted and better absorbed.',
+  },
+  vitamin_d: {
+    nutrient:     'Vitamin D3',
+    severity:     'moderate',
+    mechanism:    'Statins affect the cholesterol pathway required for Vitamin D synthesis.',
+    symptoms:     ['Muscle pain', 'Fatigue', 'Hair loss', 'Immune dysfunction'],
+    intervention: 'Vitamin D3 4,000 IU daily with K2 MK-7 100mcg. Take with fat-containing meal.',
+    evidence:     'moderate',
+  },
+  folate: {
+    nutrient:     'Folate (as Methylfolate)',
+    severity:     'critical',
+    mechanism:    'Mesalamine inhibits folate-dependent enzymes and impairs absorption.',
+    symptoms:     ['Hair loss', 'Fatigue', 'Anemia', 'Depression', 'Brain fog'],
+    intervention: 'Methylfolate (5-MTHF form) 800mcg daily. Use methylfolate — NOT folic acid.',
+    evidence:     'strong',
+    note:         'Critical: use methylfolate not folic acid. Folic acid cannot be converted by those with MTHFR mutations.',
+  },
+  b12: {
+    nutrient:     'Vitamin B12',
+    severity:     'critical',
+    mechanism:    'IBD inflammation impairs intrinsic factor. Mesalamine compounds B12 absorption issues.',
+    symptoms:     ['Hair loss', 'Fatigue', 'Brain fog', 'Neuropathy', 'Depression'],
+    intervention: 'Methylcobalamin B12 1,000mcg sublingual daily. Sublingual bypasses gut absorption issues.',
+    evidence:     'strong',
+    note:         'Sublingual form is essential for IBD patients — bypasses the compromised gut absorption.',
+  },
+  magnesium: {
+    nutrient:     'Magnesium',
+    severity:     'critical',
+    mechanism:    'PPIs impair magnesium absorption in the small intestine. FDA has issued warnings about this.',
+    symptoms:     ['Muscle cramps', 'Sleep problems', 'Anxiety', 'Headaches', 'Heart palpitations'],
+    intervention: 'Magnesium glycinate 400mg at bedtime. Glycinate form for best absorption and sleep.',
+    evidence:     'strong',
+    note:         'FDA warning on PPI-induced hypomagnesemia. Monitor serum magnesium levels.',
+  },
+  zinc: {
+    nutrient:     'Zinc',
+    severity:     'moderate',
+    mechanism:    'Zinc absorption requires acidic environment. PPIs suppress stomach acid required for zinc absorption.',
+    symptoms:     ['Hair loss', 'Immune dysfunction', 'Slow wound healing', 'Taste changes'],
+    intervention: 'Zinc bisglycinate 25mg with food. Take separate from calcium and iron.',
+    evidence:     'moderate',
+  },
+  iron: {
+    nutrient:     'Iron',
+    severity:     'moderate',
+    mechanism:    'Iron absorption requires acidic environment suppressed by PPIs.',
+    symptoms:     ['Fatigue', 'Hair loss', 'Shortness of breath', 'Cold intolerance'],
+    intervention: 'Check ferritin before supplementing. Ferrous bisglycinate if deficient.',
+    evidence:     'moderate',
+  },
+  calcium: {
+    nutrient:     'Calcium',
+    severity:     'moderate',
+    mechanism:    'Corticosteroids reduce calcium absorption and increase urinary excretion.',
+    symptoms:     ['Bone pain', 'Muscle cramps', 'Bone loss over time'],
+    intervention: 'Calcium citrate 500mg twice daily with Vitamin D3.',
+    evidence:     'strong',
+  },
+  potassium: {
+    nutrient:     'Potassium',
+    severity:     'moderate',
+    mechanism:    'Diuretics increase potassium excretion through the kidneys.',
+    symptoms:     ['Muscle weakness', 'Cramps', 'Fatigue', 'Heart rhythm changes'],
+    intervention: 'Increase dietary potassium (bananas, avocado, leafy greens). Supplement only under medical supervision.',
+    evidence:     'strong',
+    note:         'Potassium supplementation requires medical supervision — can affect heart rhythm.',
+  },
+  b6: {
+    nutrient:     'Vitamin B6 (P5P)',
+    severity:     'moderate',
+    mechanism:    'Oral contraceptives increase B6 requirements for estrogen metabolism.',
+    symptoms:     ['Depression', 'Anxiety', 'PMS', 'Morning sickness'],
+    intervention: 'P5P (active B6 form) 25-50mg daily.',
+    evidence:     'strong',
+  },
+  melatonin: {
+    nutrient:     'Melatonin',
+    severity:     'low',
+    mechanism:    'SSRIs affect pineal gland melatonin synthesis pathways.',
+    symptoms:     ['Difficulty falling asleep', 'Sleep disruption'],
+    intervention: 'Low-dose melatonin 0.5mg — not the standard 5-10mg doses. Take 30min before bed.',
+    evidence:     'moderate',
+    note:         'Use the lowest effective dose — 0.5mg is often sufficient and avoids grogginess.',
+  },
+  vitamin_c: {
+    nutrient:     'Vitamin C',
+    severity:     'low',
+    mechanism:    'Corticosteroids increase vitamin C excretion and oxidative stress.',
+    symptoms:     ['Slower healing', 'Fatigue', 'Immune weakness'],
+    intervention: 'Vitamin C 500mg daily. Liposomal form for better absorption.',
+    evidence:     'moderate',
+  },
+  vitamin_k: {
+    nutrient:     'Vitamin K',
+    severity:     'moderate',
+    mechanism:    'Antibiotics kill gut bacteria that produce Vitamin K.',
+    symptoms:     ['Easy bruising', 'Prolonged bleeding'],
+    intervention: 'MK-7 K2 100mcg daily. IMPORTANT: Do not supplement if on warfarin without physician guidance.',
+    evidence:     'moderate',
+    note:         'Warfarin users: Vitamin K directly affects anticoagulation — requires INR monitoring.',
+  },
+  b_vitamins: {
+    nutrient:     'B Vitamins (B1, B2, B6, B12)',
+    severity:     'moderate',
+    mechanism:    'Antibiotics disrupt gut microbiome which synthesizes several B vitamins.',
+    symptoms:     ['Fatigue', 'Brain fog', 'Mood changes', 'Nerve tingling'],
+    intervention: 'Methylated B-complex after completing antibiotic course. Restore with probiotics first.',
+    evidence:     'moderate',
+  },
+  probiotics: {
+    nutrient:     'Beneficial Gut Bacteria',
+    severity:     'moderate',
+    mechanism:    'Antibiotics kill both pathogenic and beneficial bacteria indiscriminately.',
+    symptoms:     ['Diarrhea', 'Bloating', 'GI discomfort', 'Increased infection susceptibility'],
+    intervention: 'Saccharomyces boulardii 250mg twice daily during antibiotic course. Multi-strain probiotics after.',
+    evidence:     'strong',
+    note:         'Take probiotics 2 hours apart from antibiotics. S. boulardii is a yeast — not killed by antibiotics.',
+  },
+  folic_acid: {
+    nutrient:     'Folate',
+    severity:     'low',
+    mechanism:    'NSAIDs interfere with folate transport and metabolism.',
+    symptoms:     ['Fatigue', 'Hair loss', 'Mouth sores'],
+    intervention: 'Methylfolate 400mcg daily.',
+    evidence:     'moderate',
+  },
+  vitamin_a: {
+    nutrient:     'Vitamin A',
+    severity:     'low',
+    mechanism:    'Isotretinoin is a Vitamin A derivative that can alter retinol metabolism.',
+    symptoms:     ['Dry skin', 'Night vision issues'],
+    intervention: 'Monitor levels. Do not supplement Vitamin A while on isotretinoin.',
+    evidence:     'moderate',
+  },
+};

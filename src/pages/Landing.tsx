@@ -1,0 +1,26 @@
+// src/pages/Landing.tsx
+import { LandingNav }        from '../components/landing/LandingNav';
+import { HeroSection }       from '../components/landing/HeroSection';
+import { StatsBar }          from '../components/landing/StatsBar';
+import { ProblemSection }    from '../components/landing/ProblemSection';
+import { HowItWorks }        from '../components/landing/HowItWorks';
+import { FeaturesSection }   from '../components/landing/FeaturesSection';
+import { ConditionsSection } from '../components/landing/ConditionsSection';
+import { PricingSection }    from '../components/landing/PricingSection';
+import { TrustSection }      from '../components/landing/TrustSection';
+import { LandingFooter }     from '../components/landing/LandingFooter';
+
+export const Landing = () => (
+  <div className="min-h-screen">
+    <LandingNav />
+    <HeroSection />
+    <StatsBar />
+    <ProblemSection />
+    <HowItWorks />
+    <FeaturesSection />
+    <ConditionsSection />
+    <PricingSection />
+    <TrustSection />
+    <LandingFooter />
+  </div>
+);

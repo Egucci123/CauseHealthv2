@@ -1,0 +1,158 @@
+// src/components/onboarding/MedicationSearch.tsx
+import { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { searchMedications, type MedicationEntry } from '../../data/medications';
+import { DEPLETIONS } from '../../data/depletions';
+import { useOnboardingStore, type AddedMedication } from '../../store/onboardingStore';
+import { SeverityBadge } from '../ui/Badge';
+import { InterventionBox } from '../ui/Card';
+
+export const MedicationSearch = () => {
+  const [query, setQuery]     = useState('');
+  const [results, setResults] = useState<MedicationEntry[]>([]);
+  const [open, setOpen]       = useState(false);
+  const inputRef              = useRef<HTMLInputElement>(null);
+  const { medications, addMedication, removeMedication } = useOnboardingStore();
+
+  useEffect(() => {
+    if (query.length >= 2) { setResults(searchMedications(query)); setOpen(true); }
+    else { setResults([]); setOpen(false); }
+  }, [query]);
+
+  const handleSelect = (med: MedicationEntry) => {
+    if (medications.some(m => m.generic === med.generic)) { setQuery(''); setOpen(false); return; }
+    addMedication({ generic: med.generic, brand: med.brands[0], duration: '1_6_months', depletes: med.depletes });
+    setQuery(''); setOpen(false); inputRef.current?.focus();
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="relative">
+        <label className="text-precision text-[0.68rem] font-bold text-clinical-stone tracking-widest uppercase mb-1.5 block">Search Medications</label>
+        <div className="relative">
+          <input ref={inputRef} type="text" value={query} onChange={e => setQuery(e.target.value)}
+            placeholder="Type medication name or brand (e.g. Atorvastatin, Lipitor)" style={{ borderRadius: '4px' }}
+            className="w-full pl-10 pr-4 py-3 bg-clinical-cream border border-outline-variant/20 text-clinical-charcoal placeholder-clinical-stone/50 text-body text-sm focus:border-primary-container focus:ring-1 focus:ring-primary-container focus:outline-none transition-colors" />
+          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-clinical-stone text-[18px]">search</span>
+        </div>
+        <AnimatePresence>
+          {open && results.length > 0 && (
+            <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.15 }}
+              className="absolute top-full left-0 right-0 z-20 bg-clinical-white border border-outline-variant/20 shadow-card-md mt-1 overflow-hidden" style={{ borderRadius: '4px' }}>
+              {results.map((med) => {
+                const alreadyAdded = medications.some(m => m.generic === med.generic);
+                return (
+                  <button key={med.generic} onClick={() => handleSelect(med)} disabled={alreadyAdded}
+                    className={`w-full text-left px-4 py-3 border-b border-outline-variant/5 last:border-0 flex items-center justify-between transition-colors ${alreadyAdded ? 'opacity-40 cursor-not-allowed' : 'hover:bg-clinical-cream cursor-pointer'}`}>
+                    <div>
+                      <p className="text-body text-clinical-charcoal text-sm font-medium">{med.generic}</p>
+                      <p className="text-precision text-[0.6rem] text-clinical-stone tracking-wide">{med.brands.join(', ')} · {med.category}</p>
+                    </div>
+                    {alreadyAdded ? <span className="text-precision text-[0.6rem] text-primary-container font-bold tracking-wider">ADDED</span>
+                      : med.depletes.length > 0 ? <span className="text-precision text-[0.6rem] text-[#C94F4F] font-bold tracking-wider">DEPLETIONS</span> : null}
+                  </button>
+                );
+              })}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+      <AnimatePresence>
+        {medications.map((med) => (
+          <MedicationCard key={med.id} medication={med} onRemove={() => removeMedication(med.id)} />
+        ))}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+const MedicationCard = ({ medication, onRemove }: { medication: AddedMedication; onRemove: () => void }) => {
+  const [revealed, setRevealed] = useState(false);
+  const hasDepletions = medication.depletes.length > 0;
+
+  useEffect(() => {
+    if (hasDepletions) { const t = setTimeout(() => setRevealed(true), 400); return () => clearTimeout(t); }
+  }, [hasDepletions]);
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8, height: 0 }} transition={{ duration: 0.25 }}
+      className="bg-clinical-white rounded-[10px] shadow-card border-t-[3px] border-primary-container overflow-hidden">
+      <div className="p-6">
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <h3 className="text-authority text-xl text-clinical-charcoal font-semibold">{medication.generic}</h3>
+            {medication.brand && <p className="text-body text-clinical-stone text-sm">Brand: {medication.brand}</p>}
+          </div>
+          <button onClick={onRemove} className="text-clinical-stone hover:text-[#C94F4F] transition-colors" aria-label="Remove medication">
+            <span className="material-symbols-outlined text-[18px]">close</span>
+          </button>
+        </div>
+        <div className="mb-4">
+          <label className="text-precision text-[0.68rem] font-bold text-clinical-stone tracking-widest uppercase mb-2 block">How Long on This Medication?</label>
+          <select value={medication.duration}
+            onChange={e => useOnboardingStore.setState(s => ({ medications: s.medications.map(m => m.id === medication.id ? { ...m, duration: e.target.value } : m) }))}
+            style={{ borderRadius: '4px' }}
+            className="w-full bg-clinical-cream border border-outline-variant/20 px-3 py-2 text-clinical-charcoal text-body text-sm focus:border-primary-container focus:outline-none">
+            <option value="less_than_1_month">Less than 1 month</option>
+            <option value="1_6_months">1–6 months</option>
+            <option value="6_12_months">6–12 months</option>
+            <option value="1_3_years">1–3 years</option>
+            <option value="3_plus_years">3+ years</option>
+          </select>
+        </div>
+
+        {/* THE WOW MOMENT — Depletion Reveal */}
+        <AnimatePresence>
+          {revealed && hasDepletions && (
+            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.4, ease: [0.04, 0.62, 0.23, 0.98] }}>
+              <div className="mt-2 pt-4 border-t border-outline-variant/10">
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="material-symbols-outlined text-[#E8922A] text-[18px]">warning</span>
+                  <span className="text-precision text-[0.68rem] font-bold text-clinical-stone tracking-widest uppercase">Depletion Identified</span>
+                </div>
+                <table className="w-full text-left mb-4">
+                  <thead>
+                    <tr className="text-precision text-[0.68rem] text-clinical-stone border-b border-outline-variant/10">
+                      <th className="pb-2 font-medium">NUTRIENT</th>
+                      <th className="pb-2 font-medium">SEVERITY</th>
+                      <th className="pb-2 font-medium hidden sm:table-cell">IMPACT</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-body text-clinical-charcoal">
+                    {medication.depletes.map(key => {
+                      const dep = DEPLETIONS[key];
+                      if (!dep) return null;
+                      return (
+                        <tr key={key} className="border-b border-outline-variant/5">
+                          <td className="py-3 font-semibold text-sm">{dep.nutrient}</td>
+                          <td className="py-3"><SeverityBadge severity={dep.severity} /></td>
+                          <td className="py-3 text-clinical-stone text-sm hidden sm:table-cell">{dep.symptoms.slice(0, 2).join(', ')}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                {medication.depletes[0] && DEPLETIONS[medication.depletes[0]] && (
+                  <InterventionBox label="Included in Your Protocol">
+                    {DEPLETIONS[medication.depletes[0]].intervention}
+                  </InterventionBox>
+                )}
+                <div className="mt-3 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-primary-container text-[14px]">check_circle</span>
+                  <p className="text-body text-clinical-stone text-xs">This will be addressed in your personalized wellness plan.</p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {!hasDepletions && (
+          <div className="flex items-center gap-2 mt-2">
+            <span className="material-symbols-outlined text-primary-container text-[14px]">check_circle</span>
+            <p className="text-body text-clinical-stone text-xs">No documented nutrient depletions for this medication.</p>
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+};
