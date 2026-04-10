@@ -75,7 +75,7 @@ export const LandingFooter = () => (
           © 2026 CauseHealth. All rights reserved. Patent Pending.
         </p>
         <p className="text-precision text-[0.6rem] text-on-surface-variant/40 tracking-wider">
-          Not FDA evaluated. Not medical advice.
+          Powered by Claude AI · Not FDA evaluated · Not medical advice
         </p>
       </div>
     </div>
