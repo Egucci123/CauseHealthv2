@@ -70,7 +70,7 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
         if (drawErr || !draw) throw new Error('Failed to create lab record');
         set({ drawId: draw.id });
 
-        // 3. Extract text from all PDFs
+        // 3. Try client-side text extraction first
         set({ phase: 'extracting', statusMessage: `Reading ${plural ? `${fileCount} lab reports` : 'your lab report'}...`, progress: 35 });
 
         const allTexts: string[] = [];
@@ -79,35 +79,40 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
           if (plural) set({ statusMessage: `Reading file ${i + 1} of ${fileCount}: ${files[i].name}`, progress: 35 + Math.round((i / fileCount) * 15) });
           try {
             const text = await extractPDFText(files[i]);
-            console.log(`[LabUpload] Extracted ${text?.length ?? 0} chars from ${files[i].name}`);
             if (text && text.length >= 50) { allTexts.push(text); if (looksLikeLabReport(text)) anyLooksLikeLab = true; }
           } catch (err) { console.warn(`[LabUpload] Could not read ${files[i].name}:`, err); }
         }
 
         const combinedText = allTexts.join('\n---NEW DOCUMENT---\n');
-        if (!combinedText || combinedText.length < 100) {
-          set({ phase: 'error', errorMessage: `PDF text extraction returned ${combinedText?.length ?? 0} characters. This may be a scanned PDF (image-based) which cannot be read automatically. Try a different PDF or use manual entry.`, isRunning: false });
-          return;
-        }
-        if (!anyLooksLikeLab) {
-          set({ phase: 'manual', statusMessage: `${plural ? "These files don't appear" : "This file doesn't appear"} to be standard lab reports. Please enter values manually.`, isRunning: false });
-          return;
-        }
+        const textExtractionFailed = !combinedText || combinedText.length < 100;
 
-        // 4. Send to extract-labs Edge Function
+        // 4. Build request body — use text if available, otherwise send raw PDF to Claude
         set({ statusMessage: 'Identifying lab values...', progress: 55 });
-        // Scale text limit: 6k per file, cap at 18k total to stay within Edge Function processing time
-        const maxChars = Math.min(fileCount * 6000, 18000);
         const { data: { session } } = await supabase.auth.getSession();
 
+        let requestBody: Record<string, string>;
+        if (textExtractionFailed) {
+          // Client-side extraction failed — send first PDF as base64 for Claude to read directly
+          set({ statusMessage: 'Sending PDF directly for analysis...', progress: 50 });
+          const arrayBuffer = await files[0].arrayBuffer();
+          const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+          requestBody = { pdfBase64: base64 };
+        } else if (!anyLooksLikeLab) {
+          set({ phase: 'manual', statusMessage: `${plural ? "These files don't appear" : "This file doesn't appear"} to be standard lab reports. Please enter values manually.`, isRunning: false });
+          return;
+        } else {
+          const maxChars = Math.min(fileCount * 6000, 18000);
+          requestBody = { pdfText: combinedText.slice(0, maxChars) };
+        }
+
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 90000); // 90s timeout for multi-file
+        const timeout = setTimeout(() => controller.abort(), 120000); // 120s timeout (PDF reading takes longer)
         let res: Response;
         try {
           res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-labs`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
-            body: JSON.stringify({ pdfText: combinedText.slice(0, maxChars) }),
+            body: JSON.stringify(requestBody),
             signal: controller.signal,
           });
         } catch (e: any) {
