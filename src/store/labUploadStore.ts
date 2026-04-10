@@ -176,6 +176,8 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
           };
         });
 
+        // Refresh session before insert in case token expired during extraction
+        await supabase.auth.getSession();
         const { error } = await supabase.from('lab_values').insert(cleaned);
         if (error) throw new Error(`Failed to save values: ${error.message}`);
 
