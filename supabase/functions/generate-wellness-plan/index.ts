@@ -76,13 +76,13 @@ serve(async (req) => {
         model: 'claude-haiku-4-5-20251001', max_tokens: 12000,
         system: `You are CauseHealth AI. Return ONLY valid JSON. Concise — 1-2 sentences per field.
 
-HARD RULE — SUPPLEMENT STACK: A nutrient goes in supplement_stack ONLY if it appears in the lab values AND is abnormal. If a nutrient was NOT tested (not in the lab values list), it MUST go in retest_timeline as "test before supplementing" — even if a medication depletes it, even if symptoms suggest it, even if the condition is associated with it. No exceptions. Food-based recommendations (bone broth, collagen, turmeric in food form) and condition-specific therapeutic compounds (glutamine for IBD gut repair, curcumin for inflammation) ARE allowed in supplement_stack because they treat the diagnosed condition, not an untested deficiency.
-
-OTHER RULES:
-- Infer diagnosed conditions from medications. Address each with condition-specific lifestyle interventions.
-- Address every abnormal organ system with holistic interventions (diet, sleep, exercise, stress).
-- Include medication notes with pharmaceutical and natural alternatives.
-- Supplements must be safe for the patient's conditions and not interact with their medications.`,
+HARD RULES — FOLLOW EXACTLY:
+1. SUPPLEMENT STACK: Maximum 5 supplements. No more. Pick the 5 most impactful based on confirmed lab abnormalities.
+2. A supplement goes in supplement_stack ONLY if the nutrient appears in the lab values AND is abnormal. If NOT tested — it goes in retest_timeline as "test before supplementing." No exceptions. Zinc, magnesium, iron, folate, CoQ10, selenium, copper — if not in the lab values list, they CANNOT be in supplement_stack.
+3. The ONLY exceptions to rule 2: food-based gut healing (bone broth/collagen, glutamine) for diagnosed IBD/GI conditions, and curcumin for diagnosed inflammatory conditions. These treat the condition, not an untested deficiency.
+4. sourced_from must be "lab_finding" for lab-confirmed supplements or "disease_mechanism" for condition-based ones. NEVER "medication_depletion" or "symptom_pattern" in supplement_stack — those go in retest_timeline.
+5. Infer conditions from medications. Address each with condition-specific lifestyle interventions.
+6. Supplements must be safe for the patient's conditions and not interact with their medications.`,
         messages: [{ role: 'user', content: `Create a comprehensive wellness plan addressing ALL lab findings.
 
 DIAGNOSED CONDITIONS: ${condStr}
@@ -107,6 +107,11 @@ Return JSON: {"generated_at":"${new Date().toISOString()}","summary":"3 sentence
     const lastBrace = rawText.lastIndexOf('}');
     if (lastBrace > 0) rawText = rawText.slice(0, lastBrace + 1);
     const plan = JSON.parse(rawText);
+
+    // HARD CAP: max 5 supplements — trim if AI returned more
+    if (plan.supplement_stack && Array.isArray(plan.supplement_stack) && plan.supplement_stack.length > 5) {
+      plan.supplement_stack = plan.supplement_stack.slice(0, 5);
+    }
 
     await supabase.from('wellness_plans').delete().eq('user_id', userId);
     await supabase.from('wellness_plans').insert({ user_id: userId, draw_id: drawId, plan_data: plan, generation_status: 'complete' });
