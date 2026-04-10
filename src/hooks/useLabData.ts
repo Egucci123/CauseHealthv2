@@ -38,7 +38,7 @@ export function useLatestLabDraw() {
   return useQuery({
     queryKey: ['latestLabDraw', user?.id], enabled: !!user?.id,
     queryFn: async () => {
-      const { data, error } = await supabase.from('lab_draws').select('*').eq('user_id', user!.id).eq('processing_status', 'complete').order('draw_date', { ascending: false }).limit(1).single();
+      const { data, error } = await supabase.from('lab_draws').select('*').eq('user_id', user!.id).eq('processing_status', 'complete').order('draw_date', { ascending: false }).order('created_at', { ascending: false }).limit(1).single();
       if (error?.code === 'PGRST116') return null;
       if (error) throw error;
       return data ? mapDraw(data) : null;
