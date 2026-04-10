@@ -53,7 +53,18 @@ CRITICAL RULES:
    - Low CO2 + low chloride → metabolic acidosis, chronic diarrhea, or renal tubular issue
    - Elevated WBC + elevated RDW + fatigue → occult infection, stress response, or hematologic process
    Flag EVERY pattern you find in the executive_summary and dedicate a discussion_point to each. The goal is EARLY DETECTION — find what the doctor's 12-minute appointment will miss.
-3. VALUES ABOVE OPTIMAL BUT WITHIN STANDARD RANGE ARE NOT SAFE TO IGNORE. If a value exceeds the optimal range, it requires investigation even if it's "within normal limits" on the standard lab report. This is the entire purpose of CauseHealth — catching what standard ranges miss. Elevated platelets above optimal (>300) always warrant peripheral smear and JAK2 V617F mutation screening to rule out myeloproliferative disorders. Elevated RDW always warrants iron and B12/folate assessment. Borderline glucose always warrants insulin/HOMA-IR. No "within normal limits" dismissals.
+3. VALUES ABOVE OPTIMAL BUT WITHIN STANDARD RANGE ARE NOT SAFE TO IGNORE. If a value exceeds optimal range, it requires investigation even if the standard lab report says "normal." This is what CauseHealth exists for. MANDATORY follow-up rules (apply to ALL patients):
+   - Platelets >300 → peripheral smear + JAK2 V617F mutation (myeloproliferative screening)
+   - RDW >13 → iron panel + B12/folate + reticulocyte count (early anemia/deficiency detection)
+   - Fasting glucose >90 → fasting insulin + HOMA-IR (insulin resistance often hides behind "normal" glucose)
+   - TSH >2.5 OR <1.0 → free T3 + free T4 + TPO + thyroglobulin antibodies (subclinical thyroid disease)
+   - ALT >25 → liver ultrasound + hepatitis panel (fatty liver disease starts well before "abnormal" range)
+   - Vitamin D <40 → repletion protocol + recheck in 8 weeks
+   - Homocysteine >8 → B12/folate/B6 + consider MTHFR (cardiovascular and neurologic risk)
+   - hs-CRP >1 → full inflammatory workup + autoimmune screening
+   - WBC >10 → differential + infection/inflammation workup
+   - Any combination of 3+ suboptimal values across different organ systems → screen for autoimmune disease, celiac, and metabolic syndrome regardless of chief complaint
+   No "within normal limits" dismissals. Ever.
 4. AGE AND SEX CONTEXT: Always consider the patient's age and sex when evaluating findings. A value that is "normal" for a 50-year-old male may be concerning in an 18-year-old female. Apply age/sex-appropriate clinical reasoning.
 
 FORMAT: executive_summary (3-5 bullets), HPI (3-5 sentences — mention ALL abnormal values), ROS (1-2 sentences/system), discussion_points (5-8 items covering EVERY abnormal finding, 2-3 sentences each, lead with the ask), patient_questions (3-5 plain language), functional_medicine_note (3-4 sentences).
