@@ -104,6 +104,8 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
           // Client-side extraction failed — send each PDF to Claude individually
           for (let i = 0; i < files.length; i++) {
             set({ statusMessage: `Analyzing PDF ${i + 1} of ${fileCount}...`, progress: 50 + Math.round((i / fileCount) * 20) });
+            // Try up to 2 times per PDF
+            for (let attempt = 0; attempt < 2; attempt++) {
             try {
               const arrayBuffer = await files[i].arrayBuffer();
               const bytes = new Uint8Array(arrayBuffer);
@@ -113,19 +115,28 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
               }
               base64 = btoa(base64);
 
+              const pdfController = new AbortController();
+              const pdfTimeout = setTimeout(() => pdfController.abort(), 55000); // 55s per PDF
               const pdfRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-labs`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
                 body: JSON.stringify({ pdfBase64: base64 }),
+                signal: pdfController.signal,
               });
+              clearTimeout(pdfTimeout);
               if (pdfRes.ok) {
                 const pdfData = await pdfRes.json();
                 if (pdfData.values) allValues.push(...pdfData.values);
                 if (pdfData.draw_date && !extractedDrawDate) extractedDrawDate = pdfData.draw_date;
                 if (pdfData.lab_name && !extractedLabName) extractedLabName = pdfData.lab_name;
                 if (pdfData.ordering_provider && !extractedProvider) extractedProvider = pdfData.ordering_provider;
+                break; // Success — skip retry
               }
-            } catch (err) { console.warn(`[LabUpload] Failed to analyze PDF ${i + 1}:`, err); }
+            } catch (err) {
+              if (attempt === 0) { console.warn(`[LabUpload] PDF ${i + 1} attempt 1 failed, retrying...`); }
+              else { console.warn(`[LabUpload] PDF ${i + 1} failed after 2 attempts:`, err); }
+            }
+            } // end retry loop
           }
 
           if (allValues.length === 0) {
