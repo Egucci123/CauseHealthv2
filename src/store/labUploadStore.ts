@@ -90,45 +90,93 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
         set({ statusMessage: 'Identifying lab values...', progress: 55 });
         const { data: { session } } = await supabase.auth.getSession();
 
-        let requestBody: Record<string, string>;
-        if (textExtractionFailed) {
-          // Client-side extraction failed — send first PDF as base64 for Claude to read directly
-          set({ statusMessage: 'Sending PDF directly for analysis...', progress: 50 });
-          const arrayBuffer = await files[0].arrayBuffer();
-          const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-          requestBody = { pdfBase64: base64 };
-        } else if (!anyLooksLikeLab) {
+        if (!textExtractionFailed && !anyLooksLikeLab) {
           set({ phase: 'manual', statusMessage: `${plural ? "These files don't appear" : "This file doesn't appear"} to be standard lab reports. Please enter values manually.`, isRunning: false });
           return;
+        }
+
+        let allValues: any[] = [];
+        let extractedDrawDate: string | null = null;
+        let extractedLabName: string | null = null;
+        let extractedProvider: string | null = null;
+
+        if (textExtractionFailed) {
+          // Client-side extraction failed — send each PDF to Claude individually
+          for (let i = 0; i < files.length; i++) {
+            set({ statusMessage: `Analyzing PDF ${i + 1} of ${fileCount}...`, progress: 50 + Math.round((i / fileCount) * 20) });
+            try {
+              const arrayBuffer = await files[i].arrayBuffer();
+              const bytes = new Uint8Array(arrayBuffer);
+              let base64 = '';
+              for (let j = 0; j < bytes.length; j += 8192) {
+                base64 += String.fromCharCode(...bytes.subarray(j, j + 8192));
+              }
+              base64 = btoa(base64);
+
+              const pdfRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-labs`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
+                body: JSON.stringify({ pdfBase64: base64 }),
+              });
+              if (pdfRes.ok) {
+                const pdfData = await pdfRes.json();
+                if (pdfData.values) allValues.push(...pdfData.values);
+                if (pdfData.draw_date && !extractedDrawDate) extractedDrawDate = pdfData.draw_date;
+                if (pdfData.lab_name && !extractedLabName) extractedLabName = pdfData.lab_name;
+                if (pdfData.ordering_provider && !extractedProvider) extractedProvider = pdfData.ordering_provider;
+              }
+            } catch (err) { console.warn(`[LabUpload] Failed to analyze PDF ${i + 1}:`, err); }
+          }
+
+          if (allValues.length === 0) {
+            await supabase.from('lab_draws').delete().eq('id', draw.id);
+            set({ phase: 'error', errorMessage: 'Could not extract any lab values from these PDFs. Try using manual entry.', isRunning: false });
+            return;
+          }
         } else {
+          // Text extraction worked — send combined text in one call
+          set({ statusMessage: 'Identifying lab values...', progress: 55 });
           const maxChars = Math.min(fileCount * 6000, 18000);
-          requestBody = { pdfText: combinedText.slice(0, maxChars) };
-        }
-
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 120000); // 120s timeout (PDF reading takes longer)
-        let res: Response;
-        try {
-          res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-labs`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
-            body: JSON.stringify(requestBody),
-            signal: controller.signal,
-          });
-        } catch (e: any) {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 120000);
+          let res: Response;
+          try {
+            res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-labs`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
+              body: JSON.stringify({ pdfText: combinedText.slice(0, maxChars) }),
+              signal: controller.signal,
+            });
+          } catch (e: any) {
+            clearTimeout(timeout);
+            if (e?.name === 'AbortError') throw new Error('Extraction timed out. Try fewer files or use manual entry.');
+            throw e;
+          }
           clearTimeout(timeout);
-          if (e?.name === 'AbortError') throw new Error('Extraction timed out. Try fewer files or use manual entry.');
-          throw e;
-        }
-        clearTimeout(timeout);
 
-        const data = await res.json();
-        if (!res.ok) throw new Error(`Extraction failed: ${data?.error ?? JSON.stringify(data)}`);
-        if (data?.error) throw new Error(data.error);
+          const textData = await res.json();
+          if (!res.ok) throw new Error(`Extraction failed: ${textData?.error ?? JSON.stringify(textData)}`);
+          if (textData?.error) throw new Error(textData.error);
+          allValues = textData.values || [];
+          extractedDrawDate = textData.draw_date;
+          extractedLabName = textData.lab_name;
+          extractedProvider = textData.ordering_provider;
+        }
+
+        // Build extraction result from merged values
+        const data = { draw_date: extractedDrawDate, lab_name: extractedLabName, ordering_provider: extractedProvider, values: allValues };
 
         const extraction = data as ExtractionResult;
         if (extraction.values) {
           extraction.values = extraction.values.filter(v => v.value !== 0 && v.value != null && v.marker_name?.trim());
+          // Deduplicate by marker name — keep the first occurrence
+          const seen = new Set<string>();
+          extraction.values = extraction.values.filter(v => {
+            const key = v.marker_name.toLowerCase().trim();
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          });
         }
         if (!extraction.values?.length) {
           await supabase.from('lab_draws').delete().eq('id', draw.id);
