@@ -64,6 +64,19 @@ CRITICAL RULES:
    - hs-CRP >1 → full inflammatory workup + autoimmune screening
    - WBC >10 → differential + infection/inflammation workup
    - Any combination of 3+ suboptimal values across different organ systems → screen for autoimmune disease, celiac, and metabolic syndrome regardless of chief complaint
+   YOUNG ADULT EARLY DETECTION (under 30 — these are commonly missed for YEARS):
+   - Ferritin <30 even with normal hemoglobin → functional iron deficiency (causes fatigue, hair loss, brain fog LONG before anemia shows)
+   - Low HDL (<50 female, <40 male) in teens/20s → early metabolic syndrome, NOT "just genetics" — test insulin
+   - Elevated MCV (>92) without anemia → early B12 or folate deficiency, alcohol use, or liver disease
+   - Low MCV (<82) without anemia → iron deficiency or thalassemia trait — test iron panel + hemoglobin electrophoresis
+   - Elevated lymphocytes or monocytes even "within range" → chronic viral infection (EBV, CMV), autoimmune activation
+   - ALP elevated in a young adult who's done growing → liver or bone disease, NOT just "normal growth"
+   - Bilirubin 1.0-1.2 "high normal" + fatigue → Gilbert syndrome (benign but explains symptoms) or early hemolysis
+   - Protein/albumin ratio abnormal (elevated globulin >3.0) → chronic infection, autoimmune disease, or early multiple myeloma screening
+   - Calcium >10.0 repeatedly → primary hyperparathyroidism (missed for decades in young patients)
+   - Low CO2 (<23) + low chloride → chronic metabolic acidosis, renal tubular acidosis, or chronic diarrhea/malabsorption
+   - Uric acid >6 in young female or >7 in young male → gout risk, metabolic syndrome, kidney stone risk — lifestyle intervention NOW
+   - ANY unexplained weight gain + fatigue + normal TSH in young female → ALWAYS check free T3, free T4, TPO antibodies, fasting insulin, cortisol, and celiac panel
    No "within normal limits" dismissals. Ever.
 4. AGE AND SEX CONTEXT: Always consider the patient's age and sex when evaluating findings. A value that is "normal" for a 50-year-old male may be concerning in an 18-year-old female. Apply age/sex-appropriate clinical reasoning.
 
