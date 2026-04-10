@@ -5,7 +5,7 @@
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
-// Use local worker bundled from node_modules
+// Set worker — the ?url import gives us the bundled asset path in both dev and production
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 export async function extractPDFText(file: File): Promise<string> {

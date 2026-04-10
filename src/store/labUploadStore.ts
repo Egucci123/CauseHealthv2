@@ -79,6 +79,7 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
           if (plural) set({ statusMessage: `Reading file ${i + 1} of ${fileCount}: ${files[i].name}`, progress: 35 + Math.round((i / fileCount) * 15) });
           try {
             const text = await extractPDFText(files[i]);
+            console.log(`[LabUpload] Extracted ${text?.length ?? 0} chars from ${files[i].name}`);
             if (text && text.length >= 50) { allTexts.push(text); if (looksLikeLabReport(text)) anyLooksLikeLab = true; }
           } catch (err) { console.warn(`[LabUpload] Could not read ${files[i].name}:`, err); }
         }
