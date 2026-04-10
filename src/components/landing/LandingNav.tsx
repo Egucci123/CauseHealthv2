@@ -56,10 +56,10 @@ export const LandingNav = () => {
             ))}
           </div>
 
-          <div className="hidden md:flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <a
               href="/login"
-              className="text-on-surface-variant hover:text-white text-sm font-body transition-colors duration-150"
+              className="hidden sm:inline text-on-surface-variant hover:text-white text-sm font-body transition-colors duration-150"
             >
               Sign In
             </a>
@@ -68,7 +68,7 @@ export const LandingNav = () => {
               size="sm"
               onClick={() => window.location.href = '/register'}
             >
-              Get Started
+              Get Started Free
             </Button>
           </div>
 
