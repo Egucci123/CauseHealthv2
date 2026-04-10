@@ -1,4 +1,5 @@
 // src/components/onboarding/steps/Step6_Goals.tsx
+import { useNavigate } from 'react-router-dom';
 import { OnboardingShell } from '../OnboardingShell';
 import { useOnboardingStore } from '../../../store/onboardingStore';
 
@@ -18,12 +19,18 @@ const GOALS = [
 ];
 
 export const Step6_Goals = () => {
-  const { nextStep, primaryGoal, specificConcern, triedBefore, updateStep6 } = useOnboardingStore();
+  const navigate = useNavigate();
+  const { primaryGoal, specificConcern, triedBefore, updateStep6, completeOnboarding } = useOnboardingStore();
+
+  const handleFinish = async () => {
+    await completeOnboarding();
+    navigate('/dashboard', { replace: true });
+  };
 
   return (
     <OnboardingShell stepKey="step-6" title="What brings you here?"
       description="Your primary goal shapes everything — what we prioritize in your plan, what tests we recommend, what patterns we look for."
-      onNext={async () => { await nextStep(); }} nextDisabled={!primaryGoal}>
+      onNext={handleFinish} nextLabel="Finish" nextDisabled={!primaryGoal}>
       <div className="space-y-8">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {GOALS.map(goal => (
