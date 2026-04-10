@@ -234,9 +234,12 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
         const { error } = await supabase.from('lab_values').insert(cleaned);
         if (error) throw new Error(`Failed to save values: ${error.message}`);
 
+        // Mark draw as complete immediately so dashboard health score updates
+        await supabase.from('lab_draws').update({ processing_status: 'complete' }).eq('id', drawId);
+
         set({ phase: 'complete', completedDrawId: drawId, statusMessage: 'Analysis complete.', progress: 100 });
 
-        // Background analysis
+        // Background analysis (adds priority alerts and deeper analysis)
         supabase.functions.invoke('analyze-labs', { body: { drawId, userId } }).catch(console.warn);
       } catch (err) {
         set({ phase: 'error', errorMessage: String(err) });

@@ -37,6 +37,7 @@ export function useLatestLabDraw() {
   const user = useAuthStore(s => s.user);
   return useQuery({
     queryKey: ['latestLabDraw', user?.id], enabled: !!user?.id,
+    staleTime: 30 * 1000, refetchOnMount: 'always',
     queryFn: async () => {
       const { data, error } = await supabase.from('lab_draws').select('*').eq('user_id', user!.id).eq('processing_status', 'complete').order('draw_date', { ascending: false }).order('created_at', { ascending: false }).limit(1).single();
       if (error?.code === 'PGRST116') return null;
