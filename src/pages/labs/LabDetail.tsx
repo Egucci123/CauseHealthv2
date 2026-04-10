@@ -23,7 +23,7 @@ export const LabDetail = () => {
   const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState<'all' | 'urgent' | 'monitor'>('all');
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['lab-detail', drawId], enabled: !!drawId && !!user,
     queryFn: async () => {
       if (!drawId || !user) return null;
@@ -45,6 +45,17 @@ export const LabDetail = () => {
             <div className="h-5 bg-[#E8E3DB] rounded-sm w-1/3 mb-4" /><div className="h-12 bg-[#E8E3DB] rounded-sm w-1/4 mb-6" /><div className="h-2 bg-[#E8E3DB] rounded-sm w-full" />
           </div>
         ))}
+      </div>
+    </AppShell>
+  );
+
+  if (isError || (!isLoading && !data)) return (
+    <AppShell pageTitle="Lab Results">
+      <div className="bg-clinical-white rounded-[10px] shadow-card border-t-[3px] border-[#C94F4F] p-12 text-center">
+        <span className="material-symbols-outlined text-[#C94F4F] text-5xl mb-4 block">error</span>
+        <p className="text-authority text-2xl text-clinical-charcoal font-bold mb-2">Lab report not found</p>
+        <p className="text-body text-clinical-stone mb-6">This lab report may have been deleted or doesn't exist.</p>
+        <button onClick={() => navigate('/labs')} className="text-precision text-[0.68rem] text-primary-container font-bold tracking-widest uppercase hover:underline">Back to Lab History</button>
       </div>
     </AppShell>
   );
