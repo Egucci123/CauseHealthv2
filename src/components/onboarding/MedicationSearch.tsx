@@ -36,7 +36,7 @@ export const MedicationSearch = () => {
           <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-clinical-stone text-[18px]">search</span>
         </div>
         <AnimatePresence>
-          {open && results.length > 0 && (
+          {open && (
             <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.15 }}
               className="absolute top-full left-0 right-0 z-20 bg-clinical-white border border-outline-variant/20 shadow-card-md mt-1 overflow-hidden" style={{ borderRadius: '4px' }}>
               {results.map((med) => {
@@ -53,6 +53,18 @@ export const MedicationSearch = () => {
                   </button>
                 );
               })}
+              {query.length >= 2 && !results.some(r => r.generic.toLowerCase() === query.toLowerCase()) && !medications.some(m => m.generic.toLowerCase() === query.trim().toLowerCase()) && (
+                <button onClick={() => { addMedication({ generic: query.trim(), duration: '1_6_months', depletes: [] }); setQuery(''); setOpen(false); }}
+                  className="w-full text-left px-4 py-3 border-t border-outline-variant/10 hover:bg-clinical-cream transition-colors">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-primary-container text-[16px]">add_circle</span>
+                    <div>
+                      <p className="text-body text-primary-container text-sm font-medium">Add "{query.trim()}"</p>
+                      <p className="text-precision text-[0.6rem] text-clinical-stone tracking-wide">Custom medication</p>
+                    </div>
+                  </div>
+                </button>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
