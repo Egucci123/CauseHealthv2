@@ -19,17 +19,33 @@ type FormData = z.infer<typeof schema>;
 const US_STATES = ['Alabama','Alaska','Arizona','Arkansas','California','Colorado','Connecticut','Delaware','Florida','Georgia','Hawaii','Idaho','Illinois','Indiana','Iowa','Kansas','Kentucky','Louisiana','Maine','Maryland','Massachusetts','Michigan','Minnesota','Mississippi','Missouri','Montana','Nebraska','Nevada','New Hampshire','New Jersey','New Mexico','New York','North Carolina','North Dakota','Ohio','Oklahoma','Oregon','Pennsylvania','Rhode Island','South Carolina','South Dakota','Tennessee','Texas','Utah','Vermont','Virginia','Washington','West Virginia','Wisconsin','Wyoming'];
 
 export const Step1_Welcome = () => {
-  const { nextStep, updateStep1, firstName, lastName, sex } = useOnboardingStore();
+  const store = useOnboardingStore();
+  const { nextStep, updateStep1 } = store;
   const { profile } = useAuthStore();
 
   const { register, handleSubmit, formState: { errors }, setValue } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { firstName: firstName || profile?.firstName || '', lastName: lastName || profile?.lastName || '', sex: sex || '' },
+    defaultValues: {
+      firstName: store.firstName || profile?.firstName || '',
+      lastName: store.lastName || profile?.lastName || '',
+      dateOfBirth: store.dateOfBirth || profile?.dateOfBirth || '',
+      sex: store.sex || profile?.sex || '',
+      heightFt: store.heightFt || '',
+      heightIn: store.heightIn || '',
+      weightLbs: store.weightLbs || '',
+    },
   });
 
+  // Sync form when store updates (e.g. after loadSavedProgress restores data)
   useEffect(() => {
-    if (profile?.firstName && !firstName) { setValue('firstName', profile.firstName); setValue('lastName', profile.lastName ?? ''); }
-  }, [profile, firstName, setValue]);
+    if (store.firstName) setValue('firstName', store.firstName);
+    if (store.lastName) setValue('lastName', store.lastName);
+    if (store.dateOfBirth) setValue('dateOfBirth', store.dateOfBirth);
+    if (store.sex) setValue('sex', store.sex);
+    if (store.heightFt) setValue('heightFt', store.heightFt);
+    if (store.heightIn) setValue('heightIn', store.heightIn);
+    if (store.weightLbs) setValue('weightLbs', store.weightLbs);
+  }, [store.firstName, store.lastName, store.dateOfBirth, store.sex, store.heightFt, store.heightIn, store.weightLbs, setValue]);
 
   const onNext = handleSubmit(async (data) => { updateStep1(data); await nextStep(); });
 

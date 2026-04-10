@@ -271,16 +271,16 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
     }
     if (profile.weightKg) updates.weightLbs = String(Math.round(profile.weightKg / 0.453592));
 
-    // Determine which step to resume at based on saved data
+    // Determine which step to resume at — only skip forward if later steps have data
     let resumeStep = 1;
+    let hasLaterData = false;
 
     try {
-      if (profile.dateOfBirth && profile.sex) resumeStep = 2;
-
       // Load conditions (step 2)
       const { data: conditions } = await supabase.from('conditions').select('*').eq('user_id', user.id).eq('is_active', true);
       if (conditions && conditions.length > 0) {
         updates.conditions = conditions.map(c => ({ id: c.id, name: c.name, icd10: c.icd10 }));
+        hasLaterData = true;
         resumeStep = 3;
       }
 
@@ -291,6 +291,7 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
           id: m.id, generic: m.name, brand: m.brand_name, dose: m.dose,
           duration: m.duration_category ?? '1_6_months', condition: m.prescribing_condition, depletes: [],
         }));
+        hasLaterData = true;
         resumeStep = 4;
       }
 
@@ -300,15 +301,18 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
         updates.symptoms = symptoms.map(s => ({
           id: s.id, symptom: s.symptom, category: s.category ?? '', severity: s.severity, duration: s.duration ?? '1_6_months',
         }));
+        hasLaterData = true;
         resumeStep = 5;
       }
     } catch {
       // If any check fails, still apply what we have
     }
 
-    // Apply all loaded data and resume at the right step
+    // Apply all loaded data to pre-fill forms
     if (Object.keys(updates).length > 0) set(updates);
-    if (resumeStep > 1 && get().currentStep === 1) {
+    // Only skip forward if there's data in later steps (conditions, meds, symptoms)
+    // If only Step 1 data exists (DOB, sex), stay on Step 1 with pre-filled form
+    if (hasLaterData && resumeStep > 1 && get().currentStep === 1) {
       set({ currentStep: resumeStep });
     }
   },
