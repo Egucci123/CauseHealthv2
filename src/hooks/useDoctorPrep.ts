@@ -60,11 +60,11 @@ export function useGenerateDoctorPrep() {
     if (activeGeneration && generatingFlag) {
       setGenerating(true);
       activeGeneration
-        .then(() => { qc.invalidateQueries({ queryKey: ['doctor-prep'] }); })
+        .then((data) => { if (data) qc.setQueryData(['doctor-prep', userId], data); })
         .catch(() => {})
         .finally(() => setGenerating(false));
     }
-  }, [qc]);
+  }, [qc, userId]);
 
   const generate = async () => {
     if (!userId) throw new Error('Not authenticated');

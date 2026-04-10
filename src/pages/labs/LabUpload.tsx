@@ -23,7 +23,11 @@ export const LabUpload = () => {
     if (phase === 'complete' && completedDrawId) {
       qc.invalidateQueries({ queryKey: ['labDraws'] });
       qc.invalidateQueries({ queryKey: ['latestLabDraw'] });
+      qc.invalidateQueries({ queryKey: ['labValues'] });
       qc.invalidateQueries({ queryKey: ['priorityAlerts'] });
+      qc.invalidateQueries({ queryKey: ['wellness-plan'] });
+      qc.invalidateQueries({ queryKey: ['activePlan'] });
+      qc.invalidateQueries({ queryKey: ['lab-detail'] });
       setTimeout(() => navigate(`/labs/${completedDrawId}`), 800);
     }
   }, [phase, completedDrawId, navigate, qc]);

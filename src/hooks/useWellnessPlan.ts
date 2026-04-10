@@ -76,14 +76,13 @@ export function useGenerateWellnessPlan() {
     if (activeGeneration && generatingFlag) {
       setGenerating(true);
       activeGeneration
-        .then(() => {
-          qc.invalidateQueries({ queryKey: ['wellness-plan'] });
-          qc.invalidateQueries({ queryKey: ['activePlan'] });
+        .then((data) => {
+          if (data) qc.setQueryData(['wellness-plan', userId], data);
         })
         .catch(() => {})
         .finally(() => setGenerating(false));
     }
-  }, [qc]);
+  }, [qc, userId]);
 
   const generate = async () => {
     if (!userId) throw new Error('Not authenticated');
