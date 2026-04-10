@@ -55,7 +55,7 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
         // 1. Upload PDFs to storage
         const storagePaths: string[] = [];
         for (const file of files) {
-          const fileName = `${userId}/${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
+          const fileName = `${userId}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
           const { error } = await supabase.storage.from('lab-pdfs').upload(fileName, file, { cacheControl: '3600', upsert: false });
           if (error) throw new Error(`Upload failed for ${file.name}: ${error.message}`);
           storagePaths.push(fileName);
