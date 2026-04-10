@@ -22,15 +22,10 @@ export const Step6_Goals = () => {
   const navigate = useNavigate();
   const { primaryGoal, specificConcern, triedBefore, updateStep6, completeOnboarding } = useOnboardingStore();
 
-  const handleFinish = async () => {
-    try {
-      await Promise.race([
-        completeOnboarding(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 10000)),
-      ]);
-    } catch (err) {
-      console.error('[Onboarding] Finish failed, navigating anyway:', err);
-    }
+  const handleFinish = () => {
+    // Fire saves in background — don't block navigation
+    completeOnboarding().catch(err => console.error('[Onboarding] Save error:', err));
+    // Navigate immediately
     navigate('/dashboard', { replace: true });
   };
 
