@@ -123,7 +123,7 @@ Return JSON: {"generated_at":"${new Date().toISOString()}","summary":"3 sentence
     if (!Array.isArray(plan.retest_timeline)) plan.retest_timeline = [];
     if (!plan.generated_at) plan.generated_at = new Date().toISOString();
 
-    await supabase.from('wellness_plans').delete().eq('user_id', userId);
+    // Keep old plans for history — don't delete
     await supabase.from('wellness_plans').insert({ user_id: userId, draw_id: drawId, plan_data: plan, generation_status: 'complete' });
 
     return new Response(JSON.stringify(plan), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });

@@ -37,6 +37,9 @@ import { SymptomMapper } from './pages/symptoms/SymptomMapper';
 // Doctor Prep
 import { DoctorPrepPage } from './pages/doctorprep/DoctorPrep';
 
+// Chat
+import { HealthChat } from './pages/chat/HealthChat';
+
 // Progress
 import { ProgressTracking } from './pages/progress/ProgressTracking';
 
@@ -95,6 +98,7 @@ function App() {
       <Route path="/medications" element={<ProtectedRoute><MedicationChecker /></ProtectedRoute>} />
       <Route path="/symptoms" element={<ProtectedRoute><SymptomMapper /></ProtectedRoute>} />
       <Route path="/doctor-prep" element={<ProtectedRoute><DoctorPrepPage /></ProtectedRoute>} />
+      <Route path="/chat" element={<ProtectedRoute><HealthChat /></ProtectedRoute>} />
       <Route path="/progress" element={<ProtectedRoute><ProgressTracking /></ProtectedRoute>} />
       <Route path="/insurance" element={<ProtectedRoute><PageStub title="Insurance Guide" /></ProtectedRoute>} />
 
