@@ -319,44 +319,53 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
     set({ loading: true });
     const state = get();
 
-    // Safety net: ensure conditions, medications, and symptoms are saved even if step saves failed
-    if (state.conditions.length > 0) {
-      await supabase.from('conditions').delete().eq('user_id', user.id);
-      const { error: condErr } = await supabase.from('conditions').insert(
-        state.conditions.map(c => ({
-          user_id: user.id, name: c.name, icd10: c.icd10 || null, is_active: true,
-        }))
-      );
-      if (condErr) console.error('[Onboarding] Final conditions save failed:', condErr.message);
-    }
-    if (state.medications.length > 0) {
-      await supabase.from('medications').delete().eq('user_id', user.id);
-      const { error: medErr } = await supabase.from('medications').insert(
-        state.medications.map(m => ({
-          user_id: user.id, name: m.generic, brand_name: m.brand,
-          dose: m.dose, duration_category: m.duration,
-          prescribing_condition: m.condition, is_active: true,
-        }))
-      );
-      if (medErr) console.error('[Onboarding] Final meds save failed:', medErr.message);
-    }
-    if (state.symptoms.length > 0) {
-      await supabase.from('symptoms').delete().eq('user_id', user.id);
-      const { error: symErr } = await supabase.from('symptoms').insert(
-        state.symptoms.map(s => ({
-          user_id: user.id, symptom: s.symptom,
-          severity: s.severity, category: s.category || null,
-        }))
-      );
-      if (symErr) console.error('[Onboarding] Final symptoms save failed:', symErr.message);
-    }
+    try {
+      // Fire all saves in parallel — don't let one block the others
+      const saves = [];
 
-    await supabase.from('profiles').update({
-      onboarding_completed: true,
-      primary_goals: [state.primaryGoal].filter(Boolean),
-    }).eq('id', user.id);
-    await useAuthStore.getState().fetchProfile();
-    set({ loading: false });
+      if (state.conditions.length > 0) {
+        saves.push(
+          supabase.from('conditions').delete().eq('user_id', user.id)
+            .then(() => supabase.from('conditions').insert(
+              state.conditions.map(c => ({ user_id: user.id, name: c.name, icd10: c.icd10 || null, is_active: true }))
+            ))
+        );
+      }
+      if (state.medications.length > 0) {
+        saves.push(
+          supabase.from('medications').delete().eq('user_id', user.id)
+            .then(() => supabase.from('medications').insert(
+              state.medications.map(m => ({ user_id: user.id, name: m.generic, brand_name: m.brand, dose: m.dose, duration_category: m.duration, prescribing_condition: m.condition, is_active: true }))
+            ))
+        );
+      }
+      if (state.symptoms.length > 0) {
+        saves.push(
+          supabase.from('symptoms').delete().eq('user_id', user.id)
+            .then(() => supabase.from('symptoms').insert(
+              state.symptoms.map(s => ({ user_id: user.id, symptom: s.symptom, severity: s.severity, category: s.category || null }))
+            ))
+        );
+      }
+      saves.push(
+        supabase.from('profiles').update({
+          onboarding_completed: true,
+          primary_goals: [state.primaryGoal].filter(Boolean),
+        }).eq('id', user.id)
+      );
+
+      // Wait for all saves with a 10s timeout
+      await Promise.race([
+        Promise.allSettled(saves),
+        new Promise(resolve => setTimeout(resolve, 10000)),
+      ]);
+
+      try { await useAuthStore.getState().fetchProfile(); } catch {}
+    } catch (err) {
+      console.error('[Onboarding] completeOnboarding error:', err);
+    } finally {
+      set({ loading: false });
+    }
   },
 
   generateQuickInsights: async () => {
