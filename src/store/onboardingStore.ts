@@ -262,22 +262,24 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
     }
 
     // Check what data already exists in DB to determine which step to resume at
+    // Only skip steps if the data was clearly set during onboarding (not just from registration)
     let resumeStep = 1;
     try {
-      // If profile has name + DOB, step 1 is done
-      if (profile.firstName && profile.dateOfBirth) resumeStep = 2;
+      // Step 1 done only if DOB + sex are set (these come from onboarding, not registration)
+      if (profile.dateOfBirth && profile.sex) resumeStep = 2;
 
-      // Check conditions (step 2)
-      const { data: conditions } = await supabase.from('conditions').select('name').eq('user_id', user.id).limit(1);
-      if (conditions && conditions.length > 0) resumeStep = 3;
-
-      // Check medications (step 3)
-      const { data: meds } = await supabase.from('medications').select('name').eq('user_id', user.id).limit(1);
-      if (meds && meds.length > 0) resumeStep = 4;
-
-      // Check symptoms (step 4)
-      const { data: symptoms } = await supabase.from('symptoms').select('symptom').eq('user_id', user.id).limit(1);
-      if (symptoms && symptoms.length > 0) resumeStep = 5;
+      if (resumeStep >= 2) {
+        const { data: conditions } = await supabase.from('conditions').select('name').eq('user_id', user.id).limit(1);
+        if (conditions && conditions.length > 0) resumeStep = 3;
+      }
+      if (resumeStep >= 3) {
+        const { data: meds } = await supabase.from('medications').select('name').eq('user_id', user.id).limit(1);
+        if (meds && meds.length > 0) resumeStep = 4;
+      }
+      if (resumeStep >= 4) {
+        const { data: symptoms } = await supabase.from('symptoms').select('symptom').eq('user_id', user.id).limit(1);
+        if (symptoms && symptoms.length > 0) resumeStep = 5;
+      }
     } catch {
       // If any check fails, start from beginning
     }
