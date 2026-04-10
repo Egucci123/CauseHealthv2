@@ -33,6 +33,7 @@ export interface WellnessPlanData {
 // Module-level generation state — survives component unmount/remount
 let activeGeneration: Promise<WellnessPlanData> | null = null;
 let generatingFlag = false;
+let lastGenerationTime = 0;
 
 export function useWellnessPlan() {
   const userId = useAuthStore(s => s.user?.id);
@@ -87,8 +88,10 @@ export function useGenerateWellnessPlan() {
   const generate = async () => {
     if (!userId) throw new Error('Not authenticated');
     if (activeGeneration) return activeGeneration;
+    if (Date.now() - lastGenerationTime < 30000) throw new Error('Please wait before regenerating');
 
     generatingFlag = true;
+    lastGenerationTime = Date.now();
     setGenerating(true);
 
     let token = '';

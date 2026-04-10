@@ -187,7 +187,9 @@ export function exportDoctorPrepPDF(doc: DoctorPrepDocument, userName: string) {
   doc.discussion_points?.forEach(point => {
     checkPage(10);
     pdf.setFontSize(8); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(26, 26, 26);
-    const lines = pdf.splitTextToSize(`• ${point}`, contentW);
+    // Handle both string and object discussion points
+    const text = typeof point === 'string' ? point : (typeof point === 'object' && point !== null ? Object.values(point).filter(v => typeof v === 'string').join(' — ') : String(point));
+    const lines = pdf.splitTextToSize(`• ${text}`, contentW);
     pdf.text(lines, margin, y); y += lines.length * 3.5 + 2;
   });
 

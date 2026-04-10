@@ -35,6 +35,7 @@ export interface DoctorPrepDocument {
 // Module-level generation state — survives component unmount/remount
 let activeGeneration: Promise<DoctorPrepDocument> | null = null;
 let generatingFlag = false;
+let lastGenerationTime = 0;
 
 export function useLatestDoctorPrep() {
   const userId = useAuthStore(s => s.user?.id);
@@ -68,9 +69,12 @@ export function useGenerateDoctorPrep() {
 
   const generate = async () => {
     if (!userId) throw new Error('Not authenticated');
-    if (activeGeneration) return activeGeneration; // Already in flight
+    if (activeGeneration) return activeGeneration;
+    // Rate limit: minimum 30 seconds between generations
+    if (Date.now() - lastGenerationTime < 30000) throw new Error('Please wait before regenerating');
 
     generatingFlag = true;
+    lastGenerationTime = Date.now();
     setGenerating(true);
 
     // Get session — with timeout so it doesn't hang

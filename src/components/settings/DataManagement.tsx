@@ -18,8 +18,37 @@ export const DataManagement = () => {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const handleExport = () => {
-    const exportData = { exported_at: new Date().toISOString(), profile: { first_name: profile?.first_name, last_name: profile?.last_name, date_of_birth: profile?.date_of_birth }, medications: meds, symptoms, lab_draws: labDraws, progress_entries: entries };
+  const handleExport = async () => {
+    const userId = user?.id;
+    if (!userId) return;
+    // Fetch ALL user data for complete export
+    const [condRes, wpRes, dpRes, lvRes, saRes, scRes, paRes, detRes] = await Promise.allSettled([
+      supabase.from('conditions').select('*').eq('user_id', userId),
+      supabase.from('wellness_plans').select('*').eq('user_id', userId),
+      supabase.from('doctor_prep_documents').select('*').eq('user_id', userId),
+      supabase.from('lab_values').select('*').eq('user_id', userId),
+      supabase.from('symptom_analyses').select('*').eq('user_id', userId),
+      supabase.from('supplement_compliance').select('*').eq('user_id', userId),
+      supabase.from('priority_alerts').select('*').eq('user_id', userId),
+      supabase.from('detections').select('*').eq('user_id', userId),
+    ]);
+    const getData = (r: PromiseSettledResult<any>) => r.status === 'fulfilled' ? r.value.data ?? [] : [];
+    const exportData = {
+      exported_at: new Date().toISOString(),
+      profile: { first_name: profile?.first_name, last_name: profile?.last_name, date_of_birth: profile?.date_of_birth, sex: profile?.sex },
+      conditions: getData(condRes),
+      medications: meds,
+      symptoms,
+      lab_draws: labDraws,
+      lab_values: getData(lvRes),
+      wellness_plans: getData(wpRes),
+      doctor_prep_documents: getData(dpRes),
+      symptom_analyses: getData(saRes),
+      progress_entries: entries,
+      supplement_compliance: getData(scRes),
+      priority_alerts: getData(paRes),
+      detections: getData(detRes),
+    };
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url; a.download = `causehealth-data-${new Date().toISOString().split('T')[0]}.json`;
@@ -29,7 +58,7 @@ export const DataManagement = () => {
   const handleDelete = async () => {
     if (!confirmDelete) { setConfirmDelete(true); return; }
     setDeleting(true);
-    for (const table of ['progress_entries', 'supplement_compliance', 'doctor_prep_documents', 'symptom_analyses', 'wellness_plans', 'lab_values', 'lab_draws', 'symptoms', 'medications']) {
+    for (const table of ['detections', 'priority_alerts', 'conditions', 'progress_entries', 'supplement_compliance', 'doctor_prep_documents', 'symptom_analyses', 'wellness_plans', 'lab_values', 'lab_draws', 'symptoms', 'medications']) {
       await supabase.from(table).delete().eq('user_id', user!.id);
     }
     await useAuthStore.getState().signOut();
