@@ -72,7 +72,7 @@ export const LandingFooter = () => (
 
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <p className="text-precision text-[0.6rem] text-on-surface-variant/40 tracking-wider">
-          © 2026 CauseHealth. All rights reserved.
+          © 2026 CauseHealth. All rights reserved. Patent Pending.
         </p>
         <p className="text-precision text-[0.6rem] text-on-surface-variant/40 tracking-wider">
           Not FDA evaluated. Not medical advice.
