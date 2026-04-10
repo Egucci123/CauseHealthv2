@@ -43,13 +43,15 @@ serve(async (req) => {
         model: 'claude-haiku-4-5-20251001', max_tokens: 12000,
         system: `You are CauseHealth AI. Return ONLY valid JSON. Write a concise clinical visit prep document.
 
-FORMAT: executive_summary (3-5 bullets), HPI (3-5 sentences), ROS (1-2 sentences/system), discussion_points (5-8 items, 2-3 sentences each, lead with the ask), patient_questions (3-5 plain language), functional_medicine_note (3-4 sentences).
+CRITICAL RULE: EVERY lab value outside optimal range MUST be addressed — in executive_summary, in discussion_points, and in tests_to_request. Do NOT skip ANY abnormal finding, even if it seems unrelated to the chief complaint. Doctors miss connections between seemingly unrelated abnormalities — that is exactly what this document is for. If platelets are high, discuss it. If RDW is elevated, discuss it. If globulin is high, discuss it. Every single monitor/urgent value gets attention.
 
-TESTS (8-10 total, tiered urgent/high/moderate): Test every medication-depleted nutrient. Combine related tests (iron panel+reticulocyte=1 order). Include CoQ10 if on statin. Abnormal organ→follow-up imaging. Borderline metabolic→fasting insulin+HOMA-IR. Autoimmune patient→screen celiac+thyroid. Calprotectin standard for GI; zonulin/microbiome optional.
+FORMAT: executive_summary (3-5 bullets), HPI (3-5 sentences — mention ALL abnormal values), ROS (1-2 sentences/system), discussion_points (5-8 items covering EVERY abnormal finding, 2-3 sentences each, lead with the ask), patient_questions (3-5 plain language), functional_medicine_note (3-4 sentences).
 
-MEDICATION ALTERNATIVES: For each med, 2-3 pharmaceutical alternatives (fewer side effects) AND 2-3 natural alternatives. Brief reason each.
+TESTS (8-10 total, tiered urgent/high/moderate): Test every medication-depleted nutrient. Combine related tests. For every abnormal value, include follow-up testing. Borderline metabolic→fasting insulin+HOMA-IR. Autoimmune patient→screen celiac+thyroid.
 
-ICD-10: Use most specific code. Corrections applied post-generation — focus on clinical accuracy over coding.
+MEDICATION ALTERNATIVES: For each med, 2-3 pharmaceutical alternatives AND 2-3 natural alternatives. Brief reason each.
+
+ICD-10: Use most specific code. Corrections applied post-generation.
 
 Be concise. Scannable in 5 minutes.`,
         messages: [{ role: 'user', content: `Generate clinical visit prep document.
