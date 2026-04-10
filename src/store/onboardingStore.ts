@@ -252,10 +252,38 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
   },
 
   loadSavedProgress: async () => {
+    const user = useAuthStore.getState().user;
     const profile = useAuthStore.getState().profile;
-    if (!profile) return;
+    if (!profile || !user) return;
+
+    // Restore profile data
     if (profile.firstName) {
       set({ firstName: profile.firstName ?? '', lastName: profile.lastName ?? '' });
+    }
+
+    // Check what data already exists in DB to determine which step to resume at
+    let resumeStep = 1;
+    try {
+      // If profile has name + DOB, step 1 is done
+      if (profile.firstName && profile.dateOfBirth) resumeStep = 2;
+
+      // Check conditions (step 2)
+      const { data: conditions } = await supabase.from('conditions').select('name').eq('user_id', user.id).limit(1);
+      if (conditions && conditions.length > 0) resumeStep = 3;
+
+      // Check medications (step 3)
+      const { data: meds } = await supabase.from('medications').select('name').eq('user_id', user.id).limit(1);
+      if (meds && meds.length > 0) resumeStep = 4;
+
+      // Check symptoms (step 4)
+      const { data: symptoms } = await supabase.from('symptoms').select('symptom').eq('user_id', user.id).limit(1);
+      if (symptoms && symptoms.length > 0) resumeStep = 5;
+    } catch {
+      // If any check fails, start from beginning
+    }
+
+    if (resumeStep > 1 && get().currentStep === 1) {
+      set({ currentStep: resumeStep });
     }
   },
 
