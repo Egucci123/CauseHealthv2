@@ -43,7 +43,7 @@ export const Step1_Welcome = () => {
           <Input label="First Name" placeholder="Evan" error={errors.firstName?.message} {...register('firstName')} />
           <Input label="Last Name" placeholder="Johnson" error={errors.lastName?.message} {...register('lastName')} />
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input label="Date of Birth" type="date" hint="Used to apply age-specific optimal ranges." {...register('dateOfBirth')} />
           <Select label="Biological Sex" options={[{ value: '', label: 'Select...' }, { value: 'male', label: 'Male' }, { value: 'female', label: 'Female' }, { value: 'other', label: 'Prefer not to say' }]} hint="Affects hormone optimal ranges." {...register('sex')} />
         </div>

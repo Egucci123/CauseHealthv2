@@ -72,7 +72,7 @@ export const ManualEntry = ({ drawId, onComplete }: ManualEntryProps) => {
     <div className="space-y-6">
       <div className="bg-clinical-white rounded-[10px] p-6 border border-outline-variant/10">
         <SectionLabel>Lab Report Details</SectionLabel>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div><label className="text-precision text-[0.68rem] font-bold text-clinical-stone tracking-widest uppercase mb-1.5 block">Lab Date</label>
             <input type="date" value={drawDate} onChange={e => setDrawDate(e.target.value)} style={{ borderRadius: '4px' }} className="w-full bg-clinical-cream border border-outline-variant/20 px-3 py-2 text-clinical-charcoal text-sm focus:border-primary-container focus:outline-none" /></div>
           <div><label className="text-precision text-[0.68rem] font-bold text-clinical-stone tracking-widest uppercase mb-1.5 block">Lab Name (optional)</label>
