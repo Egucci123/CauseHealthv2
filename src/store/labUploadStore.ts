@@ -315,6 +315,72 @@ function getOptimalRanges(): Record<string, { optimal_low: number; optimal_high:
     'protein': { optimal_low: 6.9, optimal_high: 7.4 },
     'ggt': { optimal_low: 10, optimal_high: 30 }, 'ld': { optimal_low: 120, optimal_high: 180 },
     'hemoglobin a1c': { optimal_low: 4.6, optimal_high: 5.3 },
+
+    // ── ADVANCED LIPIDS ─────────────────────────────────────────
+    'apolipoprotein b': { optimal_low: 40, optimal_high: 80 }, 'apob': { optimal_low: 40, optimal_high: 80 },
+    'lipoprotein a': { optimal_low: 0, optimal_high: 30 }, 'lp(a)': { optimal_low: 0, optimal_high: 30 },
+    'non-hdl cholesterol': { optimal_low: 0, optimal_high: 130 },
+
+    // ── LIVER EXPANDED ──────────────────────────────────────────
+    'direct bilirubin': { optimal_low: 0, optimal_high: 0.2 },
+    'indirect bilirubin': { optimal_low: 0.1, optimal_high: 0.8 },
+
+    // ── HORMONES EXPANDED ───────────────────────────────────────
+    'shbg': { optimal_low: 20, optimal_high: 55 }, 'sex hormone binding globulin': { optimal_low: 20, optimal_high: 55 },
+    fsh: { optimal_low: 3, optimal_high: 10 }, 'follicle stimulating hormone': { optimal_low: 3, optimal_high: 10 },
+    lh: { optimal_low: 2, optimal_high: 12 }, 'luteinizing hormone': { optimal_low: 2, optimal_high: 12 },
+    prolactin: { optimal_low: 2, optimal_high: 18 },
+    progesterone: { optimal_low: 0.1, optimal_high: 25 },
+    'igf-1': { optimal_low: 100, optimal_high: 250 }, 'insulin-like growth factor': { optimal_low: 100, optimal_high: 250 },
+    'fasting insulin': { optimal_low: 2, optimal_high: 8 },
+    amh: { optimal_low: 1.0, optimal_high: 5.0 }, 'anti-mullerian hormone': { optimal_low: 1.0, optimal_high: 5.0 },
+
+    // ── THYROID EXPANDED ────────────────────────────────────────
+    'tpo': { optimal_low: 0, optimal_high: 15 }, 'thyroid peroxidase': { optimal_low: 0, optimal_high: 15 },
+    'thyroglobulin antibodies': { optimal_low: 0, optimal_high: 2 }, 'tgab': { optimal_low: 0, optimal_high: 2 },
+    'reverse t3': { optimal_low: 10, optimal_high: 20 }, 'rt3': { optimal_low: 10, optimal_high: 20 },
+    't3 uptake': { optimal_low: 27, optimal_high: 35 },
+    'free t4 index': { optimal_low: 1.4, optimal_high: 3.8 }, 't7': { optimal_low: 1.4, optimal_high: 3.8 },
+
+    // ── NUTRIENTS EXPANDED ──────────────────────────────────────
+    'vitamin b6': { optimal_low: 5, optimal_high: 50 }, 'pyridoxine': { optimal_low: 5, optimal_high: 50 },
+    'vitamin b1': { optimal_low: 70, optimal_high: 180 }, 'thiamine': { optimal_low: 70, optimal_high: 180 },
+    'vitamin e': { optimal_low: 12, optimal_high: 20 }, 'alpha tocopherol': { optimal_low: 12, optimal_high: 20 },
+    'vitamin k': { optimal_low: 0.2, optimal_high: 3.2 },
+    selenium: { optimal_low: 110, optimal_high: 150 },
+    copper: { optimal_low: 70, optimal_high: 120 }, 'ceruloplasmin': { optimal_low: 18, optimal_high: 36 },
+    'coq10': { optimal_low: 0.5, optimal_high: 2.5 }, 'coenzyme q10': { optimal_low: 0.5, optimal_high: 2.5 },
+    'methylmalonic acid': { optimal_low: 0, optimal_high: 270 }, 'mma': { optimal_low: 0, optimal_high: 270 },
+    'rbc magnesium': { optimal_low: 5.0, optimal_high: 6.5 },
+
+    // ── INFLAMMATION EXPANDED ───────────────────────────────────
+    fibrinogen: { optimal_low: 200, optimal_high: 350 },
+    'sed rate': { optimal_low: 0, optimal_high: 10 },
+    'ana': { optimal_low: 0, optimal_high: 0 }, // any positive is abnormal
+    'rheumatoid factor': { optimal_low: 0, optimal_high: 14 }, 'rf': { optimal_low: 0, optimal_high: 14 },
+    'anti-ccp': { optimal_low: 0, optimal_high: 20 }, 'ccp antibody': { optimal_low: 0, optimal_high: 20 },
+
+    // ── COAGULATION ─────────────────────────────────────────────
+    'pt': { optimal_low: 11, optimal_high: 13.5 }, 'prothrombin time': { optimal_low: 11, optimal_high: 13.5 },
+    'inr': { optimal_low: 0.9, optimal_high: 1.1 },
+    'ptt': { optimal_low: 25, optimal_high: 35 }, 'aptt': { optimal_low: 25, optimal_high: 35 },
+
+    // ── PROSTATE ────────────────────────────────────────────────
+    'psa': { optimal_low: 0, optimal_high: 2.0 }, 'prostate specific antigen': { optimal_low: 0, optimal_high: 2.0 },
+    'free psa': { optimal_low: 0, optimal_high: 2.0 },
+
+    // ── METABOLIC EXPANDED ──────────────────────────────────────
+    'leptin': { optimal_low: 2, optimal_high: 12 },
+    'adiponectin': { optimal_low: 5, optimal_high: 30 },
+    'fructosamine': { optimal_low: 200, optimal_high: 270 },
+
+    // ── KIDNEY EXPANDED ─────────────────────────────────────────
+    'cystatin c': { optimal_low: 0.5, optimal_high: 0.9 },
+    'microalbumin': { optimal_low: 0, optimal_high: 20 },
+
+    // ── CELIAC / AUTOIMMUNE ─────────────────────────────────────
+    'ttg-iga': { optimal_low: 0, optimal_high: 4 }, 'tissue transglutaminase': { optimal_low: 0, optimal_high: 4 },
+    'total iga': { optimal_low: 70, optimal_high: 400 },
   };
 }
 
