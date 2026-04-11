@@ -33,6 +33,16 @@ interface LabUploadStore {
   updateExtraction: (values: ExtractedValue[]) => void;
 }
 
+// Module-level progress animation — survives across function calls
+let _progressInterval: ReturnType<typeof setInterval> | null = null;
+function startProgress(set: (s: Partial<LabUploadStore>) => void, from: number, to: number, durationMs: number) {
+  if (_progressInterval) clearInterval(_progressInterval);
+  let current = from;
+  const step = (to - from) / (durationMs / 500);
+  _progressInterval = setInterval(() => { current = Math.min(current + step, to); set({ progress: Math.round(current) }); }, 500);
+}
+function stopProgress() { if (_progressInterval) { clearInterval(_progressInterval); _progressInterval = null; } }
+
 export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
   phase: 'idle', progress: 0, statusMessage: '', drawId: null,
   extraction: null, errorMessage: null, completedDrawId: null, isRunning: false,
@@ -109,25 +119,12 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
         let extractedLabName: string | null = null;
         let extractedProvider: string | null = null;
 
-        // Animated progress during AI calls — ticks up smoothly while waiting
-        let progressInterval: ReturnType<typeof setInterval> | null = null;
-        const startProgress = (from: number, to: number, durationMs: number) => {
-          if (progressInterval) clearInterval(progressInterval);
-          let current = from;
-          const step = (to - from) / (durationMs / 500);
-          progressInterval = setInterval(() => {
-            current = Math.min(current + step, to);
-            set({ progress: Math.round(current) });
-          }, 500);
-        };
-        const stopProgress = () => { if (progressInterval) { clearInterval(progressInterval); progressInterval = null; } };
-
         if (textExtractionFailed) {
           // Client-side extraction failed — send each PDF to Claude individually
           let lastError = '';
           for (let i = 0; i < files.length; i++) {
             set({ statusMessage: `Sending PDF ${i + 1} of ${fileCount} to AI...`, progress: 50 });
-            startProgress(50, 85, 60000); // Animate 50→85% over ~60s
+            startProgress(set, 50, 85, 60000); // Animate 50→85% over ~60s
             for (let attempt = 0; attempt < 2; attempt++) {
             try {
               const arrayBuffer = await files[i].arrayBuffer();
@@ -168,7 +165,7 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
         } else {
           // Text extraction worked — send combined text in one call
           set({ statusMessage: 'Analyzing lab values...', progress: 55 });
-          startProgress(55, 85, 30000); // Animate 55→85% over ~30s (text path is faster)
+          startProgress(set, 55, 85, 30000); // Animate 55→85% over ~30s (text path is faster)
           const maxChars = Math.min(fileCount * 6000, 18000);
 
           const { data: textData, error: textErr } = await supabase.functions.invoke('extract-labs', {
@@ -259,7 +256,14 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
         const { error } = await supabase.from('lab_values').insert(cleaned);
         if (error) throw new Error(`Failed to save values: ${error.message}`);
 
+        // Compute panel gaps deterministically — no AI needed
+        const testedMarkers = new Set(values.map(v => v.marker_name.toLowerCase()));
+        const panelGaps = computePanelGaps(testedMarkers);
+
         set({ phase: 'complete', completedDrawId: drawId, statusMessage: 'Analysis complete.', progress: 100 });
+
+        // Store panel gaps in the draw record (analysis_result gets overwritten by analyze-labs, so store separately)
+        await supabase.from('lab_draws').update({ notes: JSON.stringify({ panel_gaps: panelGaps }) }).eq('id', drawId);
 
         // Background analysis — raw fetch with keepalive survives page navigation
         fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-labs`, {
@@ -418,4 +422,41 @@ function computeFlag(value: number, range: { optimal_low: number; optimal_high: 
   if (value > range.optimal_high * 2) return 'elevated';
   if (value > range.optimal_high) return 'suboptimal_high';
   return 'optimal';
+}
+
+// ── Panel gap analysis — deterministic, no AI ───────────────────────────────
+
+interface PanelGap { test_name: string; category: 'essential' | 'recommended' | 'advanced'; why_needed: string }
+
+function computePanelGaps(testedMarkers: Set<string>): PanelGap[] {
+  const has = (keywords: string[]) => keywords.some(k => [...testedMarkers].some(m => m.includes(k)));
+  const gaps: PanelGap[] = [];
+
+  // Essential — should be standard for any adult
+  if (!has(['tsh'])) gaps.push({ test_name: 'TSH', category: 'essential', why_needed: 'Thyroid screening — standard for all adults' });
+  if (!has(['vitamin d', '25-oh', '25-hydroxy'])) gaps.push({ test_name: 'Vitamin D', category: 'essential', why_needed: 'Deficiency affects bone, immune, and mood — widespread' });
+  if (!has(['cholesterol', 'hdl', 'ldl', 'triglyceride'])) gaps.push({ test_name: 'Lipid Panel', category: 'essential', why_needed: 'Cardiovascular risk baseline' });
+  if (!has(['hba1c', 'hemoglobin a1c'])) gaps.push({ test_name: 'HbA1c', category: 'essential', why_needed: '3-month blood sugar average — catches prediabetes' });
+  if (!has(['ferritin'])) gaps.push({ test_name: 'Ferritin', category: 'essential', why_needed: 'Iron stores — low ferritin causes fatigue before anemia shows' });
+
+  // Recommended — functional medicine baseline
+  if (!has(['iron', 'tibc', 'iron sat'])) gaps.push({ test_name: 'Iron Panel', category: 'recommended', why_needed: 'Full iron status — ferritin alone misses some patterns' });
+  if (!has(['b12', 'vitamin b12'])) gaps.push({ test_name: 'Vitamin B12', category: 'recommended', why_needed: 'Deficiency causes fatigue, neuropathy, brain fog' });
+  if (!has(['folate'])) gaps.push({ test_name: 'Folate', category: 'recommended', why_needed: 'Needed for DNA repair, often low with B12' });
+  if (!has(['magnesium'])) gaps.push({ test_name: 'Magnesium', category: 'recommended', why_needed: 'Involved in 300+ enzyme reactions — commonly deficient' });
+  if (!has(['hs-crp', 'crp'])) gaps.push({ test_name: 'hs-CRP', category: 'recommended', why_needed: 'Inflammation marker — cardiovascular and autoimmune risk' });
+  if (!has(['homocysteine'])) gaps.push({ test_name: 'Homocysteine', category: 'recommended', why_needed: 'Cardiovascular and neurological risk marker' });
+  if (!has(['insulin', 'fasting insulin'])) gaps.push({ test_name: 'Fasting Insulin', category: 'recommended', why_needed: 'Insulin resistance shows years before glucose rises' });
+  if (has(['tsh']) && !has(['free t3'])) gaps.push({ test_name: 'Free T3 + Free T4', category: 'recommended', why_needed: 'TSH alone misses subclinical thyroid dysfunction' });
+
+  // Advanced — longevity and optimization
+  if (!has(['apob', 'apolipoprotein b'])) gaps.push({ test_name: 'ApoB', category: 'advanced', why_needed: 'Better cardiovascular risk predictor than LDL' });
+  if (!has(['lp(a)', 'lipoprotein a', 'lp a'])) gaps.push({ test_name: 'Lp(a)', category: 'advanced', why_needed: 'Genetic cardiovascular risk — test once in lifetime' });
+  if (!has(['cortisol'])) gaps.push({ test_name: 'Cortisol', category: 'advanced', why_needed: 'Stress hormone — affects metabolism, sleep, immune function' });
+  if (!has(['dhea'])) gaps.push({ test_name: 'DHEA-S', category: 'advanced', why_needed: 'Adrenal function and hormone precursor' });
+  if (!has(['testosterone']) && !has(['estradiol'])) gaps.push({ test_name: 'Hormone Panel', category: 'advanced', why_needed: 'Sex hormones affect energy, mood, body composition' });
+  if (!has(['uric acid'])) gaps.push({ test_name: 'Uric Acid', category: 'advanced', why_needed: 'Metabolic health marker — linked to gout, kidney, cardiovascular risk' });
+  if (!has(['ggt'])) gaps.push({ test_name: 'GGT', category: 'advanced', why_needed: 'Sensitive liver marker and oxidative stress indicator' });
+
+  return gaps;
 }

@@ -51,7 +51,10 @@ export const LabDetail = () => {
         supabase.from('lab_values').select('*').eq('draw_id', drawId).order('marker_category'),
       ]);
       if (drawRes.error || !drawRes.data) throw new Error('Draw not found');
-      return { draw: drawRes.data, values: valuesRes.data ?? [], analysis: drawRes.data.analysis_result };
+      // Panel gaps stored in notes field (computed client-side), analysis in analysis_result (from AI)
+      let panelGaps: any[] = [];
+      try { panelGaps = JSON.parse(drawRes.data.notes ?? '{}')?.panel_gaps ?? []; } catch {}
+      return { draw: drawRes.data, values: valuesRes.data ?? [], analysis: drawRes.data.analysis_result, panelGaps };
     },
     staleTime: 5 * 60 * 1000,
     // Poll while analysis is still processing
@@ -93,7 +96,7 @@ export const LabDetail = () => {
     </AppShell>
   );
 
-  const { draw, values, analysis } = data;
+  const { draw, values, analysis, panelGaps } = data;
   const grouped = CATEGORY_ORDER.reduce<Record<string, typeof values>>((acc, cat) => {
     const catValues = values.filter((v: any) => v.marker_category === cat);
     if (catValues.length > 0) acc[cat] = catValues;
@@ -176,14 +179,14 @@ export const LabDetail = () => {
               </div>
             </div>
           )}
-          {analysis.panel_gaps?.length > 0 && (
+          {panelGaps?.length > 0 && (
             <div className="mt-4 pt-4 border-t border-outline-variant/20">
               <p className="text-precision text-[0.68rem] text-on-surface-variant tracking-widest uppercase font-bold mb-3">
                 <span className="material-symbols-outlined text-[14px] align-middle mr-1">add_circle</span>
                 Recommended Additional Testing
               </p>
               {['essential', 'recommended', 'advanced'].map(tier => {
-                const tierGaps = analysis.panel_gaps.filter((g: any) => g.category === tier);
+                const tierGaps = panelGaps.filter((g: any) => g.category === tier);
                 if (!tierGaps.length) return null;
                 return (
                   <div key={tier} className="mb-3">
