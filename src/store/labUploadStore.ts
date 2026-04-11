@@ -126,7 +126,14 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
               const { data: pdfData, error: invokeErr } = await supabase.functions.invoke('extract-labs', {
                 body: { pdfBase64: base64 },
               });
-              if (invokeErr) { lastError = invokeErr.message; continue; }
+              if (invokeErr) {
+                // Extract the real error from the response
+                const ctx = (invokeErr as any).context;
+                let detail = invokeErr.message;
+                try { if (ctx instanceof Response) { const t = await ctx.json(); detail = t?.error || t?.detail || JSON.stringify(t); } } catch {}
+                lastError = detail;
+                continue;
+              }
               if (pdfData?.values) allValues.push(...pdfData.values);
               if (pdfData?.draw_date && !extractedDrawDate) extractedDrawDate = pdfData.draw_date;
               if (pdfData?.lab_name && !extractedLabName) extractedLabName = pdfData.lab_name;
@@ -152,7 +159,11 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
           const { data: textData, error: textErr } = await supabase.functions.invoke('extract-labs', {
             body: { pdfText: combinedText.slice(0, maxChars) },
           });
-          if (textErr) throw new Error(`Extraction failed: ${textErr.message}`);
+          if (textErr) {
+            let detail = textErr.message;
+            try { const ctx = (textErr as any).context; if (ctx instanceof Response) { const t = await ctx.json(); detail = t?.error || t?.detail || JSON.stringify(t); } } catch {}
+            throw new Error(`Extraction failed: ${detail}`);
+          }
           allValues = textData?.values || [];
           extractedDrawDate = textData?.draw_date;
           extractedLabName = textData?.lab_name;
