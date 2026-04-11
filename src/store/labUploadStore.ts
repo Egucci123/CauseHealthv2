@@ -52,12 +52,22 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
       set({ phase: 'uploading', progress: 0, statusMessage: `Uploading ${fileCount} file${plural ? 's' : ''} to secure storage...`, errorMessage: null });
 
       try {
+        // 0. Ensure fresh auth session — critical for mobile where tokens go stale
+        try {
+          const { data: { session: currentSession } } = await supabase.auth.getSession();
+          if (!currentSession) {
+            await supabase.auth.refreshSession();
+          }
+        } catch (authErr) {
+          console.error('[LabUpload] Auth refresh failed:', authErr);
+        }
+
         // 1. Upload PDFs to storage
         const storagePaths: string[] = [];
         for (const file of files) {
           const fileName = `${userId}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
           const { error } = await supabase.storage.from('lab-pdfs').upload(fileName, file, { cacheControl: '3600', upsert: false });
-          if (error) throw new Error(`Upload failed for ${file.name}: ${error.message}`);
+          if (error) throw new Error(`Storage upload failed: ${error.message}`);
           storagePaths.push(fileName);
         }
         set({ statusMessage: `${plural ? 'All files' : 'File'} received securely.`, progress: 20 });
@@ -114,7 +124,7 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
               const base64 = btoa(binary);
 
               const pdfController = new AbortController();
-              const pdfTimeout = setTimeout(() => pdfController.abort(), 55000); // 55s per PDF
+              const pdfTimeout = setTimeout(() => pdfController.abort(), 90000); // 90s per PDF
               const pdfRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-labs`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
