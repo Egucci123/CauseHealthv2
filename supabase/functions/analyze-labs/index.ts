@@ -42,7 +42,7 @@ serve(async (req) => {
         headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
         signal: apiController.signal,
         body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001', max_tokens: 4000,
+          model: 'claude-haiku-4-5-20251001', max_tokens: 6000,
           system: `You are CauseHealth AI — a clinical health intelligence system. Return ONLY valid JSON. CRITICAL RULES:
 1. Flag EVERY value outside optimal range as a priority finding — do not skip any.
 2. PATTERN RECOGNITION: Connect abnormal values across organ systems. Look for multi-marker patterns that suggest undiagnosed conditions (e.g., elevated platelets + elevated RDW = iron deficiency or myeloproliferative disorder; low HDL + borderline glucose = metabolic syndrome). Each pattern should be in the "patterns" array with markers_involved, description, and likely_cause.
@@ -70,13 +70,37 @@ serve(async (req) => {
     }
 
     const aiRes = await response.json();
-    let cleaned = (aiRes.content?.[0]?.text ?? '').replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    const rawText = aiRes.content?.[0]?.text ?? '';
+    const stopReason = aiRes.stop_reason ?? 'unknown';
+    console.log(`[analyze-labs] stop_reason=${stopReason}, output_length=${rawText.length}`);
+    let cleaned = rawText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     const lb = cleaned.lastIndexOf('}');
     if (lb > 0) cleaned = cleaned.slice(0, lb + 1);
     let analysis;
-    try { analysis = JSON.parse(cleaned); } catch {
-      await supabase.from('lab_draws').update({ processing_status: 'failed' }).eq('id', drawId);
-      return new Response(JSON.stringify({ error: 'Parse failed' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    try { analysis = JSON.parse(cleaned); } catch (parseErr) {
+      console.error(`[analyze-labs] Parse failed. stop_reason=${stopReason}, first 500 chars:`, cleaned.slice(0, 500));
+      // If truncated (max_tokens hit), try to salvage by closing open arrays/objects
+      if (stopReason === 'max_tokens') {
+        try {
+          // Close any open arrays and objects
+          let salvaged = cleaned;
+          // Count open brackets
+          const openBraces = (salvaged.match(/\{/g) || []).length - (salvaged.match(/\}/g) || []).length;
+          const openBrackets = (salvaged.match(/\[/g) || []).length - (salvaged.match(/\]/g) || []).length;
+          // Remove trailing comma and incomplete values
+          salvaged = salvaged.replace(/,\s*$/, '').replace(/,\s*"[^"]*"?\s*$/, '');
+          for (let i = 0; i < openBrackets; i++) salvaged += ']';
+          for (let i = 0; i < openBraces; i++) salvaged += '}';
+          analysis = JSON.parse(salvaged);
+          console.log('[analyze-labs] Salvaged truncated JSON successfully');
+        } catch {
+          await supabase.from('lab_draws').update({ processing_status: 'failed' }).eq('id', drawId);
+          return new Response(JSON.stringify({ error: 'Parse failed — AI output was truncated' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+      } else {
+        await supabase.from('lab_draws').update({ processing_status: 'failed' }).eq('id', drawId);
+        return new Response(JSON.stringify({ error: `Parse failed: ${String(parseErr)}` }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
     }
 
     // Ensure panel_gaps array exists
