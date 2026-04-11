@@ -1,20 +1,17 @@
-const CACHE_NAME = 'causehealth-v1';
+const CACHE_NAME = 'causehealth-v2';
 
-// Assets to precache on install
-const PRECACHE_URLS = [
-  '/',
-  '/index.html',
-];
-
-// Install — precache shell
+// Install — skip waiting to activate immediately
 self.addEventListener('install', (event) => {
+  // Clear all old caches on install so new code loads immediately
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_URLS))
+    caches.keys().then((keys) =>
+      Promise.all(keys.map((key) => caches.delete(key)))
+    )
   );
   self.skipWaiting();
 });
 
-// Activate — clean old caches
+// Activate — claim all clients immediately
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
@@ -26,7 +23,9 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch — network-first for navigation, cache-first for assets
+// Fetch — NETWORK FIRST for everything
+// Vite already content-hashes JS/CSS filenames, so browser cache handles assets.
+// The service worker should never serve stale JS — that blocks deployed fixes.
 self.addEventListener('fetch', (event) => {
   const { request } = event;
 
@@ -44,21 +43,17 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static assets — cache first, fall back to network
-  if (request.destination === 'style' || request.destination === 'script' || request.destination === 'image' || request.destination === 'font') {
-    event.respondWith(
-      caches.match(request).then((cached) => {
-        if (cached) return cached;
-        return fetch(request).then((response) => {
+  // Everything else — network first, cache fallback for offline
+  event.respondWith(
+    fetch(request)
+      .then((response) => {
+        // Only cache successful responses for offline fallback
+        if (response.ok && (request.destination === 'script' || request.destination === 'style')) {
           const clone = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-          return response;
-        });
+        }
+        return response;
       })
-    );
-    return;
-  }
-
-  // Everything else — network only
-  event.respondWith(fetch(request));
+      .catch(() => caches.match(request))
+  );
 });
