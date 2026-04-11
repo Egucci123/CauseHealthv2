@@ -36,12 +36,17 @@ serve(async (req) => {
     const sympStr = (symptoms ?? []).map((s: any) => `${s.symptom} (${s.severity}/10)`).join(', ');
     const age = profile?.date_of_birth ? Math.floor((Date.now() - new Date(profile.date_of_birth).getTime()) / 31557600000) : null;
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001', max_tokens: 8000,
-        system: `You are CauseHealth AI — a clinical health intelligence system. Return ONLY valid JSON. CRITICAL RULES:
+    const apiController = new AbortController();
+    const apiTimeout = setTimeout(() => apiController.abort(), 90000); // 90s timeout for Claude API
+    let response: Response;
+    try {
+      response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+        signal: apiController.signal,
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001', max_tokens: 8000,
+          system: `You are CauseHealth AI — a clinical health intelligence system. Return ONLY valid JSON. CRITICAL RULES:
 1. Flag EVERY value outside optimal range as a priority finding — do not skip any.
 2. PATTERN RECOGNITION: Connect abnormal values across organ systems. Look for multi-marker patterns that suggest undiagnosed conditions (e.g., elevated platelets + elevated RDW = iron deficiency or myeloproliferative disorder; low HDL + borderline glucose = metabolic syndrome). Each pattern should be in the "patterns" array with markers_involved, description, and likely_cause.
 3. VALUES ABOVE OPTIMAL BUT WITHIN STANDARD RANGE ARE NOT SAFE. MANDATORY follow-ups:
@@ -55,17 +60,32 @@ serve(async (req) => {
    - "advanced": Longevity and optimization markers (ApoB, Lp(a), omega-3 index, cortisol, DHEA-S, sex hormone panel, HbA1c if under 35, methylmalonic acid, GGT, uric acid)
    Only recommend tests NOT already present in the uploaded results. This analysis runs REGARDLESS of whether findings are normal or abnormal — even a completely healthy panel has gaps. A basic metabolic panel + CBC is missing most of these.`,
         messages: [{ role: 'user', content: `Analyze these labs:\n\nPatient: ${age ? `${age}yo ` : ''}${profile?.sex ?? 'unknown'}\nMedications: ${medsStr || 'None'}\nSymptoms: ${sympStr || 'None'}\n\nLab Results:\n${labStr}\n\nReturn JSON: { "priority_findings": [{ "marker": "", "value": "", "flag": "urgent|monitor|optimal", "headline": "", "explanation": "" }], "patterns": [{ "pattern_name": "", "severity": "critical|high|medium", "markers_involved": [], "description": "", "likely_cause": "" }], "medication_connections": [{ "medication": "", "lab_finding": "", "connection": "" }], "missing_tests": [{ "test_name": "", "why_needed": "", "icd10": "", "priority": "urgent|high|moderate" }], "panel_gaps": [{ "test_name": "", "category": "essential|recommended|advanced", "why_needed": "" }], "immediate_actions": [], "summary": "" }` }],
-      }),
-    });
+        }),
+      });
+    } catch (e: any) {
+      clearTimeout(apiTimeout);
+      if (e?.name === 'AbortError') {
+        await supabase.from('lab_draws').update({ processing_status: 'failed' }).eq('id', drawId);
+        return new Response(JSON.stringify({ error: 'Analysis timed out — please retry from your lab detail page' }), { status: 504, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      throw e;
+    }
+    clearTimeout(apiTimeout);
 
-    if (!response.ok) return new Response(JSON.stringify({ error: 'Analysis failed' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    if (!response.ok) {
+      await supabase.from('lab_draws').update({ processing_status: 'failed' }).eq('id', drawId);
+      return new Response(JSON.stringify({ error: 'Analysis failed' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
 
     const aiRes = await response.json();
     let cleaned = (aiRes.content?.[0]?.text ?? '').replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     const lb = cleaned.lastIndexOf('}');
     if (lb > 0) cleaned = cleaned.slice(0, lb + 1);
     let analysis;
-    try { analysis = JSON.parse(cleaned); } catch { return new Response(JSON.stringify({ error: 'Parse failed' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }); }
+    try { analysis = JSON.parse(cleaned); } catch {
+      await supabase.from('lab_draws').update({ processing_status: 'failed' }).eq('id', drawId);
+      return new Response(JSON.stringify({ error: 'Parse failed' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
 
     // Ensure panel_gaps array exists
     if (!Array.isArray(analysis.panel_gaps)) analysis.panel_gaps = [];
@@ -116,6 +136,14 @@ serve(async (req) => {
 
     return new Response(JSON.stringify(analysis), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (err) {
+    // Mark draw as failed so it doesn't stay stuck in "processing"
+    try {
+      const body = await req.clone().json().catch(() => null);
+      if (body?.drawId) {
+        const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+        await sb.from('lab_draws').update({ processing_status: 'failed' }).eq('id', body.drawId);
+      }
+    } catch { /* best-effort */ }
     return new Response(JSON.stringify({ error: String(err) }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 });

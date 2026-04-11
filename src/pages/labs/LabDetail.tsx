@@ -1,6 +1,6 @@
 // src/pages/labs/LabDetail.tsx
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { AppShell } from '../../components/layout/AppShell';
 import { SectionLabel } from '../../components/ui/SectionLabel';
@@ -22,6 +22,20 @@ export const LabDetail = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState<'all' | 'urgent' | 'monitor'>('all');
+  const qc = useQueryClient();
+
+  const retryAnalysis = useMutation({
+    mutationFn: async () => {
+      if (!drawId || !user) throw new Error('Missing context');
+      await supabase.from('lab_draws').update({ processing_status: 'processing' }).eq('id', drawId);
+      const { error } = await supabase.functions.invoke('analyze-labs', { body: { drawId, userId: user.id } });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['lab-detail', drawId] });
+      qc.invalidateQueries({ queryKey: ['labDraws'] });
+    },
+  });
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['lab-detail', drawId], enabled: !!drawId && !!user,
@@ -35,6 +49,11 @@ export const LabDetail = () => {
       return { draw: drawRes.data, values: valuesRes.data ?? [], analysis: drawRes.data.analysis_result };
     },
     staleTime: 5 * 60 * 1000,
+    // Poll while analysis is still processing
+    refetchInterval: (query) => {
+      const status = query.state.data?.draw?.processing_status;
+      return status === 'processing' ? 5000 : false;
+    },
   });
 
   if (isLoading) return (
@@ -111,6 +130,32 @@ export const LabDetail = () => {
           </div>
         ))}
       </div>
+
+      {(draw.processing_status === 'failed' || (draw.processing_status === 'processing' && !analysis)) && (
+        <div className={`rounded-[10px] p-6 flex items-center gap-4 ${draw.processing_status === 'failed' ? 'bg-[#C94F4F]/10 border border-[#C94F4F]/30' : 'bg-[#614018]/10 border border-[#614018]/30'}`}>
+          <span className="material-symbols-outlined text-[24px] flex-shrink-0" style={{ color: draw.processing_status === 'failed' ? '#C94F4F' : '#E8922A' }}>
+            {draw.processing_status === 'failed' ? 'error' : 'hourglass_top'}
+          </span>
+          <div className="flex-1">
+            <p className="text-body text-clinical-charcoal font-semibold text-sm">
+              {draw.processing_status === 'failed' ? 'Analysis failed' : 'Analysis in progress'}
+            </p>
+            <p className="text-body text-clinical-stone text-xs mt-0.5">
+              {draw.processing_status === 'failed'
+                ? 'The AI analysis timed out or encountered an error. Your lab values are saved — you can retry the analysis.'
+                : 'Your lab values are being analyzed. This page will update automatically.'}
+            </p>
+          </div>
+          {draw.processing_status === 'failed' && (
+            <Button variant="primary" size="sm" icon="refresh"
+              onClick={() => retryAnalysis.mutate()}
+              disabled={retryAnalysis.isPending}
+            >
+              {retryAnalysis.isPending ? 'Retrying...' : 'Retry Analysis'}
+            </Button>
+          )}
+        </div>
+      )}
 
       {analysis?.summary && (
         <div className="bg-[#131313] rounded-[10px] p-6">

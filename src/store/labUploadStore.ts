@@ -147,9 +147,9 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
         } else {
           // Text extraction worked — send combined text in one call
           set({ statusMessage: 'Identifying lab values...', progress: 55 });
-          const maxChars = Math.min(fileCount * 6000, 18000);
+          const maxChars = Math.max(15000, Math.min(fileCount * 6000, 30000));
           const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 120000);
+          const timeout = setTimeout(() => controller.abort(), 180000); // 3 minutes for large reports
           let res: Response;
           try {
             res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-labs`, {
@@ -248,7 +248,27 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
         set({ phase: 'complete', completedDrawId: drawId, statusMessage: 'Analysis complete.', progress: 100 });
 
         // Background analysis — sets processing_status to 'complete' and generates priority alerts
-        supabase.functions.invoke('analyze-labs', { body: { drawId, userId } }).catch(console.warn);
+        // Retry up to 2 times with increasing delay if the call fails or times out
+        (async () => {
+          for (let attempt = 0; attempt < 3; attempt++) {
+            try {
+              const analyzeController = new AbortController();
+              const analyzeTimeout = setTimeout(() => analyzeController.abort(), 120000); // 2 min timeout
+              const { error } = await supabase.functions.invoke('analyze-labs', {
+                body: { drawId, userId },
+              });
+              clearTimeout(analyzeTimeout);
+              if (!error) return; // success
+              console.warn(`[LabUpload] analyze-labs attempt ${attempt + 1} failed:`, error);
+            } catch (err) {
+              console.warn(`[LabUpload] analyze-labs attempt ${attempt + 1} error:`, err);
+            }
+            // Wait before retry: 3s, then 8s
+            if (attempt < 2) await new Promise(r => setTimeout(r, attempt === 0 ? 3000 : 8000));
+          }
+          // All retries failed — mark draw as failed so it doesn't stay stuck as "processing"
+          await supabase.from('lab_draws').update({ processing_status: 'failed' }).eq('id', drawId);
+        })();
       } catch (err) {
         set({ phase: 'error', errorMessage: String(err) });
       }

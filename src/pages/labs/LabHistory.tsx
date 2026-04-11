@@ -21,6 +21,16 @@ export const LabHistory = () => {
   const needsReview = uploadPhase === 'reviewing';
   const qc = useQueryClient();
 
+  const retryAnalysis = useMutation({
+    mutationFn: async (drawId: string) => {
+      await supabase.from('lab_draws').update({ processing_status: 'processing' }).eq('id', drawId);
+      const { error } = await supabase.functions.invoke('analyze-labs', { body: { drawId, userId } });
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['labDraws'] }),
+    onError: (err) => console.warn('[LabHistory] retry analysis failed:', err),
+  });
+
   const deleteDraw = useMutation({
     mutationFn: async (drawId: string) => {
       // Delete dependent records first (foreign keys), then the draw
@@ -111,6 +121,15 @@ export const LabHistory = () => {
                 <div className="flex items-center gap-3">
                   {draw.processingStatus === 'complete' ? (
                     <span className="inline-block bg-primary-container text-white text-precision text-[0.6rem] px-2 py-0.5 font-bold">ANALYZED</span>
+                  ) : draw.processingStatus === 'failed' ? (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); retryAnalysis.mutate(draw.id); }}
+                      disabled={retryAnalysis.isPending}
+                      className="inline-flex items-center gap-1 bg-[#C94F4F] text-white text-precision text-[0.6rem] px-2 py-0.5 font-bold hover:bg-[#B04040] transition-colors disabled:opacity-50"
+                    >
+                      <span className="material-symbols-outlined text-[12px]">refresh</span>
+                      {retryAnalysis.isPending ? 'RETRYING...' : 'RETRY ANALYSIS'}
+                    </button>
                   ) : draw.processingStatus === 'processing' ? (
                     <span className="inline-block bg-[#614018] text-[#FFDCBC] text-precision text-[0.6rem] px-2 py-0.5 font-bold">PROCESSING</span>
                   ) : (
