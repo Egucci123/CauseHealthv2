@@ -90,7 +90,10 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
         set({ statusMessage: 'Identifying lab values...', progress: 55 });
         const { data: { session } } = await supabase.auth.getSession();
 
-        if (!textExtractionFailed && !anyLooksLikeLab) {
+        // If text was extracted but doesn't look like a lab report, still try the API
+        // Claude is much better at detecting lab reports than our regex patterns
+        // Only skip if the text is clearly not medical (very short or obviously non-lab)
+        if (!textExtractionFailed && !anyLooksLikeLab && combinedText.length < 500) {
           set({ phase: 'manual', statusMessage: `${plural ? "These files don't appear" : "This file doesn't appear"} to be standard lab reports. Please enter values manually.`, isRunning: false });
           return;
         }
@@ -116,7 +119,7 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
               base64 = btoa(base64);
 
               const pdfController = new AbortController();
-              const pdfTimeout = setTimeout(() => pdfController.abort(), 55000); // 55s per PDF
+              const pdfTimeout = setTimeout(() => pdfController.abort(), 120000); // 120s per PDF — must exceed server's 90s API timeout
               const pdfRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-labs`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },

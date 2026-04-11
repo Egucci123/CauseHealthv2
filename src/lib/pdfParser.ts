@@ -62,9 +62,9 @@ export async function extractPDFText(file: File): Promise<string> {
 
 export function looksLikeLabReport(text: string): boolean {
   const labPatterns = [
-    /\d+\.?\d*\s*(mg\/dL|IU\/L|mmol\/L|ng\/mL|pg\/mL|uIU\/mL|%|g\/dL|K\/uL|M\/uL)/i,
-    /(reference|normal|range|result|test|lab|panel|specimen)/i,
-    /(glucose|cholesterol|creatinine|hemoglobin|TSH|ALT|AST)/i,
+    /\d+\.?\d*\s*(mg\/dL|IU\/L|mmol\/L|ng\/mL|pg\/mL|uIU\/mL|%|g\/dL|K\/uL|M\/uL|mEq\/L|U\/L|fL|cells\/uL|thou\/uL|mill\/uL|mcg\/dL|ug\/dL|mIU\/mL)/i,
+    /(reference|normal|range|result|test|lab|panel|specimen|collected|ordered|physician|patient|clinical|pathology|diagnostic|accession|requisition)/i,
+    /(glucose|cholesterol|creatinine|hemoglobin|TSH|ALT|AST|WBC|RBC|platelet|sodium|potassium|BUN|calcium|bilirubin|CBC|CMP|BMP|lipid|metabolic|hematology)/i,
   ];
   return labPatterns.filter(p => p.test(text)).length >= 2;
 }
