@@ -111,7 +111,7 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
           const token = freshSession?.access_token ?? session?.access_token;
 
           for (let i = 0; i < files.length; i++) {
-            set({ statusMessage: `Analyzing PDF ${i + 1} of ${fileCount}...`, progress: 50 + Math.round((i / fileCount) * 20) });
+            set({ statusMessage: `Preparing PDF ${i + 1} of ${fileCount} for analysis...`, progress: 50 + Math.round((i / fileCount) * 10) });
             // Try up to 2 times per PDF
             for (let attempt = 0; attempt < 2; attempt++) {
             try {
@@ -127,6 +127,7 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
               }
               const base64 = btoa(chunks.join(''));
 
+              set({ statusMessage: `Sending PDF to AI for analysis — this can take up to 60 seconds...`, progress: 55 + Math.round((i / fileCount) * 10) });
               const pdfController = new AbortController();
               const pdfTimeout = setTimeout(() => pdfController.abort(), 120000);
               const pdfRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-labs`, {
