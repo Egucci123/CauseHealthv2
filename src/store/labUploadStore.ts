@@ -109,11 +109,9 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
             try {
               const arrayBuffer = await files[i].arrayBuffer();
               const bytes = new Uint8Array(arrayBuffer);
-              let base64 = '';
-              for (let j = 0; j < bytes.length; j += 8192) {
-                base64 += String.fromCharCode(...bytes.subarray(j, j + 8192));
-              }
-              base64 = btoa(base64);
+              let binary = '';
+              for (let j = 0; j < bytes.length; j++) binary += String.fromCharCode(bytes[j]);
+              const base64 = btoa(binary);
 
               const pdfController = new AbortController();
               const pdfTimeout = setTimeout(() => pdfController.abort(), 55000); // 55s per PDF
