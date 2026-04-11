@@ -131,7 +131,14 @@ export const LabHistory = () => {
                       {retryAnalysis.isPending ? 'RETRYING...' : 'RETRY ANALYSIS'}
                     </button>
                   ) : draw.processingStatus === 'processing' ? (
-                    <span className="inline-block bg-[#614018] text-[#FFDCBC] text-precision text-[0.6rem] px-2 py-0.5 font-bold">PROCESSING</span>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); retryAnalysis.mutate(draw.id); }}
+                      disabled={retryAnalysis.isPending}
+                      className="inline-flex items-center gap-1 bg-[#614018] text-[#FFDCBC] text-precision text-[0.6rem] px-2 py-0.5 font-bold hover:bg-[#4A3010] transition-colors disabled:opacity-50"
+                    >
+                      <span className="material-symbols-outlined text-[12px]">refresh</span>
+                      {retryAnalysis.isPending ? 'RETRYING...' : 'PROCESSING — TAP TO RETRY'}
+                    </button>
                   ) : (
                     <span className="inline-block bg-surface-container text-on-surface-variant text-precision text-[0.6rem] px-2 py-0.5 font-bold">PENDING</span>
                   )}

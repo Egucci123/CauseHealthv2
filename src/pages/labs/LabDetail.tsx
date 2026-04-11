@@ -28,8 +28,10 @@ export const LabDetail = () => {
     mutationFn: async () => {
       if (!drawId || !user) throw new Error('Missing context');
       await supabase.from('lab_draws').update({ processing_status: 'processing' }).eq('id', drawId);
-      const { error } = await supabase.functions.invoke('analyze-labs', { body: { drawId, userId: user.id } });
-      if (error) throw error;
+      // Fire and forget — continues even if user navigates away
+      supabase.functions.invoke('analyze-labs', { body: { drawId, userId: user.id } })
+        .then(() => { qc.invalidateQueries({ queryKey: ['lab-detail', drawId] }); qc.invalidateQueries({ queryKey: ['labDraws'] }); })
+        .catch(console.warn);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['lab-detail', drawId] });
