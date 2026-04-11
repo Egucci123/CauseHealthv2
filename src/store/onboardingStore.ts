@@ -251,8 +251,8 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
     const state = get();
 
     try {
-      // Refresh auth session in case token went stale during onboarding
-      await supabase.auth.getSession();
+      // Quick session check — don't hang if it fails
+      try { await Promise.race([supabase.auth.getSession(), new Promise(r => setTimeout(r, 3000))]); } catch {}
 
       // Fire all saves in parallel — don't let one block the others
       const saves = [];
@@ -389,11 +389,17 @@ useOnboardingStore.subscribe((state, prevState) => {
     state.weightLbs !== prevState.weightLbs || state.primaryGoal !== prevState.primaryGoal ||
     state.conditions.length !== prevState.conditions.length ||
     state.medications.length !== prevState.medications.length ||
-    state.symptoms.length !== prevState.symptoms.length;
+    state.symptoms.length !== prevState.symptoms.length ||
+    state.currentStep !== prevState.currentStep;
 
   if (changed) {
     clearTimeout(autoSaveTimer);
-    autoSaveTimer = setTimeout(autoSaveToDB, 2000);
+    // Save immediately on step change (user might refresh), debounce on data edits
+    if (state.currentStep !== prevState.currentStep) {
+      autoSaveToDB();
+    } else {
+      autoSaveTimer = setTimeout(autoSaveToDB, 2000);
+    }
   }
 });
 

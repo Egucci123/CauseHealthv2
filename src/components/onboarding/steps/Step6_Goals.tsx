@@ -22,10 +22,8 @@ export const Step6_Goals = () => {
   const navigate = useNavigate();
   const { primaryGoal, specificConcern, triedBefore, updateStep6, completeOnboarding } = useOnboardingStore();
 
-  const handleFinish = () => {
-    // Fire saves in background — don't block navigation
-    completeOnboarding().catch(err => console.error('[Onboarding] Save error:', err));
-    // Navigate immediately
+  const handleFinish = async () => {
+    await completeOnboarding();
     navigate('/dashboard', { replace: true });
   };
 
