@@ -24,11 +24,12 @@ export const LabHistory = () => {
   const retryAnalysis = useMutation({
     mutationFn: async (drawId: string) => {
       await supabase.from('lab_draws').update({ processing_status: 'processing' }).eq('id', drawId);
-      const { error } = await supabase.functions.invoke('analyze-labs', { body: { drawId, userId } });
-      if (error) throw error;
+      // Fire and forget — continues even if user navigates away
+      supabase.functions.invoke('analyze-labs', { body: { drawId, userId } })
+        .then(() => { qc.invalidateQueries({ queryKey: ['labDraws'] }); qc.invalidateQueries({ queryKey: ['lab-detail', drawId] }); })
+        .catch(console.warn);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['labDraws'] }),
-    onError: (err) => console.warn('[LabHistory] retry analysis failed:', err),
   });
 
   const deleteDraw = useMutation({
