@@ -38,7 +38,7 @@ serve(async (req) => {
     }
 
     const ac = new AbortController();
-    const t = setTimeout(() => ac.abort(), 50000);
+    const t = setTimeout(() => ac.abort(), 120000);
     let response: Response;
     try {
       response = await fetch('https://api.anthropic.com/v1/messages', {

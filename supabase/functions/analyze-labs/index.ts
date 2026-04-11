@@ -34,7 +34,7 @@ serve(async (req) => {
     const age = profile?.date_of_birth ? Math.floor((Date.now() - new Date(profile.date_of_birth).getTime()) / 31557600000) : null;
 
     const apiController = new AbortController();
-    const apiTimeout = setTimeout(() => apiController.abort(), 50000); // 50s — must finish well within Supabase's 60s wall clock
+    const apiTimeout = setTimeout(() => apiController.abort(), 120000); // 120s — Supabase allows up to 150s
     let response: Response;
     try {
       response = await fetch('https://api.anthropic.com/v1/messages', {
