@@ -146,7 +146,7 @@ export const LabDetail = () => {
                 : 'Your lab values are being analyzed. This page will update automatically.'}
             </p>
           </div>
-          {draw.processing_status === 'failed' && (
+          {(draw.processing_status === 'failed' || draw.processing_status === 'processing') && (
             <Button variant="primary" size="sm" icon="refresh"
               onClick={() => retryAnalysis.mutate()}
               disabled={retryAnalysis.isPending}
