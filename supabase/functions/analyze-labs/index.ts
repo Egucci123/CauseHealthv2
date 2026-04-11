@@ -34,7 +34,7 @@ serve(async (req) => {
     const age = profile?.date_of_birth ? Math.floor((Date.now() - new Date(profile.date_of_birth).getTime()) / 31557600000) : null;
 
     const apiController = new AbortController();
-    const apiTimeout = setTimeout(() => apiController.abort(), 90000); // 90s timeout for Claude API
+    const apiTimeout = setTimeout(() => apiController.abort(), 50000); // 50s — must finish well within Supabase's 60s wall clock
     let response: Response;
     try {
       response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -42,7 +42,7 @@ serve(async (req) => {
         headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
         signal: apiController.signal,
         body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001', max_tokens: 8000,
+          model: 'claude-haiku-4-5-20251001', max_tokens: 4000,
           system: `You are CauseHealth AI — a clinical health intelligence system. Return ONLY valid JSON. CRITICAL RULES:
 1. Flag EVERY value outside optimal range as a priority finding — do not skip any.
 2. PATTERN RECOGNITION: Connect abnormal values across organ systems. Look for multi-marker patterns that suggest undiagnosed conditions (e.g., elevated platelets + elevated RDW = iron deficiency or myeloproliferative disorder; low HDL + borderline glucose = metabolic syndrome). Each pattern should be in the "patterns" array with markers_involved, description, and likely_cause.
