@@ -42,7 +42,7 @@ serve(async (req) => {
         headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
         signal: apiController.signal,
         body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001', max_tokens: 4000,
+          model: 'claude-haiku-4-5-20251001', max_tokens: 8000,
           system: `You are CauseHealth AI — a clinical health intelligence system. Return ONLY valid JSON. CRITICAL RULES:
 1. Flag EVERY value outside optimal range as a priority finding — do not skip any.
 2. PATTERN RECOGNITION: Connect abnormal values across organ systems. Look for multi-marker patterns that suggest undiagnosed conditions (e.g., elevated platelets + elevated RDW = iron deficiency or myeloproliferative disorder; low HDL + borderline glucose = metabolic syndrome). Each pattern should be in the "patterns" array with markers_involved, description, and likely_cause.
