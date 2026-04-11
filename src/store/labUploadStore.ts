@@ -2,7 +2,7 @@
 // Zustand store for lab upload — persists across component mount/unmount
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
-import { extractPDFText, looksLikeLabReport } from '../lib/pdfParser';
+import { extractPDFText } from '../lib/pdfParser';
 
 export type UploadPhase = 'idle' | 'uploading' | 'extracting' | 'reviewing' | 'analyzing' | 'complete' | 'error' | 'manual';
 
@@ -74,28 +74,26 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
         set({ phase: 'extracting', statusMessage: `Reading ${plural ? `${fileCount} lab reports` : 'your lab report'}...`, progress: 35 });
 
         const allTexts: string[] = [];
-        let anyLooksLikeLab = false;
         for (let i = 0; i < files.length; i++) {
           if (plural) set({ statusMessage: `Reading file ${i + 1} of ${fileCount}: ${files[i].name}`, progress: 35 + Math.round((i / fileCount) * 15) });
           try {
             const text = await extractPDFText(files[i]);
-            if (text && text.length >= 50) { allTexts.push(text); if (looksLikeLabReport(text)) anyLooksLikeLab = true; }
+            if (text && text.length >= 50) allTexts.push(text);
           } catch (err) { console.warn(`[LabUpload] Could not read ${files[i].name}:`, err); }
         }
 
         const combinedText = allTexts.join('\n---NEW DOCUMENT---\n');
-        const textExtractionFailed = !combinedText || combinedText.length < 100;
+        const hasText = combinedText && combinedText.length >= 50;
 
         // 4. Build request body — use text if available, otherwise send raw PDF to Claude
         set({ statusMessage: 'Identifying lab values...', progress: 55 });
+        // Refresh session — mobile browsers often have stale tokens
+        try { await supabase.auth.refreshSession(); } catch {}
         const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
 
-        // If text was extracted but doesn't look like a lab report, still try the API
-        // Claude is much better at detecting lab reports than our regex patterns
-        // Only skip if the text is clearly not medical (very short or obviously non-lab)
-        if (!textExtractionFailed && !anyLooksLikeLab && combinedText.length < 500) {
-          set({ phase: 'manual', statusMessage: `${plural ? "These files don't appear" : "This file doesn't appear"} to be standard lab reports. Please enter values manually.`, isRunning: false });
-          return;
+        if (!token) {
+          throw new Error('Session expired. Please log in again and retry.');
         }
 
         let allValues: any[] = [];
@@ -103,95 +101,89 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
         let extractedLabName: string | null = null;
         let extractedProvider: string | null = null;
 
-        if (textExtractionFailed) {
-          // Client-side extraction failed — send each PDF to Claude individually (common on mobile)
-          // Refresh session first — mobile browsers often have stale tokens
-          try { await supabase.auth.refreshSession(); } catch {}
-          const { data: { session: freshSession } } = await supabase.auth.getSession();
-          const token = freshSession?.access_token ?? session?.access_token;
+        // STRATEGY: Always try the fast text path first (even partial text).
+        // Only fall back to slow base64 path if text extraction completely failed.
+        // This is critical for mobile where base64 uploads are huge and slow.
 
-          for (let i = 0; i < files.length; i++) {
-            set({ statusMessage: `Preparing PDF ${i + 1} of ${fileCount} for analysis...`, progress: 50 + Math.round((i / fileCount) * 10) });
-            // Try up to 2 times per PDF
-            for (let attempt = 0; attempt < 2; attempt++) {
-            try {
-              const arrayBuffer = await files[i].arrayBuffer();
-              const bytes = new Uint8Array(arrayBuffer);
-              // Mobile-safe base64 encoding — avoid spread operator stack overflow
-              const chunks: string[] = [];
-              for (let j = 0; j < bytes.length; j += 1024) {
-                const slice = bytes.subarray(j, Math.min(j + 1024, bytes.length));
-                let str = '';
-                for (let k = 0; k < slice.length; k++) str += String.fromCharCode(slice[k]);
-                chunks.push(str);
-              }
-              const base64 = btoa(chunks.join(''));
-
-              set({ statusMessage: `Sending PDF to AI for analysis — this can take up to 60 seconds...`, progress: 55 + Math.round((i / fileCount) * 10) });
-              const pdfController = new AbortController();
-              const pdfTimeout = setTimeout(() => pdfController.abort(), 120000);
-              const pdfRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-labs`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
-                body: JSON.stringify({ pdfBase64: base64 }),
-                signal: pdfController.signal,
-              });
-              clearTimeout(pdfTimeout);
-              if (pdfRes.ok) {
-                const pdfData = await pdfRes.json();
-                if (pdfData.values) allValues.push(...pdfData.values);
-                if (pdfData.draw_date && !extractedDrawDate) extractedDrawDate = pdfData.draw_date;
-                if (pdfData.lab_name && !extractedLabName) extractedLabName = pdfData.lab_name;
-                if (pdfData.ordering_provider && !extractedProvider) extractedProvider = pdfData.ordering_provider;
-                break; // Success — skip retry
-              } else {
-                // Log the actual error so we can debug
-                const errBody = await pdfRes.text().catch(() => 'unknown');
-                console.error(`[LabUpload] PDF ${i + 1} attempt ${attempt + 1}: HTTP ${pdfRes.status} — ${errBody}`);
-                if (pdfRes.status === 401) {
-                  // Token expired mid-upload — try refreshing once
-                  try { await supabase.auth.refreshSession(); } catch {}
-                }
-              }
-            } catch (err) {
-              console.error(`[LabUpload] PDF ${i + 1} attempt ${attempt + 1} error:`, err);
+        if (hasText) {
+          // Text path — fast, works on mobile if PDF has a text layer
+          set({ statusMessage: 'Analyzing lab values...', progress: 58 });
+          const maxChars = Math.max(15000, Math.min(fileCount * 6000, 30000));
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 120000);
+          try {
+            const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-labs`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
+              body: JSON.stringify({ pdfText: combinedText.slice(0, maxChars) }),
+              signal: controller.signal,
+            });
+            clearTimeout(timeout);
+            if (res.ok) {
+              const textData = await res.json();
+              allValues = textData.values || [];
+              extractedDrawDate = textData.draw_date;
+              extractedLabName = textData.lab_name;
+              extractedProvider = textData.ordering_provider;
+            } else {
+              console.error(`[LabUpload] Text path failed: HTTP ${res.status}`);
             }
-            } // end retry loop
+          } catch (e: any) {
+            clearTimeout(timeout);
+            console.error('[LabUpload] Text path error:', e);
+          }
+        }
+
+        // Base64 fallback — only if text path didn't work (no text or returned 0 values)
+        if (allValues.length === 0) {
+          set({ statusMessage: 'Sending PDF to AI — this may take up to 90 seconds on mobile...', progress: 55 });
+          for (let i = 0; i < files.length; i++) {
+            for (let attempt = 0; attempt < 2; attempt++) {
+              try {
+                const arrayBuffer = await files[i].arrayBuffer();
+                const bytes = new Uint8Array(arrayBuffer);
+                // Mobile-safe base64 — loop instead of spread to avoid stack overflow
+                const chunks: string[] = [];
+                for (let j = 0; j < bytes.length; j += 1024) {
+                  const slice = bytes.subarray(j, Math.min(j + 1024, bytes.length));
+                  let str = '';
+                  for (let k = 0; k < slice.length; k++) str += String.fromCharCode(slice[k]);
+                  chunks.push(str);
+                }
+                const base64 = btoa(chunks.join(''));
+
+                set({ statusMessage: `Uploading PDF ${i + 1} to AI — large files may take 60-90 seconds...`, progress: 58 });
+                const pdfController = new AbortController();
+                const pdfTimeout = setTimeout(() => pdfController.abort(), 120000);
+                const pdfRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-labs`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
+                  body: JSON.stringify({ pdfBase64: base64 }),
+                  signal: pdfController.signal,
+                });
+                clearTimeout(pdfTimeout);
+                if (pdfRes.ok) {
+                  const pdfData = await pdfRes.json();
+                  if (pdfData.values) allValues.push(...pdfData.values);
+                  if (pdfData.draw_date && !extractedDrawDate) extractedDrawDate = pdfData.draw_date;
+                  if (pdfData.lab_name && !extractedLabName) extractedLabName = pdfData.lab_name;
+                  if (pdfData.ordering_provider && !extractedProvider) extractedProvider = pdfData.ordering_provider;
+                  break;
+                } else {
+                  const errBody = await pdfRes.text().catch(() => '');
+                  console.error(`[LabUpload] Base64 attempt ${attempt + 1}: HTTP ${pdfRes.status} — ${errBody}`);
+                }
+              } catch (err) {
+                console.error(`[LabUpload] Base64 attempt ${attempt + 1}:`, err);
+              }
+            }
           }
 
           if (allValues.length === 0) {
             await supabase.from('lab_draws').delete().eq('id', draw.id);
-            set({ phase: 'error', errorMessage: 'Could not extract lab values. Please try again or use manual entry. If this keeps happening, try uploading from a desktop browser.', isRunning: false });
+            set({ phase: 'error', errorMessage: 'Could not extract lab values. Please try again or use manual entry.', isRunning: false });
             return;
           }
-        } else {
-          // Text extraction worked — send combined text in one call
-          set({ statusMessage: 'Identifying lab values...', progress: 55 });
-          const maxChars = Math.max(15000, Math.min(fileCount * 6000, 30000));
-          const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 180000); // 3 minutes for large reports
-          let res: Response;
-          try {
-            res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-labs`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
-              body: JSON.stringify({ pdfText: combinedText.slice(0, maxChars) }),
-              signal: controller.signal,
-            });
-          } catch (e: any) {
-            clearTimeout(timeout);
-            if (e?.name === 'AbortError') throw new Error('Extraction timed out. Try fewer files or use manual entry.');
-            throw e;
-          }
-          clearTimeout(timeout);
-
-          const textData = await res.json();
-          if (!res.ok) throw new Error(`Extraction failed: ${textData?.error ?? JSON.stringify(textData)}`);
-          if (textData?.error) throw new Error(textData.error);
-          allValues = textData.values || [];
-          extractedDrawDate = textData.draw_date;
-          extractedLabName = textData.lab_name;
-          extractedProvider = textData.ordering_provider;
         }
 
         // Build extraction result from merged values
