@@ -24,10 +24,13 @@ export const LabHistory = () => {
   const retryAnalysis = useMutation({
     mutationFn: async (drawId: string) => {
       await supabase.from('lab_draws').update({ processing_status: 'processing' }).eq('id', drawId);
-      // Fire and forget — continues even if user navigates away
-      supabase.functions.invoke('analyze-labs', { body: { drawId, userId } })
-        .then(() => { qc.invalidateQueries({ queryKey: ['labDraws'] }); qc.invalidateQueries({ queryKey: ['lab-detail', drawId] }); })
-        .catch(console.warn);
+      // Raw fetch detached from React lifecycle — survives navigation
+      fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-labs`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
+        body: JSON.stringify({ drawId, userId }),
+        keepalive: true,
+      }).catch(console.warn);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['labDraws'] }),
   });
@@ -132,14 +135,10 @@ export const LabHistory = () => {
                       {retryAnalysis.isPending ? 'RETRYING...' : 'RETRY ANALYSIS'}
                     </button>
                   ) : draw.processingStatus === 'processing' ? (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); retryAnalysis.mutate(draw.id); }}
-                      disabled={retryAnalysis.isPending}
-                      className="inline-flex items-center gap-1 bg-[#614018] text-[#FFDCBC] text-precision text-[0.6rem] px-2 py-0.5 font-bold hover:bg-[#4A3010] transition-colors disabled:opacity-50"
-                    >
-                      <span className="material-symbols-outlined text-[12px]">refresh</span>
-                      {retryAnalysis.isPending ? 'RETRYING...' : 'PROCESSING — TAP TO RETRY'}
-                    </button>
+                    <span className="inline-flex items-center gap-1 bg-[#614018] text-[#FFDCBC] text-precision text-[0.6rem] px-2 py-0.5 font-bold">
+                      <div className="w-2 h-2 border border-[#FFDCBC] border-t-transparent rounded-full animate-spin" />
+                      PROCESSING
+                    </span>
                   ) : (
                     <span className="inline-block bg-surface-container text-on-surface-variant text-precision text-[0.6rem] px-2 py-0.5 font-bold">PENDING</span>
                   )}

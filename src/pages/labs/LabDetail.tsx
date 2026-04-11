@@ -28,10 +28,13 @@ export const LabDetail = () => {
     mutationFn: async () => {
       if (!drawId || !user) throw new Error('Missing context');
       await supabase.from('lab_draws').update({ processing_status: 'processing' }).eq('id', drawId);
-      // Fire and forget — continues even if user navigates away
-      supabase.functions.invoke('analyze-labs', { body: { drawId, userId: user.id } })
-        .then(() => { qc.invalidateQueries({ queryKey: ['lab-detail', drawId] }); qc.invalidateQueries({ queryKey: ['labDraws'] }); })
-        .catch(console.warn);
+      // Raw fetch with keepalive — survives navigation
+      fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-labs`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
+        body: JSON.stringify({ drawId, userId: user.id }),
+        keepalive: true,
+      }).catch(console.warn);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['lab-detail', drawId] });
@@ -148,7 +151,7 @@ export const LabDetail = () => {
                 : 'Your lab values are being analyzed. This page will update automatically.'}
             </p>
           </div>
-          {(draw.processing_status === 'failed' || draw.processing_status === 'processing') && (
+          {draw.processing_status === 'failed' && (
             <Button variant="primary" size="sm" icon="refresh"
               onClick={() => retryAnalysis.mutate()}
               disabled={retryAnalysis.isPending}

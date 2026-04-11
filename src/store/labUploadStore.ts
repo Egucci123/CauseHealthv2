@@ -243,20 +243,13 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
 
         set({ phase: 'complete', completedDrawId: drawId, statusMessage: 'Analysis complete.', progress: 100 });
 
-        // Background analysis — retry up to 3x, mark as failed if all attempts fail
-        (async () => {
-          for (let attempt = 0; attempt < 3; attempt++) {
-            try {
-              const { error } = await supabase.functions.invoke('analyze-labs', { body: { drawId, userId } });
-              if (!error) return;
-              console.warn(`[LabUpload] analyze-labs attempt ${attempt + 1} failed:`, error);
-            } catch (err) {
-              console.warn(`[LabUpload] analyze-labs attempt ${attempt + 1} error:`, err);
-            }
-            if (attempt < 2) await new Promise(r => setTimeout(r, attempt === 0 ? 3000 : 8000));
-          }
-          await supabase.from('lab_draws').update({ processing_status: 'failed' }).eq('id', drawId);
-        })();
+        // Background analysis — raw fetch with keepalive survives page navigation
+        fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-labs`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
+          body: JSON.stringify({ drawId, userId }),
+          keepalive: true,
+        }).catch(console.warn);
       } catch (err) {
         set({ phase: 'error', errorMessage: String(err) });
       }
