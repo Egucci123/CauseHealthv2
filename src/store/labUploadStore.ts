@@ -109,11 +109,25 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
         let extractedLabName: string | null = null;
         let extractedProvider: string | null = null;
 
+        // Animated progress during AI calls — ticks up smoothly while waiting
+        let progressInterval: ReturnType<typeof setInterval> | null = null;
+        const startProgress = (from: number, to: number, durationMs: number) => {
+          if (progressInterval) clearInterval(progressInterval);
+          let current = from;
+          const step = (to - from) / (durationMs / 500);
+          progressInterval = setInterval(() => {
+            current = Math.min(current + step, to);
+            set({ progress: Math.round(current) });
+          }, 500);
+        };
+        const stopProgress = () => { if (progressInterval) { clearInterval(progressInterval); progressInterval = null; } };
+
         if (textExtractionFailed) {
           // Client-side extraction failed — send each PDF to Claude individually
           let lastError = '';
           for (let i = 0; i < files.length; i++) {
-            set({ statusMessage: `Sending PDF ${i + 1} of ${fileCount} to AI...`, progress: 50 + Math.round((i / fileCount) * 20) });
+            set({ statusMessage: `Sending PDF ${i + 1} of ${fileCount} to AI...`, progress: 50 });
+            startProgress(50, 85, 60000); // Animate 50→85% over ~60s
             for (let attempt = 0; attempt < 2; attempt++) {
             try {
               const arrayBuffer = await files[i].arrayBuffer();
@@ -126,8 +140,8 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
               const { data: pdfData, error: invokeErr } = await supabase.functions.invoke('extract-labs', {
                 body: { pdfBase64: base64 },
               });
+              stopProgress();
               if (invokeErr) {
-                // Extract the real error from the response
                 const ctx = (invokeErr as any).context;
                 let detail = invokeErr.message;
                 try { if (ctx instanceof Response) { const t = await ctx.json(); detail = t?.error || t?.detail || JSON.stringify(t); } } catch {}
@@ -146,19 +160,21 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
           }
 
           if (allValues.length === 0) {
+            stopProgress();
             await supabase.from('lab_draws').delete().eq('id', draw.id);
             set({ phase: 'error', errorMessage: `Could not extract lab values. ${lastError ? `Error: ${lastError}` : 'Try using manual entry.'}`, isRunning: false });
             return;
           }
         } else {
           // Text extraction worked — send combined text in one call
-          set({ statusMessage: 'Identifying lab values...', progress: 55 });
+          set({ statusMessage: 'Analyzing lab values...', progress: 55 });
+          startProgress(55, 85, 30000); // Animate 55→85% over ~30s (text path is faster)
           const maxChars = Math.min(fileCount * 6000, 18000);
 
-          // Use supabase.functions.invoke — it auto-refreshes the JWT
           const { data: textData, error: textErr } = await supabase.functions.invoke('extract-labs', {
             body: { pdfText: combinedText.slice(0, maxChars) },
           });
+          stopProgress();
           if (textErr) {
             let detail = textErr.message;
             try { const ctx = (textErr as any).context; if (ctx instanceof Response) { const t = await ctx.json(); detail = t?.error || t?.detail || JSON.stringify(t); } } catch {}
@@ -196,8 +212,10 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
           await supabase.from('lab_draws').update({ draw_date: extraction.draw_date, lab_name: extraction.lab_name, ordering_provider: extraction.ordering_provider }).eq('id', draw.id);
         }
 
-        set({ extraction, phase: 'reviewing', statusMessage: `Found ${extraction.values.length} lab values${plural ? ` across ${fileCount} files` : ''}. Please review.`, progress: 70, isRunning: false });
+        stopProgress();
+        set({ extraction, phase: 'reviewing', statusMessage: `Found ${extraction.values.length} lab values${plural ? ` across ${fileCount} files` : ''}. Please review.`, progress: 90, isRunning: false });
       } catch (err) {
+        stopProgress();
         const drawId = get().drawId;
         if (drawId) { try { await supabase.from('lab_draws').delete().eq('id', drawId); } catch {} }
         set({ phase: 'error', errorMessage: String(err), isRunning: false });
