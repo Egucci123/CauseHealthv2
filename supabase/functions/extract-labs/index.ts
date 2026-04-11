@@ -37,11 +37,21 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'No PDF data provided' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 8000, messages }),
-    });
+    const ac = new AbortController();
+    const t = setTimeout(() => ac.abort(), 50000);
+    let response: Response;
+    try {
+      response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST', signal: ac.signal,
+        headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 4000, messages }),
+      });
+    } catch (e: any) {
+      clearTimeout(t);
+      if (e?.name === 'AbortError') return new Response(JSON.stringify({ error: 'Extraction timed out' }), { status: 504, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      throw e;
+    }
+    clearTimeout(t);
 
     if (!response.ok) { const err = await response.text(); return new Response(JSON.stringify({ error: 'AI extraction failed', detail: err }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }); }
 
