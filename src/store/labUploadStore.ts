@@ -104,7 +104,12 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
         let extractedProvider: string | null = null;
 
         if (textExtractionFailed) {
-          // Client-side extraction failed — send each PDF to Claude individually
+          // Client-side extraction failed — send each PDF to Claude individually (common on mobile)
+          // Refresh session first — mobile browsers often have stale tokens
+          try { await supabase.auth.refreshSession(); } catch {}
+          const { data: { session: freshSession } } = await supabase.auth.getSession();
+          const token = freshSession?.access_token ?? session?.access_token;
+
           for (let i = 0; i < files.length; i++) {
             set({ statusMessage: `Analyzing PDF ${i + 1} of ${fileCount}...`, progress: 50 + Math.round((i / fileCount) * 20) });
             // Try up to 2 times per PDF
@@ -112,17 +117,21 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
             try {
               const arrayBuffer = await files[i].arrayBuffer();
               const bytes = new Uint8Array(arrayBuffer);
-              let base64 = '';
-              for (let j = 0; j < bytes.length; j += 8192) {
-                base64 += String.fromCharCode(...bytes.subarray(j, j + 8192));
+              // Mobile-safe base64 encoding — avoid spread operator stack overflow
+              const chunks: string[] = [];
+              for (let j = 0; j < bytes.length; j += 1024) {
+                const slice = bytes.subarray(j, Math.min(j + 1024, bytes.length));
+                let str = '';
+                for (let k = 0; k < slice.length; k++) str += String.fromCharCode(slice[k]);
+                chunks.push(str);
               }
-              base64 = btoa(base64);
+              const base64 = btoa(chunks.join(''));
 
               const pdfController = new AbortController();
-              const pdfTimeout = setTimeout(() => pdfController.abort(), 120000); // 120s per PDF — must exceed server's 90s API timeout
+              const pdfTimeout = setTimeout(() => pdfController.abort(), 120000);
               const pdfRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-labs`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
                 body: JSON.stringify({ pdfBase64: base64 }),
                 signal: pdfController.signal,
               });
@@ -134,17 +143,24 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
                 if (pdfData.lab_name && !extractedLabName) extractedLabName = pdfData.lab_name;
                 if (pdfData.ordering_provider && !extractedProvider) extractedProvider = pdfData.ordering_provider;
                 break; // Success — skip retry
+              } else {
+                // Log the actual error so we can debug
+                const errBody = await pdfRes.text().catch(() => 'unknown');
+                console.error(`[LabUpload] PDF ${i + 1} attempt ${attempt + 1}: HTTP ${pdfRes.status} — ${errBody}`);
+                if (pdfRes.status === 401) {
+                  // Token expired mid-upload — try refreshing once
+                  try { await supabase.auth.refreshSession(); } catch {}
+                }
               }
             } catch (err) {
-              if (attempt === 0) { console.warn(`[LabUpload] PDF ${i + 1} attempt 1 failed, retrying...`); }
-              else { console.warn(`[LabUpload] PDF ${i + 1} failed after 2 attempts:`, err); }
+              console.error(`[LabUpload] PDF ${i + 1} attempt ${attempt + 1} error:`, err);
             }
             } // end retry loop
           }
 
           if (allValues.length === 0) {
             await supabase.from('lab_draws').delete().eq('id', draw.id);
-            set({ phase: 'error', errorMessage: 'Could not extract any lab values from these PDFs. Try using manual entry.', isRunning: false });
+            set({ phase: 'error', errorMessage: 'Could not extract lab values. Please try again or use manual entry. If this keeps happening, try uploading from a desktop browser.', isRunning: false });
             return;
           }
         } else {
