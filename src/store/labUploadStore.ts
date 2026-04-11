@@ -98,7 +98,6 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
 
         // 4. Build request body — use text if available, otherwise send raw PDF to Claude
         set({ statusMessage: 'Identifying lab values...', progress: 55 });
-        const { data: { session } } = await supabase.auth.getSession();
 
         if (!textExtractionFailed && !anyLooksLikeLab) {
           set({ phase: 'manual', statusMessage: `${plural ? "These files don't appear" : "This file doesn't appear"} to be standard lab reports. Please enter values manually.`, isRunning: false });
@@ -123,21 +122,16 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
               for (let j = 0; j < bytes.length; j++) binary += String.fromCharCode(bytes[j]);
               const base64 = btoa(binary);
 
-              const pdfRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-labs`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
-                body: JSON.stringify({ pdfBase64: base64 }),
+              // Use supabase.functions.invoke — it auto-refreshes the JWT
+              const { data: pdfData, error: invokeErr } = await supabase.functions.invoke('extract-labs', {
+                body: { pdfBase64: base64 },
               });
-              if (pdfRes.ok) {
-                const pdfData = await pdfRes.json();
-                if (pdfData.values) allValues.push(...pdfData.values);
-                if (pdfData.draw_date && !extractedDrawDate) extractedDrawDate = pdfData.draw_date;
-                if (pdfData.lab_name && !extractedLabName) extractedLabName = pdfData.lab_name;
-                if (pdfData.ordering_provider && !extractedProvider) extractedProvider = pdfData.ordering_provider;
-                break;
-              } else {
-                lastError = `Server error ${pdfRes.status}: ${await pdfRes.text().catch(() => '')}`;
-              }
+              if (invokeErr) { lastError = invokeErr.message; continue; }
+              if (pdfData?.values) allValues.push(...pdfData.values);
+              if (pdfData?.draw_date && !extractedDrawDate) extractedDrawDate = pdfData.draw_date;
+              if (pdfData?.lab_name && !extractedLabName) extractedLabName = pdfData.lab_name;
+              if (pdfData?.ordering_provider && !extractedProvider) extractedProvider = pdfData.ordering_provider;
+              break;
             } catch (err: any) {
               lastError = err?.message || String(err);
             }
@@ -153,30 +147,16 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
           // Text extraction worked — send combined text in one call
           set({ statusMessage: 'Identifying lab values...', progress: 55 });
           const maxChars = Math.min(fileCount * 6000, 18000);
-          const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 120000);
-          let res: Response;
-          try {
-            res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-labs`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
-              body: JSON.stringify({ pdfText: combinedText.slice(0, maxChars) }),
-              signal: controller.signal,
-            });
-          } catch (e: any) {
-            clearTimeout(timeout);
-            if (e?.name === 'AbortError') throw new Error('Extraction timed out. Try fewer files or use manual entry.');
-            throw e;
-          }
-          clearTimeout(timeout);
 
-          const textData = await res.json();
-          if (!res.ok) throw new Error(`Extraction failed: ${textData?.error ?? JSON.stringify(textData)}`);
-          if (textData?.error) throw new Error(textData.error);
-          allValues = textData.values || [];
-          extractedDrawDate = textData.draw_date;
-          extractedLabName = textData.lab_name;
-          extractedProvider = textData.ordering_provider;
+          // Use supabase.functions.invoke — it auto-refreshes the JWT
+          const { data: textData, error: textErr } = await supabase.functions.invoke('extract-labs', {
+            body: { pdfText: combinedText.slice(0, maxChars) },
+          });
+          if (textErr) throw new Error(`Extraction failed: ${textErr.message}`);
+          allValues = textData?.values || [];
+          extractedDrawDate = textData?.draw_date;
+          extractedLabName = textData?.lab_name;
+          extractedProvider = textData?.ordering_provider;
         }
 
         // Build extraction result from merged values
