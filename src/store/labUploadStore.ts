@@ -87,14 +87,11 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
 
         // 4. Build request body — use text if available, otherwise send raw PDF to Claude
         set({ statusMessage: 'Identifying lab values...', progress: 55 });
-        // Refresh session — mobile browsers often have stale tokens
-        try { await supabase.auth.refreshSession(); } catch {}
+        // Get session — use 3s timeout on refresh to avoid hanging on mobile
+        try { await Promise.race([supabase.auth.refreshSession(), new Promise(r => setTimeout(r, 3000))]); } catch {}
         const { data: { session } } = await supabase.auth.getSession();
-        const token = session?.access_token;
-
-        if (!token) {
-          throw new Error('Session expired. Please log in again and retry.');
-        }
+        const token = session?.access_token ?? '';
+        // Don't block on missing token — the Edge Function will return 401 and we'll handle it
 
         let allValues: any[] = [];
         let extractedDrawDate: string | null = null;
