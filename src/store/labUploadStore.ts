@@ -2,7 +2,7 @@
 // Zustand store for lab upload — persists across component mount/unmount
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
-import { extractPDFText } from '../lib/pdfParser';
+import { extractPDFText, looksLikeLabReport } from '../lib/pdfParser';
 
 export type UploadPhase = 'idle' | 'uploading' | 'extracting' | 'reviewing' | 'analyzing' | 'complete' | 'error' | 'manual';
 
@@ -74,113 +74,104 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
         set({ phase: 'extracting', statusMessage: `Reading ${plural ? `${fileCount} lab reports` : 'your lab report'}...`, progress: 35 });
 
         const allTexts: string[] = [];
+        let anyLooksLikeLab = false;
         for (let i = 0; i < files.length; i++) {
           if (plural) set({ statusMessage: `Reading file ${i + 1} of ${fileCount}: ${files[i].name}`, progress: 35 + Math.round((i / fileCount) * 15) });
           try {
             const text = await extractPDFText(files[i]);
-            if (text && text.length >= 50) allTexts.push(text);
+            if (text && text.length >= 50) { allTexts.push(text); if (looksLikeLabReport(text)) anyLooksLikeLab = true; }
           } catch (err) { console.warn(`[LabUpload] Could not read ${files[i].name}:`, err); }
         }
 
         const combinedText = allTexts.join('\n---NEW DOCUMENT---\n');
-        const hasText = combinedText && combinedText.length >= 50;
+        const textExtractionFailed = !combinedText || combinedText.length < 100;
 
         // 4. Build request body — use text if available, otherwise send raw PDF to Claude
         set({ statusMessage: 'Identifying lab values...', progress: 55 });
-        // Get session — use 3s timeout on refresh to avoid hanging on mobile
-        try { await Promise.race([supabase.auth.refreshSession(), new Promise(r => setTimeout(r, 3000))]); } catch {}
         const { data: { session } } = await supabase.auth.getSession();
-        const token = session?.access_token ?? '';
-        // Don't block on missing token — the Edge Function will return 401 and we'll handle it
+
+        if (!textExtractionFailed && !anyLooksLikeLab) {
+          set({ phase: 'manual', statusMessage: `${plural ? "These files don't appear" : "This file doesn't appear"} to be standard lab reports. Please enter values manually.`, isRunning: false });
+          return;
+        }
 
         let allValues: any[] = [];
         let extractedDrawDate: string | null = null;
         let extractedLabName: string | null = null;
         let extractedProvider: string | null = null;
 
-        // STRATEGY: Always try the fast text path first (even partial text).
-        // Only fall back to slow base64 path if text extraction completely failed.
-        // This is critical for mobile where base64 uploads are huge and slow.
-
-        if (hasText) {
-          // Text path — fast, works on mobile if PDF has a text layer
-          set({ statusMessage: 'Analyzing lab values...', progress: 58 });
-          const maxChars = Math.max(15000, Math.min(fileCount * 6000, 30000));
-          const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 120000);
-          try {
-            const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-labs`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
-              body: JSON.stringify({ pdfText: combinedText.slice(0, maxChars) }),
-              signal: controller.signal,
-            });
-            clearTimeout(timeout);
-            if (res.ok) {
-              const textData = await res.json();
-              allValues = textData.values || [];
-              extractedDrawDate = textData.draw_date;
-              extractedLabName = textData.lab_name;
-              extractedProvider = textData.ordering_provider;
-            } else {
-              console.error(`[LabUpload] Text path failed: HTTP ${res.status}`);
-            }
-          } catch (e: any) {
-            clearTimeout(timeout);
-            console.error('[LabUpload] Text path error:', e);
-          }
-        }
-
-        // Base64 fallback — only if text path didn't work (no text or returned 0 values)
-        if (allValues.length === 0) {
-          set({ statusMessage: 'Sending PDF to AI — this may take up to 90 seconds on mobile...', progress: 55 });
+        if (textExtractionFailed) {
+          // Client-side extraction failed — send each PDF to Claude individually
           for (let i = 0; i < files.length; i++) {
+            set({ statusMessage: `Analyzing PDF ${i + 1} of ${fileCount}...`, progress: 50 + Math.round((i / fileCount) * 20) });
+            // Try up to 2 times per PDF
             for (let attempt = 0; attempt < 2; attempt++) {
-              try {
-                const arrayBuffer = await files[i].arrayBuffer();
-                const bytes = new Uint8Array(arrayBuffer);
-                // Mobile-safe base64 — loop instead of spread to avoid stack overflow
-                const chunks: string[] = [];
-                for (let j = 0; j < bytes.length; j += 1024) {
-                  const slice = bytes.subarray(j, Math.min(j + 1024, bytes.length));
-                  let str = '';
-                  for (let k = 0; k < slice.length; k++) str += String.fromCharCode(slice[k]);
-                  chunks.push(str);
-                }
-                const base64 = btoa(chunks.join(''));
-
-                set({ statusMessage: `Uploading PDF ${i + 1} to AI — large files may take 60-90 seconds...`, progress: 58 });
-                const pdfController = new AbortController();
-                const pdfTimeout = setTimeout(() => pdfController.abort(), 120000);
-                const pdfRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-labs`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
-                  body: JSON.stringify({ pdfBase64: base64 }),
-                  signal: pdfController.signal,
-                });
-                clearTimeout(pdfTimeout);
-                if (pdfRes.ok) {
-                  const pdfData = await pdfRes.json();
-                  if (pdfData.values) allValues.push(...pdfData.values);
-                  if (pdfData.draw_date && !extractedDrawDate) extractedDrawDate = pdfData.draw_date;
-                  if (pdfData.lab_name && !extractedLabName) extractedLabName = pdfData.lab_name;
-                  if (pdfData.ordering_provider && !extractedProvider) extractedProvider = pdfData.ordering_provider;
-                  break;
-                } else {
-                  const errBody = await pdfRes.text().catch(() => '');
-                  console.error(`[LabUpload] Base64 attempt ${attempt + 1}: HTTP ${pdfRes.status} — ${errBody}`);
-                }
-              } catch (err) {
-                console.error(`[LabUpload] Base64 attempt ${attempt + 1}:`, err);
+            try {
+              const arrayBuffer = await files[i].arrayBuffer();
+              const bytes = new Uint8Array(arrayBuffer);
+              let base64 = '';
+              for (let j = 0; j < bytes.length; j += 8192) {
+                base64 += String.fromCharCode(...bytes.subarray(j, j + 8192));
               }
+              base64 = btoa(base64);
+
+              const pdfController = new AbortController();
+              const pdfTimeout = setTimeout(() => pdfController.abort(), 55000); // 55s per PDF
+              const pdfRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-labs`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
+                body: JSON.stringify({ pdfBase64: base64 }),
+                signal: pdfController.signal,
+              });
+              clearTimeout(pdfTimeout);
+              if (pdfRes.ok) {
+                const pdfData = await pdfRes.json();
+                if (pdfData.values) allValues.push(...pdfData.values);
+                if (pdfData.draw_date && !extractedDrawDate) extractedDrawDate = pdfData.draw_date;
+                if (pdfData.lab_name && !extractedLabName) extractedLabName = pdfData.lab_name;
+                if (pdfData.ordering_provider && !extractedProvider) extractedProvider = pdfData.ordering_provider;
+                break; // Success — skip retry
+              }
+            } catch (err) {
+              if (attempt === 0) { console.warn(`[LabUpload] PDF ${i + 1} attempt 1 failed, retrying...`); }
+              else { console.warn(`[LabUpload] PDF ${i + 1} failed after 2 attempts:`, err); }
             }
+            } // end retry loop
           }
 
           if (allValues.length === 0) {
             await supabase.from('lab_draws').delete().eq('id', draw.id);
-            set({ phase: 'error', errorMessage: 'Could not extract lab values. Please try again or use manual entry.', isRunning: false });
+            set({ phase: 'error', errorMessage: 'Could not extract any lab values from these PDFs. Try using manual entry.', isRunning: false });
             return;
           }
+        } else {
+          // Text extraction worked — send combined text in one call
+          set({ statusMessage: 'Identifying lab values...', progress: 55 });
+          const maxChars = Math.min(fileCount * 6000, 18000);
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 120000);
+          let res: Response;
+          try {
+            res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-labs`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
+              body: JSON.stringify({ pdfText: combinedText.slice(0, maxChars) }),
+              signal: controller.signal,
+            });
+          } catch (e: any) {
+            clearTimeout(timeout);
+            if (e?.name === 'AbortError') throw new Error('Extraction timed out. Try fewer files or use manual entry.');
+            throw e;
+          }
+          clearTimeout(timeout);
+
+          const textData = await res.json();
+          if (!res.ok) throw new Error(`Extraction failed: ${textData?.error ?? JSON.stringify(textData)}`);
+          if (textData?.error) throw new Error(textData.error);
+          allValues = textData.values || [];
+          extractedDrawDate = textData.draw_date;
+          extractedLabName = textData.lab_name;
+          extractedProvider = textData.ordering_provider;
         }
 
         // Build extraction result from merged values
@@ -256,26 +247,18 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
 
         set({ phase: 'complete', completedDrawId: drawId, statusMessage: 'Analysis complete.', progress: 100 });
 
-        // Background analysis — sets processing_status to 'complete' and generates priority alerts
-        // Retry up to 2 times with increasing delay if the call fails or times out
+        // Background analysis — retry up to 3x, mark as failed if all attempts fail
         (async () => {
           for (let attempt = 0; attempt < 3; attempt++) {
             try {
-              const analyzeController = new AbortController();
-              const analyzeTimeout = setTimeout(() => analyzeController.abort(), 120000); // 2 min timeout
-              const { error } = await supabase.functions.invoke('analyze-labs', {
-                body: { drawId, userId },
-              });
-              clearTimeout(analyzeTimeout);
-              if (!error) return; // success
+              const { error } = await supabase.functions.invoke('analyze-labs', { body: { drawId, userId } });
+              if (!error) return;
               console.warn(`[LabUpload] analyze-labs attempt ${attempt + 1} failed:`, error);
             } catch (err) {
               console.warn(`[LabUpload] analyze-labs attempt ${attempt + 1} error:`, err);
             }
-            // Wait before retry: 3s, then 8s
             if (attempt < 2) await new Promise(r => setTimeout(r, attempt === 0 ? 3000 : 8000));
           }
-          // All retries failed — mark draw as failed so it doesn't stay stuck as "processing"
           await supabase.from('lab_draws').update({ processing_status: 'failed' }).eq('id', drawId);
         })();
       } catch (err) {
