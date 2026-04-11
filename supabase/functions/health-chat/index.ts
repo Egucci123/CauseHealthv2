@@ -60,6 +60,17 @@ serve(async (req) => {
     const execSummary = Array.isArray(prepData?.executive_summary) ? prepData.executive_summary.join('\n') : '';
     const discussionPoints = Array.isArray(prepData?.discussion_points) ? prepData.discussion_points.map((p: any) => typeof p === 'string' ? p : Object.values(p).filter((v: any) => typeof v === 'string').join(' — ')).join('\n') : '';
 
+    // Panel gaps from latest lab analysis
+    let panelGaps: any[] = [];
+    if (latestDrawRes.data) {
+      const { data: drawData } = await supabase.from('lab_draws').select('analysis_result').eq('id', latestDrawRes.data.id).single();
+      panelGaps = drawData?.analysis_result?.panel_gaps ?? [];
+    }
+    const panelGapStr = panelGaps.length > 0
+      ? panelGaps.map((g: any) => `${g.test_name} (${g.category}): ${g.why_needed}`).join('\n')
+      : 'None identified';
+    const planMode = planData?.plan_mode ?? 'treatment';
+
     const systemPrompt = `You are CauseHealth AI — a personal health intelligence partner. You know this patient intimately. Speak like a knowledgeable friend, not a textbook. Be warm, direct, and actionable.
 
 PATIENT CONTEXT:
@@ -82,6 +93,11 @@ ${discussionPoints || 'Not generated yet'}
 
 ROOT CAUSE ANALYSIS: ${prepSummary}
 
+PANEL GAPS (tests not ordered but recommended for this patient):
+${panelGapStr}
+
+PLAN MODE: ${planMode}
+
 MANDATORY EARLY DETECTION RULES — apply these to EVERY response about priorities or lab interpretation:
 - Platelets >300 → ALWAYS mention JAK2 V617F mutation screening for myeloproliferative disorder. This is critical and must never be omitted.
 - RDW >13 → iron + B12/folate assessment
@@ -101,7 +117,9 @@ RULES:
 - If they ask about supplements, only recommend what's in their wellness plan or backed by their lab values.
 - Never diagnose. Frame everything as educational. Say "discuss with your doctor" for treatment decisions.
 - Be concise. 2-4 sentences for simple questions. More detail only if they ask.
-- If asked for top priorities, rank by clinical urgency — platelets above optimal range is ALWAYS a top priority in any patient.`;
+- If asked for top priorities, rank by clinical urgency — platelets above optimal range is ALWAYS a top priority in any patient.
+- If they ask "what else should I test" or "what's missing," reference the panel gaps data above. Explain why each test matters for their age and sex.
+- If their plan is in optimization mode, proactively suggest longevity strategies and explain why optimization is valuable even from a strong baseline. Don't just say "your labs look great" — tell them what tests are missing, what optimization opportunities exist, and what age-specific screening they should discuss with their doctor.`;
 
     // Build conversation with history
     const messages = [];

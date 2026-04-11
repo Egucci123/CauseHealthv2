@@ -126,6 +126,39 @@ export const LabDetail = () => {
               </div>
             </div>
           )}
+          {analysis.panel_gaps?.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-outline-variant/20">
+              <p className="text-precision text-[0.68rem] text-on-surface-variant tracking-widest uppercase font-bold mb-3">
+                <span className="material-symbols-outlined text-[14px] align-middle mr-1">add_circle</span>
+                Recommended Additional Testing
+              </p>
+              {['essential', 'recommended', 'advanced'].map(tier => {
+                const tierGaps = analysis.panel_gaps.filter((g: any) => g.category === tier);
+                if (!tierGaps.length) return null;
+                return (
+                  <div key={tier} className="mb-3">
+                    <p className="text-precision text-[0.55rem] text-on-surface-variant/70 tracking-widest uppercase mb-1.5">
+                      {tier === 'essential' ? 'Essential Baseline' : tier === 'recommended' ? 'Functional Medicine' : 'Longevity & Optimization'}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {tierGaps.map((g: any) => (
+                        <span key={g.test_name}
+                          className="text-precision text-[0.6rem] text-on-surface px-2 py-1 font-medium cursor-help"
+                          style={{
+                            borderRadius: '3px',
+                            backgroundColor: tier === 'essential' ? 'rgba(201,79,79,0.15)' : tier === 'recommended' ? 'rgba(232,146,42,0.15)' : 'rgba(42,157,143,0.15)',
+                          }}
+                          title={g.why_needed}
+                        >
+                          {g.test_name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 

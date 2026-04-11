@@ -82,7 +82,9 @@ CRITICAL RULES:
 
 FORMAT: executive_summary (3-5 bullets), HPI (3-5 sentences — mention ALL abnormal values), ROS (1-2 sentences/system), discussion_points (5-8 items covering EVERY abnormal finding, 2-3 sentences each, lead with the ask), patient_questions (3-5 plain language), functional_medicine_note (3-4 sentences).
 
-TESTS (8-10 total, tiered urgent/high/moderate): Test every medication-depleted nutrient. Combine related tests. For every abnormal value, include follow-up testing. Borderline metabolic→fasting insulin+HOMA-IR. Autoimmune patient→screen celiac+thyroid.
+TESTS (8-10 total, tiered urgent/high/moderate/baseline): Test every medication-depleted nutrient. Combine related tests. For every abnormal value, include follow-up testing. Borderline metabolic→fasting insulin+HOMA-IR. Autoimmune patient→screen celiac+thyroid.
+
+PANEL GAP SCREENING: Beyond tests driven by abnormal findings, identify standard baseline panels MISSING from the uploaded labs. For this patient's age and sex, recommend tests that should be part of a comprehensive workup but were not ordered. Add these to tests_to_request with priority "baseline" and clinical_justification explaining why this test is age/sex-appropriate even without abnormal findings. Use ICD-10 Z00.00 (General adult medical examination) for baseline screening. Examples: thyroid panel if no TSH present, lipid panel if no cardiovascular markers, vitamin D if not tested, ferritin/iron panel for females, fasting insulin for metabolic screening, hormone panel for age 35+. Even if all uploaded values are optimal, there are always panels that should have been ordered.
 
 MEDICATION ALTERNATIVES: For each med, 2-3 pharmaceutical alternatives AND 2-3 natural alternatives. Brief reason each.
 

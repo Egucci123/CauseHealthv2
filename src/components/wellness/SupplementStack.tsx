@@ -7,10 +7,11 @@ import { SectionLabel } from '../ui/SectionLabel';
 function priorityConfig(p: string) {
   if (p === 'critical') return { border: 'border-t-[3px] border-[#C94F4F]', badge: 'bg-[#C94F4F] text-white', text: 'CRITICAL' };
   if (p === 'high') return { border: 'border-t-[3px] border-[#E8922A]', badge: 'bg-[#614018] text-[#FFDCBC]', text: 'HIGH' };
+  if (p === 'optimize') return { border: 'border-t-[3px] border-[#2A9D8F]', badge: 'bg-[#2A9D8F] text-white', text: 'OPTIMIZE' };
   return { border: 'border-t-[3px] border-[#D4A574]', badge: 'bg-surface-container text-on-surface-variant', text: 'MODERATE' };
 }
 
-function sourceIcon(s: string) { return s === 'lab_finding' ? 'biotech' : s === 'medication_depletion' ? 'medication' : 'symptoms'; }
+function sourceIcon(s: string) { return s === 'lab_finding' ? 'biotech' : s === 'medication_depletion' ? 'medication' : s === 'optimization' ? 'trending_up' : 'symptoms'; }
 
 const SupplementCard = ({ item, index }: { item: SupplementItem; index: number }) => {
   const [expanded, setExpanded] = useState(false);
@@ -70,9 +71,9 @@ const SupplementCard = ({ item, index }: { item: SupplementItem; index: number }
 };
 
 export const SupplementStack = ({ supplements }: { supplements: SupplementItem[] }) => {
-  const [filter, setFilter] = useState<'all' | 'critical' | 'high' | 'moderate'>('all');
+  const [filter, setFilter] = useState<'all' | 'critical' | 'high' | 'moderate' | 'optimize'>('all');
   const displayed = filter === 'all' ? supplements : supplements.filter(s => s.priority === filter);
-  const counts = { critical: supplements.filter(s => s.priority === 'critical').length, high: supplements.filter(s => s.priority === 'high').length, moderate: supplements.filter(s => s.priority === 'moderate').length };
+  const counts = { critical: supplements.filter(s => s.priority === 'critical').length, high: supplements.filter(s => s.priority === 'high').length, moderate: supplements.filter(s => s.priority === 'moderate').length, optimize: supplements.filter(s => s.priority === 'optimize').length };
 
   return (
     <div className="space-y-6">
@@ -81,7 +82,7 @@ export const SupplementStack = ({ supplements }: { supplements: SupplementItem[]
         <p className="text-body text-clinical-stone text-sm">{supplements.length} recommendations</p>
       </div>
       <div className="flex gap-2 flex-wrap">
-        {[{ id: 'all', label: `All (${supplements.length})` }, { id: 'critical', label: `Critical (${counts.critical})` }, { id: 'high', label: `High (${counts.high})` }, { id: 'moderate', label: `Moderate (${counts.moderate})` }].map(tab => (
+        {[{ id: 'all', label: `All (${supplements.length})` }, { id: 'critical', label: `Critical (${counts.critical})` }, { id: 'high', label: `High (${counts.high})` }, { id: 'moderate', label: `Moderate (${counts.moderate})` }, ...(counts.optimize > 0 ? [{ id: 'optimize', label: `Optimize (${counts.optimize})` }] : [])].map(tab => (
           <button key={tab.id} onClick={() => setFilter(tab.id as any)} style={{ borderRadius: '4px' }}
             className={`text-precision text-[0.6rem] font-bold tracking-wider uppercase px-3 py-1.5 border transition-all ${filter === tab.id ? 'bg-primary-container border-primary-container text-white' : 'border-outline-variant/20 text-clinical-stone'}`}>{tab.label}</button>
         ))}

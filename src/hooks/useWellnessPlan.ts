@@ -7,7 +7,7 @@ import type { WellnessPlan } from '../types';
 
 export interface SupplementItem {
   rank: number; nutrient: string; form: string; dose: string; timing: string;
-  why: string; priority: 'critical' | 'high' | 'moderate';
+  why: string; priority: 'critical' | 'high' | 'moderate' | 'optimize';
   sourced_from: string; evidence_note: string;
 }
 
@@ -28,6 +28,7 @@ export interface WellnessPlanData {
   };
   retest_timeline: { marker: string; retest_at: string; why: string }[];
   disclaimer: string;
+  plan_mode?: 'treatment' | 'optimization';
 }
 
 // Module-level generation state — survives component unmount/remount

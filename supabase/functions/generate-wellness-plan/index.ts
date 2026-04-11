@@ -69,6 +69,11 @@ serve(async (req) => {
       .filter(n => !testedNames.some(t => t.includes(n.toLowerCase().split(' ')[0])));
     const notTestedStr = notTested.join(', ');
 
+    // Determine optimization mode: if most labs are optimal, switch to longevity protocol
+    const abnormalCount = labValues.filter((v: any) => v.optimal_flag && v.optimal_flag !== 'optimal').length;
+    const isOptimizationMode = labValues.length > 0 && (abnormalCount / labValues.length) < 0.25;
+    const age = profile?.date_of_birth ? Math.floor((Date.now() - new Date(profile.date_of_birth).getTime()) / 31557600000) : null;
+
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
@@ -77,14 +82,20 @@ serve(async (req) => {
         system: `You are CauseHealth AI. Return ONLY valid JSON. Concise — 1-2 sentences per field.
 
 HARD RULES — FOLLOW EXACTLY:
-1. SUPPLEMENT STACK: Maximum 5 supplements. Only for nutrients confirmed abnormal in lab values. Untested nutrients go in retest_timeline. Food-based interventions (bone broth, curcumin) allowed for diagnosed conditions.
-2. sourced_from: "lab_finding" or "disease_mechanism" only. Never "medication_depletion" or "symptom_pattern" in supplement_stack.
+1. SUPPLEMENT STACK: Maximum 5 supplements. Read the MODE field in the user message:
+   - If MODE is "treatment": Only for nutrients confirmed abnormal in lab values. sourced_from must be "lab_finding" or "disease_mechanism". priority must be "critical", "high", or "moderate".
+   - If MODE is "optimization": Most/all labs are optimal. Recommend evidence-based longevity and optimization supplements with strong RCT support in healthy populations. Examples: vitamin D optimization to 60-80ng/mL even if currently >30, omega-3 EPA/DHA 2-3g for cardiovascular and cognitive health, magnesium glycinate 300-400mg for sleep/stress/recovery, creatine monohydrate 3-5g for cognitive and muscular performance, vitamin K2 MK-7 for calcium metabolism and arterial health. sourced_from must be "optimization". priority must be "optimize".
+   Treatment supplements always rank above optimization supplements when both exist. Untested nutrients go in retest_timeline. Food-based interventions allowed for diagnosed conditions.
+2. sourced_from: "lab_finding", "disease_mechanism", or "optimization" only. Never "medication_depletion" or "symptom_pattern" in supplement_stack.
 3. Infer conditions from medications. Address each with condition-specific lifestyle interventions.
 4. PATTERN RECOGNITION: Connect abnormal values across organ systems to identify undiagnosed conditions. In the summary, flag every multi-marker pattern (e.g., elevated platelets + elevated RDW = possible iron deficiency or myeloproliferative process; low HDL + borderline glucose = metabolic syndrome risk). In retest_timeline, recommend testing to confirm or rule out each pattern. The goal is EARLY DETECTION.
 5. AGE/SEX CONTEXT: Apply age and sex-appropriate reasoning. What's normal for one demographic may be a red flag for another.
 6. Supplements must be safe and not interact with patient's medications.`,
         messages: [{ role: 'user', content: `Create a comprehensive wellness plan addressing ALL lab findings.
 
+PATIENT: ${age ? `${age}yo` : 'age unknown'} ${profile?.sex ?? ''}
+MODE: ${isOptimizationMode ? 'optimization' : 'treatment'}
+${isOptimizationMode ? 'OPTIMIZATION CONTEXT: Patient labs are mostly optimal. Frame the plan around longevity optimization, not disease treatment. Phase names should be: "Build Foundation (Weeks 1-4)", "Optimize (Weeks 5-8)", "Sustain & Track (Weeks 9-12)". Lifestyle interventions should focus on longevity science: zone 2 cardio, resistance training, sleep optimization, cold/heat exposure, stress resilience, metabolic health optimization, and proactive screening.' : ''}
 DIAGNOSED CONDITIONS: ${condStr}
 MEDICATIONS: ${medsStr}
 SYMPTOMS (for context only — do NOT supplement based on symptoms alone): ${sympStr}
@@ -92,7 +103,7 @@ SYMPTOMS (for context only — do NOT supplement based on symptoms alone): ${sym
 ALL LAB VALUES:
 ${allLabsStr.slice(0, 4000)}
 
-NUTRIENTS NOT TESTED (do NOT recommend supplements for these — mention in disclaimer only):
+NUTRIENTS NOT TESTED (${isOptimizationMode ? 'recommend testing these for a complete optimization baseline' : 'do NOT recommend supplements for these'} — mention in ${isOptimizationMode ? 'retest_timeline' : 'disclaimer only'}):
 ${notTestedStr}
 
 Return JSON: {"generated_at":"${new Date().toISOString()}","summary":"3 sentences covering the most important findings across ALL organ systems","supplement_stack":[{"rank":1,"nutrient":"","form":"","dose":"","timing":"","why":"connect to specific lab value or medication effect","priority":"critical|high|moderate","sourced_from":"lab_finding|disease_mechanism","evidence_note":""}],"lifestyle_interventions":{"diet":[{"intervention":"","rationale":"address specific lab values","priority":""}],"sleep":[{"intervention":"","rationale":"","priority":""}],"exercise":[{"intervention":"","rationale":"","priority":""}],"stress":[{"intervention":"","rationale":"","priority":""}]},"action_plan":{"phase_1":{"name":"Stabilize (Weeks 1-4)","focus":"","actions":[]},"phase_2":{"name":"Optimize (Weeks 5-8)","focus":"","actions":[]},"phase_3":{"name":"Maintain (Weeks 9-12)","focus":"","actions":[]}},"retest_timeline":[{"marker":"","retest_at":"","why":""}],"medication_notes":[{"medication":"","organ_impact":"which organs this medication stresses","depletions":"what nutrients it depletes","monitoring":"what labs to watch","alternative":"natural or complementary approach if applicable"}],"disclaimer":"Educational only. Discuss all changes with your provider."}` }],
@@ -107,6 +118,9 @@ Return JSON: {"generated_at":"${new Date().toISOString()}","summary":"3 sentence
     const lastBrace = rawText.lastIndexOf('}');
     if (lastBrace > 0) rawText = rawText.slice(0, lastBrace + 1);
     const plan = JSON.parse(rawText);
+
+    // Tag plan mode for frontend display
+    plan.plan_mode = isOptimizationMode ? 'optimization' : 'treatment';
 
     // HARD CAP: max 5 supplements — trim if AI returned more
     if (plan.supplement_stack && Array.isArray(plan.supplement_stack) && plan.supplement_stack.length > 5) {

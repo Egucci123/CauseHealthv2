@@ -34,6 +34,7 @@ serve(async (req) => {
     const labStr = labValues.map((v: any) => `${v.marker_name}: ${v.value} ${v.unit} (Std: ${v.standard_low ?? '?'}–${v.standard_high ?? '?'})${v.optimal_flag ? ` [${v.optimal_flag.toUpperCase()}]` : ''}`).join('\n');
     const medsStr = (meds ?? []).map((m: any) => m.name).join(', ');
     const sympStr = (symptoms ?? []).map((s: any) => `${s.symptom} (${s.severity}/10)`).join(', ');
+    const age = profile?.date_of_birth ? Math.floor((Date.now() - new Date(profile.date_of_birth).getTime()) / 31557600000) : null;
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -47,8 +48,13 @@ serve(async (req) => {
    Platelets >300 → JAK2 + peripheral smear. RDW >13 → iron + B12/folate. Glucose >90 → insulin + HOMA-IR. TSH >2.5 or <1.0 → free T3/T4 + antibodies. ALT >25 → liver ultrasound. Vitamin D <40 → repletion. Homocysteine >8 → B12/folate/B6. hs-CRP >1 → inflammatory workup. WBC >10 → differential. 3+ suboptimal values → autoimmune + celiac + metabolic screening. Ferritin <30 even with normal Hgb → functional iron deficiency. Low HDL (<50F/<40M) in young adult → insulin resistance. MCV >92 without anemia → B12/folate. MCV <82 → iron + hemoglobin electrophoresis. Elevated globulin >3.0 → autoimmune/infection. Calcium >10 → hyperparathyroidism. Low CO2 <23 → metabolic acidosis workup. Young female with weight gain + fatigue + normal TSH → ALWAYS check free T3/T4 + antibodies + insulin + celiac. No "within normal limits" dismissals.
 4. AGE/SEX CONTEXT: Apply age and sex-appropriate reasoning. A finding borderline in a 50-year-old may be urgent in an 18-year-old.
 5. EARLY DETECTION is the primary goal — find what a 12-minute doctor appointment would miss.
-5. Frame as educational information for discussion with a healthcare provider.`,
-        messages: [{ role: 'user', content: `Analyze these labs:\n\nPatient: ${profile?.sex ?? 'unknown'}\nMedications: ${medsStr || 'None'}\nSymptoms: ${sympStr || 'None'}\n\nLab Results:\n${labStr}\n\nReturn JSON: { "priority_findings": [{ "marker": "", "value": "", "flag": "urgent|monitor|optimal", "headline": "", "explanation": "" }], "patterns": [{ "pattern_name": "", "severity": "critical|high|medium", "markers_involved": [], "description": "", "likely_cause": "" }], "medication_connections": [{ "medication": "", "lab_finding": "", "connection": "" }], "missing_tests": [{ "test_name": "", "why_needed": "", "icd10": "", "priority": "urgent|high|moderate" }], "immediate_actions": [], "summary": "" }` }],
+6. Frame as educational information for discussion with a healthcare provider.
+7. PANEL GAP ANALYSIS: Examine which test CATEGORIES are present vs missing in the uploaded results. Based on the patient's age and sex, identify tests that SHOULD be part of a comprehensive baseline but were not ordered. Return in the "panel_gaps" array. Categorize each as:
+   - "essential": Standard at this age/sex (lipid panel for any adult, TSH for any adult, vitamin D for everyone, HbA1c for age 35+, ferritin for any female or anyone with fatigue symptoms)
+   - "recommended": Functional medicine baseline (iron panel with ferritin/TIBC/saturation, B12, folate, magnesium, hs-CRP, homocysteine, fasting insulin, full thyroid panel with Free T3/Free T4/TPO antibodies if only TSH was tested)
+   - "advanced": Longevity and optimization markers (ApoB, Lp(a), omega-3 index, cortisol, DHEA-S, sex hormone panel, HbA1c if under 35, methylmalonic acid, GGT, uric acid)
+   Only recommend tests NOT already present in the uploaded results. This analysis runs REGARDLESS of whether findings are normal or abnormal — even a completely healthy panel has gaps. A basic metabolic panel + CBC is missing most of these.`,
+        messages: [{ role: 'user', content: `Analyze these labs:\n\nPatient: ${age ? `${age}yo ` : ''}${profile?.sex ?? 'unknown'}\nMedications: ${medsStr || 'None'}\nSymptoms: ${sympStr || 'None'}\n\nLab Results:\n${labStr}\n\nReturn JSON: { "priority_findings": [{ "marker": "", "value": "", "flag": "urgent|monitor|optimal", "headline": "", "explanation": "" }], "patterns": [{ "pattern_name": "", "severity": "critical|high|medium", "markers_involved": [], "description": "", "likely_cause": "" }], "medication_connections": [{ "medication": "", "lab_finding": "", "connection": "" }], "missing_tests": [{ "test_name": "", "why_needed": "", "icd10": "", "priority": "urgent|high|moderate" }], "panel_gaps": [{ "test_name": "", "category": "essential|recommended|advanced", "why_needed": "" }], "immediate_actions": [], "summary": "" }` }],
       }),
     });
 
@@ -60,6 +66,9 @@ serve(async (req) => {
     if (lb > 0) cleaned = cleaned.slice(0, lb + 1);
     let analysis;
     try { analysis = JSON.parse(cleaned); } catch { return new Response(JSON.stringify({ error: 'Parse failed' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }); }
+
+    // Ensure panel_gaps array exists
+    if (!Array.isArray(analysis.panel_gaps)) analysis.panel_gaps = [];
 
     await supabase.from('lab_draws').update({ analysis_result: analysis, processing_status: 'complete' }).eq('id', drawId);
 

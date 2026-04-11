@@ -25,7 +25,7 @@ const GeneratingState = () => (
       <span className="material-symbols-outlined text-primary-container text-3xl animate-pulse">favorite</span>
     </div>
     <p className="text-authority text-2xl text-clinical-charcoal font-bold mb-3">Building your wellness plan...</p>
-    <p className="text-body text-clinical-stone max-w-sm mx-auto leading-relaxed">We're synthesizing your lab results, medications, and symptoms into a personalized protocol. This takes about 20 seconds.</p>
+    <p className="text-body text-clinical-stone max-w-sm mx-auto leading-relaxed">We're analyzing your lab results to build a personalized protocol. This takes about 20 seconds.</p>
     <div className="flex gap-2 justify-center mt-6">
       {[0,1,2].map(i => <div key={i} className="w-2 h-2 rounded-full bg-primary-container animate-pulse" style={{ animationDelay: `${i * 0.3}s` }} />)}
     </div>
@@ -60,7 +60,9 @@ export const WellnessPlanPage = () => {
   return (
     <AppShell pageTitle="Wellness Protocol">
       <div className="flex flex-col md:flex-row justify-between items-start gap-4">
-        <SectionHeader title="Wellness Protocol" description="Your personalized supplement stack and 90-day action plan, built from your lab results, medications, and symptoms." />
+        <SectionHeader title="Wellness Protocol" description={plan?.plan_mode === 'optimization'
+          ? "Your personalized longevity protocol — optimizing from a strong baseline."
+          : "Your personalized supplement stack and 90-day action plan, built from your lab results, medications, and symptoms."} />
         {plan && !generating && (
           <div className="flex items-center gap-3 flex-shrink-0">
             <Button variant="secondary" size="md" icon="download" onClick={handleExportPDF}>Export PDF</Button>
@@ -77,7 +79,12 @@ export const WellnessPlanPage = () => {
           <div className="bg-[#131313] rounded-[10px] p-6">
             <div className="flex justify-between items-start mb-4">
               <SectionLabel light icon="auto_awesome" className="text-on-surface-variant">AI Analysis</SectionLabel>
-              <span className="text-precision text-[0.6rem] text-on-surface-variant">Generated {plan.generated_at ? format(new Date(plan.generated_at), 'MMM d, yyyy') : 'recently'}</span>
+              <div className="flex items-center gap-2">
+                {plan.plan_mode === 'optimization' && (
+                  <span className="text-precision text-[0.55rem] font-bold px-2 py-0.5 bg-[#2A9D8F] text-white" style={{ borderRadius: '2px' }}>LONGEVITY MODE</span>
+                )}
+                <span className="text-precision text-[0.6rem] text-on-surface-variant">Generated {plan.generated_at ? format(new Date(plan.generated_at), 'MMM d, yyyy') : 'recently'}</span>
+              </div>
             </div>
             <p className="text-body text-on-surface leading-relaxed text-lg">{plan.summary}</p>
           </div>
