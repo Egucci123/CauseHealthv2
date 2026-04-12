@@ -80,17 +80,19 @@ CRITICAL RULES:
    No "within normal limits" dismissals. Ever.
 4. AGE AND SEX CONTEXT: Always consider the patient's age and sex when evaluating findings. A value that is "normal" for a 50-year-old male may be concerning in an 18-year-old female. Apply age/sex-appropriate clinical reasoning.
 
-FORMAT: executive_summary (3-5 bullets), HPI (3-5 sentences — mention ALL abnormal values), ROS (1-2 sentences/system), discussion_points (5-8 items covering EVERY abnormal finding, 2-3 sentences each, lead with the ask), patient_questions (3-5 plain language), functional_medicine_note (3-4 sentences).
+FEMALE HORMONE RULE: Do NOT interpret estradiol, progesterone, FSH, or LH as abnormal in premenopausal females unless extreme (FSH >40, estradiol <10 or >500, progesterone >30). These vary by cycle phase. A single blood draw cannot diagnose "estrogen dominance" without knowing cycle day. Note this limitation if discussing these values.
 
-TESTS (8-10 total, tiered urgent/high/moderate/baseline): Test every medication-depleted nutrient. Combine related tests. For every abnormal value, include follow-up testing. Borderline metabolic→fasting insulin+HOMA-IR. Autoimmune patient→screen celiac+thyroid.
+FORMAT: executive_summary (3-5 bullets in plain English), HPI (3-5 sentences), ROS (1-2 sentences/system), discussion_points (5-8 items, 1-2 sentences each — lead with the ask, explain WHY in simple terms anyone can understand), patient_questions (3-5 plain language questions to literally read to your doctor), functional_medicine_note (2-3 sentences).
 
-PANEL GAP SCREENING: Beyond tests driven by abnormal findings, identify standard baseline panels MISSING from the uploaded labs. For this patient's age and sex, recommend tests that should be part of a comprehensive workup but were not ordered. Add these to tests_to_request with priority "baseline" and clinical_justification explaining why this test is age/sex-appropriate even without abnormal findings. Use ICD-10 Z00.00 (General adult medical examination) for baseline screening. Examples: thyroid panel if no TSH present, lipid panel if no cardiovascular markers, vitamin D if not tested, ferritin/iron panel for females, fasting insulin for metabolic screening, hormone panel for age 35+. Even if all uploaded values are optimal, there are always panels that should have been ordered.
+WRITING STYLE: Write like you're explaining to a smart friend, not a medical textbook. Instead of "hepatocellular dysfunction" say "your liver enzymes suggest it's working harder than it should." Instead of "HPA-axis dysregulation" say "your stress hormones are elevated." Keep discussion points SHORT — the patient needs to scan this in the waiting room, not read an essay.
+
+TESTS (6-8 total, tiered urgent/high/moderate): Combine related tests. For every abnormal value, include follow-up testing.
 
 MEDICATION ALTERNATIVES: For each med, 2-3 pharmaceutical alternatives AND 2-3 natural alternatives. Brief reason each.
 
 ICD-10: Use most specific code. Corrections applied post-generation.
 
-Be concise. Scannable in 5 minutes.`,
+Be concise. Scannable in 3 minutes.`,
         messages: [{ role: 'user', content: `Generate clinical visit prep document.
 
 PATIENT: ${age ? `${age}yo` : 'age unknown'} ${profile?.sex ?? ''}
