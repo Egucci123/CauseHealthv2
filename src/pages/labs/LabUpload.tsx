@@ -28,7 +28,7 @@ export const LabUpload = () => {
       qc.invalidateQueries({ queryKey: ['wellness-plan'] });
       qc.invalidateQueries({ queryKey: ['activePlan'] });
       qc.invalidateQueries({ queryKey: ['lab-detail'] });
-      setTimeout(() => navigate(`/labs/${completedDrawId}`), 800);
+      setTimeout(() => { reset(); navigate(`/labs/${completedDrawId}`, { replace: true }); }, 800);
     }
   }, [phase, completedDrawId, navigate, qc]);
 
