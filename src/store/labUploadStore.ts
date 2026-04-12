@@ -279,7 +279,7 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
         set({ phase: 'complete', completedDrawId: drawId, statusMessage: 'Analysis complete.', progress: 100 });
 
         // Store panel gaps — don't await, not critical
-        supabase.from('lab_draws').update({ notes: JSON.stringify({ panel_gaps: panelGaps }) }).eq('id', drawId).then(() => {}).catch(console.warn);
+        Promise.resolve(supabase.from('lab_draws').update({ notes: JSON.stringify({ panel_gaps: panelGaps }) }).eq('id', drawId)).catch(console.warn);
 
         // Background analysis — raw fetch with keepalive survives page navigation
         fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-labs`, {
