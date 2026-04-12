@@ -47,7 +47,7 @@ export function useWellnessPlan() {
       return data ? (data.plan_data as WellnessPlanData) : null;
     },
     enabled: !!userId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 1000, refetchOnMount: 'always',
   });
 }
 
@@ -95,18 +95,9 @@ export function useGenerateWellnessPlan() {
     lastGenerationTime = Date.now();
     setGenerating(true);
 
-    let token = '';
-    try {
-      const { data: { session } } = await Promise.race([
-        supabase.auth.getSession(),
-        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('session timeout')), 5000)),
-      ]);
-      token = session?.access_token ?? '';
-    } catch {}
-
     activeGeneration = fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-wellness-plan`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
+      headers: { 'Content-Type': 'application/json', 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
       body: JSON.stringify({ userId }),
     }).then(async (res) => {
       const data = await res.json();
