@@ -302,15 +302,21 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
 // ── Optimal ranges ──────────────────────────────────────────────────────────
 
 function getOptimalRanges(sex?: string | null): Record<string, { optimal_low: number; optimal_high: number }> {
-  // Sex-specific hormone ranges
+  // Sex-specific ranges — CBC, hormones, minerals
   const isFemale = sex === 'female';
   const testosterone = isFemale ? { optimal_low: 15, optimal_high: 70 } : { optimal_low: 600, optimal_high: 900 };
   const freeTestosterone = isFemale ? { optimal_low: 0.5, optimal_high: 5.0 } : { optimal_low: 10, optimal_high: 25 };
   const estradiol = isFemale ? { optimal_low: 50, optimal_high: 250 } : { optimal_low: 10, optimal_high: 40 };
+  const hemoglobin = isFemale ? { optimal_low: 12.5, optimal_high: 14.5 } : { optimal_low: 14.0, optimal_high: 16.0 };
+  const hematocrit = isFemale ? { optimal_low: 36, optimal_high: 44 } : { optimal_low: 40, optimal_high: 48 };
+  const rbc = isFemale ? { optimal_low: 3.8, optimal_high: 4.8 } : { optimal_low: 4.5, optimal_high: 5.5 };
+  const ferritin = isFemale ? { optimal_low: 30, optimal_high: 150 } : { optimal_low: 50, optimal_high: 150 };
+  const dhea = isFemale ? { optimal_low: 100, optimal_high: 400 } : { optimal_low: 200, optimal_high: 500 };
+  const prolactin = isFemale ? { optimal_low: 2, optimal_high: 25 } : { optimal_low: 2, optimal_high: 15 };
 
   return {
     glucose: { optimal_low: 75, optimal_high: 86 }, 'fasting glucose': { optimal_low: 75, optimal_high: 86 },
-    hba1c: { optimal_low: 4.6, optimal_high: 5.3 }, insulin: { optimal_low: 2, optimal_high: 5 },
+    hba1c: { optimal_low: 4.6, optimal_high: 5.3 }, insulin: { optimal_low: 2, optimal_high: 8 },
     'cholesterol, total': { optimal_low: 160, optimal_high: 200 }, 'total cholesterol': { optimal_low: 160, optimal_high: 200 },
     triglycerides: { optimal_low: 40, optimal_high: 100 },
     'hdl cholesterol': { optimal_low: 55, optimal_high: 100 }, hdl: { optimal_low: 55, optimal_high: 100 },
@@ -330,12 +336,12 @@ function getOptimalRanges(sex?: string | null): Record<string, { optimal_low: nu
     'vitamin d': { optimal_low: 50, optimal_high: 80 }, '25-oh': { optimal_low: 50, optimal_high: 80 },
     '25-hydroxy': { optimal_low: 50, optimal_high: 80 },
     'vitamin b12': { optimal_low: 500, optimal_high: 1000 }, b12: { optimal_low: 500, optimal_high: 1000 },
-    ferritin: { optimal_low: 50, optimal_high: 150 }, iron: { optimal_low: 60, optimal_high: 170 },
+    ferritin, iron: { optimal_low: 60, optimal_high: 170 },
     'iron saturation': { optimal_low: 25, optimal_high: 35 }, tibc: { optimal_low: 250, optimal_high: 370 },
     magnesium: { optimal_low: 2.0, optimal_high: 2.5 }, zinc: { optimal_low: 90, optimal_high: 120 },
     folate: { optimal_low: 10, optimal_high: 25 }, 'vitamin a': { optimal_low: 45, optimal_high: 65 },
-    wbc: { optimal_low: 5.0, optimal_high: 8.0 }, rbc: { optimal_low: 4.2, optimal_high: 4.9 },
-    hemoglobin: { optimal_low: 13.5, optimal_high: 15.5 }, hematocrit: { optimal_low: 40, optimal_high: 46 },
+    wbc: { optimal_low: 5.0, optimal_high: 8.0 }, rbc,
+    hemoglobin, hematocrit,
     platelets: { optimal_low: 175, optimal_high: 300 }, mcv: { optimal_low: 82, optimal_high: 92 },
     mch: { optimal_low: 28, optimal_high: 32 }, mchc: { optimal_low: 32, optimal_high: 36 },
     rdw: { optimal_low: 11.5, optimal_high: 13.0 }, 'red cell distribution': { optimal_low: 11.5, optimal_high: 13.0 },
@@ -356,7 +362,7 @@ function getOptimalRanges(sex?: string | null): Record<string, { optimal_low: nu
     esr: { optimal_low: 0, optimal_high: 10 }, homocysteine: { optimal_low: 5, optimal_high: 8 },
     'uric acid': { optimal_low: 3.5, optimal_high: 5.5 },
     testosterone, 'free testosterone': freeTestosterone, 'free testosterone (direct)': freeTestosterone,
-    estradiol, dhea: { optimal_low: 200, optimal_high: 500 },
+    estradiol, dhea, prolactin,
     cortisol: { optimal_low: 6, optimal_high: 18 },
     sodium: { optimal_low: 138, optimal_high: 142 }, potassium: { optimal_low: 4.0, optimal_high: 4.5 },
     calcium: { optimal_low: 9.4, optimal_high: 10.0 }, chloride: { optimal_low: 100, optimal_high: 106 },
@@ -377,9 +383,8 @@ function getOptimalRanges(sex?: string | null): Record<string, { optimal_low: nu
 
     // ── HORMONES EXPANDED ───────────────────────────────────────
     'shbg': { optimal_low: 20, optimal_high: 55 }, 'sex hormone binding globulin': { optimal_low: 20, optimal_high: 55 },
-    fsh: { optimal_low: 3, optimal_high: 10 }, 'follicle stimulating hormone': { optimal_low: 3, optimal_high: 10 },
-    lh: { optimal_low: 2, optimal_high: 12 }, 'luteinizing hormone': { optimal_low: 2, optimal_high: 12 },
-    prolactin: { optimal_low: 2, optimal_high: 18 },
+    fsh: { optimal_low: 1, optimal_high: 20 }, 'follicle stimulating hormone': { optimal_low: 1, optimal_high: 20 },
+    lh: { optimal_low: 1, optimal_high: 20 }, 'luteinizing hormone': { optimal_low: 1, optimal_high: 20 },
     progesterone: { optimal_low: 0.1, optimal_high: 25 },
     'igf-1': { optimal_low: 100, optimal_high: 250 }, 'insulin-like growth factor': { optimal_low: 100, optimal_high: 250 },
     'fasting insulin': { optimal_low: 2, optimal_high: 8 },
