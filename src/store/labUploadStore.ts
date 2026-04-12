@@ -251,8 +251,8 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
           };
         });
 
-        // Refresh session before insert — token may have expired while user reviewed values
-        try { await supabase.auth.refreshSession(); } catch {}
+        // Refresh session before insert — 3s timeout to avoid hanging
+        try { await Promise.race([supabase.auth.refreshSession(), new Promise(r => setTimeout(r, 3000))]); } catch {}
         const { error } = await supabase.from('lab_values').insert(cleaned);
         if (error) throw new Error(`Failed to save values: ${error.message}`);
 
