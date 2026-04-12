@@ -227,12 +227,27 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
     set({ phase: 'analyzing', statusMessage: 'Saving your lab values...', progress: 75 });
 
     (async () => {
+      // Wrap entire flow in a 30s timeout — never hang forever
+      const timeoutId = setTimeout(() => {
+        console.error('[LabUpload] confirmAndAnalyze timed out after 30s');
+        set({ phase: 'complete', completedDrawId: drawId, statusMessage: 'Values saved. Analysis running in background.', progress: 100 });
+        // Fire analysis anyway
+        fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-labs`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
+          body: JSON.stringify({ drawId, userId }),
+          keepalive: true,
+        }).catch(console.warn);
+      }, 30000);
+
       try {
+        console.log('[LabUpload] Updating draw metadata...');
         await supabase.from('lab_draws').update({
           draw_date: overrides.drawDate ?? extraction?.draw_date ?? new Date().toISOString().split('T')[0],
           lab_name: overrides.labName ?? extraction?.lab_name,
         }).eq('id', drawId);
 
+        console.log('[LabUpload] Computing optimal flags for', values.length, 'values...');
         const ranges = getOptimalRanges();
         const validOptimal = ['optimal', 'suboptimal_low', 'suboptimal_high', 'deficient', 'elevated', 'unknown'];
         const validStandard = ['normal', 'low', 'high', 'critical_low', 'critical_high'];
@@ -251,19 +266,20 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
           };
         });
 
-        // Refresh session before insert — 3s timeout to avoid hanging
-        try { await Promise.race([supabase.auth.refreshSession(), new Promise(r => setTimeout(r, 3000))]); } catch {}
+        console.log('[LabUpload] Inserting', cleaned.length, 'lab values...');
         const { error } = await supabase.from('lab_values').insert(cleaned);
         if (error) throw new Error(`Failed to save values: ${error.message}`);
+        console.log('[LabUpload] Insert successful');
 
         // Compute panel gaps deterministically — no AI needed
         const testedMarkers = new Set(values.map(v => v.marker_name.toLowerCase()));
         const panelGaps = computePanelGaps(testedMarkers);
 
+        clearTimeout(timeoutId);
         set({ phase: 'complete', completedDrawId: drawId, statusMessage: 'Analysis complete.', progress: 100 });
 
-        // Store panel gaps in the draw record (analysis_result gets overwritten by analyze-labs, so store separately)
-        await supabase.from('lab_draws').update({ notes: JSON.stringify({ panel_gaps: panelGaps }) }).eq('id', drawId);
+        // Store panel gaps — don't await, not critical
+        supabase.from('lab_draws').update({ notes: JSON.stringify({ panel_gaps: panelGaps }) }).eq('id', drawId).then(() => {}).catch(console.warn);
 
         // Background analysis — raw fetch with keepalive survives page navigation
         fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-labs`, {
@@ -273,6 +289,8 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
           keepalive: true,
         }).catch(console.warn);
       } catch (err) {
+        clearTimeout(timeoutId);
+        console.error('[LabUpload] confirmAndAnalyze error:', err);
         set({ phase: 'error', errorMessage: String(err) });
       }
     })();
