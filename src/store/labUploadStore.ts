@@ -2,6 +2,7 @@
 // Zustand store for lab upload — persists across component mount/unmount
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
+import { useAuthStore } from './authStore';
 import { extractPDFText, looksLikeLabReport } from '../lib/pdfParser';
 
 export type UploadPhase = 'idle' | 'uploading' | 'extracting' | 'reviewing' | 'analyzing' | 'complete' | 'error' | 'manual';
@@ -248,7 +249,8 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
         }).eq('id', drawId);
 
         console.log('[LabUpload] Computing optimal flags for', values.length, 'values...');
-        const ranges = getOptimalRanges();
+        const sex = useAuthStore.getState().profile?.sex ?? null;
+        const ranges = getOptimalRanges(sex);
         const validOptimal = ['optimal', 'suboptimal_low', 'suboptimal_high', 'deficient', 'elevated', 'unknown'];
         const validStandard = ['normal', 'low', 'high', 'critical_low', 'critical_high'];
 
@@ -299,7 +301,13 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
 
 // ── Optimal ranges ──────────────────────────────────────────────────────────
 
-function getOptimalRanges(): Record<string, { optimal_low: number; optimal_high: number }> {
+function getOptimalRanges(sex?: string | null): Record<string, { optimal_low: number; optimal_high: number }> {
+  // Sex-specific hormone ranges
+  const isFemale = sex === 'female';
+  const testosterone = isFemale ? { optimal_low: 15, optimal_high: 70 } : { optimal_low: 600, optimal_high: 900 };
+  const freeTestosterone = isFemale ? { optimal_low: 0.5, optimal_high: 5.0 } : { optimal_low: 10, optimal_high: 25 };
+  const estradiol = isFemale ? { optimal_low: 50, optimal_high: 250 } : { optimal_low: 10, optimal_high: 40 };
+
   return {
     glucose: { optimal_low: 75, optimal_high: 86 }, 'fasting glucose': { optimal_low: 75, optimal_high: 86 },
     hba1c: { optimal_low: 4.6, optimal_high: 5.3 }, insulin: { optimal_low: 2, optimal_high: 5 },
@@ -344,21 +352,22 @@ function getOptimalRanges(): Record<string, { optimal_low: number; optimal_high:
     'thyroxine (t4)': { optimal_low: 6.0, optimal_high: 10.0 }, t4: { optimal_low: 6.0, optimal_high: 10.0 },
     'total t4': { optimal_low: 6.0, optimal_high: 10.0 }, 'total t3': { optimal_low: 80, optimal_high: 180 },
     'hs-crp': { optimal_low: 0, optimal_high: 0.5 }, crp: { optimal_low: 0, optimal_high: 0.5 },
+    'c-reactive protein': { optimal_low: 0, optimal_high: 0.5 }, 'c-reactive protein, cardiac': { optimal_low: 0, optimal_high: 0.5 },
     esr: { optimal_low: 0, optimal_high: 10 }, homocysteine: { optimal_low: 5, optimal_high: 8 },
     'uric acid': { optimal_low: 3.5, optimal_high: 5.5 },
-    testosterone: { optimal_low: 600, optimal_high: 900 }, 'free testosterone': { optimal_low: 10, optimal_high: 25 },
-    estradiol: { optimal_low: 10, optimal_high: 40 }, dhea: { optimal_low: 200, optimal_high: 500 },
+    testosterone, 'free testosterone': freeTestosterone, 'free testosterone (direct)': freeTestosterone,
+    estradiol, dhea: { optimal_low: 200, optimal_high: 500 },
     cortisol: { optimal_low: 6, optimal_high: 18 },
     sodium: { optimal_low: 138, optimal_high: 142 }, potassium: { optimal_low: 4.0, optimal_high: 4.5 },
     calcium: { optimal_low: 9.4, optimal_high: 10.0 }, chloride: { optimal_low: 100, optimal_high: 106 },
     'carbon dioxide': { optimal_low: 25, optimal_high: 30 }, phosphorus: { optimal_low: 3.0, optimal_high: 4.0 },
     'total protein': { optimal_low: 6.9, optimal_high: 7.4 }, 'protein, total': { optimal_low: 6.9, optimal_high: 7.4 },
-    'protein': { optimal_low: 6.9, optimal_high: 7.4 },
     'ggt': { optimal_low: 10, optimal_high: 30 }, 'ld': { optimal_low: 120, optimal_high: 180 },
     'hemoglobin a1c': { optimal_low: 4.6, optimal_high: 5.3 },
 
     // ── ADVANCED LIPIDS ─────────────────────────────────────────
     'apolipoprotein b': { optimal_low: 40, optimal_high: 80 }, 'apob': { optimal_low: 40, optimal_high: 80 },
+    'apolipoprotein a-1': { optimal_low: 120, optimal_high: 180 }, 'apoa': { optimal_low: 120, optimal_high: 180 }, 'apoa-1': { optimal_low: 120, optimal_high: 180 },
     'lipoprotein a': { optimal_low: 0, optimal_high: 30 }, 'lp(a)': { optimal_low: 0, optimal_high: 30 },
     'non-hdl cholesterol': { optimal_low: 0, optimal_high: 130 },
 
@@ -427,9 +436,18 @@ function getOptimalRanges(): Record<string, { optimal_low: number; optimal_high:
 
 function findOptimalRange(ranges: Record<string, { optimal_low: number; optimal_high: number }>, name: string) {
   const n = name.toLowerCase();
+  // Exact match first
   if (ranges[n]) return ranges[n];
+  // Try longest key match — key must be a significant substring (>40% of marker name length)
+  // This prevents "protein" (7 chars) matching "c-reactive protein, cardiac" (27 chars)
   const sorted = Object.keys(ranges).sort((a, b) => b.length - a.length);
-  for (const k of sorted) { if (n.includes(k)) return ranges[k]; }
+  for (const k of sorted) {
+    if (n.includes(k) && k.length >= n.length * 0.4) return ranges[k];
+  }
+  // Fallback: check if marker name is contained in a key (e.g., "crp" in "hs-crp")
+  for (const k of sorted) {
+    if (k.includes(n) && n.length >= k.length * 0.4) return ranges[k];
+  }
   return null;
 }
 
