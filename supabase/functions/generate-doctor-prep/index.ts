@@ -40,7 +40,7 @@ serve(async (req) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001', max_tokens: 8000,
+        model: 'claude-haiku-4-5-20251001', max_tokens: 6000,
         system: `You are CauseHealth AI. Return ONLY valid JSON. Write a concise clinical visit prep document.
 
 CRITICAL RULES:
@@ -105,17 +105,31 @@ ALL LAB VALUES:
 ${allLabsStr.slice(0, 4000)}
 
 Return JSON:
-{"generated_at":"${new Date().toISOString()}","document_date":"${new Date().toISOString().split('T')[0]}","executive_summary":["3-5 critical bullet points"],"chief_complaint":"one sentence","hpi":"3-5 sentences covering ALL abnormal organ systems","pmh":"","medications":[{"name":"","dose":"","notable_depletion":"nutrient + organ impact in one line"}],"review_of_systems":{"constitutional":"1-2 sentences","cardiovascular":"","gastrointestinal":"","musculoskeletal":"","neurological":"","endocrine":"","hematologic":"","integumentary":""},"lab_summary":{"draw_date":"","lab_name":"","urgent_findings":[{"marker":"","value":"with unit","flag":"HIGH or LOW","clinical_note":"1 sentence"}],"other_abnormal":[{"marker":"","value":"with unit","flag":""}]},"tests_to_request":[{"test_name":"","clinical_justification":"2-3 sentences","icd10_primary":"most specific code","icd10_description":"","icd10_secondary":"","icd10_secondary_description":"","priority":"urgent|high|moderate","insurance_note":"1 sentence"}],"discussion_points":["2-3 sentences each, lead with the ask"],"medication_alternatives":[{"current_medication":"exact name","pharmaceutical_alternatives":[{"name":"","reason":"why this may be better for this patient — fewer side effects, less organ stress, better suited to their conditions"}],"natural_alternatives":[{"name":"","reason":"evidence-based rationale for this patient's specific situation"}]}],"patient_questions":["plain language questions to ask the doctor"],"functional_medicine_note":"3-4 sentence root cause synthesis"}` }],
+{"generated_at":"${new Date().toISOString()}","document_date":"${new Date().toISOString().split('T')[0]}","executive_summary":["3-5 plain English bullets"],"chief_complaint":"one sentence","hpi":"2-3 sentences","pmh":"","medications":[{"name":"","dose":"","notable_depletion":""}],"review_of_systems":{"constitutional":"","cardiovascular":"","gastrointestinal":"","endocrine":""},"lab_summary":{"draw_date":"","lab_name":"","urgent_findings":[{"marker":"","value":"","flag":"","clinical_note":""}],"other_abnormal":[{"marker":"","value":"","flag":""}]},"tests_to_request":[{"test_name":"","clinical_justification":"1 sentence","icd10_primary":"","icd10_description":"","priority":"urgent|high|moderate","insurance_note":""}],"discussion_points":["1-2 sentences, lead with the ask"],"patient_questions":["plain language"],"functional_medicine_note":"2-3 sentences"}` }],
       }),
     });
 
     if (!response.ok) throw new Error(`API error: ${response.status}`);
     const aiRes = await response.json();
+    const stopReason = aiRes.stop_reason ?? 'unknown';
     let rawText = (aiRes.content?.[0]?.text ?? '').replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     const lastBrace = rawText.lastIndexOf('}');
     if (lastBrace > 0) rawText = rawText.slice(0, lastBrace + 1);
     let doc;
-    try { doc = JSON.parse(rawText); } catch (e) { throw new Error('Failed to parse AI response as JSON'); }
+    try { doc = JSON.parse(rawText); } catch {
+      // Try salvaging truncated JSON (max_tokens hit)
+      if (stopReason === 'max_tokens') {
+        try {
+          let salvaged = rawText.replace(/,\s*$/, '').replace(/,\s*"[^"]*"?\s*$/, '');
+          const openBraces = (salvaged.match(/\{/g) || []).length - (salvaged.match(/\}/g) || []).length;
+          const openBrackets = (salvaged.match(/\[/g) || []).length - (salvaged.match(/\]/g) || []).length;
+          for (let i = 0; i < openBrackets; i++) salvaged += ']';
+          for (let i = 0; i < openBraces; i++) salvaged += '}';
+          doc = JSON.parse(salvaged);
+          console.log('[doctor-prep] Salvaged truncated JSON');
+        } catch { throw new Error('Failed to parse AI response — output was truncated'); }
+      } else { throw new Error('Failed to parse AI response as JSON'); }
+    }
 
     // ── ICD-10 CORRECTION MAP — runs after AI, zero tokens, deterministic ────
     try {
