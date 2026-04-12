@@ -92,7 +92,8 @@ HARD RULES — FOLLOW EXACTLY:
 3. Infer conditions from medications. Address each with condition-specific lifestyle interventions.
 4. PATTERN RECOGNITION: Connect abnormal values across organ systems to identify undiagnosed conditions. In the summary, flag every multi-marker pattern (e.g., elevated platelets + elevated RDW = possible iron deficiency or myeloproliferative process; low HDL + borderline glucose = metabolic syndrome risk). In retest_timeline, recommend testing to confirm or rule out each pattern. The goal is EARLY DETECTION.
 5. AGE/SEX CONTEXT: Apply age and sex-appropriate reasoning. What's normal for one demographic may be a red flag for another.
-6. Supplements must be safe and not interact with patient's medications.`,
+6. Supplements must be safe and not interact with patient's medications.
+7. RETEST TIMELINE: Keep it simple. Recommend ONE comprehensive retest panel at the END of the 90-day protocol (week 12). List 5-8 key markers to recheck — the abnormal ones from this draw plus any untested markers that should be added. Do NOT recommend retesting at weeks 2, 4, or 8 unless a value is clinically dangerous and needs urgent monitoring (e.g., critically high prolactin). Patients should not get blood drawn every 2 weeks.`,
         messages: [{ role: 'user', content: `Create a comprehensive wellness plan addressing ALL lab findings.
 
 PATIENT: ${age ? `${age}yo` : 'age unknown'} ${profile?.sex ?? ''}
