@@ -32,7 +32,7 @@ export function useSymptoms() {
       if (error) throw error;
       return (data ?? []) as Symptom[];
     },
-    enabled: !!userId, staleTime: 5 * 60 * 1000,
+    enabled: !!userId, staleTime: 15 * 1000,
   });
 }
 
@@ -46,7 +46,7 @@ export function useSymptomAnalysis() {
       if (error) throw error;
       return data ? (data.analysis_data as SymptomAnalysis) : null;
     },
-    enabled: !!userId, staleTime: 10 * 60 * 1000,
+    enabled: !!userId, staleTime: 15 * 1000,
   });
 }
 

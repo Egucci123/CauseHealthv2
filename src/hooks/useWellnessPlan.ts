@@ -64,7 +64,7 @@ export function useActivePlan() {
       return { id: data.id, userId: data.user_id, createdAt: data.created_at, updatedAt: data.updated_at, title: null, planData: data.plan_data, isActive: true, version: 1 } as WellnessPlan;
     },
     enabled: !!userId,
-    staleTime: 10 * 60 * 1000,
+    staleTime: 30 * 1000,
   });
 }
 

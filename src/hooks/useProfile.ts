@@ -6,7 +6,7 @@ import { useAuthStore } from '../store/authStore';
 export function useProfile() {
   const user = useAuthStore(s => s.user);
   return useQuery({
-    queryKey: ['profile', user?.id], enabled: !!user?.id, staleTime: 5 * 60 * 1000,
+    queryKey: ['profile', user?.id], enabled: !!user?.id, staleTime: 15 * 1000,
     queryFn: async () => {
       const { data, error } = await supabase.from('profiles').select('*').eq('id', user!.id).single();
       if (error) throw error;
