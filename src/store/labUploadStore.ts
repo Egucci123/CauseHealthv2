@@ -166,7 +166,7 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
           // Text extraction worked — send combined text in one call
           set({ statusMessage: 'Analyzing lab values...', progress: 55 });
           startProgress(set, 55, 85, 30000); // Animate 55→85% over ~30s (text path is faster)
-          const maxChars = Math.min(fileCount * 6000, 18000);
+          const maxChars = Math.min(fileCount * 12000, 24000);
 
           const { data: textData, error: textErr } = await supabase.functions.invoke('extract-labs', {
             body: { pdfText: combinedText.slice(0, maxChars) },
