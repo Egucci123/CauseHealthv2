@@ -56,7 +56,7 @@ export const LabDetail = () => {
       try { panelGaps = JSON.parse(drawRes.data.notes ?? '{}')?.panel_gaps ?? []; } catch {}
       return { draw: drawRes.data, values: valuesRes.data ?? [], analysis: drawRes.data.analysis_result, panelGaps };
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 10 * 1000, refetchOnMount: 'always',
     // Poll while analysis is still processing
     refetchInterval: (query) => {
       const status = query.state.data?.draw?.processing_status;
