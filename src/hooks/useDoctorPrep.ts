@@ -45,7 +45,10 @@ export function useLatestDoctorPrep() {
       if (!userId) return null;
       const { data, error } = await supabase.from('doctor_prep_documents').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(1).maybeSingle();
       if (error) throw error;
-      return data ? (data.document_data as DoctorPrepDocument) : null;
+      if (!data) return null;
+      const doc = data.document_data as DoctorPrepDocument;
+      (doc as any)._createdAt = data.created_at;
+      return doc;
     },
     enabled: !!userId, staleTime: 30 * 1000, refetchOnMount: 'always',
   });

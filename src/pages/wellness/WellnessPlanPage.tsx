@@ -7,6 +7,7 @@ import { SupplementStack } from '../../components/wellness/SupplementStack';
 import { LifestyleInterventions } from '../../components/wellness/LifestyleInterventions';
 import { ActionPlan } from '../../components/wellness/ActionPlan';
 import { useWellnessPlan, useGenerateWellnessPlan } from '../../hooks/useWellnessPlan';
+import { useLatestLabDraw } from '../../hooks/useLabData';
 import { useAuthStore } from '../../store/authStore';
 import { exportWellnessPlanPDF } from '../../lib/exportPDF';
 import { format } from 'date-fns';
@@ -47,6 +48,12 @@ export const WellnessPlanPage = () => {
   const { profile } = useAuthStore();
   const { data: plan, isLoading } = useWellnessPlan();
   const { generate, generating } = useGenerateWellnessPlan();
+  const { data: latestDraw } = useLatestLabDraw();
+
+  // Detect if new labs were uploaded after the current plan was generated
+  const planCreatedAt = (plan as any)?._createdAt ? new Date((plan as any)._createdAt) : null;
+  const drawCreatedAt = latestDraw?.createdAt ? new Date(latestDraw.createdAt) : null;
+  const hasNewerLabs = plan && planCreatedAt && drawCreatedAt && drawCreatedAt > planCreatedAt;
 
   const handleGenerate = () => {
     generate().catch(err => console.error('[WellnessPlan] Generation error:', err));
@@ -70,6 +77,17 @@ export const WellnessPlanPage = () => {
           </div>
         )}
       </div>
+
+      {hasNewerLabs && !generating && (
+        <button onClick={handleGenerate} className="w-full bg-[#2A9D8F]/10 border border-[#2A9D8F]/30 rounded-[10px] p-5 flex items-center gap-4 hover:bg-[#2A9D8F]/15 transition-colors text-left">
+          <span className="material-symbols-outlined text-[#2A9D8F] text-[24px] flex-shrink-0">update</span>
+          <div className="flex-1">
+            <p className="text-body text-clinical-charcoal font-semibold text-sm">New lab results available</p>
+            <p className="text-precision text-[0.6rem] text-clinical-stone">Tap to regenerate your wellness plan with your latest bloodwork.</p>
+          </div>
+          <span className="material-symbols-outlined text-[#2A9D8F] text-[18px] flex-shrink-0">arrow_forward</span>
+        </button>
+      )}
 
       {isLoading ? <WellnessSkeleton />
         : generating ? <GeneratingState />

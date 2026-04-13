@@ -6,6 +6,7 @@ import { Button } from '../../components/ui/Button';
 import { ClinicalSummary } from '../../components/doctorprep/ClinicalSummary';
 import { TestsToRequest } from '../../components/doctorprep/TestsToRequest';
 import { useLatestDoctorPrep, useGenerateDoctorPrep } from '../../hooks/useDoctorPrep';
+import { useLatestLabDraw } from '../../hooks/useLabData';
 import { useAuthStore } from '../../store/authStore';
 import { exportDoctorPrepPDF } from '../../lib/exportPDF';
 import { format } from 'date-fns';
@@ -17,6 +18,11 @@ export const DoctorPrep = () => {
   const [activeTab, setActiveTab] = useState<'summary' | 'tests'>('summary');
   const { data: doc, isLoading } = useLatestDoctorPrep();
   const { generate, generating } = useGenerateDoctorPrep();
+  const { data: latestDraw } = useLatestLabDraw();
+
+  const docCreatedAt = (doc as any)?._createdAt ? new Date((doc as any)._createdAt) : null;
+  const drawCreatedAt = latestDraw?.createdAt ? new Date(latestDraw.createdAt) : null;
+  const hasNewerLabs = doc && docCreatedAt && drawCreatedAt && drawCreatedAt > docCreatedAt;
 
   const handleGenerate = () => {
     generate().catch(err => console.error('[DoctorPrep] Generation error:', err));
@@ -38,6 +44,17 @@ export const DoctorPrep = () => {
           </div>
         )}
       </div>
+
+      {hasNewerLabs && !generating && (
+        <button onClick={handleGenerate} className="w-full bg-[#2A9D8F]/10 border border-[#2A9D8F]/30 rounded-[10px] p-5 flex items-center gap-4 hover:bg-[#2A9D8F]/15 transition-colors text-left">
+          <span className="material-symbols-outlined text-[#2A9D8F] text-[24px] flex-shrink-0">update</span>
+          <div className="flex-1">
+            <p className="text-body text-clinical-charcoal font-semibold text-sm">New lab results available</p>
+            <p className="text-precision text-[0.6rem] text-clinical-stone">Tap to regenerate your clinical document with your latest bloodwork.</p>
+          </div>
+          <span className="material-symbols-outlined text-[#2A9D8F] text-[18px] flex-shrink-0">arrow_forward</span>
+        </button>
+      )}
 
       {isLoading ? (
         <div className="space-y-4 animate-pulse"><div className="h-32 bg-[#E8E3DB] rounded-[10px]" /><div className="h-64 bg-[#E8E3DB] rounded-[10px]" /></div>

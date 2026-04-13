@@ -44,7 +44,10 @@ export function useWellnessPlan() {
       if (!userId) return null;
       const { data, error } = await supabase.from('wellness_plans').select('*').eq('user_id', userId).eq('generation_status', 'complete').order('updated_at', { ascending: false }).limit(1).maybeSingle();
       if (error) throw error;
-      return data ? (data.plan_data as WellnessPlanData) : null;
+      if (!data) return null;
+      const planData = data.plan_data as WellnessPlanData;
+      (planData as any)._createdAt = data.created_at;
+      return planData;
     },
     enabled: !!userId,
     staleTime: 30 * 1000, refetchOnMount: 'always',
