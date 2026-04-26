@@ -104,19 +104,41 @@ export function computePhenoAge(input: BioAgeInput): BioAgeResult | null {
  */
 function matchMarker(name: string): string | null {
   const n = name.toLowerCase().trim();
-  if (n === 'albumin') return 'albumin';
-  if (n.includes('creatinine') && !n.includes('ratio')) return 'creatinine';
-  if ((n === 'glucose' || n === 'fasting glucose' || n === 'glucose, serum') && !n.includes('urine')) return 'glucose';
-  if (n.includes('c-reactive') || n === 'crp' || n === 'hs-crp') return 'crp';
-  if (n === 'lymphs' || n === 'lymphocytes' || n.includes('lymphocyte percent')) {
-    // Only the percentage, not absolute
+
+  // Albumin: matches "Albumin", "Albumin, Serum", "Serum Albumin"
+  // but excludes "Albumin/Globulin Ratio", "Microalbumin", "Albumin Globulin Ratio"
+  if (/^albumin(\b|,|\s)/.test(n) && !n.includes('/') && !n.includes('globulin') && !n.includes('a/g')) return 'albumin';
+  if (/\balbumin\b/.test(n) && !n.includes('micro') && !n.includes('globulin') && !n.includes('a/g') && !n.includes('/')) return 'albumin';
+
+  // Creatinine: must contain "creatinine" but not "ratio" (BUN/Creatinine Ratio)
+  if (n.includes('creatinine') && !n.includes('ratio') && !n.includes('clearance') && !n.includes('urine')) return 'creatinine';
+
+  // Glucose: must be the serum/fasting/blood glucose, not urine
+  if (n.includes('glucose') && !n.includes('urine') && !n.includes('post')) return 'glucose';
+
+  // CRP: catch all C-Reactive Protein variants
+  if (n.includes('c-reactive') || n.includes('c reactive') || n === 'crp' || n === 'hs-crp' || n === 'hscrp') return 'crp';
+
+  // Lymphocyte percentage (NOT absolute count)
+  if (n === 'lymphs' || n === 'lymphocytes' || n.includes('lymphocyte percent') || n.includes('lymph %') || n.includes('lymphs%')) {
     if (n.includes('absolute') || n.includes('abs')) return null;
     return 'lymphocyte';
   }
-  if (n === 'mcv') return 'mcv';
-  if (n === 'rdw' || n.includes('red cell distribution')) return 'rdw';
-  if (n.includes('alkaline phosphatase') || n === 'alp') return 'alp';
-  if (n === 'wbc' || n.includes('white blood cell')) return 'wbc';
+  // Catch "Lymphs (percent)" or "Lymphocytes %" patterns
+  if (/^lymph/.test(n) && !n.includes('absolute') && !n.includes('abs')) return 'lymphocyte';
+
+  // MCV
+  if (n === 'mcv' || n.includes('mean corpuscular volume') || n.includes('mean cell volume')) return 'mcv';
+
+  // RDW
+  if (n === 'rdw' || n.includes('red cell distribution') || n.includes('rdw-cv') || n.includes('rdw cv')) return 'rdw';
+
+  // Alkaline phosphatase
+  if (n.includes('alkaline phosphatase') || n === 'alp' || n === 'alk phos' || n === 'alk. phos.') return 'alp';
+
+  // WBC
+  if (n === 'wbc' || n.includes('white blood cell') || n.includes('white cell count') || n === 'leukocytes') return 'wbc';
+
   return null;
 }
 
