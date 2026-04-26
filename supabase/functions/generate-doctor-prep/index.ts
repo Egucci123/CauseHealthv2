@@ -64,6 +64,19 @@ CRITICAL RULES:
    - hs-CRP >1 → full inflammatory workup + autoimmune screening
    - WBC >10 → differential + infection/inflammation workup
    - Any combination of 3+ suboptimal values across different organ systems → screen for autoimmune disease, celiac, and metabolic syndrome regardless of chief complaint
+   ADDITIONAL EARLY DETECTION RULES:
+   - AST/ALT ratio >2 → screen for alcoholic liver disease + macrocytic anemia panel (often missed when both enzymes are within standard range)
+   - Triglyceride/HDL ratio >3.5 → strongest insulin resistance predictor; order fasting insulin + HOMA-IR + ApoB even if A1c is normal
+   - HbA1c >5.4 → fasting insulin + HOMA-IR (catches insulin resistance before glucose rises)
+   - MCH/MCV mismatch (low MCV with relatively normal MCH) → thalassemia trait screening (commonly missed in non-anemic patients)
+   - Globulin >3.5 in patient under 40 → urgent SPEP + UPEP + free light chains (multiple myeloma screening, even if albumin normal)
+   - Eosinophils >5% or absolute count >0.5 → parasitic stool studies + IgE + atopic disease workup
+   - Lymphocytes >40% with absolute count >4.0 (persistent across draws) → flow cytometry to rule out CLL; also check EBV/CMV serologies
+   - Reverse T3 elevation (when measured) → assess chronic stress, illness, or thyroid hormone resistance
+   - Polyuria + urine specific gravity <1.005 → diabetes insipidus screening (water deprivation test if confirmed)
+   - Calcium variability >0.4 mg/dL across draws → repeat with simultaneous PTH (hyperparathyroidism)
+   - Elevated RBC + hematocrit at upper limit + bilirubin elevated → secondary polycythemia vs primary MPN: order JAK2 V617F + erythropoietin level
+   - Positive ANA → reflex panel: anti-dsDNA, anti-Sm, anti-Ro/La, anti-Scl-70, anti-Jo-1, complement C3/C4
    YOUNG ADULT EARLY DETECTION (under 30 — these are commonly missed for YEARS):
    - Ferritin <30 even with normal hemoglobin → functional iron deficiency (causes fatigue, hair loss, brain fog LONG before anemia shows)
    - Low HDL (<50 female, <40 male) in teens/20s → early metabolic syndrome, NOT "just genetics" — test insulin

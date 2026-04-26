@@ -1,9 +1,12 @@
 // src/components/labs/LabMarkerCard.tsx
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { format } from 'date-fns';
 import { OptimalRangeBar } from '../lab/OptimalRangeBar';
 import { Badge } from '../ui/Badge';
 import { ClinicalLink } from '../ui/Button';
+import { Sparkline } from '../ui/Sparkline';
+import { useMarkerHistory } from '../../hooks/useMarkerHistory';
 
 interface LabValueRow {
   id: string; marker_name: string; marker_category: string; value: number; unit: string;
@@ -28,6 +31,20 @@ export const LabMarkerCard = ({ value, analysis, onAddToPrep }: LabMarkerCardPro
   const status = getStatus(value.optimal_flag);
   const topBorder = status === 'urgent' ? 'border-t-[3px] border-[#C94F4F]' : status === 'monitor' ? 'border-t-[3px] border-[#E8922A]' : 'border-t-[3px] border-[#D4A574]';
 
+  // Fetch historical values for this marker — sparkline + previous comparison
+  const { data: historyData } = useMarkerHistory(value.marker_name);
+  const comparison = historyData?.comparison;
+  const history = historyData?.history ?? [];
+
+  // Direction indicator config
+  const dirCfg = comparison?.direction === 'improving'
+    ? { icon: 'trending_up', color: '#2A9D8F', label: 'improving' }
+    : comparison?.direction === 'declining'
+    ? { icon: 'trending_down', color: '#C94F4F', label: 'declining' }
+    : comparison?.direction === 'stable'
+    ? { icon: 'trending_flat', color: '#D4A574', label: 'stable' }
+    : null;
+
   return (
     <div className={`bg-clinical-white rounded-[10px] shadow-card ${topBorder} overflow-hidden`}>
       <div className="p-8">
@@ -39,10 +56,54 @@ export const LabMarkerCard = ({ value, analysis, onAddToPrep }: LabMarkerCardPro
           <Badge status={status} />
         </div>
 
-        <div className="mb-6">
-          <span className="text-precision text-5xl text-clinical-charcoal font-medium">{value.value}</span>
-          <span className="text-body text-clinical-stone text-xl ml-2">{value.unit}</span>
+        <div className="flex items-end justify-between gap-4 mb-6">
+          <div>
+            <span className="text-precision text-5xl text-clinical-charcoal font-medium">{value.value}</span>
+            <span className="text-body text-clinical-stone text-xl ml-2">{value.unit}</span>
+          </div>
+          {history.length >= 2 && (
+            <div className="flex flex-col items-end gap-1 flex-shrink-0">
+              <Sparkline
+                data={history.map(h => ({ value: h.value, date: h.drawDate }))}
+                optimalLow={value.optimal_low ?? null}
+                optimalHigh={value.optimal_high ?? null}
+                color={dirCfg?.color ?? '#1B4332'}
+                width={100}
+                height={32}
+              />
+              <p className="text-precision text-[0.5rem] text-clinical-stone tracking-wider uppercase">{history.length} draws</p>
+            </div>
+          )}
         </div>
+
+        {/* Previous → Current comparison */}
+        {comparison?.previous && comparison.delta != null && (
+          <div className="flex items-center gap-3 mb-4 bg-clinical-cream/60 rounded-lg px-3 py-2">
+            <div className="flex items-center gap-1.5 text-precision text-[0.6rem] text-clinical-stone">
+              <span className="font-medium">{format(new Date(comparison.previous.drawDate), 'MMM yyyy')}:</span>
+              <span className="text-clinical-charcoal font-bold">{comparison.previous.value}</span>
+            </div>
+            {dirCfg && (
+              <span className="material-symbols-outlined text-[16px]" style={{ color: dirCfg.color }}>{dirCfg.icon}</span>
+            )}
+            <div className="flex items-center gap-1.5 text-precision text-[0.6rem] text-clinical-stone">
+              <span className="font-medium">{format(new Date(comparison.current.drawDate), 'MMM yyyy')}:</span>
+              <span className="text-clinical-charcoal font-bold">{comparison.current.value}</span>
+            </div>
+            {comparison.deltaPct != null && Math.abs(comparison.deltaPct) >= 1 && (
+              <span
+                className="text-precision text-[0.55rem] font-bold tracking-wider px-1.5 py-0.5 ml-auto"
+                style={{
+                  borderRadius: '2px',
+                  backgroundColor: dirCfg ? `${dirCfg.color}15` : '#0001',
+                  color: dirCfg?.color ?? '#666',
+                }}
+              >
+                {comparison.delta > 0 ? '+' : ''}{comparison.deltaPct.toFixed(0)}%
+              </span>
+            )}
+          </div>
+        )}
 
         {value.optimal_low != null && value.optimal_high != null ? (
           <OptimalRangeBar value={value.value} unit={value.unit} optimalLow={value.optimal_low} optimalHigh={value.optimal_high}

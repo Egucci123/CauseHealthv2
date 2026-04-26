@@ -1,6 +1,7 @@
 // src/pages/Dashboard.tsx
 import { AppShell } from '../components/layout/AppShell';
 import { HealthScoreRing } from '../components/dashboard/HealthScoreRing';
+import { BiologicalAgeWidget } from '../components/dashboard/BiologicalAgeWidget';
 import { PriorityAlerts } from '../components/dashboard/PriorityAlerts';
 import { SupplementChecklist } from '../components/dashboard/SupplementChecklist';
 import { LabSummary } from '../components/dashboard/LabSummary';
@@ -44,6 +45,9 @@ export const Dashboard = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-4 space-y-6">
+            <PrimaryCard status="brand" padding="lg">
+              <BiologicalAgeWidget />
+            </PrimaryCard>
             <PrimaryCard status="brand" padding="lg">
               <p className="text-precision text-[0.68rem] font-bold text-clinical-stone tracking-widest uppercase mb-6">Health Intelligence Score</p>
               <HealthScoreRing score={healthScore} loading={valuesLoading} analyzing={hasProcessingDraw} />
