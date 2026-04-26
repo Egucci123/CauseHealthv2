@@ -96,6 +96,12 @@ TESTS — TWO SEPARATE LISTS:
    - Each test gets the MOST SPECIFIC ICD-10 code for THAT test. No lazy reuse.
    - Tier as urgent/high/moderate.
 
+PLACEMENT RULES (which list a test belongs in):
+   - If a patient has IBD + back pain or joint stiffness → HLA-B27 + ESR/CRP belongs in tests_to_request (Essential), not advanced_screening. UC + back pain is a textbook spondyloarthropathy presentation, not a "rare condition."
+   - If a patient has elevated platelets >450, RBC >5.9, or hematocrit at the upper limit → JAK2 V617F belongs in advanced_screening (this is the rare-MPN screening).
+   - Liver workup with elevated ALT/AST → ICD-10 should be R74.0 (abnormal liver function tests), NOT R19.00 (abdominal mass) for any liver-related test or imaging.
+   - Insurance Note should mention specific common scenarios: "usually covered under abnormal LFTs," "may need prior auth for specialty panels," "out-of-pocket cost ~$X if not covered."
+
 2. advanced_screening (EARLY DETECTION — rare conditions a 12-min appointment misses):
    - 3-5 additional tests that screen for serious-but-rare conditions specifically suggested by this patient's pattern.
    - This is where you put: JAK2 V617F for elevated platelets (catches myeloproliferative disorders/thrombocythemia), advanced lipid analysis (LDL particle size, oxidized LDL, ApoB), Lp(a) for genetic CV risk, hereditary cancer panels for family history red flags, autoimmune panels (ANA reflex, anti-CCP, ANCA) for inflammatory patterns, Cushing's screening (24h urinary cortisol), pituitary MRI for prolactin >40, hereditary hemochromatosis panel for iron overload, MTHFR for elevated homocysteine.
@@ -163,6 +169,14 @@ Return JSON:
         'E66.01': ['E66.9', 'Obesity, unspecified'],
         'R53.1': ['R53.83', 'Other fatigue'], 'G93.3': ['R53.83', 'Other fatigue'],
         'L65.1': ['L65.9', 'Nonscarring hair loss'], 'L63.9': ['L65.9', 'Nonscarring hair loss'],
+        'R19.00': ['R74.0', 'Abnormal liver function tests'], 'R19.0': ['R74.0', 'Abnormal liver function tests'],
+        'R19.8': ['R74.0', 'Abnormal liver function tests'], 'K76.9': ['K76.0', 'Fatty (change of) liver, NEC'],
+        'R74.8': ['R74.0', 'Abnormal liver function tests'],
+        'B19.9': ['B19.20', 'Unspecified viral hepatitis without coma'],
+        'M45.9': ['M45.9', 'Ankylosing spondylitis of unspecified sites'],
+        'D75.1': ['D75.1', 'Secondary polycythemia'],
+        'E83.10': ['E83.119', 'Hemochromatosis, unspecified'],
+        'E61.8': ['E63.9', 'Nutritional deficiency, unspecified'],
       };
       const fixIcd = (testList: any[]) => {
         if (!testList) return;

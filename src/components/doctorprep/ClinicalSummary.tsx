@@ -1,21 +1,13 @@
 // src/components/doctorprep/ClinicalSummary.tsx
 import type { DoctorPrepDocument } from '../../hooks/useDoctorPrep';
 import { format } from 'date-fns';
+import { FolderSection } from '../ui/FolderSection';
 
-const DocSection = ({ label, children }: { label: string; children: React.ReactNode }) => (
-  <div className="mb-6">
-    <p className="text-precision text-[0.68rem] font-bold text-clinical-stone tracking-widest uppercase mb-2 border-b border-outline-variant/15 pb-1">{label}</p>
-    {children}
-  </div>
-);
+function flagColor(f: string) { return (f === 'deficient' || f === 'elevated' || f.toUpperCase() === 'HIGH' || f.toUpperCase() === 'LOW') ? '#C94F4F' : '#E8922A'; }
 
-function flagColor(f: string) { return (f === 'deficient' || f === 'elevated') ? '#C94F4F' : '#E8922A'; }
-
-// Safely render a value that might be a string or an object
 function renderText(val: unknown): string {
   if (typeof val === 'string') return val;
   if (val && typeof val === 'object') {
-    // Handle {ask: "...", reason: "..."} or {text: "..."} or any object
     const obj = val as Record<string, unknown>;
     return Object.values(obj).filter(v => typeof v === 'string').join(' — ');
   }
@@ -24,11 +16,13 @@ function renderText(val: unknown): string {
 
 export const ClinicalSummary = ({ doc }: { doc: DoctorPrepDocument }) => {
   const rosPositive = doc.review_of_systems ? Object.entries(doc.review_of_systems).filter(([_, v]) => v && v.toLowerCase() !== 'negative') : [];
+  const urgentCount = doc.lab_summary?.urgent_findings?.length ?? 0;
+  const otherAbnormalCount = doc.lab_summary?.other_abnormal?.length ?? 0;
 
   return (
-    <div className="space-y-0">
-      {/* Dark header */}
-      <div className="bg-[#131313] rounded-t-[10px] p-6">
+    <div className="space-y-4">
+      {/* Dark header — always visible */}
+      <div className="bg-[#131313] rounded-[10px] p-6">
         <div className="flex justify-between items-start">
           <div>
             <p className="text-authority text-2xl text-white font-bold">CauseHealth.</p>
@@ -41,33 +35,69 @@ export const ClinicalSummary = ({ doc }: { doc: DoctorPrepDocument }) => {
         </div>
       </div>
 
-      {/* Body */}
-      <div className="bg-clinical-white rounded-b-[10px] shadow-card border border-outline-variant/10 p-8 space-y-6">
-        {/* Executive Summary */}
-        {doc.executive_summary && doc.executive_summary.length > 0 && (
-          <div className="bg-primary-container/5 border border-primary-container/20 rounded-[10px] p-6">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="material-symbols-outlined text-primary-container text-[18px]">summarize</span>
-              <p className="text-precision text-[0.68rem] font-bold text-primary-container tracking-widest uppercase">Executive Summary</p>
+      {/* Executive Summary — open by default */}
+      {doc.executive_summary && doc.executive_summary.length > 0 && (
+        <FolderSection
+          icon="summarize"
+          title="Executive Summary"
+          count={doc.executive_summary.length}
+          countLabel="key findings"
+          explanation="The most important findings from your bloodwork, in plain English. These are the headlines you should make sure your doctor reads."
+          defaultOpen
+          accentColor="#1B4332"
+        >
+          <ul className="space-y-2">
+            {doc.executive_summary.map((item, i) => (
+              <li key={i} className="flex items-start gap-3">
+                <span className="material-symbols-outlined text-primary-container text-[14px] mt-0.5 flex-shrink-0">arrow_right</span>
+                <p className="text-body text-clinical-charcoal text-sm leading-relaxed">{renderText(item)}</p>
+              </li>
+            ))}
+          </ul>
+        </FolderSection>
+      )}
+
+      {/* Patient History */}
+      <FolderSection
+        icon="person"
+        title="Your Story (HPI & History)"
+        explanation="Chief complaint, history of present illness, and past medical history — written in clinical format your doctor expects to see. This is the context that frames everything else."
+        accentColor="#1B423A"
+      >
+        <div className="space-y-4">
+          {doc.chief_complaint && (
+            <div>
+              <p className="text-precision text-[0.6rem] font-bold text-clinical-stone tracking-widest uppercase mb-1">Chief Complaint</p>
+              <p className="text-body text-clinical-charcoal text-sm leading-relaxed">{doc.chief_complaint}</p>
             </div>
-            <ul className="space-y-2">
-              {doc.executive_summary.map((item, i) => (
-                <li key={i} className="flex items-start gap-3">
-                  <span className="material-symbols-outlined text-primary-container text-[14px] mt-0.5 flex-shrink-0">arrow_right</span>
-                  <p className="text-body text-clinical-charcoal text-sm leading-relaxed">{renderText(item)}</p>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+          )}
+          {doc.hpi && (
+            <div>
+              <p className="text-precision text-[0.6rem] font-bold text-clinical-stone tracking-widest uppercase mb-1">History of Present Illness</p>
+              <p className="text-body text-clinical-charcoal text-sm leading-relaxed">{doc.hpi}</p>
+            </div>
+          )}
+          {doc.pmh && (
+            <div>
+              <p className="text-precision text-[0.6rem] font-bold text-clinical-stone tracking-widest uppercase mb-1">Past Medical History</p>
+              <p className="text-body text-clinical-charcoal text-sm leading-relaxed">{doc.pmh}</p>
+            </div>
+          )}
+        </div>
+      </FolderSection>
 
-        <DocSection label="Chief Complaint"><p className="text-body text-clinical-charcoal leading-relaxed">{doc.chief_complaint}</p></DocSection>
-        <DocSection label="History of Present Illness"><p className="text-body text-clinical-charcoal leading-relaxed">{doc.hpi}</p></DocSection>
-        <DocSection label="Past Medical History"><p className="text-body text-clinical-charcoal leading-relaxed">{doc.pmh}</p></DocSection>
-
-        <DocSection label="Current Medications">
+      {/* Medications */}
+      {doc.medications && doc.medications.length > 0 && (
+        <FolderSection
+          icon="medication"
+          title="Current Medications"
+          count={doc.medications.length}
+          countLabel="medications"
+          explanation="Your current medications with notable nutrient depletions flagged. The yellow warnings tell your doctor what each medication is silently depleting — most physicians don't routinely discuss this."
+          accentColor="#E8922A"
+        >
           <div className="space-y-2">
-            {(doc.medications ?? []).map((med, i) => (
+            {doc.medications.map((med, i) => (
               <div key={i} className="flex items-start gap-3">
                 <span className="text-body text-clinical-charcoal text-sm w-4 flex-shrink-0">·</span>
                 <div>
@@ -78,75 +108,45 @@ export const ClinicalSummary = ({ doc }: { doc: DoctorPrepDocument }) => {
               </div>
             ))}
           </div>
-        </DocSection>
+        </FolderSection>
+      )}
 
-        {/* Medication Alternatives */}
-        {doc.medication_alternatives && doc.medication_alternatives.length > 0 && (
-          <DocSection label="Medication Alternatives to Discuss">
-            <div className="space-y-4">
-              {doc.medication_alternatives.map((med, i) => (
-                <div key={i} className="bg-clinical-cream/50 rounded-lg border border-outline-variant/15 p-5">
-                  <p className="text-authority text-lg text-clinical-charcoal font-semibold mb-3">
-                    {med.current_medication}
-                    <span className="text-precision text-[0.6rem] text-clinical-stone ml-2 font-normal tracking-widest uppercase">currently taking</span>
-                  </p>
-                  {med.pharmaceutical_alternatives?.length > 0 && (
-                    <div className="mb-3">
-                      <p className="text-precision text-[0.6rem] font-bold text-primary-container tracking-widest uppercase mb-2">
-                        <span className="material-symbols-outlined text-[14px] align-middle mr-1">medication</span>
-                        Pharmaceutical Alternatives
-                      </p>
-                      <div className="space-y-1.5">
-                        {med.pharmaceutical_alternatives.map((alt, j) => (
-                          <div key={j} className="flex items-start gap-2">
-                            <span className="material-symbols-outlined text-primary-container text-[14px] mt-0.5 flex-shrink-0">swap_horiz</span>
-                            <p className="text-body text-clinical-charcoal text-sm"><span className="font-medium">{alt.name}</span> — {alt.reason}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {med.natural_alternatives?.length > 0 && (
-                    <div>
-                      <p className="text-precision text-[0.6rem] font-bold text-[#D4A574] tracking-widest uppercase mb-2">
-                        <span className="material-symbols-outlined text-[14px] align-middle mr-1">eco</span>
-                        Natural / Integrative Alternatives
-                      </p>
-                      <div className="space-y-1.5">
-                        {med.natural_alternatives.map((alt, j) => (
-                          <div key={j} className="flex items-start gap-2">
-                            <span className="material-symbols-outlined text-[#D4A574] text-[14px] mt-0.5 flex-shrink-0">spa</span>
-                            <p className="text-body text-clinical-charcoal text-sm"><span className="font-medium">{alt.name}</span> — {alt.reason}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </DocSection>
-        )}
+      {/* Review of Systems */}
+      {rosPositive.length > 0 && (
+        <FolderSection
+          icon="checklist"
+          title="Review of Systems"
+          count={rosPositive.length}
+          countLabel="systems with findings"
+          explanation="A system-by-system review of your symptoms — what your doctor uses to focus the physical exam and decide which specialists to involve."
+          accentColor="#2D6A4F"
+        >
+          <div className="space-y-1.5">
+            {rosPositive.map(([system, symptoms]) => (
+              <div key={system} className="flex gap-3">
+                <span className="text-precision text-[0.6rem] text-clinical-stone uppercase tracking-wider w-28 flex-shrink-0 pt-0.5">{system}:</span>
+                <span className="text-body text-clinical-charcoal text-sm">{symptoms}</span>
+              </div>
+            ))}
+          </div>
+        </FolderSection>
+      )}
 
-        {rosPositive.length > 0 && (
-          <DocSection label="Review of Systems">
-            <div className="space-y-1">
-              {rosPositive.map(([system, symptoms]) => (
-                <div key={system} className="flex gap-3">
-                  <span className="text-precision text-[0.6rem] text-clinical-stone uppercase tracking-wider w-28 flex-shrink-0 pt-0.5">{system}:</span>
-                  <span className="text-body text-clinical-charcoal text-sm">{symptoms}</span>
-                </div>
-              ))}
-            </div>
-          </DocSection>
-        )}
-
-        <DocSection label={`Recent Lab Results — ${doc.lab_summary?.lab_name ?? 'Lab'} (${doc.lab_summary?.draw_date ?? ''})`}>
-          {doc.lab_summary?.urgent_findings?.length > 0 && (
+      {/* Lab Findings */}
+      {(urgentCount > 0 || otherAbnormalCount > 0) && (
+        <FolderSection
+          icon="biotech"
+          title="Lab Findings"
+          count={urgentCount + otherAbnormalCount}
+          countLabel="abnormal markers"
+          explanation={`Your bloodwork results from ${doc.lab_summary?.lab_name ?? 'your lab'} (${doc.lab_summary?.draw_date ?? 'recent draw'}). Top section is what needs immediate attention; bottom is other findings outside the optimal range.`}
+          accentColor="#C94F4F"
+        >
+          {urgentCount > 0 && (
             <div className="mb-4">
               <p className="text-precision text-[0.6rem] text-[#C94F4F] font-bold tracking-widest uppercase mb-2">Findings Requiring Attention</p>
               <div className="space-y-2">
-                {doc.lab_summary.urgent_findings.map((f, i) => (
+                {doc.lab_summary!.urgent_findings.map((f, i) => (
                   <div key={i} className="flex items-start gap-3 bg-[#C94F4F]/5 border-l-4 border-[#C94F4F] p-3 rounded-r-lg">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -161,61 +161,77 @@ export const ClinicalSummary = ({ doc }: { doc: DoctorPrepDocument }) => {
               </div>
             </div>
           )}
-          {doc.lab_summary?.other_abnormal?.length > 0 && (
+          {otherAbnormalCount > 0 && (
             <div>
               <p className="text-precision text-[0.6rem] text-clinical-stone font-bold tracking-widest uppercase mb-2">Other Abnormal Findings</p>
               <div className="flex flex-wrap gap-2">
-                {doc.lab_summary.other_abnormal.map((item, i) => (
+                {doc.lab_summary!.other_abnormal.map((item, i) => (
                   <span key={i} className="text-precision text-[0.6rem] text-clinical-charcoal bg-clinical-cream border border-outline-variant/20 px-2 py-1" style={{ borderRadius: '3px' }}>{item.marker}: {item.value} [{item.flag}]</span>
                 ))}
               </div>
             </div>
           )}
-        </DocSection>
+        </FolderSection>
+      )}
 
-        {doc.discussion_points?.length > 0 && (
-          <DocSection label="Points to Raise with Your Doctor">
-            <ul className="space-y-2">
-              {doc.discussion_points.map((p, i) => (
-                <li key={i} className="flex items-start gap-3">
-                  <span className="material-symbols-outlined text-primary-container text-[16px] mt-0.5 flex-shrink-0">arrow_right</span>
-                  <p className="text-body text-clinical-charcoal text-sm leading-relaxed">{renderText(p)}</p>
-                </li>
-              ))}
-            </ul>
-          </DocSection>
-        )}
+      {/* Discussion Points */}
+      {doc.discussion_points && doc.discussion_points.length > 0 && (
+        <FolderSection
+          icon="forum"
+          title="Points to Raise with Your Doctor"
+          count={doc.discussion_points.length}
+          countLabel="discussion points"
+          explanation="Specific points to bring up at your visit, written so you can read them out loud. Each leads with what to ask, then explains why — designed to drive a real conversation, not a 12-minute brush-off."
+          accentColor="#1B4332"
+        >
+          <ul className="space-y-3">
+            {doc.discussion_points.map((p, i) => (
+              <li key={i} className="flex items-start gap-3">
+                <span className="material-symbols-outlined text-primary-container text-[16px] mt-0.5 flex-shrink-0">arrow_right</span>
+                <p className="text-body text-clinical-charcoal text-sm leading-relaxed">{renderText(p)}</p>
+              </li>
+            ))}
+          </ul>
+        </FolderSection>
+      )}
 
-        {/* Patient Questions */}
-        {doc.patient_questions && doc.patient_questions.length > 0 && (
-          <div className="bg-clinical-cream rounded-[10px] border border-outline-variant/15 p-6">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="material-symbols-outlined text-primary-container text-[18px]">help</span>
-              <p className="text-precision text-[0.68rem] font-bold text-primary-container tracking-widest uppercase">Questions to Ask Your Doctor</p>
-            </div>
-            <ol className="space-y-2">
-              {doc.patient_questions.map((q, i) => (
-                <li key={i} className="flex items-start gap-3">
-                  <span className="text-precision text-sm font-bold text-primary-container w-5 flex-shrink-0">{i + 1}.</span>
-                  <p className="text-body text-clinical-charcoal text-sm leading-relaxed">{renderText(q)}</p>
-                </li>
-              ))}
-            </ol>
-          </div>
-        )}
+      {/* Patient Questions */}
+      {doc.patient_questions && doc.patient_questions.length > 0 && (
+        <FolderSection
+          icon="help"
+          title="Questions to Ask Your Doctor"
+          count={doc.patient_questions.length}
+          countLabel="questions"
+          explanation="Plain-language questions you can read directly to your doctor. No medical jargon — these are designed for you, not them, so you don't forget what to ask."
+          accentColor="#D4A574"
+        >
+          <ol className="space-y-3">
+            {doc.patient_questions.map((q, i) => (
+              <li key={i} className="flex items-start gap-3">
+                <span className="text-precision text-sm font-bold text-primary-container w-5 flex-shrink-0">{i + 1}.</span>
+                <p className="text-body text-clinical-charcoal text-sm leading-relaxed">{renderText(q)}</p>
+              </li>
+            ))}
+          </ol>
+        </FolderSection>
+      )}
 
-        {doc.functional_medicine_note && (
-          <div className="bg-clinical-cream rounded-lg p-4">
-            <p className="text-precision text-[0.6rem] text-clinical-stone uppercase tracking-widest mb-1">Root Cause Analysis</p>
-            <p className="text-body text-clinical-stone text-sm italic leading-relaxed">{doc.functional_medicine_note}</p>
-          </div>
-        )}
+      {/* Root Cause Analysis */}
+      {doc.functional_medicine_note && (
+        <FolderSection
+          icon="psychology"
+          title="Root Cause Analysis"
+          explanation="A functional-medicine synthesis of your full picture — how all the findings connect to underlying mechanisms. This is the why behind everything else in this document."
+          accentColor="#2A9D8F"
+        >
+          <p className="text-body text-clinical-charcoal text-sm italic leading-relaxed">{doc.functional_medicine_note}</p>
+        </FolderSection>
+      )}
 
-        <div className="border-t border-outline-variant/10 pt-4">
-          <p className="text-precision text-[0.6rem] text-clinical-stone/60 tracking-wide leading-relaxed">
-            This document was generated by CauseHealth for educational purposes. It does not constitute medical advice. Values reflect functional medicine reference intervals which differ from standard laboratory reference ranges.
-          </p>
-        </div>
+      <div className="border-t border-outline-variant/10 pt-4">
+        <p className="text-precision text-[0.6rem] text-clinical-stone/60 tracking-wide leading-relaxed">
+          This document was generated by CauseHealth for educational purposes. It does not constitute medical advice. Values reflect functional medicine reference intervals which differ from standard laboratory reference ranges.
+        </p>
       </div>
     </div>
   );

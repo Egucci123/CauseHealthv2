@@ -1,6 +1,6 @@
 // src/components/doctorprep/TestsToRequest.tsx
 import type { TestToRequest } from '../../hooks/useDoctorPrep';
-import { SectionLabel } from '../ui/SectionLabel';
+import { FolderSection } from '../ui/FolderSection';
 
 function priorityCfg(p: string) {
   if (p === 'urgent') return { border: 'border-t-[3px] border-[#C94F4F]', badge: 'bg-[#C94F4F] text-white', text: 'DISCUSS PROMPTLY' };
@@ -22,7 +22,7 @@ const TestCard = ({ test, advanced = false }: { test: TestToRequest; advanced?: 
         </div>
       </div>
       <div className="mb-4">
-        <p className="text-precision text-[0.6rem] text-clinical-stone uppercase tracking-widest mb-1">Clinical Justification</p>
+        <p className="text-precision text-[0.6rem] text-clinical-stone uppercase tracking-widest mb-1">Why This Test</p>
         <p className="text-body text-clinical-charcoal text-sm leading-relaxed">{test.clinical_justification}</p>
       </div>
       <div className="mb-4">
@@ -57,37 +57,36 @@ export const TestsToRequest = ({ tests, advanced }: { tests: TestToRequest[]; ad
   const orderedAdvanced = hasAdvanced ? [...advanced!.filter(t => t.priority === 'urgent'), ...advanced!.filter(t => t.priority === 'high'), ...advanced!.filter(t => t.priority === 'moderate')] : [];
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-4">
       {hasEssential && (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <SectionLabel icon="biotech">Essential Tests for Your Doctor</SectionLabel>
-            <p className="text-body text-clinical-stone text-sm">{tests.length} suggestion{tests.length > 1 ? 's' : ''}</p>
-          </div>
-          <p className="text-body text-clinical-stone text-sm leading-relaxed">
-            These are the priority tests your doctor should order at your next visit, based on your lab findings.
-          </p>
+        <FolderSection
+          icon="biotech"
+          title="Essential Tests for Your Doctor"
+          count={tests.length}
+          countLabel="tests"
+          explanation="The priority tests your doctor should order at this visit, based on what's abnormal in your bloodwork. Each test ties directly to a specific finding — no shotgun ordering, no insurance-friendly fluff. Bring this list and ask for what's listed."
+          defaultOpen
+          accentColor="#1B4332"
+        >
           <div className="space-y-4">
             {ordered.map((test, i) => <TestCard key={`e-${i}`} test={test} />)}
           </div>
-        </div>
+        </FolderSection>
       )}
 
       {hasAdvanced && (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <SectionLabel icon="search_check" className="text-[#2A9D8F]">Advanced Early Detection</SectionLabel>
-            <p className="text-body text-clinical-stone text-sm">{advanced!.length} screening{advanced!.length > 1 ? 's' : ''}</p>
-          </div>
-          <div className="bg-[#2A9D8F]/5 border border-[#2A9D8F]/20 rounded-[10px] p-5">
-            <p className="text-body text-clinical-charcoal text-sm leading-relaxed">
-              <span className="font-semibold">These tests catch what a 12-minute appointment misses.</span> They screen for serious-but-rare conditions that match a pattern in your bloodwork. Your doctor may not order these by default — bring this list and ask.
-            </p>
-          </div>
+        <FolderSection
+          icon="search_check"
+          title="Advanced Early Detection"
+          count={advanced!.length}
+          countLabel="screenings"
+          explanation="Tests that catch what a 12-minute appointment misses. These screen for serious-but-rare conditions (like myeloproliferative disorders, hereditary cancer risk, or autoimmune patterns) that match a specific clue in your bloodwork. Your doctor probably won't order these by default — that's exactly why they're here."
+          accentColor="#2A9D8F"
+        >
           <div className="space-y-4">
             {orderedAdvanced.map((test, i) => <TestCard key={`a-${i}`} test={test} advanced />)}
           </div>
-        </div>
+        </FolderSection>
       )}
     </div>
   );

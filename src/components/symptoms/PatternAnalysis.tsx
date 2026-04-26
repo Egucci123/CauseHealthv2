@@ -1,7 +1,7 @@
 // src/components/symptoms/PatternAnalysis.tsx
 import { motion } from 'framer-motion';
 import type { SymptomAnalysis } from '../../hooks/useSymptoms';
-import { SectionLabel } from '../ui/SectionLabel';
+import { FolderSection } from '../ui/FolderSection';
 
 function sevCfg(s: string) {
   if (s === 'critical') return { border: 'border-t-[3px] border-[#C94F4F]', badge: 'bg-[#C94F4F] text-white', text: 'CRITICAL' };
@@ -18,11 +18,19 @@ const urgCfg: Record<string, { color: string; label: string }> = {
 interface Props { patterns: SymptomAnalysis['patterns']; autoimmuneFlags: SymptomAnalysis['autoimmune_flags']; priorityActions: SymptomAnalysis['priority_actions']; }
 
 export const PatternAnalysis = ({ patterns, autoimmuneFlags, priorityActions }: Props) => (
-  <div className="space-y-8">
-    {/* Patterns */}
-    <div>
-      <SectionLabel icon="pattern" className="mb-6">Identified Patterns</SectionLabel>
-      {patterns.length === 0 ? <p className="text-body text-clinical-stone text-sm">No significant patterns identified.</p> : (
+  <div className="space-y-4">
+    <FolderSection
+      icon="pattern"
+      title="Identified Patterns"
+      count={patterns?.length ?? 0}
+      countLabel="patterns"
+      explanation="Patterns are clusters of your symptoms and lab values that point to a specific underlying condition. Each one shows which symptoms support it, the likely mechanism, and the tests that would confirm or rule it out."
+      defaultOpen
+      accentColor="#1B4332"
+    >
+      {(!patterns || patterns.length === 0) ? (
+        <p className="text-body text-clinical-stone text-sm">No significant patterns identified.</p>
+      ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {patterns.map((p, i) => {
             const cfg = sevCfg(p.severity);
@@ -46,12 +54,17 @@ export const PatternAnalysis = ({ patterns, autoimmuneFlags, priorityActions }: 
           })}
         </div>
       )}
-    </div>
+    </FolderSection>
 
-    {/* Autoimmune Flags */}
     {autoimmuneFlags?.length > 0 && (
-      <div>
-        <SectionLabel icon="coronavirus" className="mb-4">Autoimmune Flags</SectionLabel>
+      <FolderSection
+        icon="coronavirus"
+        title="Autoimmune Flags"
+        count={autoimmuneFlags.length}
+        countLabel="conditions"
+        explanation="Autoimmune conditions worth investigating based on your symptom and lab pattern. These are NOT diagnoses — they're educated screening priorities. Each one lists what symptoms suggest it and the next test step."
+        accentColor="#E8922A"
+      >
         <div className="space-y-4">
           {autoimmuneFlags.map((f, i) => (
             <div key={i} className="bg-clinical-white rounded-[10px] shadow-card border-l-4 border-[#E8922A] p-5">
@@ -70,13 +83,18 @@ export const PatternAnalysis = ({ patterns, autoimmuneFlags, priorityActions }: 
             </div>
           ))}
         </div>
-      </div>
+      </FolderSection>
     )}
 
-    {/* Priority Actions */}
     {priorityActions?.length > 0 && (
-      <div>
-        <SectionLabel icon="priority_high" className="mb-4">Priority Actions</SectionLabel>
+      <FolderSection
+        icon="priority_high"
+        title="Priority Actions"
+        count={priorityActions.length}
+        countLabel="actions"
+        explanation="Specific actions ranked by urgency — what to do this week vs. this month. These are the highest-leverage next steps based on your full picture, not generic health advice."
+        accentColor="#C94F4F"
+      >
         <div className="space-y-3">
           {priorityActions.map((a, i) => {
             const cfg = urgCfg[a.urgency] ?? urgCfg.this_month;
@@ -88,7 +106,7 @@ export const PatternAnalysis = ({ patterns, autoimmuneFlags, priorityActions }: 
             );
           })}
         </div>
-      </div>
+      </FolderSection>
     )}
   </div>
 );
