@@ -86,9 +86,14 @@ FORMAT: executive_summary (3-5 bullets in plain English), HPI (3-5 sentences), R
 
 WRITING STYLE: Write like you're explaining to a smart friend, not a medical textbook. Instead of "hepatocellular dysfunction" say "your liver enzymes suggest it's working harder than it should." Instead of "HPA-axis dysregulation" say "your stress hormones are elevated." Keep discussion points SHORT — the patient needs to scan this in the waiting room, not read an essay.
 
-TESTS (6-8 total, tiered urgent/high/moderate): Combine related tests. For every abnormal value, include follow-up testing.
-
-MEDICATION ALTERNATIVES: For each med, 2-3 pharmaceutical alternatives AND 2-3 natural alternatives. Brief reason each.
+TESTS — STRICT RULES:
+- MAXIMUM 6 tests. Pick the most clinically important ones.
+- ONE focused workup per row. Do NOT bundle unrelated tests (bad: "CMP + Hep panel + ASMA + AMA". good: "Hepatitis viral panel" as one row, "Autoimmune liver antibodies" as another, only if both clinically warranted).
+- A logical "test_name" combines tests of the SAME SYSTEM (e.g., "Iron panel" can include serum iron + TIBC + ferritin + transferrin saturation because they're all iron-related). It should NOT combine different organ systems.
+- clinical_justification: ONE SENTENCE. Plain English. Lead with what's abnormal and what you're ruling out. No textbook explanations.
+- Each test gets the MOST SPECIFIC ICD-10 code for THAT test. Do NOT reuse the same code across multiple tests if more specific codes exist.
+- Tier as urgent/high/moderate based on clinical urgency, not severity of language.
+- NO speculative tests. If a test is "consider" or "may be helpful," leave it out. Only include tests with clear clinical justification from the patient's actual data.
 
 ICD-10: Use most specific code. Corrections applied post-generation.
 
