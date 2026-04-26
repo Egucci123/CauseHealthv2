@@ -25,6 +25,7 @@ interface AuthStore {
   }) => Promise<{ error: string | null }>;
   signIn:           (email: string, password: string) => Promise<{ error: string | null }>;
   signInWithGoogle: () => Promise<{ error: string | null }>;
+  signInWithMagicLink: (email: string) => Promise<{ error: string | null }>;
   signOut:          () => Promise<void>;
   resetPassword:    (email: string) => Promise<{ error: string | null }>;
   updatePassword:   (password: string) => Promise<{ error: string | null }>;
@@ -108,6 +109,18 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       provider: 'google',
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+    if (error) return { error: error.message };
+    return { error: null };
+  },
+
+  signInWithMagicLink: async (email: string) => {
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        // shouldCreateUser: defaults to true — magic link doubles as signup
       },
     });
     if (error) return { error: error.message };

@@ -9,6 +9,7 @@ import {
   GoogleButton, AuthDivider, PasswordField,
   AuthCheckbox, ErrorBanner,
 } from '../../components/auth/AuthComponents';
+import { MagicLinkForm } from '../../components/auth/MagicLinkForm';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { useAuthStore } from '../../store/authStore';
@@ -27,6 +28,7 @@ export const Login = () => {
   const { signIn, signInWithGoogle } = useAuthStore();
   const [serverError, setServerError] = useState<string | null>(null);
   const [passwordVal, setPasswordVal] = useState('');
+  const [showMagicLink, setShowMagicLink] = useState(false);
 
   const redirectTo = searchParams.get('redirectTo') ?? '/dashboard';
 
@@ -64,6 +66,23 @@ export const Login = () => {
       subtitle="Sign in to your CauseHealth. account."
     >
       <GoogleButton label="Continue with Google" onClick={handleGoogle} />
+
+      <button
+        type="button"
+        onClick={() => setShowMagicLink((v) => !v)}
+        className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-3 border border-outline-variant/20 hover:border-primary-container/40 bg-clinical-white transition-colors"
+        style={{ borderRadius: '6px' }}
+      >
+        <span className="material-symbols-outlined text-primary-container text-[18px]">mail</span>
+        <span className="text-body text-clinical-charcoal text-sm font-medium">{showMagicLink ? 'Hide email link' : 'Sign in with email link'}</span>
+      </button>
+
+      {showMagicLink && (
+        <div className="mt-3">
+          <MagicLinkForm onClose={() => setShowMagicLink(false)} />
+        </div>
+      )}
+
       <AuthDivider />
 
       <ErrorBanner message={serverError} />
