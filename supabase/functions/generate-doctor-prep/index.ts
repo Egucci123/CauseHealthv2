@@ -86,14 +86,22 @@ FORMAT: executive_summary (3-5 bullets in plain English), HPI (3-5 sentences), R
 
 WRITING STYLE: Write like you're explaining to a smart friend, not a medical textbook. Instead of "hepatocellular dysfunction" say "your liver enzymes suggest it's working harder than it should." Instead of "HPA-axis dysregulation" say "your stress hormones are elevated." Keep discussion points SHORT — the patient needs to scan this in the waiting room, not read an essay.
 
-TESTS — STRICT RULES:
-- MAXIMUM 6 tests. Pick the most clinically important ones.
-- ONE focused workup per row. Do NOT bundle unrelated tests (bad: "CMP + Hep panel + ASMA + AMA". good: "Hepatitis viral panel" as one row, "Autoimmune liver antibodies" as another, only if both clinically warranted).
-- A logical "test_name" combines tests of the SAME SYSTEM (e.g., "Iron panel" can include serum iron + TIBC + ferritin + transferrin saturation because they're all iron-related). It should NOT combine different organ systems.
-- clinical_justification: ONE SENTENCE. Plain English. Lead with what's abnormal and what you're ruling out. No textbook explanations.
-- Each test gets the MOST SPECIFIC ICD-10 code for THAT test. Do NOT reuse the same code across multiple tests if more specific codes exist.
-- Tier as urgent/high/moderate based on clinical urgency, not severity of language.
-- NO speculative tests. If a test is "consider" or "may be helpful," leave it out. Only include tests with clear clinical justification from the patient's actual data.
+TESTS — TWO SEPARATE LISTS:
+
+1. tests_to_request (ESSENTIAL — what the doctor should definitely order at this visit):
+   - MAXIMUM 6 tests. Pick the most clinically important ones based on the patient's abnormal labs.
+   - ONE focused workup per row. Do NOT bundle across organ systems (bad: "CMP + Hep panel + ASMA + AMA". good: "Hepatitis viral panel" alone, "Autoimmune liver antibodies" only if separately warranted).
+   - A logical "test_name" combines tests of the SAME organ system (e.g., "Iron panel" can include serum iron + TIBC + ferritin + transferrin saturation because they're all iron-related).
+   - clinical_justification: ONE SENTENCE in plain English. Lead with what's abnormal and what you're ruling out.
+   - Each test gets the MOST SPECIFIC ICD-10 code for THAT test. No lazy reuse.
+   - Tier as urgent/high/moderate.
+
+2. advanced_screening (EARLY DETECTION — rare conditions a 12-min appointment misses):
+   - 3-5 additional tests that screen for serious-but-rare conditions specifically suggested by this patient's pattern.
+   - This is where you put: JAK2 V617F for elevated platelets (catches myeloproliferative disorders/thrombocythemia), advanced lipid analysis (LDL particle size, oxidized LDL, ApoB), Lp(a) for genetic CV risk, hereditary cancer panels for family history red flags, autoimmune panels (ANA reflex, anti-CCP, ANCA) for inflammatory patterns, Cushing's screening (24h urinary cortisol), pituitary MRI for prolactin >40, hereditary hemochromatosis panel for iron overload, MTHFR for elevated homocysteine.
+   - Same format as tests_to_request: focused workup per row, one-sentence plain-English justification, specific ICD-10.
+   - Only include tests with a CLEAR pattern-based justification from this patient's data. Do NOT include speculative screening for conditions the patient has no markers for.
+   - These are tests the doctor would NOT typically order but absolutely should given the patient's findings.
 
 ICD-10: Use most specific code. Corrections applied post-generation.
 
@@ -110,7 +118,7 @@ ALL LAB VALUES:
 ${allLabsStr.slice(0, 4000)}
 
 Return JSON:
-{"generated_at":"${new Date().toISOString()}","document_date":"${new Date().toISOString().split('T')[0]}","executive_summary":["3-5 plain English bullets"],"chief_complaint":"one sentence","hpi":"2-3 sentences","pmh":"","medications":[{"name":"","dose":"","notable_depletion":""}],"review_of_systems":{"constitutional":"","cardiovascular":"","gastrointestinal":"","endocrine":""},"lab_summary":{"draw_date":"","lab_name":"","urgent_findings":[{"marker":"","value":"","flag":"","clinical_note":""}],"other_abnormal":[{"marker":"","value":"","flag":""}]},"tests_to_request":[{"test_name":"","clinical_justification":"1 sentence","icd10_primary":"","icd10_description":"","priority":"urgent|high|moderate","insurance_note":""}],"discussion_points":["1-2 sentences, lead with the ask"],"patient_questions":["plain language"],"functional_medicine_note":"2-3 sentences"}` }],
+{"generated_at":"${new Date().toISOString()}","document_date":"${new Date().toISOString().split('T')[0]}","executive_summary":["3-5 plain English bullets"],"chief_complaint":"one sentence","hpi":"2-3 sentences","pmh":"","medications":[{"name":"","dose":"","notable_depletion":""}],"review_of_systems":{"constitutional":"","cardiovascular":"","gastrointestinal":"","endocrine":""},"lab_summary":{"draw_date":"","lab_name":"","urgent_findings":[{"marker":"","value":"","flag":"","clinical_note":""}],"other_abnormal":[{"marker":"","value":"","flag":""}]},"tests_to_request":[{"test_name":"","clinical_justification":"1 sentence","icd10_primary":"","icd10_description":"","priority":"urgent|high|moderate","insurance_note":""}],"advanced_screening":[{"test_name":"","clinical_justification":"1 sentence — pattern-based reason this rare condition needs ruling out","icd10_primary":"","icd10_description":"","priority":"high|moderate","insurance_note":"may require specialist referral"}],"discussion_points":["1-2 sentences, lead with the ask"],"patient_questions":["plain language"],"functional_medicine_note":"2-3 sentences"}` }],
       }),
     });
 
@@ -156,8 +164,9 @@ Return JSON:
         'R53.1': ['R53.83', 'Other fatigue'], 'G93.3': ['R53.83', 'Other fatigue'],
         'L65.1': ['L65.9', 'Nonscarring hair loss'], 'L63.9': ['L65.9', 'Nonscarring hair loss'],
       };
-      if (doc.tests_to_request) {
-        for (const t of doc.tests_to_request) {
+      const fixIcd = (testList: any[]) => {
+        if (!testList) return;
+        for (const t of testList) {
           const f1 = fixes[t.icd10_primary];
           if (f1) { t.icd10_primary = f1[0]; t.icd10_description = f1[1]; }
           if (t.icd10_secondary) {
@@ -165,7 +174,9 @@ Return JSON:
             if (f2) { t.icd10_secondary = f2[0]; t.icd10_secondary_description = f2[1]; }
           }
         }
-      }
+      };
+      fixIcd(doc.tests_to_request);
+      fixIcd(doc.advanced_screening);
     } catch (e) { console.error('ICD-10 correction error:', e); }
 
     // Validate required fields before saving — never save corrupt/partial documents
@@ -174,6 +185,7 @@ Return JSON:
     }
     // Ensure arrays are arrays, not undefined
     if (!Array.isArray(doc.tests_to_request)) doc.tests_to_request = [];
+    if (!Array.isArray(doc.advanced_screening)) doc.advanced_screening = [];
     if (!Array.isArray(doc.medications)) doc.medications = [];
     if (!Array.isArray(doc.discussion_points)) doc.discussion_points = [];
     if (!Array.isArray(doc.executive_summary)) doc.executive_summary = [];

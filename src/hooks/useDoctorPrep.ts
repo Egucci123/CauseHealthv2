@@ -22,6 +22,7 @@ export interface DoctorPrepDocument {
     other_abnormal: Array<{ marker: string; value: string; flag: string }>;
   };
   tests_to_request: TestToRequest[];
+  advanced_screening?: TestToRequest[];
   discussion_points: string[];
   medication_alternatives?: Array<{
     current_medication: string;
