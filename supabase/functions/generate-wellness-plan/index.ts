@@ -26,6 +26,26 @@ serve(async (req) => {
     const conditions = conditionsRes.data ?? [];
     let labValues: any[] = []; let drawId: string | null = null;
 
+    // Translate user's primary goals to readable labels for the prompt
+    const GOAL_LABELS: Record<string, string> = {
+      understand_labs: 'Understand my bloodwork',
+      energy: 'Fix my energy and brain fog',
+      off_medications: 'Reduce my medications',
+      hair_regrowth: 'Regrow my hair',
+      heart_health: 'Improve heart health',
+      gut_health: 'Fix my gut',
+      weight: 'Lose weight',
+      hormones: 'Balance my hormones',
+      doctor_prep: 'Prepare for a doctor visit',
+      longevity: 'Longevity and prevention',
+      autoimmune: 'Manage autoimmune disease',
+      pain: 'Reduce pain',
+    };
+    const userGoals: string[] = (profile?.primary_goals ?? []).filter((g: any) => typeof g === 'string');
+    const goalsStr = userGoals.length > 0
+      ? userGoals.map((g) => GOAL_LABELS[g] ?? g).join(', ')
+      : 'Not specified';
+
     console.log('[wellness] userId:', userId);
     console.log('[wellness] latestDrawRes:', JSON.stringify(latestDrawRes.data), 'error:', latestDrawRes.error?.message);
 
@@ -95,10 +115,28 @@ HARD RULES — FOLLOW EXACTLY:
 6. FEMALE HORMONE RULE: Do NOT flag estradiol, progesterone, FSH, or LH as abnormal in premenopausal females unless extreme (FSH >40, estradiol <10 or >500, progesterone >30). These vary by cycle phase and a single draw means nothing without knowing cycle day. Never build a supplement protocol around "estrogen dominance" from one blood draw.
 7. Supplements must be safe and not interact with patient's medications.
 8. RETEST TIMELINE: Keep it simple. Recommend ONE comprehensive retest panel at the END of the 90-day protocol (week 12). List 5-8 key markers to recheck. Do NOT recommend retesting at weeks 2, 4, or 8 unless a value is clinically dangerous.
-9. WRITING STYLE: Write like a knowledgeable friend, not a medical textbook. Instead of "HPA-axis dysregulation" say "your stress hormones are elevated." Explain the WHY in plain English. Keep the action plan actionable — specific things to do, not vague clinical language.`,
+9. WRITING STYLE: Write like a knowledgeable friend, not a medical textbook. Instead of "HPA-axis dysregulation" say "your stress hormones are elevated." Explain the WHY in plain English. Keep the action plan actionable — specific things to do, not vague clinical language.
+10. GOAL TAILORING: The user provides up to 5 personal goals (energy, weight, hormones, longevity, etc.). The wellness plan MUST visibly reflect these:
+    - The summary should reference how the plan addresses each top goal
+    - Lifestyle interventions and action plan steps should prioritize what advances those goals
+    - If user picks "longevity" → focus on metabolic health, sleep, zone 2 cardio, resistance training
+    - If user picks "energy" → focus on iron, B12, thyroid, mitochondrial support, sleep architecture
+    - If user picks "gut health" → focus on diet, fiber/prebiotics, food triggers, stress
+    - If user picks "weight" → focus on insulin sensitivity, protein intake, resistance training
+    - If user picks "hormones" → focus on cycle support (women), testosterone optimization (men), sleep, stress
+    - If user picks "off_medications" → emphasize alternatives in medication_notes; provide natural substitutes for each medication where evidence-based
+    - The plan should NOT feel generic — every section should connect back to what the user said they wanted.
+11. LIMITED-DATA MODE: If the user has NO lab values uploaded (only symptoms, conditions, medications, goals), still generate a useful plan based on:
+    - Diagnosed conditions and known mechanisms
+    - Medication-related nutrient depletions (lab-confirmed by virtue of the prescription)
+    - User goals (longevity supplements, etc.)
+    - Lifestyle interventions tailored to symptoms and goals
+    - Recommend baseline lab work as the FIRST item in retest_timeline so the next regeneration can be more precise.
+    Do NOT refuse to generate a plan due to missing labs — just frame supplements with clear "evidence" sourcing and recommend testing.`,
         messages: [{ role: 'user', content: `Create a comprehensive wellness plan addressing ALL lab findings.
 
 PATIENT: ${age ? `${age}yo` : 'age unknown'} ${profile?.sex ?? ''}
+USER'S TOP GOALS (priority order — your plan MUST be tailored around these): ${goalsStr}
 MODE: ${isOptimizationMode ? 'optimization' : 'treatment'}
 ${isOptimizationMode ? 'OPTIMIZATION CONTEXT: Patient labs are mostly optimal. Frame the plan around longevity optimization, not disease treatment. Phase names should be: "Build Foundation (Weeks 1-4)", "Optimize (Weeks 5-8)", "Sustain & Track (Weeks 9-12)". Lifestyle interventions should focus on longevity science: zone 2 cardio, resistance training, sleep optimization, cold/heat exposure, stress resilience, metabolic health optimization, and proactive screening.' : ''}
 DIAGNOSED CONDITIONS: ${condStr}

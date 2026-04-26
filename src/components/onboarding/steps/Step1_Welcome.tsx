@@ -4,7 +4,8 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { OnboardingShell } from '../OnboardingShell';
-import { Input, Select } from '../../ui/Input';
+import { Input } from '../../ui/Input';
+import { CustomSelect } from '../../ui/CustomSelect';
 import { useOnboardingStore } from '../../../store/onboardingStore';
 import { useAuthStore } from '../../../store/authStore';
 
@@ -23,7 +24,7 @@ export const Step1_Welcome = () => {
   const { nextStep, updateStep1 } = store;
   const { profile } = useAuthStore();
 
-  const { register, handleSubmit, formState: { errors }, setValue } = useForm<FormData>({
+  const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       firstName: store.firstName || profile?.firstName || '',
@@ -61,7 +62,19 @@ export const Step1_Welcome = () => {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input label="Date of Birth" type="date" hint="Used to apply age-specific optimal ranges." {...register('dateOfBirth')} />
-          <Select label="Biological Sex" options={[{ value: '', label: 'Select...' }, { value: 'male', label: 'Male' }, { value: 'female', label: 'Female' }, { value: 'other', label: 'Prefer not to say' }]} hint="Affects hormone optimal ranges." {...register('sex')} />
+          <CustomSelect
+            label="Biological Sex"
+            placeholder="Select..."
+            hint="Affects hormone and CBC optimal ranges."
+            options={[
+              { value: 'male', label: 'Male' },
+              { value: 'female', label: 'Female' },
+              { value: 'other', label: 'Prefer not to say' },
+            ]}
+            value={watch('sex') ?? ''}
+            onChange={(v) => setValue('sex', v, { shouldValidate: true })}
+            error={errors.sex?.message}
+          />
         </div>
         <div>
           <label className="text-precision text-[0.68rem] font-bold text-clinical-stone tracking-widest uppercase mb-1.5 block">Height (optional)</label>
@@ -71,7 +84,15 @@ export const Step1_Welcome = () => {
           </div>
         </div>
         <Input label="Weight — lbs (optional)" type="number" placeholder="185" hint="Used to calculate BMI for metabolic risk assessment." {...register('weightLbs')} />
-        <Select label="State (optional)" options={[{ value: '', label: 'Select state...' }, ...US_STATES.map(s => ({ value: s, label: s }))]} hint="For future provider matching features." {...register('locationState')} />
+        <CustomSelect
+          label="State (optional)"
+          placeholder="Select state..."
+          hint="For future provider matching features."
+          searchable
+          options={US_STATES.map(s => ({ value: s, label: s }))}
+          value={watch('locationState') ?? ''}
+          onChange={(v) => setValue('locationState', v)}
+        />
       </div>
     </OnboardingShell>
   );

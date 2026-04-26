@@ -36,6 +36,26 @@ serve(async (req) => {
       `${v.marker_name}: ${v.value} ${v.unit ?? ''} (Ref: ${v.standard_low ?? '?'}–${v.standard_high ?? '?'}) ${v.standard_flag && v.standard_flag !== 'normal' ? '[' + v.standard_flag.toUpperCase() + ']' : ''}`
     ).join('\n') || 'No labs';
 
+    // Goals → readable labels for prompt tailoring
+    const GOAL_LABELS: Record<string, string> = {
+      understand_labs: 'Understand my bloodwork',
+      energy: 'Fix my energy and brain fog',
+      off_medications: 'Reduce my medications',
+      hair_regrowth: 'Regrow my hair',
+      heart_health: 'Improve heart health',
+      gut_health: 'Fix my gut',
+      weight: 'Lose weight',
+      hormones: 'Balance my hormones',
+      doctor_prep: 'Prepare for a doctor visit',
+      longevity: 'Longevity and prevention',
+      autoimmune: 'Manage autoimmune disease',
+      pain: 'Reduce pain',
+    };
+    const userGoals: string[] = (profile?.primary_goals ?? []).filter((g: any) => typeof g === 'string');
+    const goalsStr = userGoals.length > 0
+      ? userGoals.map((g) => GOAL_LABELS[g] ?? g).join(', ')
+      : 'Not specified';
+
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
@@ -95,6 +115,15 @@ CRITICAL RULES:
 
 FEMALE HORMONE RULE: Do NOT interpret estradiol, progesterone, FSH, or LH as abnormal in premenopausal females unless extreme (FSH >40, estradiol <10 or >500, progesterone >30). These vary by cycle phase. A single blood draw cannot diagnose "estrogen dominance" without knowing cycle day. Note this limitation if discussing these values.
 
+GOAL-DRIVEN TAILORING: The user provides their personal goals (energy, longevity, hormones, weight, etc.). The discussion points, patient questions, and tests_to_request should visibly connect to these goals. If a user's top goal is "energy" — at minimum one discussion point should address energy-relevant findings (iron, B12, thyroid, sleep). If "longevity" — focus on metabolic optimization and preventive screening even when current labs look fine. The functional_medicine_note must explicitly tie the patient's biggest finding back to their stated goals.
+
+LIMITED-DATA MODE: If the user has NO lab values uploaded (only symptoms, conditions, medications, goals), generate a SCREENING-FOCUSED clinical prep:
+- executive_summary should say "Based on your symptoms and history, here's what to ask for at your visit" rather than referencing labs
+- tests_to_request becomes the BASELINE PANEL the doctor should order (CMP, CBC, lipid panel, TSH, vitamin D, hs-CRP, ferritin, A1c) — tailored to the user's symptoms and goals
+- advanced_screening can include condition-specific tests based on symptoms alone (celiac if GI symptoms, HLA-B27 if joint pain + IBD, etc.)
+- discussion_points focus on getting the right tests ordered
+- DO NOT pretend you have lab data you don't have
+
 FORMAT: executive_summary (3-5 bullets in plain English), HPI (3-5 sentences), ROS (1-2 sentences/system), discussion_points (5-8 items, 1-2 sentences each — lead with the ask, explain WHY in simple terms anyone can understand), patient_questions (3-5 plain language questions to literally read to your doctor), functional_medicine_note (2-3 sentences).
 
 WRITING STYLE: Write like you're explaining to a smart friend, not a medical textbook. Instead of "hepatocellular dysfunction" say "your liver enzymes suggest it's working harder than it should." Instead of "HPA-axis dysregulation" say "your stress hormones are elevated." Keep discussion points SHORT — the patient needs to scan this in the waiting room, not read an essay.
@@ -128,6 +157,7 @@ Be concise. Scannable in 3 minutes.`,
         messages: [{ role: 'user', content: `Generate clinical visit prep document.
 
 PATIENT: ${age ? `${age}yo` : 'age unknown'} ${profile?.sex ?? ''}
+USER'S TOP GOALS (their stated reasons for using this app — your discussion points and tests should connect to these): ${goalsStr}
 DIAGNOSED CONDITIONS: ${condStr}
 MEDICATIONS:\n${medsStr}
 SYMPTOMS:\n${sympStr}

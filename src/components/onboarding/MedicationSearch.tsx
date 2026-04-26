@@ -7,6 +7,7 @@ import { DEPLETIONS } from '../../data/depletions';
 import { useOnboardingStore, type AddedMedication } from '../../store/onboardingStore';
 import { SeverityBadge } from '../ui/Badge';
 import { InterventionBox } from '../ui/Card';
+import { CustomSelect } from '../ui/CustomSelect';
 
 export const MedicationSearch = () => {
   const [query, setQuery] = useState('');
@@ -132,17 +133,18 @@ const MedicationCard = ({ medication, onRemove }: { medication: AddedMedication;
           </button>
         </div>
         <div className="mb-4">
-          <label className="text-precision text-[0.68rem] font-bold text-clinical-stone tracking-widest uppercase mb-2 block">How Long on This Medication?</label>
-          <select value={medication.duration}
-            onChange={e => useOnboardingStore.setState(s => ({ medications: s.medications.map(m => m.id === medication.id ? { ...m, duration: e.target.value } : m) }))}
-            style={{ borderRadius: '4px' }}
-            className="w-full bg-clinical-cream border border-outline-variant/20 px-3 py-2 text-clinical-charcoal text-body text-sm focus:border-primary-container focus:outline-none">
-            <option value="less_than_1_month">Less than 1 month</option>
-            <option value="1_6_months">1–6 months</option>
-            <option value="6_12_months">6–12 months</option>
-            <option value="1_3_years">1–3 years</option>
-            <option value="3_plus_years">3+ years</option>
-          </select>
+          <CustomSelect
+            label="How Long on This Medication?"
+            value={medication.duration}
+            onChange={(v) => useOnboardingStore.setState(s => ({ medications: s.medications.map(m => m.id === medication.id ? { ...m, duration: v } : m) }))}
+            options={[
+              { value: 'less_than_1_month', label: 'Less than 1 month' },
+              { value: '1_6_months', label: '1–6 months' },
+              { value: '6_12_months', label: '6–12 months' },
+              { value: '1_3_years', label: '1–3 years' },
+              { value: '3_plus_years', label: '3+ years' },
+            ]}
+          />
         </div>
 
         <AnimatePresence>

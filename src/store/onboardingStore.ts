@@ -80,7 +80,7 @@ export interface OnboardingState {
   noMedications:      boolean;
   symptoms:           AddedSymptom[];
   lifestyle:          Partial<LifestyleData>;
-  primaryGoal:        string;
+  primaryGoals:       string[];
   specificConcern:    string;
   triedBefore:        string;
   hearAboutUs:        string;
@@ -130,7 +130,7 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
   medications: [], supplements: [], noMedications: false,
   symptoms: [],
   lifestyle: DEFAULT_LIFESTYLE,
-  primaryGoal: '', specificConcern: '', triedBefore: '', hearAboutUs: '',
+  primaryGoals: [], specificConcern: '', triedBefore: '', hearAboutUs: '',
   quickInsights: [], insightsLoading: false,
 
   goToStep: (step) => set({ currentStep: step }),
@@ -196,7 +196,7 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
       updates.heightIn = String(Math.round(totalInches % 12));
     }
     if (profile.weightKg) updates.weightLbs = String(Math.round(profile.weightKg / 0.453592));
-    if (profile.primaryGoals && profile.primaryGoals.length > 0) updates.primaryGoal = profile.primaryGoals[0];
+    if (profile.primaryGoals && profile.primaryGoals.length > 0) updates.primaryGoals = profile.primaryGoals;
 
     // Determine which step to resume at — only skip forward if later steps have data
     let resumeStep = 1;
@@ -284,7 +284,7 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
       saves.push(
         supabase.from('profiles').update({
           onboarding_completed: true,
-          primary_goals: [state.primaryGoal].filter(Boolean),
+          primary_goals: state.primaryGoals.filter(Boolean),
         }).eq('id', user.id)
       );
 
@@ -344,7 +344,7 @@ async function autoSaveToDB() {
     if (state.sex) profileData.sex = state.sex;
     if (heightCm) profileData.height_cm = heightCm;
     if (weightKg) profileData.weight_kg = weightKg;
-    if (state.primaryGoal) profileData.primary_goals = [state.primaryGoal];
+    if (state.primaryGoals && state.primaryGoals.length > 0) profileData.primary_goals = state.primaryGoals;
 
     if (Object.keys(profileData).length > 0) {
       await supabase.from('profiles').update(profileData).eq('id', user.id);
@@ -386,7 +386,7 @@ useOnboardingStore.subscribe((state, prevState) => {
   const changed = state.firstName !== prevState.firstName || state.lastName !== prevState.lastName ||
     state.dateOfBirth !== prevState.dateOfBirth || state.sex !== prevState.sex ||
     state.heightFt !== prevState.heightFt || state.heightIn !== prevState.heightIn ||
-    state.weightLbs !== prevState.weightLbs || state.primaryGoal !== prevState.primaryGoal ||
+    state.weightLbs !== prevState.weightLbs || state.primaryGoals.length !== prevState.primaryGoals.length ||
     state.conditions.length !== prevState.conditions.length ||
     state.medications.length !== prevState.medications.length ||
     state.symptoms.length !== prevState.symptoms.length ||
