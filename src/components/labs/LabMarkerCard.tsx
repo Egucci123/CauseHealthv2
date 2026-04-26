@@ -6,6 +6,7 @@ import { OptimalRangeBar } from '../lab/OptimalRangeBar';
 import { Badge } from '../ui/Badge';
 import { ClinicalLink } from '../ui/Button';
 import { Sparkline } from '../ui/Sparkline';
+import { MarkerTerm } from '../ui/MarkerTerm';
 import { useMarkerHistory } from '../../hooks/useMarkerHistory';
 
 interface LabValueRow {
@@ -50,7 +51,11 @@ export const LabMarkerCard = ({ value, analysis, onAddToPrep }: LabMarkerCardPro
       <div className="p-8">
         <div className="flex justify-between items-start mb-6">
           <div>
-            <h3 className="text-body text-clinical-charcoal font-semibold text-lg">{value.marker_name}</h3>
+            <h3 className="text-body text-clinical-charcoal font-semibold text-lg">
+              <MarkerTerm name={value.marker_name} className="text-clinical-charcoal font-semibold">
+                {value.marker_name}
+              </MarkerTerm>
+            </h3>
             <p className="text-precision text-[0.68rem] text-clinical-stone tracking-widest uppercase mt-0.5">{value.marker_category}</p>
           </div>
           <Badge status={status} />

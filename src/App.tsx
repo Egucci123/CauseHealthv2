@@ -46,6 +46,9 @@ import { ProgressTracking } from './pages/progress/ProgressTracking';
 // Settings
 import { Settings } from './pages/settings/Settings';
 
+// Glossary
+import { Glossary } from './pages/Glossary';
+
 // Layout
 import { AppShell } from './components/layout/AppShell';
 
@@ -101,6 +104,7 @@ function App() {
       <Route path="/chat" element={<ProtectedRoute><HealthChat /></ProtectedRoute>} />
       <Route path="/progress" element={<ProtectedRoute><ProgressTracking /></ProtectedRoute>} />
       <Route path="/insurance" element={<ProtectedRoute><PageStub title="Insurance Guide" /></ProtectedRoute>} />
+      <Route path="/glossary" element={<ProtectedRoute><Glossary /></ProtectedRoute>} />
 
       {/* Settings */}
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />

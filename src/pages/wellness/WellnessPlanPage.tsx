@@ -143,6 +143,7 @@ export const WellnessPlanPage = () => {
             <ActionPlan
               actionPlan={plan.action_plan ?? { phase_1: { name: '', focus: '', actions: [] }, phase_2: { name: '', focus: '', actions: [] }, phase_3: { name: '', focus: '', actions: [] } }}
               retestTimeline={[]}
+              planKey={plan.generated_at ?? 'default'}
             />
           </FolderSection>
 
