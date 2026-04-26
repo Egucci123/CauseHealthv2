@@ -21,7 +21,7 @@ export const MedicationChecker = () => {
   return (
     <AppShell pageTitle="Medication Intelligence">
       <div className="flex flex-col md:flex-row justify-between items-start gap-4">
-        <SectionHeader title="Medication Intelligence" description="Every drug you take has nutritional consequences most doctors never discuss. This is your full depletion map." />
+        <SectionHeader title="Medication Intelligence" description="Every drug you take has nutritional consequences — and often, healthier alternatives. This is your full depletion map plus pharmaceutical, natural, and lifestyle options to discuss with your doctor." />
         <Button variant="secondary" size="md" icon="settings" onClick={() => navigate('/settings')}>Edit Medications</Button>
       </div>
 
@@ -39,7 +39,7 @@ export const MedicationChecker = () => {
             title="My Medications"
             count={medications.length}
             countLabel={medications.length === 1 ? 'medication' : 'medications'}
-            explanation="Each medication you take with its known nutritional depletions and the recommended supplement to counter them. Mechanism, clinical effects, and dose guidance for each — what your prescriber rarely has time to explain."
+            explanation="Each medication with its known nutritional depletions, recommended counter-supplements, and a list of healthier alternatives — pharmaceutical, natural, and lifestyle. Click the green 'Healthier Alternatives' panel inside any medication to see your options."
             defaultOpen
             accentColor="#1B4332"
           >

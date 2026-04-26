@@ -7,9 +7,17 @@ export interface DepletionEntry {
   dose: string; form: string; timing: string; contraindications?: string[];
 }
 
+export interface MedicationAlternative {
+  name: string;
+  type: 'pharmaceutical' | 'natural' | 'lifestyle';
+  reason: string;
+  caution?: string;
+}
+
 export interface MedicationDepletionProfile {
   genericName: string; brandNames: string[]; drugClass: string;
   depletions: DepletionEntry[]; interactions: string[]; notes?: string;
+  alternatives?: MedicationAlternative[];
 }
 
 export const MEDICATION_DEPLETIONS: Record<string, MedicationDepletionProfile> = {
