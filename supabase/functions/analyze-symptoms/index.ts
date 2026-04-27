@@ -62,7 +62,24 @@ CRITICAL RULES:
 6. DO NOT speculate about conditions the patient has no evidence for. Only flag autoimmune conditions with supporting symptoms AND lab clues.
 7. Frame as educational. Always recommend discussing with a healthcare provider.
 
-8. LIFESTYLE-FIRST GATE FOR suggested_tests (CRITICAL):
+8. COMMON-BUT-MISSED CONDITIONS (CATCH AGGRESSIVELY in suggested_tests):
+   These are 1-10% prevalence, routinely missed. Surface them when patterns suggest them:
+   - PCOS (women): testosterone + DHEA-S + LH:FSH + fasting insulin + SHBG. Trigger: irregular cycles, acne, hirsutism, weight gain, hair thinning, insulin resistance.
+   - Hashimoto's: TPO + thyroglobulin antibodies. Trigger: TSH outside 1.0-2.5, thyroid symptoms, family history.
+   - Subclinical hypothyroidism: Free T3 + Free T4 + reverse T3. Trigger: TSH 2.5-4.5 with symptoms.
+   - Low T (men): total + free T + SHBG + estradiol + LH/FSH. Trigger: fatigue, weight gain, low libido in men.
+   - Perimenopause (women 35-50): FSH + estradiol + progesterone + AMH. Trigger: cycle/mood/sleep changes.
+   - Adrenal/HPA-axis: AM cortisol + DHEA-S + ACTH. Trigger: chronic stress fatigue, salt cravings, anxiety.
+   - Functional iron deficiency: full iron panel. Trigger: ferritin <50, hair loss, fatigue (esp menstruating women).
+   - B12 status: MMA + homocysteine. Trigger: B12 <500, fatigue, brain fog, neuropathy.
+   - NAFLD: liver ultrasound + GGT. Trigger: ALT >25.
+   - Celiac: tTG-IgA + total IgA. Trigger: GI symptoms, iron deficiency, autoimmune disease.
+   - SIBO: lactulose breath test. Trigger: persistent bloating, post-meal gas, IBS-like.
+   - Sleep apnea: STOP-BANG. Trigger: snoring, daytime fatigue, weight, hypertension.
+   - Endometriosis (women): pelvic ultrasound + GYN. Trigger: pelvic pain, heavy bleeding, infertility.
+   These get flagged on day 1.
+
+9. LIFESTYLE-FIRST GATE FOR RARE DISEASES (CRITICAL):
    Default users are overwhelmed and lazy — do NOT scare them with rare-disease screening on day 1. Most abnormal labs in young adults improve with 90 days of lifestyle change.
    ABSOLUTE BLOCKLIST — these tests CAN NEVER appear in suggested_tests unless the patient hits the hard urgent threshold:
      - JAK2 V617F → only when platelets >450 OR (RBC >6.0 AND Hct >54).

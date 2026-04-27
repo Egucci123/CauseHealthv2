@@ -149,6 +149,23 @@ TESTS — TWO SEPARATE LISTS:
    - Tier as urgent/high/moderate.
 
 PLACEMENT RULES (which list a test belongs in):
+
+   COMMON-BUT-MISSED CONDITIONS (CATCH THESE AGGRESSIVELY in tests_to_request — these are ROUTINELY missed by 12-min appointments and should be surfaced when ANY suggestive pattern is present):
+   - PCOS workup (premenopausal women) — total + free testosterone, DHEA-S, LH:FSH ratio, fasting insulin, SHBG, free androgen index. Trigger: irregular cycles, acne, hirsutism/excess hair, weight gain, hair thinning, infertility, or any insulin resistance markers in a woman of reproductive age.
+   - Hashimoto's / autoimmune thyroiditis — TPO antibodies + thyroglobulin antibodies. Trigger: TSH >2.5 OR <1.0, OR fatigue + weight changes + hair loss, OR family history of thyroid/autoimmune.
+   - Subclinical hypothyroidism — Free T3, Free T4, reverse T3. Trigger: TSH 2.5–4.5 (within "normal" but not optimal), cold intolerance, fatigue, weight gain, brain fog.
+   - Low testosterone in men — total T, free T, SHBG, estradiol, LH/FSH. Trigger: men with fatigue, weight gain, low libido, depression, or testosterone <500.
+   - Perimenopause workup (women 35–50) — FSH, estradiol, progesterone, AMH. Trigger: irregular cycles, hot flashes, mood changes, sleep disruption, weight gain.
+   - Adrenal/HPA-axis dysregulation — AM serum cortisol, DHEA-S, ACTH. Trigger: chronic stress + fatigue, salt cravings, blood sugar instability, anxiety. (NOT Cushing's screening — that's still gated.)
+   - Functional iron deficiency — full iron panel (serum iron, TIBC, ferritin, transferrin saturation). Trigger: hair loss, fatigue, restless legs, OR ferritin <50 even with normal hemoglobin. Especially in menstruating women.
+   - True B12 status — methylmalonic acid (MMA) + homocysteine. Trigger: fatigue, brain fog, neuropathy, depression, OR serum B12 <500 (low end of "normal").
+   - NAFLD workup — liver ultrasound + GGT. Trigger: any ALT >25, especially with high triglycerides or insulin resistance.
+   - Celiac screening — tTG-IgA + total IgA. Trigger: GI symptoms (bloating, gas, diarrhea, constipation), iron deficiency, low albumin, family history, OR autoimmune disease (UC, type 1 diabetes, Hashimoto's).
+   - SIBO — lactulose breath test. Trigger: persistent bloating, post-meal gas, IBS-like symptoms.
+   - Sleep apnea screening — STOP-BANG questionnaire + sleep study referral. Trigger: snoring, daytime fatigue, hypertension, weight, or any insulin resistance pattern.
+   - Endometriosis workup (women) — pelvic ultrasound + GYN referral. Trigger: pelvic pain, painful periods, heavy bleeding, infertility.
+   These conditions are COMMON (1–10% prevalence), highly treatable, and should be flagged on day 1 when any suggestive pattern exists. Do NOT gate them.
+
    ABSOLUTE BLOCKLIST — these tests CAN NEVER go in tests_to_request. They ALWAYS go in advanced_screening, UNLESS the patient hits the hard urgent threshold listed:
      - JAK2 V617F → tests_to_request ONLY when platelets >450 OR (RBC >6.0 AND Hct >54). Borderline-high RBC/Hct is NOT enough.
      - Erythropoietin level → same rule as JAK2, only when JAK2 is justified.

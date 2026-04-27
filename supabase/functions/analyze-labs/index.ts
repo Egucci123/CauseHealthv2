@@ -101,8 +101,25 @@ CRITICAL RULES:
 7. Write headlines and explanations in plain English. Instead of "hepatocellular dysfunction" say "your liver is working harder than it should." Keep explanations to 1-2 sentences max.
 8. Frame as educational information for discussion with a healthcare provider.
 
-9. LIFESTYLE-FIRST GATE FOR missing_tests (CRITICAL):
-   This list is shown directly to users. The default user is overwhelmed and lazy — do NOT scare them with rare-disease screening on day 1.
+9. COMMON-BUT-MISSED CONDITIONS (CATCH AGGRESSIVELY in missing_tests):
+   These are 1–10% prevalence conditions that 12-min appointments routinely miss. Surface them when ANY suggestive pattern is present:
+   - PCOS workup (women): testosterone + DHEA-S + LH:FSH + fasting insulin + SHBG + free androgen index. Trigger: irregular cycles, acne, hirsutism, weight gain, hair thinning, insulin resistance markers in a woman of reproductive age.
+   - Hashimoto's: TPO + thyroglobulin antibodies. Trigger: TSH outside 1.0-2.5, OR fatigue+weight changes+hair loss.
+   - Subclinical hypothyroidism: Free T3 + Free T4 + reverse T3. Trigger: TSH 2.5-4.5 with symptoms.
+   - Low testosterone (men): total T + free T + SHBG + estradiol + LH/FSH. Trigger: men with fatigue, weight gain, low libido, OR T <500.
+   - Perimenopause (women 35-50): FSH + estradiol + progesterone + AMH. Trigger: irregular cycles, hot flashes, mood/sleep changes.
+   - Adrenal/HPA-axis: AM cortisol + DHEA-S + ACTH. Trigger: chronic stress fatigue, salt cravings, anxiety.
+   - Functional iron deficiency: full iron panel. Trigger: ferritin <50 OR hair loss/fatigue/restless legs (especially menstruating women).
+   - True B12 status: MMA + homocysteine. Trigger: B12 <500, fatigue, brain fog, neuropathy.
+   - NAFLD: liver ultrasound + GGT. Trigger: ALT >25, especially with high triglycerides or insulin resistance.
+   - Celiac: tTG-IgA + total IgA. Trigger: GI symptoms, iron deficiency, low albumin, family history, autoimmune disease.
+   - SIBO: lactulose breath test. Trigger: persistent bloating, post-meal gas, IBS-like symptoms.
+   - Sleep apnea: STOP-BANG + sleep study. Trigger: snoring, daytime fatigue, hypertension, weight, insulin resistance.
+   - Endometriosis (women): pelvic ultrasound + GYN. Trigger: pelvic pain, heavy bleeding, infertility.
+   These get flagged on day 1, not gated.
+
+10. LIFESTYLE-FIRST GATE FOR RARE DISEASES (CRITICAL):
+   The default user is overwhelmed. Do NOT scare them with rare-disease screening on day 1.
    ABSOLUTE BLOCKLIST — these tests CAN NEVER appear in missing_tests unless the patient hits the hard urgent threshold:
      - JAK2 V617F → only when platelets >450 OR (RBC >6.0 AND Hct >54). Borderline-high RBC/Hct (e.g., 5.96 / 51.4) is NOT enough.
      - Erythropoietin level → same rule as JAK2.
