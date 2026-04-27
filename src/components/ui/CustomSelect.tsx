@@ -2,8 +2,9 @@
 // Custom select dropdown with consistent styling across platforms.
 // Replaces the native <select> which renders inconsistently (esp. mobile picker wheel on iOS).
 
-import { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useRef, useEffect, useLayoutEffect, forwardRef, useImperativeHandle } from 'react';
+import { createPortal } from 'react-dom';
+import { motion } from 'framer-motion';
 
 export interface CustomSelectOption {
   value: string;
@@ -36,8 +37,10 @@ export const CustomSelect = forwardRef<CustomSelectHandle, CustomSelectProps>(({
 }, ref) => {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [menuRect, setMenuRect] = useState<{ top: number; left: number; width: number; placeAbove: boolean } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
   useImperativeHandle(ref, () => ({
@@ -46,17 +49,48 @@ export const CustomSelect = forwardRef<CustomSelectHandle, CustomSelectProps>(({
 
   const selectedOption = options.find(o => o.value === value) ?? null;
 
-  // Close on outside click
+  // Close on outside click — must check both the trigger AND the portal-rendered menu
   useEffect(() => {
     if (!open) return;
     const handleClick = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      const inTrigger = containerRef.current?.contains(target);
+      const inMenu = menuRef.current?.contains(target);
+      if (!inTrigger && !inMenu) {
         setOpen(false);
         setSearch('');
       }
     };
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
+  }, [open]);
+
+  // Compute menu position relative to viewport so the portal can render it correctly,
+  // and pick top vs bottom placement so we never run off-screen.
+  useLayoutEffect(() => {
+    if (!open) { setMenuRect(null); return; }
+    const compute = () => {
+      const btn = buttonRef.current;
+      if (!btn) return;
+      const r = btn.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - r.bottom;
+      const spaceAbove = r.top;
+      const desiredHeight = 384; // matches max-h-96
+      const placeAbove = spaceBelow < desiredHeight && spaceAbove > spaceBelow;
+      setMenuRect({
+        top: placeAbove ? r.top : r.bottom,
+        left: r.left,
+        width: r.width,
+        placeAbove,
+      });
+    };
+    compute();
+    window.addEventListener('scroll', compute, true);
+    window.addEventListener('resize', compute);
+    return () => {
+      window.removeEventListener('scroll', compute, true);
+      window.removeEventListener('resize', compute);
+    };
   }, [open]);
 
   // Auto-focus search input when opening
@@ -131,15 +165,24 @@ export const CustomSelect = forwardRef<CustomSelectHandle, CustomSelectProps>(({
           </span>
         </button>
 
-        <AnimatePresence>
-          {open && (
+        {open && menuRect && createPortal(
+          (
             <motion.div
-              initial={{ opacity: 0, y: -4 }}
+              ref={menuRef}
+              initial={{ opacity: 0, y: menuRect.placeAbove ? 4 : -4 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4 }}
+              exit={{ opacity: 0, y: menuRect.placeAbove ? 4 : -4 }}
               transition={{ duration: 0.12 }}
-              className="absolute z-40 mt-1 w-full bg-clinical-white shadow-card-md border border-outline-variant/20 max-h-[28rem] overflow-hidden"
-              style={{ borderRadius: '6px' }}
+              className="bg-clinical-white shadow-card-md border border-outline-variant/20 max-h-[28rem] overflow-hidden"
+              style={{
+                position: 'fixed',
+                top: menuRect.placeAbove ? undefined : menuRect.top + 4,
+                bottom: menuRect.placeAbove ? window.innerHeight - menuRect.top + 4 : undefined,
+                left: menuRect.left,
+                width: menuRect.width,
+                zIndex: 9999,
+                borderRadius: '6px',
+              }}
               role="listbox"
             >
               {searchable && (
@@ -194,8 +237,9 @@ export const CustomSelect = forwardRef<CustomSelectHandle, CustomSelectProps>(({
                 )}
               </div>
             </motion.div>
-          )}
-        </AnimatePresence>
+          ),
+          document.body
+        )}
       </div>
 
       {error && <p className="text-precision text-[0.68rem] text-[#C94F4F] tracking-wide">{error}</p>}

@@ -146,7 +146,7 @@ const SupplementCard = ({ supplement, labInteractions, onRemove }: SupplementCar
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
       transition={{ duration: 0.2 }}
-      className={`bg-clinical-white border ${hasLabFlags ? 'border-[#E8922A]/30' : 'border-outline-variant/15'} overflow-hidden`}
+      className={`bg-clinical-white border ${hasLabFlags ? 'border-[#E8922A]/30' : 'border-outline-variant/15'}`}
       style={{ borderRadius: '6px' }}
     >
       <div className="p-4">
