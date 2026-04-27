@@ -2,10 +2,10 @@
 
 const FOOTER_LINKS = {
   Product: [
-    { label: 'How It Works', href: '#how-it-works' },
-    { label: 'Features', href: '#features' },
-    { label: 'Pricing', href: '#pricing' },
-    { label: 'Conditions', href: '#conditions' },
+    { label: 'How It Works', href: '/#how-it-works' },
+    { label: 'Features', href: '/#features' },
+    { label: 'Pricing', href: '/#pricing' },
+    { label: 'Conditions', href: '/#conditions' },
   ],
   Company: [
     { label: 'About', href: '/about' },

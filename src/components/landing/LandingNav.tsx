@@ -20,11 +20,14 @@ export const LandingNav = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Use absolute hash links (/#section) so they work from sub-pages too
+  // (otherwise clicking 'How It Works' from /about would look for the ID
+  // on the about page and find nothing).
   const navLinks = [
-    { label: 'How It Works', href: '#how-it-works' },
-    { label: 'What We Find', href: '#features' },
-    { label: 'Conditions',   href: '#conditions' },
-    { label: 'Pricing',      href: '#pricing' },
+    { label: 'How It Works', href: '/#how-it-works' },
+    { label: 'What We Find', href: '/#features' },
+    { label: 'Conditions',   href: '/#conditions' },
+    { label: 'Pricing',      href: '/#pricing' },
   ];
 
   return (
