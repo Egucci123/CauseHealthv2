@@ -9,7 +9,7 @@ import { useSymptoms, useSaveSymptoms } from '../../hooks/useSymptoms';
 import { useSupplements, useSaveSupplements } from '../../hooks/useSupplements';
 import { searchMedications, type MedicationEntry } from '../../data/medications';
 import { searchMedicationsAPI, type MedSearchResult } from '../../lib/medicalSearch';
-import { searchSupplements, findSupplement, type SupplementEntry } from '../../data/supplements';
+import { searchSupplements, findSupplement, getCommonDoses, type SupplementEntry } from '../../data/supplements';
 import { SYMPTOM_CATEGORIES } from '../../data/symptoms';
 
 // ─── Medications Section ─────────────────────────────────────────────────────
@@ -479,8 +479,11 @@ const SupplementsEditor = () => {
                   </button>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  <input type="text" value={s.dose ?? ''} onChange={e => updateField(i, { dose: e.target.value })} placeholder="Dose (e.g. 200mg)" style={{ borderRadius: '4px' }}
-                    className="bg-clinical-cream border border-outline-variant/20 px-2 py-1.5 text-body text-xs text-clinical-charcoal focus:border-primary-container focus:outline-none" />
+                  <select value={s.dose ?? ''} onChange={e => updateField(i, { dose: e.target.value })} style={{ borderRadius: '4px' }}
+                    className="bg-clinical-cream border border-outline-variant/20 px-2 py-1.5 text-body text-xs text-clinical-charcoal focus:border-primary-container focus:outline-none">
+                    <option value="">Dose: not sure</option>
+                    {getCommonDoses(s.name).map(d => <option key={d} value={d}>{d}</option>)}
+                  </select>
                   <select value={s.durationCategory ?? '1_6_months'} onChange={e => updateField(i, { durationCategory: e.target.value })} style={{ borderRadius: '4px' }}
                     className="bg-clinical-cream border border-outline-variant/20 px-2 py-1.5 text-body text-xs text-clinical-charcoal focus:border-primary-container focus:outline-none">
                     <option value="less_than_1_month">&lt; 1 month</option>

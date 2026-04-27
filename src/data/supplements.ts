@@ -16,6 +16,72 @@ export interface SupplementEntry {
   depletesFor?: string[];          // e.g., ["statins", "PPIs"]
 }
 
+/** Common dose dropdown options for each supplement, keyed by canonical name (case-insensitive lookup). */
+export const COMMON_DOSES: Record<string, string[]> = {
+  'Vitamin D3': ['1,000 IU', '2,000 IU', '4,000 IU', '5,000 IU', '10,000 IU', '50,000 IU weekly'],
+  'Vitamin K2': ['90 mcg', '100 mcg', '180 mcg', '200 mcg'],
+  'Vitamin B12': ['500 mcg', '1,000 mcg', '2,500 mcg', '5,000 mcg'],
+  'Methylfolate': ['400 mcg', '800 mcg', '1,000 mcg', '5 mg'],
+  'Folate': ['400 mcg', '800 mcg', '1,000 mcg'],
+  'Vitamin C': ['500 mg', '1,000 mg', '2,000 mg'],
+  'Vitamin A': ['5,000 IU', '10,000 IU', '25,000 IU'],
+  'Vitamin E': ['200 IU', '400 IU', '800 IU'],
+  'Magnesium': ['200 mg', '300 mg', '400 mg', '500 mg'],
+  'Zinc': ['15 mg', '25 mg', '30 mg', '50 mg'],
+  'Iron': ['18 mg', '25 mg', '45 mg', '65 mg'],
+  'Selenium': ['100 mcg', '200 mcg'],
+  'Iodine': ['150 mcg', '225 mcg', '12.5 mg'],
+  'Calcium': ['500 mg', '1,000 mg'],
+  'Potassium': ['99 mg', '500 mg', '1,000 mg'],
+  'Omega-3': ['1 g', '2 g', '3 g', '4 g'],
+  'Fish Oil': ['1 g', '2 g', '3 g', '4 g'],
+  'CoQ10': ['100 mg', '200 mg', '300 mg', '400 mg'],
+  'Ubiquinol': ['100 mg', '200 mg', '300 mg'],
+  'Creatine': ['3 g', '5 g', '10 g'],
+  'Whey Protein': ['20 g', '25 g', '30 g', '40 g'],
+  'Collagen': ['10 g', '15 g', '20 g'],
+  'Berberine': ['500 mg', '1,000 mg', '1,500 mg'],
+  'NAC': ['600 mg', '1,200 mg', '1,800 mg'],
+  'TMG': ['500 mg', '1,000 mg', '2,000 mg'],
+  'SAM-e': ['200 mg', '400 mg', '800 mg', '1,200 mg'],
+  'Curcumin': ['500 mg', '1,000 mg', '1,500 mg'],
+  'Turmeric': ['500 mg', '1,000 mg', '1,500 mg'],
+  'Ashwagandha': ['300 mg', '600 mg', '1,200 mg'],
+  'Rhodiola': ['200 mg', '400 mg', '600 mg'],
+  'Saw Palmetto': ['160 mg', '320 mg'],
+  'DHEA': ['10 mg', '25 mg', '50 mg'],
+  'Niacin': ['250 mg', '500 mg', '1,000 mg', '2,000 mg'],
+  'L-Theanine': ['100 mg', '200 mg', '400 mg'],
+  'Probiotic': ['10 billion CFU', '25 billion CFU', '50 billion CFU', '100 billion CFU'],
+  'Melatonin': ['0.3 mg', '1 mg', '3 mg', '5 mg', '10 mg'],
+  'Inositol': ['1 g', '2 g', '4 g'],
+  'Glycine': ['1 g', '3 g', '5 g'],
+  'Taurine': ['500 mg', '1,000 mg', '2,000 mg'],
+  'L-Glutamine': ['5 g', '10 g', '15 g'],
+  'L-Arginine': ['1 g', '3 g', '5 g'],
+  'L-Citrulline': ['3 g', '6 g', '8 g'],
+  'Glutathione': ['250 mg', '500 mg', '1,000 mg'],
+};
+
+const FALLBACK_DOSES = ['Low dose', 'Standard dose', 'High dose'];
+
+/** Get common doses for a supplement by name. Falls back to generic options. */
+export function getCommonDoses(supplementName: string): string[] {
+  if (!supplementName) return FALLBACK_DOSES;
+  if (COMMON_DOSES[supplementName]) return COMMON_DOSES[supplementName];
+  const lower = supplementName.toLowerCase();
+  // Exact case-insensitive
+  for (const [key, doses] of Object.entries(COMMON_DOSES)) {
+    if (key.toLowerCase() === lower) return doses;
+  }
+  // Partial match (either direction)
+  for (const [key, doses] of Object.entries(COMMON_DOSES)) {
+    const k = key.toLowerCase();
+    if (lower.includes(k) || k.includes(lower)) return doses;
+  }
+  return FALLBACK_DOSES;
+}
+
 export type SupplementCategory =
   | 'Vitamin' | 'Mineral' | 'Amino Acid' | 'Herb' | 'Probiotic' | 'Hormone'
   | 'Performance' | 'Anti-inflammatory' | 'Adaptogen' | 'Metabolic' | 'Other';

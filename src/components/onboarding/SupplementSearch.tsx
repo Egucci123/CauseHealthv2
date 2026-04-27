@@ -2,7 +2,7 @@
 // Pattern: mirrors MedicationSearch but for supplements with lab-interaction display.
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { searchSupplements, findSupplement, type SupplementEntry } from '../../data/supplements';
+import { searchSupplements, findSupplement, getCommonDoses, type SupplementEntry } from '../../data/supplements';
 import { useOnboardingStore } from '../../store/onboardingStore';
 import { CustomSelect } from '../ui/CustomSelect';
 
@@ -187,16 +187,16 @@ const SupplementCard = ({ supplement, labInteractions, onRemove }: SupplementCar
             ]}
           />
           <div className="flex flex-col gap-1.5">
-            <label className="text-precision text-[0.68rem] font-bold text-clinical-stone tracking-widest uppercase">Dose (optional)</label>
-            <input
-              type="text"
+            <CustomSelect
+              label="Dose"
               value={supplement.dose ?? ''}
-              onChange={(e) => useOnboardingStore.setState((s) => ({
-                supplements: s.supplements.map((x) => x.id === supplement.id ? { ...x, dose: e.target.value } : x),
+              onChange={(v) => useOnboardingStore.setState((s) => ({
+                supplements: s.supplements.map((x) => x.id === supplement.id ? { ...x, dose: v } : x),
               }))}
-              placeholder="e.g. 200mg"
-              style={{ borderRadius: '4px' }}
-              className="w-full bg-clinical-cream border border-outline-variant/20 px-3 py-2.5 text-clinical-charcoal text-body text-sm focus:border-primary-container focus:outline-none transition-colors"
+              options={[
+                { value: '', label: 'Not sure' },
+                ...getCommonDoses(supplement.name).map((d) => ({ value: d, label: d })),
+              ]}
             />
           </div>
         </div>
