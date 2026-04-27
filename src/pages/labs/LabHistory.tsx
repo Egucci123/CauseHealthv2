@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { AppShell } from '../../components/layout/AppShell';
-import { SectionHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { useLabDraws } from '../../hooks/useLabData';
 import { supabase } from '../../lib/supabase';
@@ -60,9 +59,22 @@ export const LabHistory = () => {
 
   return (
     <AppShell pageTitle="Lab Analytics">
-      <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
-        <SectionHeader title="Lab History" description="Your complete bloodwork history. Every draw. Every marker. Every trend." />
-        <Button variant="primary" size="md" icon="upload_file" onClick={() => { useLabUploadStore.getState().reset(); navigate('/labs/upload'); }}>Upload New Labs</Button>
+      {/* Dark hero card */}
+      <div className="bg-[#131313] rounded-[14px] p-6 shadow-card">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div className="flex-1 min-w-0">
+            <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-[#D4A574] mb-2">All Your Labs</p>
+            <h1 className="text-authority text-3xl md:text-4xl text-on-surface font-bold leading-tight">Lab History.</h1>
+            <p className="text-body text-on-surface-variant text-sm mt-2 max-w-md">Every draw, every marker, every trend over time. The whole story of your bloodwork.</p>
+          </div>
+          <button
+            onClick={() => { useLabUploadStore.getState().reset(); navigate('/labs/upload'); }}
+            className="inline-flex items-center gap-1.5 text-precision text-[0.65rem] font-bold tracking-wider uppercase px-3 py-2 bg-[#D4A574] hover:bg-[#B8915F] text-clinical-charcoal rounded-[8px] transition-colors flex-shrink-0"
+          >
+            <span className="material-symbols-outlined text-[14px]">upload_file</span>
+            Upload New Labs
+          </button>
+        </div>
       </div>
 
       {/* Active upload banner */}

@@ -29,20 +29,42 @@ export const Settings = () => {
 
   return (
     <AppShell pageTitle="Settings">
-      <div className="max-w-2xl mx-auto">
-        <div className="flex items-start justify-between mb-8">
-          <div><p className="text-precision text-[0.68rem] uppercase tracking-widest text-clinical-stone mb-1">Account</p><h1 className="text-authority text-3xl text-clinical-charcoal">Settings</h1></div>
-          {isPro && <span className="text-precision text-[0.65rem] uppercase tracking-wider bg-primary-container/10 text-primary-container px-3 py-1.5" style={{ borderRadius: '2px' }}>Pro</span>}
+      <div className="max-w-2xl mx-auto space-y-5">
+        {/* Dark hero card */}
+        <div className="bg-[#131313] rounded-[14px] p-6 shadow-card">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div className="flex-1 min-w-0">
+              <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-[#D4A574] mb-2">Account</p>
+              <h1 className="text-authority text-3xl md:text-4xl text-on-surface font-bold leading-tight">Settings.</h1>
+              <p className="text-body text-on-surface-variant text-sm mt-2">Profile, health data, subscription, and the things only you control.</p>
+            </div>
+            {isPro && (
+              <span className="inline-flex items-center gap-1 text-precision text-[0.6rem] font-bold tracking-widest uppercase bg-[#D4A574] text-clinical-charcoal px-2.5 py-1 rounded">
+                Pro
+              </span>
+            )}
+          </div>
         </div>
 
-        <div className="flex gap-1 mb-7 overflow-x-auto pb-1 -mx-1 px-1">
-          {TABS.map(tab => (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-              className={`text-precision text-[0.68rem] uppercase tracking-widest px-4 py-2.5 whitespace-nowrap transition-colors relative ${activeTab === tab.id ? 'bg-primary-container text-white' : 'bg-clinical-white text-clinical-stone hover:bg-clinical-cream'}`} style={{ borderRadius: '6px' }}>
-              {tab.label}
-              {tab.id === 'subscription' && status === 'past_due' && <span className="absolute -top-1 -right-1 w-2 h-2 bg-[#C94F4F] rounded-full" />}
-            </button>
-          ))}
+        {/* Tab nav — segmented control */}
+        <div className="flex gap-1 bg-clinical-cream rounded-[10px] p-1 overflow-x-auto">
+          {TABS.map(tab => {
+            const active = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex-1 min-w-[100px] py-2.5 px-3 rounded-[8px] transition-all relative ${
+                  active ? 'bg-clinical-white shadow-card' : 'hover:bg-clinical-white/50'
+                }`}
+              >
+                <span className={`text-precision text-[0.68rem] font-bold tracking-wider whitespace-nowrap ${active ? 'text-clinical-charcoal' : 'text-clinical-stone'}`}>
+                  {tab.label}
+                </span>
+                {tab.id === 'subscription' && status === 'past_due' && <span className="absolute top-1 right-1 w-2 h-2 bg-[#C94F4F] rounded-full" />}
+              </button>
+            );
+          })}
         </div>
 
         {activeTab === 'profile' && <ProfileSettings />}

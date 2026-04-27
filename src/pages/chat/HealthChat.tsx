@@ -79,18 +79,26 @@ export const HealthChat = () => {
 
   return (
     <AppShell pageTitle="Health Chat">
-      <div className="max-w-2xl mx-auto flex flex-col" style={{ height: 'calc(100vh - 200px)' }}>
+      {/* Dark hero card */}
+      <div className="bg-[#131313] rounded-[14px] p-6 shadow-card">
+        <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-[#D4A574] mb-2">Ask Anything</p>
+        <h1 className="text-authority text-3xl md:text-4xl text-on-surface font-bold leading-tight">Hi{firstName ? `, ${firstName}` : ''}.</h1>
+        <p className="text-body text-on-surface-variant text-sm mt-2 max-w-md">I know your labs, meds, supplements, and goals. Ask me anything about your health like you'd text a smart friend.</p>
+      </div>
+
+      <div className="max-w-2xl mx-auto flex flex-col w-full" style={{ height: 'calc(100vh - 360px)' }}>
         {/* Messages */}
         <div className="flex-1 overflow-y-auto space-y-4 pb-4">
           {messages.length === 0 && (
-            <div className="text-center py-12">
-              <span className="material-symbols-outlined text-primary-container text-5xl mb-4 block">chat</span>
-              <p className="text-authority text-2xl text-clinical-charcoal font-bold mb-2">Hi{firstName ? `, ${firstName}` : ''}.</p>
-              <p className="text-body text-clinical-stone mb-8 max-w-sm mx-auto">Ask me anything about your labs, wellness plan, supplements, or health. I know your data.</p>
+            <div className="text-center py-8">
+              <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-clinical-stone mb-4">Try one of these</p>
               <div className="flex flex-wrap justify-center gap-2">
                 {QUICK_PROMPTS.map(qp => (
-                  <button key={qp.label} onClick={() => sendMessage(qp.prompt)}
-                    className="text-precision text-[0.65rem] font-bold tracking-wider uppercase px-4 py-2 bg-clinical-white border border-outline-variant/20 text-primary-container hover:bg-primary-container/5 transition-colors" style={{ borderRadius: '20px' }}>
+                  <button
+                    key={qp.label}
+                    onClick={() => sendMessage(qp.prompt)}
+                    className="text-precision text-[0.65rem] font-bold tracking-wider uppercase px-4 py-2 bg-clinical-white border border-outline-variant/20 text-primary-container hover:bg-primary-container/5 hover:border-primary-container/30 transition-colors rounded-full"
+                  >
                     {qp.label}
                   </button>
                 ))}

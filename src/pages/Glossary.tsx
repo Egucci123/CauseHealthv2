@@ -1,7 +1,6 @@
 // src/pages/Glossary.tsx
 import { useState, useMemo } from 'react';
 import { AppShell } from '../components/layout/AppShell';
-import { SectionHeader } from '../components/ui/Card';
 import { FolderSection } from '../components/ui/FolderSection';
 import { BIOMARKER_GLOSSARY } from '../data/biomarkerGlossary';
 
@@ -57,29 +56,26 @@ export const Glossary = () => {
 
   return (
     <AppShell pageTitle="Biomarker Glossary">
-      <div className="flex flex-col md:flex-row justify-between items-start gap-4">
-        <SectionHeader
-          title="Biomarker Glossary"
-          description="Plain-English definitions for every lab marker we track. Tap any marker name throughout the app to see this same explanation in context."
-        />
-      </div>
-
-      {/* Search */}
-      <div className="relative">
-        <span className="material-symbols-outlined text-clinical-stone text-[20px] absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">search</span>
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search markers, symptoms, or terms..."
-          className="w-full bg-clinical-white border border-outline-variant/20 pl-12 pr-4 py-3 text-body text-clinical-charcoal placeholder-clinical-stone/50 focus:border-primary-container focus:ring-1 focus:ring-primary-container focus:outline-none transition-colors"
-          style={{ borderRadius: '6px' }}
-        />
-        {search && (
-          <p className="text-precision text-[0.6rem] text-clinical-stone mt-2">
-            {totalShown} {totalShown === 1 ? 'match' : 'matches'} for "{search}"
-          </p>
-        )}
+      {/* Dark hero card with search inside */}
+      <div className="bg-[#131313] rounded-[14px] p-6 shadow-card">
+        <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-[#D4A574] mb-2">Plain English</p>
+        <h1 className="text-authority text-3xl md:text-4xl text-on-surface font-bold leading-tight">Biomarker Glossary.</h1>
+        <p className="text-body text-on-surface-variant text-sm mt-2 max-w-md">What every marker means, why it matters, what high or low actually tells you. Tap any marker name in the app to see this in context.</p>
+        <div className="relative mt-5">
+          <span className="material-symbols-outlined text-on-surface-variant text-[20px] absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">search</span>
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search markers, symptoms, or terms..."
+            className="w-full bg-white/5 border border-white/10 pl-12 pr-4 py-3 text-body text-on-surface placeholder-on-surface-variant/40 focus:border-[#D4A574] focus:ring-1 focus:ring-[#D4A574] focus:outline-none transition-colors rounded-[8px]"
+          />
+          {search && (
+            <p className="text-precision text-[0.6rem] text-on-surface-variant/70 mt-2">
+              {totalShown} {totalShown === 1 ? 'match' : 'matches'} for "{search}"
+            </p>
+          )}
+        </div>
       </div>
 
       <div className="space-y-4">
