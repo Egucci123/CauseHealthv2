@@ -14,16 +14,18 @@ serve(async (req) => {
     if (!userId) return new Response(JSON.stringify({ error: 'userId required' }), { status: 400, headers: corsHeaders });
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-    const [profileRes, medsRes, symptomsRes, conditionsRes, latestDrawRes] = await Promise.all([
+    const [profileRes, medsRes, symptomsRes, conditionsRes, suppsRes, latestDrawRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', userId).single(),
       supabase.from('medications').select('*').eq('user_id', userId).eq('is_active', true),
       supabase.from('symptoms').select('*').eq('user_id', userId),
       supabase.from('conditions').select('*').eq('user_id', userId).eq('is_active', true),
+      supabase.from('user_supplements').select('name, dose, duration_category, reason').eq('user_id', userId).eq('is_active', true),
       supabase.from('lab_draws').select('id').eq('user_id', userId).order('draw_date', { ascending: false }).limit(1).maybeSingle(),
     ]);
 
     const profile = profileRes.data; const meds = medsRes.data ?? []; const symptoms = symptomsRes.data ?? [];
     const conditions = conditionsRes.data ?? [];
+    const supps = suppsRes.data ?? [];
     let labValues: any[] = []; let drawId: string | null = null;
 
     // Translate user's primary goals to readable labels for the prompt
@@ -69,6 +71,7 @@ serve(async (req) => {
     const medsStr = meds.map((m: any) => `${m.name}${m.dose ? ` ${m.dose}` : ''}`).join(', ') || 'None';
     const sympStr = symptoms.map((s: any) => `${s.symptom} (${s.severity}/10)`).join(', ') || 'None';
     const condStr = conditions.map((c: any) => c.name).join(', ') || 'None reported';
+    const suppsStr = supps.map((s: any) => `${s.name}${s.dose ? ` (${s.dose})` : ''}`).join(', ') || 'None';
 
     // Send ALL lab values
     const allLabsStr = labValues.map((v: any) =>
@@ -141,7 +144,29 @@ MODE: ${isOptimizationMode ? 'optimization' : 'treatment'}
 ${isOptimizationMode ? 'OPTIMIZATION CONTEXT: Patient labs are mostly optimal. Frame the plan around longevity optimization, not disease treatment. Phase names should be: "Build Foundation (Weeks 1-4)", "Optimize (Weeks 5-8)", "Sustain & Track (Weeks 9-12)". Lifestyle interventions should focus on longevity science: zone 2 cardio, resistance training, sleep optimization, cold/heat exposure, stress resilience, metabolic health optimization, and proactive screening.' : ''}
 DIAGNOSED CONDITIONS: ${condStr}
 MEDICATIONS: ${medsStr}
+CURRENT SUPPLEMENTS (already taking — do NOT re-recommend; account for lab interactions and avoid stacking duplicates): ${suppsStr}
 SYMPTOMS (for context only — do NOT supplement based on symptoms alone): ${sympStr}
+
+SUPPLEMENT-LAB INTERACTION KNOWLEDGE (use when interpreting labs and building stack):
+- Biotin (>1mg/day): falsely alters TSH/T3/T4/Troponin/Vit D — pause 72hr before retest.
+- Creatine: raises serum creatinine ~10–20% (artifact, not kidney damage); use cystatin-C for true GFR.
+- Vitamin D3: raises 25-OH-D; if user already on D3, "low D" needs dose review, not new D.
+- B12 supplementation: makes serum B12 unreliable; use MMA/homocysteine if concerned.
+- Iron: raises ferritin/iron/sat — don't add iron without checking current ferritin.
+- Niacin (≥500mg): raises HDL, lowers TG/LDL, can elevate ALT/uric acid/glucose.
+- Omega-3 (≥2g EPA/DHA): lowers TG and CRP; thins blood — caution with anticoagulants.
+- Berberine: lowers fasting glucose/A1c/LDL — overlaps with metformin effect.
+- Magnesium: corrects suboptimal Mg, supports BP and insulin sensitivity.
+- Vitamin K2: critical with warfarin (affects INR) — never recommend without MD.
+- DHEA: raises DHEA-S, downstream estradiol/testosterone.
+- TRT/testosterone: raises Hct (polycythemia risk), suppresses LH/FSH.
+- Whey/high protein: raises BUN slightly (not kidney pathology).
+- Curcumin: lowers CRP and ALT; mild blood thinner.
+- TMG/methylfolate/B12: lowers homocysteine.
+- Saw palmetto: can lower PSA (mask BPH/cancer detection).
+- Ashwagandha: lowers cortisol; can raise T4 — caution in hyperthyroid.
+- Vitamin C high-dose: can raise serum glucose readings on some glucometers.
+If user is on a supplement that explains an "abnormal" lab (e.g., creatine→creatinine, biotin→TSH), call that out in summary instead of treating it as pathology.
 
 ALL LAB VALUES:
 ${allLabsStr.slice(0, 4000)}

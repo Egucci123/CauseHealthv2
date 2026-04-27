@@ -17,11 +17,12 @@ serve(async (req) => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
     // Load ALL user health context in parallel
-    const [profileRes, medsRes, symptomsRes, conditionsRes, latestDrawRes, wellnessPlanRes, doctorPrepRes] = await Promise.all([
+    const [profileRes, medsRes, symptomsRes, conditionsRes, suppsRes, latestDrawRes, wellnessPlanRes, doctorPrepRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', userId).single(),
       supabase.from('medications').select('*').eq('user_id', userId).eq('is_active', true),
       supabase.from('symptoms').select('*').eq('user_id', userId),
       supabase.from('conditions').select('*').eq('user_id', userId).eq('is_active', true),
+      supabase.from('user_supplements').select('name, dose').eq('user_id', userId).eq('is_active', true),
       supabase.from('lab_draws').select('id, draw_date, lab_name').eq('user_id', userId).order('draw_date', { ascending: false }).limit(1).maybeSingle(),
       supabase.from('wellness_plans').select('plan_data').eq('user_id', userId).eq('generation_status', 'complete').order('created_at', { ascending: false }).limit(1).maybeSingle(),
       supabase.from('doctor_prep_documents').select('document_data').eq('user_id', userId).order('created_at', { ascending: false }).limit(1).maybeSingle(),
@@ -31,6 +32,8 @@ serve(async (req) => {
     const meds = medsRes.data ?? [];
     const symptoms = symptomsRes.data ?? [];
     const conditions = conditionsRes.data ?? [];
+    const userSupps = suppsRes.data ?? [];
+    const userSuppsStr = userSupps.map((s: any) => `${s.name}${s.dose ? ` (${s.dose})` : ''}`).join(', ') || 'None';
     let labValues: any[] = [];
 
     if (latestDrawRes.data) {
@@ -80,7 +83,25 @@ LATEST LAB VALUES:
 ${labStr}
 
 CURRENT WELLNESS PLAN SUMMARY: ${planSummary}
-CURRENT SUPPLEMENTS: ${supplements}
+PLAN-RECOMMENDED SUPPLEMENTS: ${supplements}
+USER-REPORTED SUPPLEMENTS (already taking — factor lab interactions): ${userSuppsStr}
+
+SUPPLEMENT LAB-INTERACTION CHEAT SHEET (use when explaining a value):
+- Creatine raises serum creatinine artifactually (not kidney damage). Cystatin-C gives true GFR.
+- Biotin >1mg distorts TSH/T3/T4/Troponin/Vit D — pause 72h before retest.
+- B12 supplementation makes serum B12 unreliable; MMA/homocysteine are the real check.
+- Iron, Vitamin D3 supplements directly raise their lab values — abnormal "high" may just be intake.
+- Niacin lowers LDL/TG, raises HDL, can elevate ALT/uric acid/glucose.
+- Omega-3 lowers TG and CRP; thins blood.
+- Berberine lowers glucose/A1c/LDL.
+- TRT raises Hct, suppresses LH/FSH.
+- Vitamin K2 affects INR (warfarin).
+- Curcumin lowers CRP/ALT.
+- TMG/methylfolate/B12 lower homocysteine.
+- Saw palmetto can lower PSA (mask BPH/cancer signal).
+- Ashwagandha lowers cortisol; can raise T4.
+- Whey/high protein nudges BUN up (not kidney pathology).
+If a "high" or "low" value matches one of the user's supplements, mention the link instead of treating it as pathology.
 
 DOCTOR PREP EXECUTIVE SUMMARY:
 ${execSummary || 'Not generated yet'}

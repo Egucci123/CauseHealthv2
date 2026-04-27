@@ -6,8 +6,10 @@ import { SectionLabel } from '../ui/SectionLabel';
 import { useMedications, useSaveMedications } from '../../hooks/useMedications';
 import { useConditions, useSaveConditions } from '../../hooks/useConditions';
 import { useSymptoms, useSaveSymptoms } from '../../hooks/useSymptoms';
+import { useSupplements, useSaveSupplements } from '../../hooks/useSupplements';
 import { searchMedications, type MedicationEntry } from '../../data/medications';
 import { searchMedicationsAPI, type MedSearchResult } from '../../lib/medicalSearch';
+import { searchSupplements, findSupplement, type SupplementEntry } from '../../data/supplements';
 import { SYMPTOM_CATEGORIES } from '../../data/symptoms';
 
 // ─── Medications Section ─────────────────────────────────────────────────────
@@ -347,6 +349,156 @@ const ConditionsEditor = () => {
   );
 };
 
+// ─── Supplements Section ─────────────────────────────────────────────────────
+
+interface SuppEntry { name: string; dose?: string; durationCategory?: string; reason?: string; }
+
+const SupplementsEditor = () => {
+  const { data: savedSupps, isLoading } = useSupplements();
+  const saveMutation = useSaveSupplements();
+  const [supps, setSupps] = useState<SuppEntry[]>([]);
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<SupplementEntry[]>([]);
+  const [open, setOpen] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (savedSupps) {
+      setSupps(savedSupps.map(s => ({
+        name: s.name,
+        dose: s.dose ?? undefined,
+        durationCategory: s.durationCategory ?? '1_6_months',
+        reason: s.reason ?? undefined,
+      })));
+    }
+  }, [savedSupps]);
+
+  useEffect(() => {
+    if (query.length < 2) { setResults([]); setOpen(false); return; }
+    setResults(searchSupplements(query));
+    setOpen(true);
+  }, [query]);
+
+  const addedNames = new Set(supps.map(s => s.name.toLowerCase()));
+
+  const addSupp = (name: string) => {
+    if (!name || addedNames.has(name.toLowerCase())) { setQuery(''); setOpen(false); return; }
+    setSupps(prev => [...prev, { name, durationCategory: '1_6_months' }]);
+    setQuery(''); setOpen(false); setSaved(false);
+    inputRef.current?.focus();
+  };
+
+  const removeSupp = (i: number) => { setSupps(prev => prev.filter((_, idx) => idx !== i)); setSaved(false); };
+  const updateField = (i: number, patch: Partial<SuppEntry>) => {
+    setSupps(prev => prev.map((s, idx) => idx === i ? { ...s, ...patch } : s));
+    setSaved(false);
+  };
+
+  const handleSave = async () => {
+    await saveMutation.mutateAsync(supps);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
+  if (isLoading) return <div className="h-32 bg-[#E8E3DB] rounded-[10px] animate-pulse" />;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <SectionLabel icon="eco">Supplements</SectionLabel>
+        <Button variant="primary" size="sm" loading={saveMutation.isPending} onClick={handleSave}
+          icon={saved ? 'check' : undefined}>{saved ? 'Saved' : 'Save Supplements'}</Button>
+      </div>
+      <p className="text-body text-clinical-stone text-xs">
+        Many supplements (creatine, biotin, niacin, B12) directly alter lab values. Keeping this list current makes your AI analysis accurate. Regenerate your wellness plan or doctor prep after changes to apply them.
+      </p>
+
+      <div className="relative">
+        <div className="relative">
+          <input ref={inputRef} type="text" value={query} onChange={e => setQuery(e.target.value)}
+            placeholder="Search supplement (e.g. Magnesium, Creatine, Vitamin D)..." style={{ borderRadius: '4px' }}
+            className="w-full pl-10 pr-4 py-3 bg-clinical-cream border border-outline-variant/20 text-clinical-charcoal placeholder-clinical-stone/50 text-body text-sm focus:border-primary-container focus:ring-1 focus:ring-primary-container focus:outline-none transition-colors"
+            onKeyDown={e => { if (e.key === 'Enter' && results.length === 0 && query.trim().length >= 2) { e.preventDefault(); addSupp(query.trim()); } }} />
+          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-clinical-stone text-[18px]">search</span>
+        </div>
+        <AnimatePresence>
+          {open && (
+            <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
+              className="absolute top-full left-0 right-0 z-20 bg-clinical-white border border-outline-variant/20 shadow-card-md mt-1 overflow-hidden max-h-72 overflow-y-auto" style={{ borderRadius: '4px' }}>
+              {results.length === 0 ? (
+                <button onClick={() => addSupp(query.trim())} className="w-full text-left px-4 py-3 hover:bg-clinical-cream transition-colors flex items-center gap-3">
+                  <span className="material-symbols-outlined text-primary-container text-[16px]">add</span>
+                  <div>
+                    <p className="text-body text-clinical-charcoal text-sm font-medium">Add "{query}"</p>
+                    <p className="text-precision text-[0.6rem] text-clinical-stone">Custom supplement (no lab interaction data)</p>
+                  </div>
+                </button>
+              ) : (
+                results.map(supp => {
+                  const added = addedNames.has(supp.name.toLowerCase());
+                  const hasLab = supp.labInteractions.length > 0;
+                  return (
+                    <button key={supp.name} onClick={() => addSupp(supp.name)} disabled={added}
+                      className={`w-full text-left px-4 py-3 border-b border-outline-variant/5 last:border-0 flex items-center justify-between transition-colors ${added ? 'opacity-40 cursor-not-allowed' : 'hover:bg-clinical-cream cursor-pointer'}`}>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-body text-clinical-charcoal text-sm font-medium">{supp.name}</p>
+                        <p className="text-precision text-[0.6rem] text-clinical-stone tracking-wide">{supp.category}</p>
+                      </div>
+                      {added ? <span className="text-precision text-[0.6rem] text-primary-container font-bold tracking-wider">ADDED</span>
+                        : hasLab ? <span className="text-precision text-[0.55rem] text-[#E8922A] font-bold tracking-wider">AFFECTS LABS</span> : null}
+                    </button>
+                  );
+                })
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {supps.length === 0 ? (
+        <p className="text-body text-clinical-stone text-sm py-4 text-center">No supplements added. Search above to add what you take.</p>
+      ) : (
+        <div className="space-y-2">
+          {supps.map((s, i) => {
+            const dbEntry = findSupplement(s.name);
+            const hasLab = (dbEntry?.labInteractions.length ?? 0) > 0;
+            return (
+              <div key={`${s.name}-${i}`} className={`bg-clinical-white rounded-lg border ${hasLab ? 'border-[#E8922A]/30' : 'border-outline-variant/10'} px-4 py-3`}>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-body text-clinical-charcoal text-sm font-medium">{s.name}</p>
+                    {hasLab && (
+                      <p className="text-precision text-[0.55rem] text-[#E8922A] tracking-widest uppercase font-bold mt-0.5">
+                        Affects {dbEntry!.labInteractions.length} lab marker{dbEntry!.labInteractions.length !== 1 ? 's' : ''}
+                      </p>
+                    )}
+                  </div>
+                  <button onClick={() => removeSupp(i)} className="text-clinical-stone hover:text-[#C94F4F] transition-colors p-1">
+                    <span className="material-symbols-outlined text-[16px]">close</span>
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <input type="text" value={s.dose ?? ''} onChange={e => updateField(i, { dose: e.target.value })} placeholder="Dose (e.g. 200mg)" style={{ borderRadius: '4px' }}
+                    className="bg-clinical-cream border border-outline-variant/20 px-2 py-1.5 text-body text-xs text-clinical-charcoal focus:border-primary-container focus:outline-none" />
+                  <select value={s.durationCategory ?? '1_6_months'} onChange={e => updateField(i, { durationCategory: e.target.value })} style={{ borderRadius: '4px' }}
+                    className="bg-clinical-cream border border-outline-variant/20 px-2 py-1.5 text-body text-xs text-clinical-charcoal focus:border-primary-container focus:outline-none">
+                    <option value="less_than_1_month">&lt; 1 month</option>
+                    <option value="1_6_months">1–6 months</option>
+                    <option value="6_12_months">6–12 months</option>
+                    <option value="1_3_years">1–3 years</option>
+                    <option value="3_plus_years">3+ years</option>
+                  </select>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export const HealthProfileSettings = () => {
@@ -355,6 +507,8 @@ export const HealthProfileSettings = () => {
       <ConditionsEditor />
       <div className="border-t border-outline-variant/10" />
       <MedicationsEditor />
+      <div className="border-t border-outline-variant/10" />
+      <SupplementsEditor />
       <div className="border-t border-outline-variant/10" />
       <SymptomsEditor />
     </div>

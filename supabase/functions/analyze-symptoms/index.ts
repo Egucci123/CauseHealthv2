@@ -15,14 +15,17 @@ serve(async (req) => {
     if (!userId) return new Response(JSON.stringify({ error: 'userId required' }), { status: 400, headers: corsHeaders });
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-    const [symptomsRes, medsRes, profileRes, latestDrawRes] = await Promise.all([
+    const [symptomsRes, medsRes, suppsRes, profileRes, latestDrawRes] = await Promise.all([
       supabase.from('symptoms').select('*').eq('user_id', userId),
       supabase.from('medications').select('*').eq('user_id', userId).eq('is_active', true),
+      supabase.from('user_supplements').select('name, dose').eq('user_id', userId).eq('is_active', true),
       supabase.from('profiles').select('sex, date_of_birth').eq('id', userId).single(),
       supabase.from('lab_draws').select('id').eq('user_id', userId).eq('processing_status', 'complete').order('draw_date', { ascending: false }).limit(1).maybeSingle(),
     ]);
 
     const symptoms = symptomsRes.data ?? []; const meds = medsRes.data ?? [];
+    const supps = suppsRes.data ?? [];
+    const suppsStr = supps.map((s: any) => `${s.name}${s.dose ? ` (${s.dose})` : ''}`).join(', ') || 'None';
     if (symptoms.length === 0) return new Response(JSON.stringify({ error: 'No symptoms to analyze' }), { status: 400, headers: corsHeaders });
 
     let labValues: any[] = [];
@@ -58,6 +61,7 @@ SYMPTOMS:
 ${sympStr}
 
 MEDICATIONS: ${medsStr}
+SUPPLEMENTS (factor into root-cause reasoning — e.g., creatine raises creatinine artifact, biotin distorts thyroid labs, niacin can cause flushing/elevated liver enzymes, ashwagandha lowers cortisol, B12 supplementation can mask deficiency symptoms): ${suppsStr}
 
 ABNORMAL LABS:
 ${labStr}

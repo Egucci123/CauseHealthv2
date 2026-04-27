@@ -19,6 +19,14 @@ export interface AddedCondition {
   icd10?: string;
 }
 
+export interface AddedSupplement {
+  id:       string;
+  name:     string;
+  dose?:    string;
+  duration: string;
+  reason?:  string;
+}
+
 export interface AddedSymptom {
   id:       string;
   symptom:  string;
@@ -76,7 +84,8 @@ export interface OnboardingState {
   familyHistory: FamilyHistory;
   geneticTesting: 'yes' | 'no' | 'in_progress' | '';
   medications:        AddedMedication[];
-  supplements:        string[];
+  supplements:        AddedSupplement[];
+  noSupplements:      boolean;
   noMedications:      boolean;
   symptoms:           AddedSymptom[];
   lifestyle:          Partial<LifestyleData>;
@@ -100,6 +109,8 @@ interface OnboardingStore extends OnboardingState {
   updateStep6: (data: Partial<OnboardingState>) => void;
   addMedication:    (med: Omit<AddedMedication, 'id'>) => void;
   removeMedication: (id: string) => void;
+  addSupplement:    (supp: Omit<AddedSupplement, 'id'>) => void;
+  removeSupplement: (id: string) => void;
   addCondition:    (cond: Omit<AddedCondition, 'id'>) => void;
   removeCondition: (id: string) => void;
   addSymptom:    (symptom: Omit<AddedSymptom, 'id'>) => void;
@@ -127,7 +138,7 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
   conditions: [],
   familyHistory: { heartDisease: false, diabetes: false, autoimmune: false, cancer: false, earlyDeath: false, highCholesterol: false },
   geneticTesting: '',
-  medications: [], supplements: [], noMedications: false,
+  medications: [], supplements: [], noMedications: false, noSupplements: false,
   symptoms: [],
   lifestyle: DEFAULT_LIFESTYLE,
   primaryGoals: [], specificConcern: '', triedBefore: '', hearAboutUs: '',
@@ -154,6 +165,13 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
   })),
   removeMedication: (id) => set(s => ({
     medications: s.medications.filter(m => m.id !== id),
+  })),
+  addSupplement: (supp) => {
+    if (get().supplements.some(s => s.name.toLowerCase() === supp.name.toLowerCase())) return;
+    set(s => ({ supplements: [...s.supplements, { ...supp, id: crypto.randomUUID() }] }));
+  },
+  removeSupplement: (id) => set(s => ({
+    supplements: s.supplements.filter(s => s.id !== id),
   })),
   addCondition: (cond) => {
     if (get().conditions.some(c => c.name === cond.name)) return;
@@ -222,6 +240,15 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
         resumeStep = 4;
       }
 
+      // Load supplements (step 3, paired with medications)
+      const { data: supps } = await supabase.from('user_supplements').select('*').eq('user_id', user.id).eq('is_active', true);
+      if (supps && supps.length > 0) {
+        updates.supplements = supps.map((s: any) => ({
+          id: s.id, name: s.name, dose: s.dose ?? undefined,
+          duration: s.duration_category ?? '1_6_months', reason: s.reason ?? undefined,
+        }));
+      }
+
       // Load symptoms (step 4)
       const { data: symptoms } = await supabase.from('symptoms').select('*').eq('user_id', user.id);
       if (symptoms && symptoms.length > 0) {
@@ -278,6 +305,14 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
           supabase.from('symptoms').delete().eq('user_id', user.id)
             .then(() => supabase.from('symptoms').insert(
               state.symptoms.map(s => ({ user_id: user.id, symptom: s.symptom, severity: s.severity, category: s.category || null }))
+            ))
+        );
+      }
+      if (state.supplements.length > 0) {
+        saves.push(
+          supabase.from('user_supplements').delete().eq('user_id', user.id)
+            .then(() => supabase.from('user_supplements').insert(
+              state.supplements.map(s => ({ user_id: user.id, name: s.name, dose: s.dose ?? null, duration_category: s.duration, reason: s.reason ?? null, is_active: true }))
             ))
         );
       }
@@ -366,6 +401,14 @@ async function autoSaveToDB() {
       );
     }
 
+    // Save supplements
+    if (state.supplements.length > 0) {
+      await supabase.from('user_supplements').delete().eq('user_id', user.id);
+      await supabase.from('user_supplements').insert(
+        state.supplements.map(s => ({ user_id: user.id, name: s.name, dose: s.dose ?? null, duration_category: s.duration, reason: s.reason ?? null, is_active: true }))
+      );
+    }
+
     // Save symptoms
     if (state.symptoms.length > 0) {
       await supabase.from('symptoms').delete().eq('user_id', user.id);
@@ -390,6 +433,7 @@ useOnboardingStore.subscribe((state, prevState) => {
     state.conditions.length !== prevState.conditions.length ||
     state.medications.length !== prevState.medications.length ||
     state.symptoms.length !== prevState.symptoms.length ||
+    state.supplements.length !== prevState.supplements.length ||
     state.currentStep !== prevState.currentStep;
 
   if (changed) {

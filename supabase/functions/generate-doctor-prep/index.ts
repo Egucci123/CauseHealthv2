@@ -14,16 +14,19 @@ serve(async (req) => {
     if (!userId) return new Response(JSON.stringify({ error: 'userId required' }), { status: 400, headers: corsHeaders });
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-    const [profileRes, medsRes, symptomsRes, conditionsRes, latestDrawRes] = await Promise.all([
+    const [profileRes, medsRes, symptomsRes, conditionsRes, suppsRes, latestDrawRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', userId).single(),
       supabase.from('medications').select('*').eq('user_id', userId).eq('is_active', true),
       supabase.from('symptoms').select('*').eq('user_id', userId).order('severity', { ascending: false }),
       supabase.from('conditions').select('*').eq('user_id', userId).eq('is_active', true),
+      supabase.from('user_supplements').select('name, dose, duration_category, reason').eq('user_id', userId).eq('is_active', true),
       supabase.from('lab_draws').select('id, draw_date, lab_name').eq('user_id', userId).order('draw_date', { ascending: false }).limit(1).maybeSingle(),
     ]);
 
     const profile = profileRes.data; const meds = medsRes.data ?? []; const symptoms = symptomsRes.data ?? [];
     const conditions = conditionsRes.data ?? []; const latestDraw = latestDrawRes.data;
+    const supps = suppsRes.data ?? [];
+    const suppsStr = supps.map((s: any) => `${s.name}${s.dose ? ` (${s.dose})` : ''}`).join(', ') || 'None';
     let labValues: any[] = [];
     if (latestDraw) { const { data } = await supabase.from('lab_values').select('*').eq('draw_id', latestDraw.id); labValues = data ?? []; }
 
@@ -160,6 +163,7 @@ PATIENT: ${age ? `${age}yo` : 'age unknown'} ${profile?.sex ?? ''}
 USER'S TOP GOALS (their stated reasons for using this app — your discussion points and tests should connect to these): ${goalsStr}
 DIAGNOSED CONDITIONS: ${condStr}
 MEDICATIONS:\n${medsStr}
+CURRENT SUPPLEMENTS (consider lab interactions when interpreting findings — e.g., creatine→creatinine artifact, biotin→TSH/T3/T4 interference, B12→masks deficiency, niacin→HDL/ALT, TRT→Hct/LH/FSH, vitamin K2→INR with warfarin): ${suppsStr}
 SYMPTOMS:\n${sympStr}
 LAB DATE: ${latestDraw?.draw_date ?? 'unknown'} LAB: ${latestDraw?.lab_name ?? 'unknown'}
 
