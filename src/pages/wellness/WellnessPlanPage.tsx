@@ -1,7 +1,7 @@
 // src/pages/wellness/WellnessPlanPage.tsx
 // Visual-first redesign — Today / Eat / Move / Take primary tabs, full Plan behind a Details tab.
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useMemo } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AppShell } from '../../components/layout/AppShell';
 import { Button } from '../../components/ui/Button';
@@ -256,6 +256,14 @@ export const WellnessPlanPage = () => {
 
   const forecasts = (latestValues && latestValues.length > 0) ? buildForecasts(latestValues as any) : [];
 
+  // Plan week (1-12+) — used to surface the retest CTA at week 10+
+  const planWeek = useMemo(() => {
+    if (!plan?.generated_at) return null;
+    const days = Math.floor((Date.now() - new Date(plan.generated_at).getTime()) / 86_400_000);
+    return Math.max(1, Math.floor(days / 7) + 1);
+  }, [plan?.generated_at]);
+  const showRetestCTA = planWeek != null && planWeek >= 10 && !hasNewerLabs;
+
   const planCreatedAt = (plan as any)?._createdAt ? new Date((plan as any)._createdAt) : null;
   const drawCreatedAt = latestDraw?.createdAt ? new Date(latestDraw.createdAt) : null;
   const hasNewerLabs = plan && planCreatedAt && drawCreatedAt && drawCreatedAt > planCreatedAt;
@@ -309,6 +317,30 @@ export const WellnessPlanPage = () => {
 
           {/* Transformation forecast — pure math, big motivation */}
           {forecasts.length > 0 && <TransformationForecast forecasts={forecasts} />}
+
+          {/* 90-day retest CTA — surfaces in last 2 weeks of protocol */}
+          {showRetestCTA && (
+            <Link
+              to="/labs/upload"
+              className="block bg-gradient-to-br from-[#D4A574] to-[#B8915F] rounded-[14px] p-5 hover:shadow-card-md transition-shadow"
+            >
+              <div className="flex items-center gap-4">
+                <span className="text-4xl flex-shrink-0">🧪</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-clinical-charcoal/70 mb-1">
+                    {planWeek! >= 12 ? '90 days complete' : `Week ${planWeek} of 12`}
+                  </p>
+                  <p className="text-authority text-lg text-clinical-charcoal font-bold">
+                    {planWeek! >= 12 ? 'Time to retest — upload your 90-day labs' : 'Almost time to retest — get your bloodwork drawn'}
+                  </p>
+                  <p className="text-body text-clinical-charcoal/80 text-sm mt-1">
+                    {planWeek! >= 12 ? 'See if your numbers moved. The honest test of the plan.' : 'Schedule your draw this week so the labs are back by week 12.'}
+                  </p>
+                </div>
+                <span className="material-symbols-outlined text-clinical-charcoal text-[24px] flex-shrink-0">arrow_forward</span>
+              </div>
+            </Link>
+          )}
 
           {hasNewerLabs && (
             <button onClick={handleGenerate} className="w-full bg-[#2A9D8F]/10 border border-[#2A9D8F]/30 rounded-[10px] p-4 flex items-center gap-3 hover:bg-[#2A9D8F]/15 transition-colors text-left">

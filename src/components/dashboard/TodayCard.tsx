@@ -3,6 +3,7 @@
 // week-of-12 progress strip + next milestone, streak-risk nudge in evening.
 // Source: latest wellness_plan.today_actions
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useWellnessPlan, type TodayAction } from '../../hooks/useWellnessPlan';
 import { useAuthStore } from '../../store/authStore';
@@ -135,29 +136,48 @@ export const TodayCard = () => {
         )}
       </div>
 
-      {/* Week milestone strip */}
+      {/* Week milestone strip — turns into retest CTA at week 12+ */}
       {planTimeline && (
-        <div className="bg-clinical-cream/40 rounded-[10px] p-3">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-clinical-stone">
-              Week {planTimeline.week} of 12
-            </span>
-            <span className="text-precision text-[0.6rem] text-clinical-stone">
-              Next milestone in {planTimeline.daysUntilMilestone} day{planTimeline.daysUntilMilestone === 1 ? '' : 's'}
-            </span>
+        planTimeline.week >= 12 ? (
+          <Link
+            to="/labs/upload"
+            className="block bg-[#D4A574] hover:bg-[#B8915F] rounded-[10px] p-4 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-2xl flex-shrink-0">🧪</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-clinical-charcoal/70 mb-0.5">
+                  90 days complete
+                </p>
+                <p className="text-body text-clinical-charcoal font-semibold text-sm">
+                  Time to retest — upload your 90-day labs
+                </p>
+              </div>
+              <span className="material-symbols-outlined text-clinical-charcoal text-[20px]">arrow_forward</span>
+            </div>
+          </Link>
+        ) : (
+          <div className="bg-clinical-cream/40 rounded-[10px] p-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-clinical-stone">
+                Week {planTimeline.week} of 12
+              </span>
+              <span className="text-precision text-[0.6rem] text-clinical-stone">
+                Next milestone in {planTimeline.daysUntilMilestone} day{planTimeline.daysUntilMilestone === 1 ? '' : 's'}
+              </span>
+            </div>
+            <div className="h-1.5 rounded-full bg-clinical-stone/15 overflow-hidden mb-2">
+              <div
+                className="h-full bg-primary-container transition-all"
+                style={{ width: `${(planTimeline.week / 12) * 100}%` }}
+              />
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-base leading-none">{planTimeline.nextMilestone.emoji}</span>
+              <span className="text-precision text-[0.65rem] text-clinical-charcoal">{planTimeline.nextMilestone.label}</span>
+            </div>
           </div>
-          {/* 12-week progress bar */}
-          <div className="h-1.5 rounded-full bg-clinical-stone/15 overflow-hidden mb-2">
-            <div
-              className="h-full bg-primary-container transition-all"
-              style={{ width: `${(planTimeline.week / 12) * 100}%` }}
-            />
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-base leading-none">{planTimeline.nextMilestone.emoji}</span>
-            <span className="text-precision text-[0.65rem] text-clinical-charcoal">{planTimeline.nextMilestone.label}</span>
-          </div>
-        </div>
+        )
       )}
 
       {/* Streak risk nudge */}

@@ -182,13 +182,17 @@ PLACEMENT RULES (which list a test belongs in):
    - Liver workup with elevated ALT/AST → ICD-10 should be R74.0 (abnormal liver function tests), NOT R19.00 (abdominal mass) for any liver-related test or imaging.
    - Insurance Note should mention specific common scenarios: "usually covered under abnormal LFTs," "may need prior auth for specialty panels," "out-of-pocket cost ~$X if not covered."
 
-2. advanced_screening (RESERVED FOR DEEPER INVESTIGATION — gated UI):
-   DEFAULT: EMPTY ARRAY. 90% of users should see ZERO entries here. Stop trying to be thorough — this is the "you're scaring the user" list.
-   ONLY populate when:
-     a) A value is genuinely urgent (use the hard thresholds in the blocklist below). Mark priority="urgent". Borderline-upper-normal does NOT qualify — RBC 5.96 with Hct 51.4 is NOT a JAK2 case. Don't queue it for "if it stays elevated" either — just put the marker in retest_timeline like every other lab to recheck.
-     b) The user has a HIGHLY SPECIFIC symptom + lab pattern that maps to one rare condition (e.g., persistent unexplained pelvic pain + heavy bleeding → endometriosis workup; recurrent infections + low IgG → immunodeficiency workup). Generic "if labs stay abnormal at 90 days" is NOT a justification.
-   ApoB, lipid NMR, advanced lipid testing → these are MAINSTREAM cardiology essentials, not rare-disease screening. They go in tests_to_request, not advanced_screening.
-   Maximum 2 entries. Often 0 is correct.
+2. advanced_screening (PRE-STAGED FOR 90-DAY UNLOCK — gated UI):
+   This list is HIDDEN from the user until 90 days have elapsed AND their retest shows continued abnormalities. Populate it like a backup playbook — what would the patient need to investigate IF lifestyle change doesn't fix the abnormal markers?
+   Populate 1-3 entries per patient based on which abnormal labs are MOST LIKELY to need deeper investigation if they don't improve:
+     - Borderline-upper-normal blood markers (RBC, Hct, platelets) → queue JAK2 + EPO with framing "If RBC/Hct stay elevated past 90 days, screen for myeloproliferative disorder."
+     - Persistent inflammation pattern (high CRP + ESR + UC) → queue ANA reflex + HLA-B27 with framing "If joint pain persists or new autoimmune symptoms appear at retest."
+     - GI symptoms + iron deficiency + autoimmune → queue celiac panel with "If GI symptoms persist after gut-healing protocol."
+     - Persistent hypercalcemia or globulin >3 → queue myeloma panel with "If calcium or globulin doesn't normalize."
+   ApoB, lipid NMR, advanced lipid testing → these are MAINSTREAM cardiology essentials, NOT rare-disease screening. They go in tests_to_request.
+   Each entry's why_short MUST frame as "If [specific marker] doesn't improve at the 90-day retest, [test] rules out [condition]."
+   Genuinely urgent right now → priority="urgent" so it bypasses the time gate. Otherwise priority="high" or "moderate" keeps it gated.
+   Maximum 3 entries.
    - These tests are GATED in the UI until the patient's 90-day retest. They are shown ONLY if marked urgent (genuine red flags) OR if the user manually unlocks them.
    - DO NOT spam this list. The lifestyle-first philosophy is: most abnormal labs improve with 90 days of clean diet, movement, sleep, and targeted supplementation. Rare-disease screening is the SECOND visit, not the first.
    - INCLUDE here ONLY:

@@ -92,43 +92,62 @@ export const VisitCardStacks = ({ doc }: Props) => {
         </Stack>
       </div>
 
-      {/* Deeper investigation — gated until 90-day retest, or unlocked manually */}
-      {gatedDeeperTests.length > 0 && (
-        <div className="bg-clinical-white rounded-[14px] border border-outline-variant/15 overflow-hidden">
-          <div className="px-5 py-4 flex items-start gap-4">
-            <span className="material-symbols-outlined text-[#D4A574] text-[28px] flex-shrink-0">lock</span>
-            <div className="flex-1 min-w-0">
-              <p className="text-authority text-base text-clinical-charcoal font-bold">Deeper investigation</p>
-              <p className="text-body text-clinical-stone text-sm mt-1 leading-relaxed">
-                {unlockedDeeper
-                  ? `${gatedDeeperTests.length} additional screening test${gatedDeeperTests.length === 1 ? '' : 's'} for rare conditions. Discuss only if your 90-day retest still shows abnormal markers.`
-                  : `${gatedDeeperTests.length} additional test${gatedDeeperTests.length === 1 ? '' : 's'} ready when you need them. Most people fix what's wrong with 90 days of clean living first — these are the next layer if labs don't move.`}
-              </p>
-              {!unlockedDeeper && (
-                <button
-                  onClick={() => setUnlockedDeeper(true)}
-                  className="text-precision text-[0.65rem] font-bold text-primary-container tracking-wider uppercase mt-3 hover:underline"
-                >
-                  Show them anyway →
-                </button>
-              )}
+      {/* Deeper investigation — time-locked until 90 days elapsed, escape via "Show anyway" */}
+      {gatedDeeperTests.length > 0 && (() => {
+        const generatedAt = doc.generated_at ? new Date(doc.generated_at).getTime() : Date.now();
+        const daysElapsed = Math.floor((Date.now() - generatedAt) / 86_400_000);
+        const daysUntilUnlock = Math.max(0, 90 - daysElapsed);
+        const timeUnlocked = daysUntilUnlock === 0;
+        const visible = unlockedDeeper || timeUnlocked;
+
+        return (
+          <div className="bg-clinical-white rounded-[14px] border border-outline-variant/15 overflow-hidden">
+            <div className="px-5 py-4 flex items-start gap-4">
+              <span className="material-symbols-outlined text-[#D4A574] text-[28px] flex-shrink-0">
+                {visible ? 'lock_open' : 'lock'}
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className="text-authority text-base text-clinical-charcoal font-bold">Deeper investigation</p>
+                {visible ? (
+                  <p className="text-body text-clinical-stone text-sm mt-1 leading-relaxed">
+                    {gatedDeeperTests.length} screening test{gatedDeeperTests.length === 1 ? '' : 's'} for if your 90-day retest still shows abnormal markers. Don't ask for these unless your bloodwork didn't move.
+                  </p>
+                ) : (
+                  <>
+                    <p className="text-body text-clinical-stone text-sm mt-1 leading-relaxed">
+                      {gatedDeeperTests.length} test{gatedDeeperTests.length === 1 ? '' : 's'} stay locked for 90 days. Most people fix what's wrong with clean living first — these unlock if your bloodwork doesn't move at retest.
+                    </p>
+                    <div className="flex items-center gap-3 mt-3">
+                      <span className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-[#D4A574]">
+                        Unlocks in {daysUntilUnlock} day{daysUntilUnlock === 1 ? '' : 's'}
+                      </span>
+                      <button
+                        onClick={() => setUnlockedDeeper(true)}
+                        className="text-precision text-[0.6rem] text-clinical-stone tracking-wider uppercase hover:underline"
+                      >
+                        Show anyway
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
+            {visible && (
+              <div className="border-t border-outline-variant/10 p-4 space-y-2 bg-clinical-cream/30">
+                {gatedDeeperTests.map((t: any, i: number) => (
+                  <Card
+                    key={i}
+                    emoji={t.emoji || '🔬'}
+                    headline={t.test_name}
+                    detail={t.why_short || t.clinical_justification}
+                    accent="#D4A574"
+                  />
+                ))}
+              </div>
+            )}
           </div>
-          {unlockedDeeper && (
-            <div className="border-t border-outline-variant/10 p-4 space-y-2 bg-clinical-cream/30">
-              {gatedDeeperTests.map((t: any, i: number) => (
-                <Card
-                  key={i}
-                  emoji={t.emoji || '🔬'}
-                  headline={t.test_name}
-                  detail={t.why_short || t.clinical_justification}
-                  accent="#D4A574"
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 };
