@@ -16,16 +16,25 @@ export interface OrganAge {
   targetAge?: number;      // projected age after 90-day plan
 }
 
+// Accept either camelCase or snake_case shape
 interface LabValueLite {
-  marker_name: string;
+  marker_name?: string;
+  markerName?: string;
   value: number;
   optimal_low?: number | null;
+  optimalLow?: number | null;
   optimal_high?: number | null;
+  optimalHigh?: number | null;
 }
+
+const pickName = (v: LabValueLite) => (v.marker_name ?? v.markerName ?? '').toLowerCase();
+const pickLow = (v: LabValueLite) => v.optimal_low ?? v.optimalLow ?? null;
+const pickHigh = (v: LabValueLite) => v.optimal_high ?? v.optimalHigh ?? null;
+const displayName = (v: LabValueLite) => v.marker_name ?? v.markerName ?? '';
 
 const findValue = (vals: LabValueLite[], patterns: string[]): LabValueLite | null => {
   const matches = vals.filter((v) => {
-    const n = (v.marker_name ?? '').toLowerCase();
+    const n = pickName(v);
     return patterns.some((p) => n.includes(p));
   });
   return matches[0] ?? null;
@@ -33,8 +42,8 @@ const findValue = (vals: LabValueLite[], patterns: string[]): LabValueLite | nul
 
 // Score 0..1 for how "out of optimal" a value is. 0 = perfect, 1 = bad.
 const outOfRangeScore = (v: LabValueLite, badAtPctOver: number = 50): number => {
-  const lo = v.optimal_low ?? null;
-  const hi = v.optimal_high ?? null;
+  const lo = pickLow(v);
+  const hi = pickHigh(v);
   const val = v.value;
   if (lo != null && val < lo) {
     const dist = Math.abs(val - lo) / Math.max(Math.abs(lo), 1);
@@ -92,7 +101,7 @@ export function computeOrganAges(values: LabValueLite[], chronologicalAge: numbe
     const scores = items.map((v) => outOfRangeScore(v!, 60));
     const score = scores.reduce((a, b) => a + b, 0) / scores.length;
     const age = ageFromScore(score, chronologicalAge, 14);
-    const drivers = items.map((v) => `${v!.marker_name.split(',')[0].split(' ')[0]} ${v!.value}`);
+    const drivers = items.map((v) => `${displayName(v!).split(',')[0].split(' ')[0]} ${v!.value}`);
     out.push({
       system: 'Heart',
       emoji: '❤️',
@@ -118,7 +127,7 @@ export function computeOrganAges(values: LabValueLite[], chronologicalAge: numbe
     const scores = items.map((v) => outOfRangeScore(v!, 40));
     const score = scores.reduce((a, b) => a + b, 0) / scores.length;
     const age = ageFromScore(score, chronologicalAge, 16);
-    const drivers = items.map((v) => `${v!.marker_name.split(',')[0].split(' ')[0]} ${v!.value}`);
+    const drivers = items.map((v) => `${displayName(v!).split(',')[0].split(' ')[0]} ${v!.value}`);
     out.push({
       system: 'Metabolic',
       emoji: '🍯',
@@ -143,7 +152,7 @@ export function computeOrganAges(values: LabValueLite[], chronologicalAge: numbe
     const scores = items.map((v) => outOfRangeScore(v!, 100));
     const score = scores.reduce((a, b) => a + b, 0) / scores.length;
     const age = ageFromScore(score, chronologicalAge, 12);
-    const drivers = items.map((v) => `${v!.marker_name.split(',')[0].split(' ')[0]} ${v!.value}`);
+    const drivers = items.map((v) => `${displayName(v!).split(',')[0].split(' ')[0]} ${v!.value}`);
     out.push({
       system: 'Inflammation',
       emoji: '🔥',

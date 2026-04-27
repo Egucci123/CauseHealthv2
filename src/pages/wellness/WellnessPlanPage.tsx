@@ -58,6 +58,15 @@ const EmptyState = ({ onGenerate, loading }: { onGenerate: () => void; loading: 
   </div>
 );
 
+const MILESTONES_INLINE: { week: number; emoji: string; label: string }[] = [
+  { week: 2, emoji: '⚡', label: 'Energy crashes start lifting' },
+  { week: 4, emoji: '🩸', label: 'Triglycerides starting to drop' },
+  { week: 6, emoji: '☀️', label: 'Vitamin D approaching target' },
+  { week: 8, emoji: '🫀', label: 'Liver enzymes visibly improving' },
+  { week: 10, emoji: '🔥', label: 'Inflammation should be calmer' },
+  { week: 12, emoji: '🧪', label: 'Time to retest — full readout' },
+];
+
 // ── Today Tab ──────────────────────────────────────────────────────────────────
 const TodayTab = ({ plan, uid }: { plan: any; uid: string }) => {
   const actions = (plan.today_actions ?? []).slice(0, 3);
@@ -80,12 +89,46 @@ const TodayTab = ({ plan, uid }: { plan: any; uid: string }) => {
     try { localStorage.setItem(key, JSON.stringify({ date: todayKey(), done: nextDone })); } catch { /* quota */ }
   };
 
+  // Compute current week of 12 from plan generation
+  const planWeek = useMemo(() => {
+    if (!plan?.generated_at) return null;
+    const days = Math.floor((Date.now() - new Date(plan.generated_at).getTime()) / 86_400_000);
+    return { week: Math.max(1, Math.min(12, Math.floor(days / 7) + 1)), days };
+  }, [plan?.generated_at]);
+
+  const nextMilestone = useMemo(() => {
+    if (!planWeek) return null;
+    const m = MILESTONES_INLINE.find((x) => x.week >= planWeek.week) ?? MILESTONES_INLINE[MILESTONES_INLINE.length - 1];
+    return { ...m, daysUntil: Math.max(0, m.week * 7 - planWeek.days) };
+  }, [planWeek]);
+
   if (actions.length === 0) {
     return <p className="text-body text-clinical-stone text-sm">Regenerate your plan to get today's 3 actions.</p>;
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
+      {/* Week milestone strip — same as dashboard TodayCard */}
+      {planWeek && nextMilestone && (
+        <div className="bg-clinical-cream/40 rounded-[10px] p-3">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-clinical-stone">
+              Week {planWeek.week} of 12
+            </span>
+            <span className="text-precision text-[0.6rem] text-clinical-stone">
+              Next milestone in {nextMilestone.daysUntil} day{nextMilestone.daysUntil === 1 ? '' : 's'}
+            </span>
+          </div>
+          <div className="h-1.5 rounded-full bg-clinical-stone/15 overflow-hidden mb-2">
+            <div className="h-full bg-primary-container transition-all" style={{ width: `${(planWeek.week / 12) * 100}%` }} />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-base leading-none">{nextMilestone.emoji}</span>
+            <span className="text-precision text-[0.65rem] text-clinical-charcoal">{nextMilestone.label}</span>
+          </div>
+        </div>
+      )}
+
       <p className="text-body text-clinical-stone text-sm">3 things. Start with one. Check it off.</p>
       {actions.map((a: any, i: number) => {
         const isDone = done.includes(i);
@@ -317,6 +360,31 @@ export const WellnessPlanPage = () => {
 
           {/* Transformation forecast — pure math, big motivation */}
           {forecasts.length > 0 && <TransformationForecast forecasts={forecasts} />}
+
+          {/* Week 12 retest preview — what we'll measure to prove the plan worked */}
+          {Array.isArray(plan.retest_timeline) && plan.retest_timeline.length > 0 && (
+            <div className="bg-clinical-white rounded-[14px] border border-outline-variant/15 overflow-hidden">
+              <div className="px-5 py-4 border-b border-outline-variant/10 bg-[#1B423A]/5">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-2xl leading-none">🧪</span>
+                  <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-[#1B423A]">Week 12 retest panel</p>
+                </div>
+                <p className="text-authority text-base text-clinical-charcoal font-bold">Here's what we'll measure to prove the plan worked.</p>
+                <p className="text-body text-clinical-stone text-sm mt-1">{plan.retest_timeline.length} markers from your current draw. The honest test of 90 days.</p>
+              </div>
+              <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {plan.retest_timeline.map((r: any, i: number) => (
+                  <div key={i} className="flex items-start gap-2 p-2.5 bg-clinical-cream/40 rounded-[8px]">
+                    <span className="material-symbols-outlined text-primary-container text-[16px] flex-shrink-0 mt-0.5">science</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-body text-clinical-charcoal text-sm font-semibold leading-tight">{r.marker}</p>
+                      {r.why && <p className="text-precision text-[0.6rem] text-clinical-stone mt-0.5 leading-snug">{r.why}</p>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* 90-day retest CTA — surfaces in last 2 weeks of protocol */}
           {showRetestCTA && (

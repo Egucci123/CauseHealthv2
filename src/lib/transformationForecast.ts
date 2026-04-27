@@ -157,27 +157,39 @@ const RULES: ResponseRule[] = [
   },
 ];
 
+// Accept either camelCase (from useLatestLabValues mapping) or snake_case (raw DB rows)
 interface LabValueLite {
-  marker_name: string;
+  marker_name?: string;
+  markerName?: string;
   value: number;
   unit?: string | null;
   optimal_low?: number | null;
+  optimalLow?: number | null;
   optimal_high?: number | null;
+  optimalHigh?: number | null;
   optimal_flag?: string | null;
+  optimalFlag?: string | null;
 }
+
+const pickName = (v: LabValueLite) => v.marker_name ?? v.markerName ?? '';
+const pickLow = (v: LabValueLite) => v.optimal_low ?? v.optimalLow ?? null;
+const pickHigh = (v: LabValueLite) => v.optimal_high ?? v.optimalHigh ?? null;
 
 export function buildForecasts(values: LabValueLite[]): MarkerForecast[] {
   const out: MarkerForecast[] = [];
   for (const v of values) {
     if (typeof v.value !== 'number' || Number.isNaN(v.value)) continue;
-    const name = (v.marker_name ?? '').toLowerCase();
+    const markerName = pickName(v);
+    const name = markerName.toLowerCase();
+    const lo = pickLow(v);
+    const hi = pickHigh(v);
     for (const rule of RULES) {
       if (!rule.match.some((m) => name.includes(m))) continue;
-      if (!rule.condition(v.value, v.optimal_low, v.optimal_high)) continue;
+      if (!rule.condition(v.value, lo, hi)) continue;
       const projected = rule.project(v.value);
       if (projected == null) continue;
       out.push({
-        marker: v.marker_name,
+        marker: markerName,
         emoji: rule.emoji,
         current: v.value,
         projected,
