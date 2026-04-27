@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import type { PriorityAlert } from '../../types';
 import { usePriorityAlerts, useDismissAlert } from '../../hooks/usePriorityAlerts';
+import { useSubscription } from '../../lib/subscription';
 import { SectionLabel } from '../ui/SectionLabel';
 import { Badge } from '../ui/Badge';
 
@@ -26,7 +27,7 @@ const AlertsEmpty = () => (
   </div>
 );
 
-const AlertCard = ({ alert, onDismiss }: { alert: PriorityAlert; onDismiss: () => void }) => {
+const AlertCard = ({ alert, onDismiss, isPro }: { alert: PriorityAlert; onDismiss: () => void; isPro: boolean }) => {
   const navigate = useNavigate();
   const borderClass = { urgent: 'border-l-4 border-[#C94F4F]', monitor: 'border-l-4 border-[#E8922A]', optimal: 'border-l-4 border-[#D4A574]' }[alert.status];
 
@@ -39,11 +40,24 @@ const AlertCard = ({ alert, onDismiss }: { alert: PriorityAlert; onDismiss: () =
             <Badge status={alert.status} />
             {alert.source && <span className="text-precision text-[0.6rem] text-clinical-stone tracking-wide">{alert.source}</span>}
           </div>
-          <p className="text-body text-clinical-charcoal font-medium text-sm leading-snug">{alert.title}</p>
-          {alert.description && <p className="text-body text-clinical-stone text-xs mt-1 leading-relaxed">{alert.description}</p>}
-          {alert.actionLabel && alert.actionPath && (
-            <button onClick={() => navigate(alert.actionPath!)} className="text-precision text-[0.68rem] text-primary-container font-bold tracking-widest uppercase hover:underline flex items-center gap-1 mt-2">
-              {alert.actionLabel}<span className="material-symbols-outlined text-xs">arrow_forward</span>
+          {isPro ? (
+            <>
+              <p className="text-body text-clinical-charcoal font-medium text-sm leading-snug">{alert.title}</p>
+              {alert.description && <p className="text-body text-clinical-stone text-xs mt-1 leading-relaxed">{alert.description}</p>}
+              {alert.actionLabel && alert.actionPath && (
+                <button onClick={() => navigate(alert.actionPath!)} className="text-precision text-[0.68rem] text-primary-container font-bold tracking-widest uppercase hover:underline flex items-center gap-1 mt-2">
+                  {alert.actionLabel}<span className="material-symbols-outlined text-xs">arrow_forward</span>
+                </button>
+              )}
+            </>
+          ) : (
+            // Free users see flag + marker name only. AI commentary stays paid.
+            <button
+              onClick={() => navigate('/settings?tab=subscription')}
+              className="flex items-center gap-2 text-precision text-[0.65rem] font-bold tracking-wider uppercase text-[#D4A574] hover:underline mt-1"
+            >
+              <span className="material-symbols-outlined text-[14px]">lock</span>
+              Unlock why with Pro · $19/mo
             </button>
           )}
         </div>
@@ -58,6 +72,7 @@ const AlertCard = ({ alert, onDismiss }: { alert: PriorityAlert; onDismiss: () =
 export const PriorityAlerts = () => {
   const { data: alerts, isLoading } = usePriorityAlerts();
   const { mutate: dismiss } = useDismissAlert();
+  const { isPro } = useSubscription();
 
   if (isLoading) return <div><SectionLabel className="mb-4">Priority Findings</SectionLabel><AlertSkeleton /></div>;
 
@@ -70,7 +85,7 @@ export const PriorityAlerts = () => {
       {!alerts || alerts.length === 0 ? <AlertsEmpty /> : (
         <div className="space-y-3">
           <AnimatePresence>
-            {alerts.slice(0, 5).map(alert => <AlertCard key={alert.id} alert={alert} onDismiss={() => dismiss(alert.id)} />)}
+            {alerts.slice(0, 5).map(alert => <AlertCard key={alert.id} alert={alert} onDismiss={() => dismiss(alert.id)} isPro={isPro} />)}
           </AnimatePresence>
           {alerts.length > 5 && <button className="text-precision text-[0.68rem] text-primary-container font-bold tracking-widest uppercase hover:underline w-full text-center py-2">View all {alerts.length} findings →</button>}
         </div>
