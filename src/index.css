@@ -7,14 +7,23 @@
   box-sizing: border-box;
 }
 
+/* Body background MUST match the public + onboarding + auth pages
+   (clinical cream). When React unmounts one route before mounting the next,
+   this is what's briefly visible — used to be black, causing a jarring flash
+   on every navigation. Authenticated app pages set their own dark bg via
+   the AppShell, so this only shows during transitions. */
 body {
   font-family: 'DM Sans', sans-serif;
-  background-color: #131313;
+  background-color: #F4F1EB; /* clinical-cream */
   color: #E5E2E1;
   min-height: 100dvh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   margin: 0;
+}
+
+html {
+  background-color: #F4F1EB; /* match body to prevent overscroll flash */
 }
 
 /* ── Typography utility classes ────────────────────────────────── */
@@ -144,4 +153,5 @@ body {
 /* ── Smooth scroll ─────────────────────────────────────────────── */
 html {
   scroll-behavior: smooth;
+  background-color: #F4F1EB;
 }
