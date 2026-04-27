@@ -375,10 +375,10 @@ export const WellnessPlanPage = () => {
               <div className="px-5 py-4 border-b border-outline-variant/10 bg-[#1B423A]/5">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-2xl leading-none">🧪</span>
-                  <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-[#1B423A]">Week 12 retest panel</p>
+                  <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-[#1B423A]">The honest test</p>
                 </div>
-                <p className="text-authority text-base text-clinical-charcoal font-bold">Here's what we'll measure to prove the plan worked.</p>
-                <p className="text-body text-clinical-stone text-sm mt-1">{plan.retest_timeline.length} markers from your current draw. The honest test of 90 days.</p>
+                <p className="text-authority text-base text-clinical-charcoal font-bold">Same labs. 90 days later.</p>
+                <p className="text-body text-clinical-stone text-sm mt-1">{plan.retest_timeline.length} markers we'll re-measure to see if the plan worked. No guessing — your bloodwork tells the truth.</p>
               </div>
               <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {plan.retest_timeline.map((r: any, i: number) => (

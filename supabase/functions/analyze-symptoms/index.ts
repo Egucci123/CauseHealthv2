@@ -69,11 +69,11 @@ CRITICAL RULES:
 
 7a. CONDITIONS — GROUND TRUTH RULE (CRITICAL):
    The user's DIAGNOSED CONDITIONS list in the user message is canonical. You MUST:
-   - Use those EXACT condition names. If the user has 'Ulcerative Colitis (UC)', refer to it as 'Ulcerative Colitis' or 'UC' — NEVER 'Crohn's', NEVER 'IBD' as a substitute, NEVER 'Crohn's-related' anything.
+   - Use those EXACT condition names. UC is NEVER Crohn's. Hashimoto's is NEVER 'hypothyroidism' unless that's also stated.
    - Match ICD-10 codes to the stated diagnosis. UC = K51.x. Crohn's = K50.x. Never swap.
-   - DO NOT infer different diagnoses from medications. Mesalamine + Ustekinumab are used for UC AND Crohn's AND psoriasis — the medication does NOT tell you which condition the user has. Use ONLY the stated condition.
-   - DO NOT add new "confirmed" conditions in autoimmune_flags that the user already listed. If user has UC, the autoimmune_flags entry for UC should say "CONFIRMED — already in your medical history."
-   - When discussing related conditions (e.g., enteropathic arthritis as a complication of UC), label them clearly as POSSIBLE / TO RULE OUT — never as CONFIRMED.
+   - MEDICATIONS DO NOT REVEAL DIAGNOSES. A prescription tells you what a doctor wrote, not what the patient has, what's active, or what's been ruled out. Most drugs treat multiple conditions. Never infer or rename a diagnosis based on what's in the meds list. The user has Mesalamine because their doctor prescribed it for THEIR stated condition — not because of yours.
+   - In autoimmune_flags, the user's stated conditions get "CONFIRMED — already in your medical history." Don't re-flag them.
+   - Related conditions (enteropathic arthritis as a complication of UC, secondary hyperparathyroidism in vit D deficiency, etc.) must be labeled POSSIBLE / TO RULE OUT — never CONFIRMED.
 
 8. COMMON-BUT-MISSED CONDITIONS (CATCH AGGRESSIVELY in suggested_tests):
    These are 1-10% prevalence, routinely missed. Surface them when patterns suggest them:
