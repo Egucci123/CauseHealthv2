@@ -5,6 +5,10 @@ import { Routes, Route } from 'react-router-dom';
 import { Landing } from './pages/Landing';
 import { Terms } from './pages/legal/Terms';
 import { Privacy } from './pages/legal/Privacy';
+import { Disclaimer } from './pages/legal/Disclaimer';
+import { About } from './pages/company/About';
+import { Contact } from './pages/company/Contact';
+import { Blog } from './pages/company/Blog';
 
 // Auth pages
 import { Register } from './pages/auth/Register';
@@ -75,6 +79,10 @@ function App() {
       <Route path="/" element={<Landing />} />
       <Route path="/terms" element={<Terms />} />
       <Route path="/privacy" element={<Privacy />} />
+      <Route path="/disclaimer" element={<Disclaimer />} />
+      <Route path="/about" element={<About />} />
+      <Route path="/contact" element={<Contact />} />
+      <Route path="/blog" element={<Blog />} />
 
       {/* Auth */}
       <Route path="/register" element={<PublicOnlyRoute><Register /></PublicOnlyRoute>} />
