@@ -256,6 +256,10 @@ export const WellnessPlanPage = () => {
 
   const forecasts = (latestValues && latestValues.length > 0) ? buildForecasts(latestValues as any) : [];
 
+  const planCreatedAt = (plan as any)?._createdAt ? new Date((plan as any)._createdAt) : null;
+  const drawCreatedAt = latestDraw?.createdAt ? new Date(latestDraw.createdAt) : null;
+  const hasNewerLabs = plan && planCreatedAt && drawCreatedAt && drawCreatedAt > planCreatedAt;
+
   // Plan week (1-12+) — used to surface the retest CTA at week 10+
   const planWeek = useMemo(() => {
     if (!plan?.generated_at) return null;
@@ -263,10 +267,6 @@ export const WellnessPlanPage = () => {
     return Math.max(1, Math.floor(days / 7) + 1);
   }, [plan?.generated_at]);
   const showRetestCTA = planWeek != null && planWeek >= 10 && !hasNewerLabs;
-
-  const planCreatedAt = (plan as any)?._createdAt ? new Date((plan as any)._createdAt) : null;
-  const drawCreatedAt = latestDraw?.createdAt ? new Date(latestDraw.createdAt) : null;
-  const hasNewerLabs = plan && planCreatedAt && drawCreatedAt && drawCreatedAt > planCreatedAt;
 
   const handleGenerate = () => {
     generate().catch(err => console.error('[WellnessPlan] Generation error:', err));
