@@ -43,12 +43,50 @@ export const DoctorPrep = () => {
 
   return (
     <AppShell pageTitle="Clinical Prep">
-      <div className="flex flex-col md:flex-row justify-between items-start gap-4">
-        <SectionHeader title="Doctor Prep" description="Your clinical document — ready to hand to your physician. ICD-10 codes included." />
+      {/* Dark hero card — matches Wellness Plan + Lab Detail */}
+      <div className="bg-[#131313] rounded-[14px] p-6 shadow-card">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div className="flex-1 min-w-0">
+            <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-[#D4A574] mb-2">For Your Visit</p>
+            <h1 className="text-authority text-3xl md:text-4xl text-on-surface font-bold leading-tight">Doctor Prep.</h1>
+            <p className="text-body text-on-surface-variant text-sm mt-2 max-w-md">A clinical document your doctor takes seriously. ICD-10 codes, exact tests, prepared questions.</p>
+          </div>
+          {doc && !generating && (
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                onClick={handleExport}
+                className="inline-flex items-center gap-1.5 text-precision text-[0.65rem] font-bold tracking-wider uppercase px-3 py-2 bg-white/10 hover:bg-white/20 text-on-surface rounded-[8px] transition-colors"
+              >
+                <span className="material-symbols-outlined text-[14px]">print</span>PDF
+              </button>
+              <button
+                onClick={handleGenerate}
+                className="inline-flex items-center gap-1.5 text-precision text-[0.65rem] font-bold tracking-wider uppercase px-3 py-2 bg-[#D4A574] hover:bg-[#B8915F] text-clinical-charcoal rounded-[8px] transition-colors"
+              >
+                <span className="material-symbols-outlined text-[14px]">refresh</span>Regenerate
+              </button>
+            </div>
+          )}
+        </div>
+        {/* Stat chips inline at bottom of hero */}
         {doc && !generating && (
-          <div className="flex items-center gap-3 flex-shrink-0">
-            <Button variant="secondary" size="md" icon="print" onClick={handleExport}>Print / Export PDF</Button>
-            <Button variant="ghost" size="md" icon="refresh" loading={generating} onClick={handleGenerate}>Regenerate</Button>
+          <div className="flex flex-wrap gap-2 mt-5">
+            {Array.isArray(doc.tests_to_request) && doc.tests_to_request.filter(t => t.priority === 'urgent').length > 0 && (
+              <span className="text-precision text-[0.6rem] font-bold px-2.5 py-1 bg-[#C94F4F] text-white rounded">
+                {doc.tests_to_request.filter(t => t.priority === 'urgent').length} priority
+              </span>
+            )}
+            <span className="text-precision text-[0.6rem] font-bold px-2.5 py-1 bg-white/10 text-on-surface rounded">
+              {(Array.isArray(doc.tests_to_request) ? doc.tests_to_request.length : 0) + (Array.isArray(doc.advanced_screening) ? doc.advanced_screening.length : 0)} suggestions
+            </span>
+            {Array.isArray(doc.advanced_screening) && doc.advanced_screening.length > 0 && (
+              <span className="text-precision text-[0.6rem] font-bold px-2.5 py-1 bg-[#2A9D8F] text-white rounded">
+                {doc.advanced_screening.length} early detection
+              </span>
+            )}
+            <span className="text-precision text-[0.55rem] text-on-surface-variant tracking-wide ml-auto">
+              Generated {doc.generated_at ? format(new Date(doc.generated_at), 'MMM d, yyyy') : 'recently'}
+            </span>
           </div>
         )}
       </div>
@@ -58,7 +96,7 @@ export const DoctorPrep = () => {
           <span className="material-symbols-outlined text-[#2A9D8F] text-[24px] flex-shrink-0">update</span>
           <div className="flex-1">
             <p className="text-body text-clinical-charcoal font-semibold text-sm">New lab results available</p>
-            <p className="text-precision text-[0.6rem] text-clinical-stone">Tap to regenerate your clinical document with your latest bloodwork.</p>
+            <p className="text-precision text-[0.6rem] text-clinical-stone">Tap to regenerate with your latest bloodwork.</p>
           </div>
           <span className="material-symbols-outlined text-[#2A9D8F] text-[18px] flex-shrink-0">arrow_forward</span>
         </button>
@@ -90,33 +128,19 @@ export const DoctorPrep = () => {
           </div>
         </PaywallGate>
       ) : (
-        <div className="space-y-8">
-          {/* Info bar */}
-          <div className="flex items-center justify-between bg-clinical-white rounded-[10px] border border-outline-variant/15 px-5 py-4">
-            <div className="flex items-center gap-3">
-              <span className="material-symbols-outlined text-primary-container text-[20px]">check_circle</span>
-              <div>
-                <p className="text-body text-clinical-charcoal font-semibold text-sm">Document ready</p>
-                <p className="text-precision text-[0.6rem] text-clinical-stone">Generated {doc.generated_at ? format(new Date(doc.generated_at), 'MMMM d, yyyy · h:mm a') : 'recently'}</p>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              {Array.isArray(doc.tests_to_request) && doc.tests_to_request.filter(t => t.priority === 'urgent').length > 0 && (
-                <span className="text-precision text-[0.6rem] font-bold px-2 py-1 bg-[#C94F4F] text-white" style={{ borderRadius: '3px' }}>{doc.tests_to_request.filter(t => t.priority === 'urgent').length} PRIORITY</span>
-              )}
-              <span className="text-precision text-[0.6rem] font-bold px-2 py-1 bg-surface-container text-on-surface-variant" style={{ borderRadius: '3px' }}>{(Array.isArray(doc.tests_to_request) ? doc.tests_to_request.length : 0) + (Array.isArray(doc.advanced_screening) ? doc.advanced_screening.length : 0)} SUGGESTIONS</span>
-              {Array.isArray(doc.advanced_screening) && doc.advanced_screening.length > 0 && (
-                <span className="text-precision text-[0.6rem] font-bold px-2 py-1 bg-[#2A9D8F] text-white" style={{ borderRadius: '3px' }}>{doc.advanced_screening.length} EARLY DETECTION</span>
-              )}
-            </div>
-          </div>
-
-          {/* Tabs */}
-          <div className="flex border-b border-outline-variant/10">
+        <div className="space-y-5">
+          {/* Tab nav — same segmented-control style as Wellness Plan + Lab Detail */}
+          <div className="flex gap-1 bg-clinical-cream rounded-[10px] p-1 overflow-x-auto">
             {TABS.map(tab => (
-              <button key={tab.id} onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center gap-2 px-5 py-3 text-precision text-[0.68rem] font-bold tracking-wider uppercase border-b-2 transition-all ${activeTab === tab.id ? 'border-primary-container text-primary-container' : 'border-transparent text-clinical-stone hover:text-clinical-charcoal'}`}>
-                <span className="material-symbols-outlined text-[16px]">{tab.icon}</span>{tab.label}
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`flex-1 min-w-[110px] flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-[8px] transition-all ${
+                  activeTab === tab.id ? 'bg-clinical-white shadow-card' : 'hover:bg-clinical-white/50'
+                }`}
+              >
+                <span className={`material-symbols-outlined text-[16px] ${activeTab === tab.id ? 'text-primary-container' : 'text-clinical-stone'}`}>{tab.icon}</span>
+                <span className={`text-precision text-[0.68rem] font-bold tracking-wider ${activeTab === tab.id ? 'text-clinical-charcoal' : 'text-clinical-stone'}`}>{tab.label}</span>
               </button>
             ))}
           </div>
