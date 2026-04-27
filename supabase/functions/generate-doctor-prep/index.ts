@@ -149,12 +149,24 @@ TESTS — TWO SEPARATE LISTS:
    - Tier as urgent/high/moderate.
 
 PLACEMENT RULES (which list a test belongs in):
-   - If a patient has IBD + back pain or joint stiffness → HLA-B27 + ESR/CRP belongs in tests_to_request (Essential), not advanced_screening. UC + back pain is a textbook spondyloarthropathy presentation, not a "rare condition."
-   - If a patient has elevated platelets >450, RBC >5.9, or hematocrit at the upper limit → JAK2 V617F belongs in advanced_screening (this is the rare-MPN screening).
+   ABSOLUTE BLOCKLIST — these tests CAN NEVER go in tests_to_request. They ALWAYS go in advanced_screening, UNLESS the patient hits the hard urgent threshold listed:
+     - JAK2 V617F → tests_to_request ONLY when platelets >450 OR (RBC >6.0 AND Hct >54). Borderline-high RBC/Hct is NOT enough.
+     - Erythropoietin level → same rule as JAK2, only when JAK2 is justified.
+     - Celiac panel (tTG-IgA, total IgA) → tests_to_request ONLY when persistent malabsorption symptoms >90 days OR low albumin + iron deficiency + GI symptoms.
+     - HLA-B27 → tests_to_request ONLY when persistent inflammatory back pain >90 days unresponsive to lifestyle. Joint pain + IBD on day 1 goes to advanced_screening, NOT essential.
+     - ANA reflex panel (anti-dsDNA, anti-Sm, anti-Ro/La, anti-Scl-70) → tests_to_request ONLY when ANA is already positive on this draw. Otherwise advanced_screening.
+     - Multiple myeloma panel (SPEP, UPEP, free light chains) → tests_to_request ONLY when globulin >3.5 AND patient under 40, OR persistent hypercalcemia, OR unexplained anemia + bone pain.
+     - Hereditary hemochromatosis genetics → advanced_screening unless ferritin >300 with elevated transferrin saturation >45%.
+     - MTHFR genetics → advanced_screening always (controversial clinical utility).
+     - Pituitary MRI → advanced_screening unless prolactin >100.
+     - 24h urinary cortisol (Cushing's screening) → advanced_screening unless multiple Cushing's stigmata.
+     - Flow cytometry / hematology specialty workups → advanced_screening unless absolute counts are critical.
+   The default day-1 test list should feel ROUTINE: lipid NMR, fasting insulin, iron panel, vitamin D recheck, liver ultrasound, thyroid panel, basic celiac IF GI symptoms, hsCRP. Things a primary care doctor orders without raising eyebrows.
    - Liver workup with elevated ALT/AST → ICD-10 should be R74.0 (abnormal liver function tests), NOT R19.00 (abdominal mass) for any liver-related test or imaging.
    - Insurance Note should mention specific common scenarios: "usually covered under abnormal LFTs," "may need prior auth for specialty panels," "out-of-pocket cost ~$X if not covered."
 
-2. advanced_screening (RESERVED FOR DEEPER INVESTIGATION):
+2. advanced_screening (RESERVED FOR DEEPER INVESTIGATION — gated UI):
+   READ THIS FIRST: 90% of users will have lifestyle-correctable labs. The default behavior of this list should be EMPTY or 1-2 entries max for borderline rare-disease screening. Only populate this section when the PATTERN in this user's labs CLEARLY suggests a specific rare condition worth investigating — and even then, the screening goes here (gated), not in tests_to_request.
    - These tests are GATED in the UI until the patient's 90-day retest. They are shown ONLY if marked urgent (genuine red flags) OR if the user manually unlocks them.
    - DO NOT spam this list. The lifestyle-first philosophy is: most abnormal labs improve with 90 days of clean diet, movement, sleep, and targeted supplementation. Rare-disease screening is the SECOND visit, not the first.
    - INCLUDE here ONLY:
