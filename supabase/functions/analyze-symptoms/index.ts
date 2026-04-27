@@ -15,17 +15,22 @@ serve(async (req) => {
     if (!userId) return new Response(JSON.stringify({ error: 'userId required' }), { status: 400, headers: corsHeaders });
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-    const [symptomsRes, medsRes, suppsRes, profileRes, latestDrawRes] = await Promise.all([
+    const [symptomsRes, medsRes, suppsRes, conditionsRes, profileRes, latestDrawRes] = await Promise.all([
       supabase.from('symptoms').select('*').eq('user_id', userId),
       supabase.from('medications').select('*').eq('user_id', userId).eq('is_active', true),
       supabase.from('user_supplements').select('name, dose').eq('user_id', userId).eq('is_active', true),
+      supabase.from('conditions').select('name, icd10').eq('user_id', userId).eq('is_active', true),
       supabase.from('profiles').select('sex, date_of_birth').eq('id', userId).single(),
       supabase.from('lab_draws').select('id').eq('user_id', userId).eq('processing_status', 'complete').order('draw_date', { ascending: false }).limit(1).maybeSingle(),
     ]);
 
     const symptoms = symptomsRes.data ?? []; const meds = medsRes.data ?? [];
     const supps = suppsRes.data ?? [];
+    const conditions = conditionsRes.data ?? [];
     const suppsStr = supps.map((s: any) => `${s.name}${s.dose ? ` (${s.dose})` : ''}`).join(', ') || 'None';
+    const condStr = conditions.length > 0
+      ? conditions.map((c: any) => `${c.name}${c.icd10 ? ` (ICD-10: ${c.icd10})` : ''}`).join(', ')
+      : 'None reported';
     if (symptoms.length === 0) return new Response(JSON.stringify({ error: 'No symptoms to analyze' }), { status: 400, headers: corsHeaders });
 
     let labValues: any[] = [];
@@ -62,6 +67,14 @@ CRITICAL RULES:
 6. DO NOT speculate about conditions the patient has no evidence for. Only flag autoimmune conditions with supporting symptoms AND lab clues.
 7. Frame as educational. Always recommend discussing with a healthcare provider.
 
+7a. CONDITIONS — GROUND TRUTH RULE (CRITICAL):
+   The user's DIAGNOSED CONDITIONS list in the user message is canonical. You MUST:
+   - Use those EXACT condition names. If the user has 'Ulcerative Colitis (UC)', refer to it as 'Ulcerative Colitis' or 'UC' — NEVER 'Crohn's', NEVER 'IBD' as a substitute, NEVER 'Crohn's-related' anything.
+   - Match ICD-10 codes to the stated diagnosis. UC = K51.x. Crohn's = K50.x. Never swap.
+   - DO NOT infer different diagnoses from medications. Mesalamine + Ustekinumab are used for UC AND Crohn's AND psoriasis — the medication does NOT tell you which condition the user has. Use ONLY the stated condition.
+   - DO NOT add new "confirmed" conditions in autoimmune_flags that the user already listed. If user has UC, the autoimmune_flags entry for UC should say "CONFIRMED — already in your medical history."
+   - When discussing related conditions (e.g., enteropathic arthritis as a complication of UC), label them clearly as POSSIBLE / TO RULE OUT — never as CONFIRMED.
+
 8. COMMON-BUT-MISSED CONDITIONS (CATCH AGGRESSIVELY in suggested_tests):
    These are 1-10% prevalence, routinely missed. Surface them when patterns suggest them:
    - PCOS (women): testosterone + DHEA-S + LH:FSH + fasting insulin + SHBG. Trigger: irregular cycles, acne, hirsutism, weight gain, hair thinning, insulin resistance.
@@ -97,6 +110,9 @@ CRITICAL RULES:
         messages: [{ role: 'user', content: `Analyze symptoms for root causes.
 
 PATIENT: ${age ? `${age}yo` : 'age unknown'} ${sex}
+
+DIAGNOSED CONDITIONS (TREAT AS GROUND TRUTH — NEVER substitute, rename, or replace these with related conditions): ${condStr}
+
 SYMPTOMS:
 ${sympStr}
 

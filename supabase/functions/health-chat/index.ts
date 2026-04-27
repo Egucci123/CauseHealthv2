@@ -85,7 +85,7 @@ VOICE RULES (CRITICAL):
 
 PATIENT CONTEXT:
 - ${age ? `${age}yo` : 'Age unknown'} ${profile?.sex ?? ''}, ${profile?.first_name ?? 'Patient'}
-- Conditions: ${condStr}
+- Conditions (GROUND TRUTH — never substitute UC for Crohn's or vice versa; never infer different conditions from medications): ${condStr}
 - Medications: ${medsStr}
 - Symptoms: ${sympStr}
 

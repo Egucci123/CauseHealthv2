@@ -120,7 +120,7 @@ HARD RULES — FOLLOW EXACTLY:
    Treatment supplements always rank above optimization supplements when both exist. Untested nutrients go in retest_timeline with a note to test first. Food-based interventions allowed for diagnosed conditions.
    - CRITICAL: If a supplement would address an UNTESTED condition (e.g., SIBO, celiac, insulin resistance), put the recommended TEST in retest_timeline, NOT a supplement in the stack. Test first, supplement after confirmation.
 2. sourced_from: "lab_finding", "disease_mechanism", or "optimization" only. Never "medication_depletion" or "symptom_pattern" in supplement_stack.
-3. Infer conditions from medications. Address each with condition-specific lifestyle interventions.
+3. CONDITIONS — GROUND TRUTH RULE: Use the user's DIAGNOSED CONDITIONS list verbatim. Never substitute related conditions (UC ≠ Crohn's, even though they share treatments). Mesalamine + Ustekinumab are used for both — the medication does NOT tell you the diagnosis. Use ONLY the stated condition. Address each STATED condition with condition-specific lifestyle interventions.
 4. PATTERN RECOGNITION: Connect abnormal values across organ systems to identify undiagnosed conditions. In the summary, flag every multi-marker pattern (e.g., elevated platelets + elevated RDW = possible iron deficiency or myeloproliferative process; low HDL + borderline glucose = metabolic syndrome risk). In retest_timeline, recommend testing to confirm or rule out each pattern. The goal is EARLY DETECTION.
 5. AGE/SEX CONTEXT: Apply age and sex-appropriate reasoning.
 6. FEMALE HORMONE RULE: Do NOT flag estradiol, progesterone, FSH, or LH as abnormal in premenopausal females unless extreme (FSH >40, estradiol <10 or >500, progesterone >30). These vary by cycle phase and a single draw means nothing without knowing cycle day. Never build a supplement protocol around "estrogen dominance" from one blood draw.
@@ -153,7 +153,7 @@ PATIENT: ${age ? `${age}yo` : 'age unknown'} ${profile?.sex ?? ''}
 USER'S TOP GOALS (priority order — your plan MUST be tailored around these): ${goalsStr}
 MODE: ${isOptimizationMode ? 'optimization' : 'treatment'}
 ${isOptimizationMode ? 'OPTIMIZATION CONTEXT: Patient labs are mostly optimal. Frame the plan around longevity optimization, not disease treatment. Phase names should be: "Build Foundation (Weeks 1-4)", "Optimize (Weeks 5-8)", "Sustain & Track (Weeks 9-12)". Lifestyle interventions should focus on longevity science: zone 2 cardio, resistance training, sleep optimization, cold/heat exposure, stress resilience, metabolic health optimization, and proactive screening.' : ''}
-DIAGNOSED CONDITIONS: ${condStr}
+DIAGNOSED CONDITIONS (GROUND TRUTH — never substitute these with related conditions; never call UC 'Crohn's' or vice versa; never infer a different diagnosis from medications): ${condStr}
 MEDICATIONS: ${medsStr}
 CURRENT SUPPLEMENTS (already taking — do NOT re-recommend; account for lab interactions and avoid stacking duplicates): ${suppsStr}
 SYMPTOMS (for context only — do NOT supplement based on symptoms alone): ${sympStr}
