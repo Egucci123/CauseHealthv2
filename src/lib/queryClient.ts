@@ -4,19 +4,49 @@ import { QueryClient } from '@tanstack/react-query';
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 15 * 1000,
+      // Treat data as immediately stale so any focus/visibility/mount
+      // unconditionally triggers a refetch. The cached value still renders
+      // instantly while the network request runs in the background.
+      staleTime: 0,
       gcTime: 5 * 60 * 1000,
       retry: 2,
       retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
-      // Always refetch when a component using this query mounts. Fixes the
-      // "data already pulled but blank until I refresh" bug — pages that load
-      // after a navigation now run their queries instead of showing cached null.
+      // Always refetch when a component using this query mounts.
       refetchOnMount: 'always',
-      refetchOnWindowFocus: true,
-      refetchOnReconnect: true,
+      // 'always' = refetch on focus regardless of staleness. Required because
+      // the default ('true') only refetches if the query is past staleTime.
+      refetchOnWindowFocus: 'always',
+      refetchOnReconnect: 'always',
     },
     mutations: {
       retry: 0,
     },
   },
 });
+
+// ── Visibility-change handler ───────────────────────────────────────────────
+// Mobile browsers + PWA installs don't fire window focus events reliably when
+// the user backgrounds the tab and returns. The visibilitychange event is the
+// canonical signal. When the user comes back after >5s away, invalidate all
+// active queries so the page reflects fresh server state immediately.
+let lastHiddenAt = 0;
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      lastHiddenAt = Date.now();
+    } else if (document.visibilityState === 'visible') {
+      const awayMs = Date.now() - lastHiddenAt;
+      if (lastHiddenAt > 0 && awayMs > 5000) {
+        queryClient.invalidateQueries();
+      }
+    }
+  });
+
+  // Also re-invalidate on pageshow with persisted=true (back-forward cache hit).
+  // Safari especially restores the page from BFCache without firing visibilitychange.
+  window.addEventListener('pageshow', (e) => {
+    if ((e as PageTransitionEvent).persisted) {
+      queryClient.invalidateQueries();
+    }
+  });
+}
