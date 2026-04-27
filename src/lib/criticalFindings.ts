@@ -33,9 +33,10 @@ interface LabValue {
 }
 
 const name = (v: LabValue) => (v.marker_name ?? v.markerName ?? '').toLowerCase();
-const find = (vals: LabValue[], patterns: string[]): LabValue | null => {
+const find = (vals: LabValue[], patterns: string[], exclude: string[] = []): LabValue | null => {
   for (const v of vals) {
     const n = name(v);
+    if (exclude.some(e => n.includes(e))) continue;
     if (patterns.some(p => n.includes(p))) return v;
   }
   return null;
@@ -104,7 +105,7 @@ export function detectCriticalFindings(
     });
   }
 
-  const hgb = find(values, ['hemoglobin', 'hgb']);
+  const hgb = find(values, ['hemoglobin', 'hgb'], ['a1c', 'hba1c']);
   if (hgb && hgb.value < 7) {
     out.push({
       marker: hgb.marker_name ?? hgb.markerName ?? 'Hemoglobin', value: hgb.value, unit: hgb.unit, severity: 'emergency',
@@ -182,7 +183,7 @@ export function detectCriticalFindings(
     }
   }
 
-  const globulin = find(values, ['globulin']);
+  const globulin = find(values, ['globulin'], ['binding globulin', 'shbg', 'sex hormone', 'immunoglobulin']);
   if (globulin && globulin.value > 5) {
     out.push({
       marker: globulin.marker_name ?? globulin.markerName ?? 'Globulin', value: globulin.value, unit: globulin.unit, severity: 'critical',
@@ -246,7 +247,7 @@ export function detectCriticalFindings(
     });
   }
 
-  const creatinine = find(values, ['creatinine']);
+  const creatinine = find(values, ['creatinine'], ['ratio', 'bun/creat', 'bun / creat', 'urine']);
   if (creatinine && creatinine.value > 3) {
     out.push({
       marker: creatinine.marker_name ?? creatinine.markerName ?? 'Creatinine', value: creatinine.value, unit: creatinine.unit, severity: 'critical',
