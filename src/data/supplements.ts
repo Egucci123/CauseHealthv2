@@ -16,44 +16,89 @@ export interface SupplementEntry {
   depletesFor?: string[];          // e.g., ["statins", "PPIs"]
 }
 
-/** Common dose dropdown options for each supplement, keyed by canonical name (case-insensitive lookup). */
+/** Common dose dropdown options for each supplement.
+ * Keyed by canonical names matching SUPPLEMENT_DB exactly so direct lookups never miss.
+ * getCommonDoses also falls back to fuzzy match for custom-typed entries.
+ */
 export const COMMON_DOSES: Record<string, string[]> = {
-  'Vitamin D3': ['1,000 IU', '2,000 IU', '4,000 IU', '5,000 IU', '10,000 IU', '50,000 IU weekly'],
-  'Vitamin K2': ['90 mcg', '100 mcg', '180 mcg', '200 mcg'],
+  // Vitamins
+  'Vitamin D3 (Cholecalciferol)': ['1,000 IU', '2,000 IU', '4,000 IU', '5,000 IU', '8,000 IU', '10,000 IU', '50,000 IU weekly'],
+  'Vitamin K2 (MK-7)': ['90 mcg', '100 mcg', '180 mcg', '200 mcg', '300 mcg'],
+  'Vitamin B12 (Methylcobalamin)': ['500 mcg', '1,000 mcg', '2,500 mcg', '5,000 mcg'],
+  'Methylfolate (5-MTHF)': ['400 mcg', '800 mcg', '1,000 mcg', '5 mg', '15 mg'],
+  'Vitamin C (Ascorbic Acid)': ['500 mg', '1,000 mg', '2,000 mg', '3,000 mg'],
+  'Niacin (Vitamin B3)': ['100 mg', '250 mg', '500 mg', '1,000 mg', '2,000 mg'],
+  'Biotin (B7)': ['1,000 mcg', '5,000 mcg', '10,000 mcg'],
+  'Multivitamin': ['1 capsule', '2 capsules', '1 packet'],
+
+  // Minerals
+  'Magnesium (Glycinate / Citrate / Malate)': ['200 mg', '300 mg', '400 mg', '500 mg', '600 mg'],
+  'Zinc (Bisglycinate / Picolinate)': ['15 mg', '25 mg', '30 mg', '50 mg'],
+  'Iron (Ferrous Bisglycinate)': ['18 mg', '25 mg', '45 mg', '65 mg'],
+  'Calcium': ['500 mg', '1,000 mg', '1,200 mg'],
+
+  // Fats/Performance
+  'Omega-3 (Fish Oil / EPA/DHA)': ['1 g', '2 g', '3 g', '4 g'],
+  'CoQ10 (Ubiquinol)': ['100 mg', '200 mg', '300 mg', '400 mg'],
+  'Creatine Monohydrate': ['3 g', '5 g', '10 g'],
+  'Whey Protein': ['20 g', '25 g', '30 g', '40 g'],
+  'Collagen Peptides': ['10 g', '15 g', '20 g'],
+
+  // Metabolic/Anti-inflammatory
+  'Berberine': ['500 mg', '1,000 mg', '1,500 mg'],
+  'NAC (N-Acetyl Cysteine)': ['600 mg', '1,200 mg', '1,800 mg'],
+  'Curcumin (Turmeric Extract)': ['500 mg', '1,000 mg', '1,500 mg'],
+  'Quercetin': ['250 mg', '500 mg', '1,000 mg'],
+  'Resveratrol': ['100 mg', '250 mg', '500 mg'],
+  'TMG (Trimethylglycine / Betaine)': ['500 mg', '1,000 mg', '2,000 mg', '3,000 mg'],
+  'SAM-e': ['200 mg', '400 mg', '800 mg', '1,200 mg'],
+
+  // Adaptogens
+  'Ashwagandha (KSM-66)': ['300 mg', '600 mg', '1,200 mg'],
+  'Rhodiola Rosea': ['200 mg', '400 mg', '600 mg'],
+  "Lion's Mane": ['500 mg', '1,000 mg', '2,000 mg'],
+
+  // Hormones
+  'DHEA': ['10 mg', '25 mg', '50 mg'],
+  'Testosterone (TRT)': ['100 mg/wk', '150 mg/wk', '200 mg/wk'],
+  'Saw Palmetto': ['160 mg', '320 mg'],
+
+  // Sleep/Mood
+  'L-Theanine': ['100 mg', '200 mg', '400 mg'],
+  'Melatonin': ['0.3 mg', '1 mg', '3 mg', '5 mg', '10 mg'],
+
+  // Other
+  'Probiotic': ['10 billion CFU', '25 billion CFU', '50 billion CFU', '100 billion CFU'],
+  'NMN / NR (NAD+ Boosters)': ['250 mg', '500 mg', '1,000 mg'],
+
+  // Common short aliases (when user types custom, fuzzy match lands here)
+  'Vitamin D': ['1,000 IU', '2,000 IU', '4,000 IU', '5,000 IU', '8,000 IU', '10,000 IU', '50,000 IU weekly'],
+  'Vitamin K': ['90 mcg', '100 mcg', '180 mcg', '200 mcg', '300 mcg'],
   'Vitamin B12': ['500 mcg', '1,000 mcg', '2,500 mcg', '5,000 mcg'],
-  'Methylfolate': ['400 mcg', '800 mcg', '1,000 mcg', '5 mg'],
-  'Folate': ['400 mcg', '800 mcg', '1,000 mcg'],
-  'Vitamin C': ['500 mg', '1,000 mg', '2,000 mg'],
+  'Vitamin C': ['500 mg', '1,000 mg', '2,000 mg', '3,000 mg'],
   'Vitamin A': ['5,000 IU', '10,000 IU', '25,000 IU'],
   'Vitamin E': ['200 IU', '400 IU', '800 IU'],
-  'Magnesium': ['200 mg', '300 mg', '400 mg', '500 mg'],
+  'B12': ['500 mcg', '1,000 mcg', '2,500 mcg', '5,000 mcg'],
+  'Folate': ['400 mcg', '800 mcg', '1,000 mcg'],
+  'Magnesium': ['200 mg', '300 mg', '400 mg', '500 mg', '600 mg'],
   'Zinc': ['15 mg', '25 mg', '30 mg', '50 mg'],
   'Iron': ['18 mg', '25 mg', '45 mg', '65 mg'],
   'Selenium': ['100 mcg', '200 mcg'],
   'Iodine': ['150 mcg', '225 mcg', '12.5 mg'],
-  'Calcium': ['500 mg', '1,000 mg'],
   'Potassium': ['99 mg', '500 mg', '1,000 mg'],
   'Omega-3': ['1 g', '2 g', '3 g', '4 g'],
   'Fish Oil': ['1 g', '2 g', '3 g', '4 g'],
   'CoQ10': ['100 mg', '200 mg', '300 mg', '400 mg'],
   'Ubiquinol': ['100 mg', '200 mg', '300 mg'],
   'Creatine': ['3 g', '5 g', '10 g'],
-  'Whey Protein': ['20 g', '25 g', '30 g', '40 g'],
   'Collagen': ['10 g', '15 g', '20 g'],
-  'Berberine': ['500 mg', '1,000 mg', '1,500 mg'],
   'NAC': ['600 mg', '1,200 mg', '1,800 mg'],
-  'TMG': ['500 mg', '1,000 mg', '2,000 mg'],
-  'SAM-e': ['200 mg', '400 mg', '800 mg', '1,200 mg'],
+  'TMG': ['500 mg', '1,000 mg', '2,000 mg', '3,000 mg'],
   'Curcumin': ['500 mg', '1,000 mg', '1,500 mg'],
   'Turmeric': ['500 mg', '1,000 mg', '1,500 mg'],
   'Ashwagandha': ['300 mg', '600 mg', '1,200 mg'],
   'Rhodiola': ['200 mg', '400 mg', '600 mg'],
-  'Saw Palmetto': ['160 mg', '320 mg'],
-  'DHEA': ['10 mg', '25 mg', '50 mg'],
-  'Niacin': ['250 mg', '500 mg', '1,000 mg', '2,000 mg'],
-  'L-Theanine': ['100 mg', '200 mg', '400 mg'],
-  'Probiotic': ['10 billion CFU', '25 billion CFU', '50 billion CFU', '100 billion CFU'],
-  'Melatonin': ['0.3 mg', '1 mg', '3 mg', '5 mg', '10 mg'],
+  'Niacin': ['100 mg', '250 mg', '500 mg', '1,000 mg', '2,000 mg'],
   'Inositol': ['1 g', '2 g', '4 g'],
   'Glycine': ['1 g', '3 g', '5 g'],
   'Taurine': ['500 mg', '1,000 mg', '2,000 mg'],
@@ -63,7 +108,8 @@ export const COMMON_DOSES: Record<string, string[]> = {
   'Glutathione': ['250 mg', '500 mg', '1,000 mg'],
 };
 
-const FALLBACK_DOSES = ['Low dose', 'Standard dose', 'High dose'];
+// Generic dose options when supplement is not in the database — covers most real-world labels
+const FALLBACK_DOSES = ['1 capsule', '2 capsules', '1 tablet', '2 tablets', '1 scoop', '1 tsp', '1 tbsp', 'As directed'];
 
 /** Get common doses for a supplement by name. Falls back to generic options. */
 export function getCommonDoses(supplementName: string): string[] {

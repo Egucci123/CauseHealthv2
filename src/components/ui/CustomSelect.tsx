@@ -138,7 +138,7 @@ export const CustomSelect = forwardRef<CustomSelectHandle, CustomSelectProps>(({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4 }}
               transition={{ duration: 0.12 }}
-              className="absolute z-40 mt-1 w-full bg-clinical-white shadow-card-md border border-outline-variant/20 max-h-72 overflow-hidden"
+              className="absolute z-40 mt-1 w-full bg-clinical-white shadow-card-md border border-outline-variant/20 max-h-[28rem] overflow-hidden"
               style={{ borderRadius: '6px' }}
               role="listbox"
             >
@@ -156,7 +156,7 @@ export const CustomSelect = forwardRef<CustomSelectHandle, CustomSelectProps>(({
                 </div>
               )}
 
-              <div className="overflow-y-auto max-h-60">
+              <div className="overflow-y-auto max-h-96">
                 {filtered.length === 0 ? (
                   <div className="px-4 py-3 text-body text-sm text-clinical-stone">No matches</div>
                 ) : (
