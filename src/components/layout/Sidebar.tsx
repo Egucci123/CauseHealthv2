@@ -27,7 +27,7 @@ export const Sidebar = ({ currentPath: _currentPath }: SidebarProps) => {
     ? `${profile.firstName[0]}${profile.lastName[0]}`.toUpperCase()
     : profile?.firstName?.[0]?.toUpperCase() ?? 'U';
 
-  const tierLabel = { free: 'Free Plan', core: 'Core Plan', premium: 'Premium Plan', family: 'Family Plan' }[profile?.subscriptionTier ?? 'free'];
+  const tierLabel = { free: 'Free Plan', pro: 'Pro Plan', comp: 'Pro · Comp' }[profile?.subscriptionTier ?? 'free'];
 
   return (
     <aside className="hidden md:flex flex-col h-full w-72 fixed left-0 top-0 border-r border-[#414844]/15 bg-[#131313] z-50">

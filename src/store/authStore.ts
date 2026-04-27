@@ -179,9 +179,12 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
           sex:                 data.sex,
           heightCm:            data.height_cm,
           weightKg:            data.weight_kg,
-          subscriptionTier:    data.subscription_status ?? data.subscription_tier,
-          onboardingCompleted: data.onboarding_completed,
-          primaryGoals:        data.primary_goals,
+          subscriptionTier:     data.subscription_tier ?? 'free',
+          subscriptionStatus:   data.subscription_status ?? 'inactive',
+          subscriptionExpiresAt: data.subscription_expires_at ?? null,
+          compCodeUsed:         data.comp_code_used ?? null,
+          onboardingCompleted:  data.onboarding_completed,
+          primaryGoals:         data.primary_goals,
         },
       });
     }

@@ -9,6 +9,7 @@ import { VisitCardStacks } from '../../components/doctorprep/VisitCardStacks';
 import { useLatestDoctorPrep, useGenerateDoctorPrep } from '../../hooks/useDoctorPrep';
 import { useLatestLabDraw } from '../../hooks/useLabData';
 import { useSymptomAnalysis } from '../../hooks/useSymptoms';
+import { PaywallGate } from '../../components/paywall/PaywallGate';
 import { useAuthStore } from '../../store/authStore';
 import { exportDoctorPrepPDF } from '../../lib/exportPDF';
 import { format } from 'date-fns';
@@ -76,13 +77,18 @@ export const DoctorPrep = () => {
           <p className="text-precision text-[0.6rem] text-clinical-stone mt-4">You can navigate away — generation continues in the background.</p>
         </div>
       ) : !doc ? (
-        <div className="bg-clinical-white rounded-[10px] shadow-card border-t-[3px] border-primary-container p-12 text-center">
-          <span className="material-symbols-outlined text-clinical-stone text-5xl mb-4 block">description</span>
-          <p className="text-authority text-2xl text-clinical-charcoal font-bold mb-3">Ready to prepare your appointment</p>
-          <p className="text-body text-clinical-stone mb-2 max-w-sm mx-auto leading-relaxed">Generate a clinical document with your lab findings, ICD-10 codes, and specific test requests.</p>
-          <p className="text-precision text-[0.6rem] text-clinical-stone tracking-wide mb-8">Best results when labs are uploaded and analyzed</p>
-          <Button variant="primary" size="lg" loading={generating} onClick={handleGenerate} icon="auto_awesome">Generate Clinical Summary</Button>
-        </div>
+        <PaywallGate
+          feature="Doctor Prep"
+          description="A clinical summary your doctor takes seriously — exact tests to ask for with ICD-10 codes, prepared questions, and visit-ready card stacks."
+        >
+          <div className="bg-clinical-white rounded-[10px] shadow-card border-t-[3px] border-primary-container p-12 text-center">
+            <span className="material-symbols-outlined text-clinical-stone text-5xl mb-4 block">description</span>
+            <p className="text-authority text-2xl text-clinical-charcoal font-bold mb-3">Ready to prepare your appointment</p>
+            <p className="text-body text-clinical-stone mb-2 max-w-sm mx-auto leading-relaxed">Generate a clinical document with your lab findings, ICD-10 codes, and specific test requests.</p>
+            <p className="text-precision text-[0.6rem] text-clinical-stone tracking-wide mb-8">Best results when labs are uploaded and analyzed</p>
+            <Button variant="primary" size="lg" loading={generating} onClick={handleGenerate} icon="auto_awesome">Generate Clinical Summary</Button>
+          </div>
+        </PaywallGate>
       ) : (
         <div className="space-y-8">
           {/* Info bar */}

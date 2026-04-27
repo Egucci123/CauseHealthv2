@@ -2,7 +2,8 @@
 
 export type Status = 'urgent' | 'monitor' | 'optimal';
 export type Priority = 'critical' | 'high' | 'medium' | 'low';
-export type SubscriptionTier = 'free' | 'core' | 'premium' | 'family';
+export type SubscriptionTier = 'free' | 'pro' | 'comp';
+export type SubscriptionStatus = 'inactive' | 'active' | 'past_due' | 'canceled' | 'trialing';
 export type Sex = 'male' | 'female' | 'other';
 
 export interface Profile {
@@ -15,7 +16,10 @@ export interface Profile {
   sex:                  'male' | 'female' | 'other' | null;
   heightCm:             number | null;
   weightKg:             number | null;
-  subscriptionTier:     'free' | 'core' | 'premium' | 'family';
+  subscriptionTier:     SubscriptionTier;
+  subscriptionStatus:   SubscriptionStatus;
+  subscriptionExpiresAt: string | null;
+  compCodeUsed:         string | null;
   onboardingCompleted:  boolean;
   primaryGoals:         string[] | null;
 }

@@ -13,6 +13,7 @@ import { TransformationForecast } from '../../components/wellness/Transformation
 import { useWellnessPlan, useGenerateWellnessPlan } from '../../hooks/useWellnessPlan';
 import { useLatestLabDraw, useLatestLabValues } from '../../hooks/useLabData';
 import { buildForecasts } from '../../lib/transformationForecast';
+import { PaywallGate } from '../../components/paywall/PaywallGate';
 import { useAuthStore } from '../../store/authStore';
 import { exportWellnessPlanPDF } from '../../lib/exportPDF';
 import { format } from 'date-fns';
@@ -324,7 +325,14 @@ export const WellnessPlanPage = () => {
     <AppShell pageTitle="Wellness Plan">
       {isLoading ? <WellnessSkeleton />
         : generating ? <GeneratingState />
-        : !plan ? <EmptyState onGenerate={handleGenerate} loading={generating} />
+        : !plan ? (
+          <PaywallGate
+            feature="Wellness Plan"
+            description="Personalized 90-day plan from your labs. Today actions, meals, workouts, supplements, retest schedule, transformation forecast."
+          >
+            <EmptyState onGenerate={handleGenerate} loading={generating} />
+          </PaywallGate>
+        )
         : (
         <div className="space-y-5">
           {/* Headline + actions */}
