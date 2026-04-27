@@ -1,7 +1,6 @@
 // src/pages/doctorprep/DoctorPrep.tsx
 import { useState, Component, type ReactNode } from 'react';
 import { AppShell } from '../../components/layout/AppShell';
-import { SectionHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { ClinicalSummary } from '../../components/doctorprep/ClinicalSummary';
 import { TestsToRequest } from '../../components/doctorprep/TestsToRequest';
