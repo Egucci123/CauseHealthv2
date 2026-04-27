@@ -369,30 +369,59 @@ export const WellnessPlanPage = () => {
           {/* Transformation forecast — pure math, big motivation */}
           {forecasts.length > 0 && <TransformationForecast forecasts={forecasts} />}
 
-          {/* Week 12 retest preview — what we'll measure to prove the plan worked */}
-          {Array.isArray(plan.retest_timeline) && plan.retest_timeline.length > 0 && (
-            <div className="bg-clinical-white rounded-[14px] border border-outline-variant/15 overflow-hidden">
-              <div className="px-5 py-4 border-b border-outline-variant/10 bg-[#1B423A]/5">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-2xl leading-none">🧪</span>
-                  <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-[#1B423A]">The honest test</p>
+          {/* Two-folder test plan: re-measure existing baselines + new tests to ask for */}
+          {Array.isArray(plan.retest_timeline) && plan.retest_timeline.length > 0 && (() => {
+            const isNewTest = (r: any) => {
+              const w = (r.why ?? '').toUpperCase();
+              return w.includes('NOT YET TESTED') || w.includes('NEVER TESTED') || w.includes('NOT TESTED');
+            };
+            const retests = plan.retest_timeline.filter((r: any) => !isNewTest(r));
+            const newTests = plan.retest_timeline.filter(isNewTest);
+
+            const TestRow = ({ r, accent }: { r: any; accent: string }) => (
+              <div className="flex items-start gap-2 p-3 bg-clinical-cream/40 rounded-[8px]">
+                <span className="material-symbols-outlined text-[16px] flex-shrink-0 mt-0.5" style={{ color: accent }}>science</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-body text-clinical-charcoal text-sm font-semibold leading-tight">{r.marker}</p>
+                  {r.why && <p className="text-precision text-[0.6rem] text-clinical-stone mt-1 leading-snug">{r.why}</p>}
                 </div>
-                <p className="text-authority text-base text-clinical-charcoal font-bold">Same labs. 90 days later.</p>
-                <p className="text-body text-clinical-stone text-sm mt-1">{plan.retest_timeline.length} markers we'll re-measure to see if the plan worked. No guessing — your bloodwork tells the truth.</p>
               </div>
-              <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {plan.retest_timeline.map((r: any, i: number) => (
-                  <div key={i} className="flex items-start gap-2 p-2.5 bg-clinical-cream/40 rounded-[8px]">
-                    <span className="material-symbols-outlined text-primary-container text-[16px] flex-shrink-0 mt-0.5">science</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-body text-clinical-charcoal text-sm font-semibold leading-tight">{r.marker}</p>
-                      {r.why && <p className="text-precision text-[0.6rem] text-clinical-stone mt-0.5 leading-snug">{r.why}</p>}
+            );
+
+            return (
+              <div className="space-y-3">
+                {retests.length > 0 && (
+                  <FolderSection
+                    icon="science"
+                    title="The honest test — retest in 12 weeks"
+                    count={retests.length}
+                    countLabel={retests.length === 1 ? 'marker' : 'markers'}
+                    explanation="Same labs, 90 days later. We'll re-measure these to see if the plan worked. No guessing — your bloodwork tells the truth."
+                    accentColor="#1B423A"
+                    defaultOpen
+                  >
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {retests.map((r: any, i: number) => <TestRow key={i} r={r} accent="#1B423A" />)}
                     </div>
-                  </div>
-                ))}
+                  </FolderSection>
+                )}
+                {newTests.length > 0 && (
+                  <FolderSection
+                    icon="add_circle"
+                    title="New tests to ask your doctor for"
+                    count={newTests.length}
+                    countLabel={newTests.length === 1 ? 'test' : 'tests'}
+                    explanation="Tests we don't have baselines for yet, based on your symptoms and abnormal markers. Your full clinical prep document has these with ICD-10 codes."
+                    accentColor="#D4A574"
+                  >
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {newTests.map((r: any, i: number) => <TestRow key={i} r={r} accent="#D4A574" />)}
+                    </div>
+                  </FolderSection>
+                )}
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* 90-day retest CTA — surfaces in last 2 weeks of protocol */}
           {showRetestCTA && (
