@@ -3,6 +3,7 @@ import { AppShell } from '../components/layout/AppShell';
 import { HealthScoreRing } from '../components/dashboard/HealthScoreRing';
 import { BiologicalAgeWidget } from '../components/dashboard/BiologicalAgeWidget';
 import { TodayCard } from '../components/dashboard/TodayCard';
+import { OrganAgesWidget } from '../components/dashboard/OrganAgesWidget';
 import { PriorityAlerts } from '../components/dashboard/PriorityAlerts';
 import { SupplementChecklist } from '../components/dashboard/SupplementChecklist';
 import { LabSummary } from '../components/dashboard/LabSummary';
@@ -56,6 +57,9 @@ export const Dashboard = () => {
             <PrimaryCard status="brand" padding="lg">
               <p className="text-precision text-[0.68rem] font-bold text-clinical-stone tracking-widest uppercase mb-6">Health Intelligence Score</p>
               <HealthScoreRing score={healthScore} loading={valuesLoading} analyzing={hasProcessingDraw} />
+            </PrimaryCard>
+            <PrimaryCard status="brand" padding="lg">
+              <OrganAgesWidget />
             </PrimaryCard>
             <PrimaryCard status="brand" padding="lg">
               <SupplementChecklist />

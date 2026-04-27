@@ -154,12 +154,15 @@ PLACEMENT RULES (which list a test belongs in):
    - Liver workup with elevated ALT/AST → ICD-10 should be R74.0 (abnormal liver function tests), NOT R19.00 (abdominal mass) for any liver-related test or imaging.
    - Insurance Note should mention specific common scenarios: "usually covered under abnormal LFTs," "may need prior auth for specialty panels," "out-of-pocket cost ~$X if not covered."
 
-2. advanced_screening (EARLY DETECTION — rare conditions a 12-min appointment misses):
-   - 3-5 additional tests that screen for serious-but-rare conditions specifically suggested by this patient's pattern.
-   - This is where you put: JAK2 V617F for elevated platelets (catches myeloproliferative disorders/thrombocythemia), advanced lipid analysis (LDL particle size, oxidized LDL, ApoB), Lp(a) for genetic CV risk, hereditary cancer panels for family history red flags, autoimmune panels (ANA reflex, anti-CCP, ANCA) for inflammatory patterns, Cushing's screening (24h urinary cortisol), pituitary MRI for prolactin >40, hereditary hemochromatosis panel for iron overload, MTHFR for elevated homocysteine.
-   - Same format as tests_to_request: focused workup per row, one-sentence plain-English justification, specific ICD-10.
-   - Only include tests with a CLEAR pattern-based justification from this patient's data. Do NOT include speculative screening for conditions the patient has no markers for.
-   - These are tests the doctor would NOT typically order but absolutely should given the patient's findings.
+2. advanced_screening (RESERVED FOR DEEPER INVESTIGATION):
+   - These tests are GATED in the UI until the patient's 90-day retest. They are shown ONLY if marked urgent (genuine red flags) OR if the user manually unlocks them.
+   - DO NOT spam this list. The lifestyle-first philosophy is: most abnormal labs improve with 90 days of clean diet, movement, sleep, and targeted supplementation. Rare-disease screening is the SECOND visit, not the first.
+   - INCLUDE here ONLY:
+     a) Tests with genuine red-flag urgency on THIS patient's labs (e.g., platelets >450 → JAK2; calcium >10.5 → PTH; persistent unexplained polycythemia → JAK2+EPO). Mark these priority="urgent" so they bypass the gate.
+     b) Reserved next-step tests if the same markers stay abnormal after the 90-day retest (e.g., celiac panel if GI symptoms persist; ANA reflex if multi-system inflammation persists; HLA-B27 if joint pain persists). Mark these priority="high" or "moderate" so they remain gated.
+   - Maximum 3 entries. Quality over quantity.
+   - Each entry's why_short MUST explain why this test is for AFTER the 90-day retest, not now (e.g., "If joint pain persists after 90 days, rule out spondyloarthropathy").
+   - DO NOT include speculative screening for conditions the patient has no markers for.
 
 ICD-10: Use most specific code. Corrections applied post-generation.
 

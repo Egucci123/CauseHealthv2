@@ -1,10 +1,21 @@
 // src/components/dashboard/TodayCard.tsx
-// Visual-first "what to do today" card. 3 actions, big checkboxes, streak counter.
+// Visual-first "what to do today" card. 3 actions, big checkboxes, streak counter,
+// week-of-12 progress strip + next milestone, streak-risk nudge in evening.
 // Source: latest wellness_plan.today_actions
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useWellnessPlan, type TodayAction } from '../../hooks/useWellnessPlan';
 import { useAuthStore } from '../../store/authStore';
+
+// 90-day milestone schedule — what the user should expect to see/feel by each week.
+const MILESTONES: { week: number; emoji: string; label: string }[] = [
+  { week: 2, emoji: '⚡', label: 'Energy crashes start lifting' },
+  { week: 4, emoji: '🩸', label: 'Triglycerides starting to drop' },
+  { week: 6, emoji: '☀️', label: 'Vitamin D approaching target' },
+  { week: 8, emoji: '🫀', label: 'Liver enzymes visibly improving' },
+  { week: 10, emoji: '🔥', label: 'Inflammation should be calmer' },
+  { week: 12, emoji: '🧪', label: 'Time to retest — full readout' },
+];
 
 const todayKey = () => new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 const storageKey = (uid: string) => `today_progress_${uid}`;
@@ -51,6 +62,25 @@ export const TodayCard = () => {
   useEffect(() => { setProgress(loadProgress(uid)); }, [uid]);
 
   const actions: TodayAction[] = (plan?.today_actions ?? []).slice(0, 3);
+
+  // Compute current week of 12 from plan generation date
+  const planTimeline = useMemo(() => {
+    if (!plan?.generated_at) return null;
+    const start = new Date(plan.generated_at).getTime();
+    const days = Math.floor((Date.now() - start) / 86_400_000);
+    const week = Math.max(1, Math.min(12, Math.floor(days / 7) + 1));
+    const nextMilestone = MILESTONES.find((m) => m.week >= week) ?? MILESTONES[MILESTONES.length - 1];
+    const daysUntilMilestone = Math.max(0, nextMilestone.week * 7 - days);
+    return { week, nextMilestone, daysUntilMilestone };
+  }, [plan?.generated_at]);
+
+  // Streak risk: streak > 0, not all done, and it's >= 6 PM local
+  const streakAtRisk = useMemo(() => {
+    if (progress.streak === 0) return false;
+    if (progress.done.length === actions.length && actions.length > 0) return false;
+    const hour = new Date().getHours();
+    return hour >= 18;
+  }, [progress.streak, progress.done.length, actions.length]);
 
   const toggle = (i: number) => {
     const isDone = progress.done.includes(i);
@@ -104,6 +134,40 @@ export const TodayCard = () => {
           </span>
         )}
       </div>
+
+      {/* Week milestone strip */}
+      {planTimeline && (
+        <div className="bg-clinical-cream/40 rounded-[10px] p-3">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-clinical-stone">
+              Week {planTimeline.week} of 12
+            </span>
+            <span className="text-precision text-[0.6rem] text-clinical-stone">
+              Next milestone in {planTimeline.daysUntilMilestone} day{planTimeline.daysUntilMilestone === 1 ? '' : 's'}
+            </span>
+          </div>
+          {/* 12-week progress bar */}
+          <div className="h-1.5 rounded-full bg-clinical-stone/15 overflow-hidden mb-2">
+            <div
+              className="h-full bg-primary-container transition-all"
+              style={{ width: `${(planTimeline.week / 12) * 100}%` }}
+            />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-base leading-none">{planTimeline.nextMilestone.emoji}</span>
+            <span className="text-precision text-[0.65rem] text-clinical-charcoal">{planTimeline.nextMilestone.label}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Streak risk nudge */}
+      {streakAtRisk && (
+        <div className="bg-[#E8922A]/10 border-l-[3px] border-[#E8922A] rounded-r-[8px] px-3 py-2">
+          <p className="text-precision text-[0.65rem] font-bold text-[#E8922A]">
+            Don't break your {progress.streak}-day streak — finish today.
+          </p>
+        </div>
+      )}
 
       <div className="space-y-2">
         {actions.map((a, i) => {

@@ -9,8 +9,10 @@ import { FolderSection } from '../../components/ui/FolderSection';
 import { SupplementStack } from '../../components/wellness/SupplementStack';
 import { LifestyleInterventions } from '../../components/wellness/LifestyleInterventions';
 import { ActionPlan } from '../../components/wellness/ActionPlan';
+import { TransformationForecast } from '../../components/wellness/TransformationForecast';
 import { useWellnessPlan, useGenerateWellnessPlan } from '../../hooks/useWellnessPlan';
-import { useLatestLabDraw } from '../../hooks/useLabData';
+import { useLatestLabDraw, useLatestLabValues } from '../../hooks/useLabData';
+import { buildForecasts } from '../../lib/transformationForecast';
 import { useAuthStore } from '../../store/authStore';
 import { exportWellnessPlanPDF } from '../../lib/exportPDF';
 import { format } from 'date-fns';
@@ -249,7 +251,10 @@ export const WellnessPlanPage = () => {
   const { data: plan, isLoading } = useWellnessPlan();
   const { generate, generating } = useGenerateWellnessPlan();
   const { data: latestDraw } = useLatestLabDraw();
+  const { data: latestValues } = useLatestLabValues();
   const [tab, setTab] = useState<TabKey>('today');
+
+  const forecasts = (latestValues && latestValues.length > 0) ? buildForecasts(latestValues as any) : [];
 
   const planCreatedAt = (plan as any)?._createdAt ? new Date((plan as any)._createdAt) : null;
   const drawCreatedAt = latestDraw?.createdAt ? new Date(latestDraw.createdAt) : null;
@@ -289,6 +294,9 @@ export const WellnessPlanPage = () => {
             <p className="text-body text-on-surface-variant text-sm leading-relaxed">{plan.summary}</p>
             <p className="text-precision text-[0.55rem] text-on-surface-variant/60 mt-3">Generated {plan.generated_at ? format(new Date(plan.generated_at), 'MMM d, yyyy') : 'recently'}</p>
           </div>
+
+          {/* Transformation forecast — pure math, big motivation */}
+          {forecasts.length > 0 && <TransformationForecast forecasts={forecasts} />}
 
           {hasNewerLabs && (
             <button onClick={handleGenerate} className="w-full bg-[#2A9D8F]/10 border border-[#2A9D8F]/30 rounded-[10px] p-4 flex items-center gap-3 hover:bg-[#2A9D8F]/15 transition-colors text-left">
