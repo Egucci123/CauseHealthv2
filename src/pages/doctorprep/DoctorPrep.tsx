@@ -8,6 +8,7 @@ import { TestsToRequest } from '../../components/doctorprep/TestsToRequest';
 import { VisitCardStacks } from '../../components/doctorprep/VisitCardStacks';
 import { useLatestDoctorPrep, useGenerateDoctorPrep } from '../../hooks/useDoctorPrep';
 import { useLatestLabDraw } from '../../hooks/useLabData';
+import { useSymptomAnalysis } from '../../hooks/useSymptoms';
 import { useAuthStore } from '../../store/authStore';
 import { exportDoctorPrepPDF } from '../../lib/exportPDF';
 import { format } from 'date-fns';
@@ -24,6 +25,7 @@ export const DoctorPrep = () => {
   const { data: doc, isLoading } = useLatestDoctorPrep();
   const { generate, generating } = useGenerateDoctorPrep();
   const { data: latestDraw } = useLatestLabDraw();
+  const { data: symptomAnalysis } = useSymptomAnalysis();
 
   const docCreatedAt = (doc as any)?._createdAt ? new Date((doc as any)._createdAt) : null;
   const drawCreatedAt = latestDraw?.createdAt ? new Date(latestDraw.createdAt) : null;
@@ -113,7 +115,7 @@ export const DoctorPrep = () => {
             ))}
           </div>
 
-          {activeTab === 'visit' && <VisitCardStacks doc={doc} />}
+          {activeTab === 'visit' && <VisitCardStacks doc={doc} symptomAnalysis={symptomAnalysis} />}
           {activeTab === 'summary' && <ClinicalSummary doc={doc} />}
           {activeTab === 'tests' && <TestsToRequest tests={Array.isArray(doc.tests_to_request) ? doc.tests_to_request : []} advanced={Array.isArray(doc.advanced_screening) ? doc.advanced_screening : []} />}
         </div>

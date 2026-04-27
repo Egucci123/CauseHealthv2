@@ -7,6 +7,7 @@ import { useState } from 'react';
 
 interface Props {
   doc: any;
+  symptomAnalysis?: any | null;
 }
 
 const Stack = ({ title, subtitle, accent, children }: { title: string; subtitle: string; accent: string; children: React.ReactNode }) => (
@@ -31,7 +32,7 @@ const Card = ({ emoji, headline, detail, accent }: { emoji: string; headline: st
   </div>
 );
 
-export const VisitCardStacks = ({ doc }: Props) => {
+export const VisitCardStacks = ({ doc, symptomAnalysis }: Props) => {
   const [unlockedDeeper, setUnlockedDeeper] = useState(false);
 
   // TELL DOCTOR — fall back to executive_summary if new field missing
@@ -91,6 +92,48 @@ export const VisitCardStacks = ({ doc }: Props) => {
           ))}
         </Stack>
       </div>
+
+      {/* Symptom-driven tests — pulled from latest symptom analysis patterns */}
+      {symptomAnalysis && Array.isArray(symptomAnalysis.patterns) && symptomAnalysis.patterns.length > 0 && (() => {
+        // Flatten suggested_tests from all patterns, dedupe by test name
+        const seen = new Set<string>();
+        const items: { test: string; pattern: string; emoji: string; severity?: string }[] = [];
+        for (const p of symptomAnalysis.patterns) {
+          if (!Array.isArray(p.suggested_tests)) continue;
+          for (const t of p.suggested_tests) {
+            const k = (t || '').toLowerCase().trim();
+            if (!k || seen.has(k)) continue;
+            seen.add(k);
+            items.push({ test: t, pattern: p.pattern_name ?? '', emoji: p.emoji ?? '🧪', severity: p.severity });
+          }
+        }
+        if (items.length === 0) return null;
+        return (
+          <div className="bg-clinical-white rounded-[14px] border border-outline-variant/15 overflow-hidden">
+            <div className="px-5 py-4 border-b border-outline-variant/10 bg-[#7B1FA2]/5">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="material-symbols-outlined text-[#7B1FA2] text-[20px]">psychology</span>
+                <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-[#7B1FA2]">From your symptoms</p>
+              </div>
+              <p className="text-authority text-base text-clinical-charcoal font-bold">Tests your symptoms point to.</p>
+              <p className="text-body text-clinical-stone text-sm mt-1">{items.length} test{items.length === 1 ? '' : 's'} from {symptomAnalysis.patterns.length} symptom pattern{symptomAnalysis.patterns.length === 1 ? '' : 's'}. Bring these up alongside the lab-driven tests above.</p>
+            </div>
+            <div className="p-4 space-y-2">
+              {items.map((it, i) => (
+                <div key={i} className="bg-clinical-cream/50 rounded-[10px] p-4 border-l-[3px] border-[#7B1FA2]">
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl flex-shrink-0">{it.emoji}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-body text-clinical-charcoal font-semibold text-sm leading-snug">{it.test}</p>
+                      <p className="text-precision text-[0.6rem] text-clinical-stone mt-1">From: {it.pattern}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Deeper investigation — time-locked until 90 days elapsed, escape via "Show anyway" */}
       {gatedDeeperTests.length > 0 && (() => {
