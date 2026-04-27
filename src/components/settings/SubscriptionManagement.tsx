@@ -69,6 +69,11 @@ export const SubscriptionManagement = () => {
               <p className="text-body text-sm text-clinical-stone">CauseHealth Pro — cancel anytime</p>
             </div>
             <button onClick={() => checkout.mutate()} disabled={checkout.isPending} className="w-full bg-primary-container text-white text-sm font-semibold py-3 hover:bg-[#2D6A4F] transition-colors disabled:opacity-60" style={{ borderRadius: '6px' }}>{checkout.isPending ? 'Redirecting to checkout...' : 'Upgrade to Pro'}</button>
+            {checkout.isError && (
+              <div className="mt-3 bg-[#C94F4F]/10 border border-[#C94F4F]/30 rounded-lg p-3">
+                <p className="text-body text-[#C94F4F] text-sm">{(checkout.error as Error)?.message ?? 'Checkout failed. Please try again.'}</p>
+              </div>
+            )}
           </div>
         )}
       </div>

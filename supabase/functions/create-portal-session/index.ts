@@ -9,15 +9,30 @@ const corsHeaders = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   try {
-    const authHeader = req.headers.get('Authorization')!
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+
+    let origin: string | null = null
+    try {
+      const body = await req.json().catch(() => ({}))
+      if (typeof body?.origin === 'string') origin = body.origin
+    } catch { /* no body */ }
+    const APP_URL = origin || Deno.env.get('APP_URL') || 'https://causehealth.app'
+
     const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: authHeader } } })
     const { data: { user }, error } = await supabase.auth.getUser()
-    if (error || !user) throw new Error('Unauthorized')
+    if (error || !user) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+
     const { data: profile } = await supabase.from('profiles').select('stripe_customer_id').eq('id', user.id).single()
-    if (!profile?.stripe_customer_id) throw new Error('No Stripe customer found')
-    const session = await stripe.billingPortal.sessions.create({ customer: profile.stripe_customer_id, return_url: `${Deno.env.get('APP_URL') ?? 'https://causehealth.app'}/settings` })
+    if (!profile?.stripe_customer_id) return new Response(JSON.stringify({ error: 'No active subscription found. Subscribe first to access the billing portal.' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+
+    const session = await stripe.billingPortal.sessions.create({
+      customer: profile.stripe_customer_id,
+      return_url: `${APP_URL}/settings`,
+    })
     return new Response(JSON.stringify({ url: session.url }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
   } catch (err) {
-    return new Response(JSON.stringify({ error: (err as Error).message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    console.error('[portal] error:', err)
+    return new Response(JSON.stringify({ error: (err as Error)?.message ?? 'Portal session failed' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
   }
 })

@@ -9,10 +9,23 @@ const corsHeaders = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   try {
-    const authHeader = req.headers.get('Authorization')!
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+
+    // Origin sent from client → keeps Stripe redirects on the same deployment
+    let origin: string | null = null
+    try {
+      const body = await req.json().catch(() => ({}))
+      if (typeof body?.origin === 'string') origin = body.origin
+    } catch { /* no body, that's fine */ }
+    const APP_URL = origin || Deno.env.get('APP_URL') || 'https://causehealth.app'
+
     const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: authHeader } } })
     const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) throw new Error('Unauthorized')
+    if (authError || !user) {
+      console.warn('[checkout] auth failed:', authError?.message)
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
 
     const { data: profile } = await supabase.from('profiles').select('stripe_customer_id, first_name, last_name').eq('id', user.id).single()
     let customerId = profile?.stripe_customer_id
@@ -30,8 +43,8 @@ serve(async (req) => {
       // gets dropped somewhere in the Stripe pipeline.
       client_reference_id: user.id,
       line_items: [{ price: Deno.env.get('STRIPE_PRICE_ID')!, quantity: 1 }],
-      success_url: `${Deno.env.get('APP_URL') ?? 'https://causehealth.app'}/settings?subscription=success`,
-      cancel_url: `${Deno.env.get('APP_URL') ?? 'https://causehealth.app'}/settings?subscription=canceled`,
+      success_url: `${APP_URL}/settings?subscription=success`,
+      cancel_url: `${APP_URL}/settings?subscription=canceled`,
       subscription_data: { metadata: { supabase_user_id: user.id } },
       metadata: { supabase_user_id: user.id },
       allow_promotion_codes: true,
@@ -39,6 +52,7 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({ url: session.url }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
   } catch (err) {
-    return new Response(JSON.stringify({ error: (err as Error).message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    console.error('[checkout] error:', err)
+    return new Response(JSON.stringify({ error: (err as Error)?.message ?? 'Checkout failed' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
   }
 })
