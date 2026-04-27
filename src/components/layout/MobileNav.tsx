@@ -17,7 +17,10 @@ export const MobileNav = ({ currentPath: _currentPath }: MobileNavProps) => {
   const isActive = (path: string) => location.pathname.startsWith(path);
 
   return (
-    <nav className="fixed bottom-0 left-0 w-full flex justify-around items-center p-3 md:hidden bg-[#131313] z-50 rounded-t-xl shadow-dark">
+    <nav
+      className="fixed bottom-0 left-0 w-full flex justify-around items-center px-3 pt-3 md:hidden bg-[#131313] z-50 rounded-t-xl shadow-dark"
+      style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
+    >
       {MOBILE_ITEMS.map(item => {
         const active = isActive(item.path);
         return (

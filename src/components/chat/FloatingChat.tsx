@@ -80,7 +80,8 @@ export const FloatingChat = () => {
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0, opacity: 0 }}
             onClick={() => setIsOpen(true)}
-            className="fixed bottom-20 right-4 md:bottom-6 md:right-6 z-50 w-14 h-14 bg-primary-container rounded-full shadow-lg flex items-center justify-center hover:bg-[#2D6A4F] transition-colors"
+            className="fixed right-4 md:right-6 z-50 w-14 h-14 bg-primary-container rounded-full shadow-lg flex items-center justify-center hover:bg-[#2D6A4F] transition-colors"
+            style={{ bottom: 'calc(5rem + env(safe-area-inset-bottom))' }}
           >
             <span className="material-symbols-outlined text-white text-2xl">chat</span>
             {messages.length > 0 && (

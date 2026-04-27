@@ -128,6 +128,24 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
       set({ phase: 'uploading', progress: 0, statusMessage: `Uploading ${fileCount} file${plural ? 's' : ''} to secure storage...`, errorMessage: null });
 
       try {
+        // ── Free-tier cap: 1 lab upload per rolling 30 days ──
+        // Pro / comp users have no cap. Server-enforced — but we check client-side
+        // first so we never delete the user's files trying to upload over the cap.
+        const profile = useAuthStore.getState().profile;
+        const isPro = profile && (profile.subscriptionTier === 'pro' || profile.subscriptionTier === 'comp')
+          && (profile.subscriptionStatus === 'active' || profile.subscriptionStatus === 'trialing');
+        if (!isPro) {
+          const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000).toISOString();
+          const { count } = await supabase.from('lab_draws').select('id', { count: 'exact', head: true }).eq('user_id', userId).gte('created_at', thirtyDaysAgo);
+          if ((count ?? 0) >= 1) {
+            set({
+              phase: 'error', isRunning: false,
+              errorMessage: 'Free plan includes 1 lab upload per month. Upgrade to Pro ($19/mo) for unlimited uploads, or redeem a code in Settings.',
+            });
+            return;
+          }
+        }
+
         // 0. Ensure fresh auth session — critical for mobile where tokens go stale
         try {
           const { data: { session: currentSession } } = await supabase.auth.getSession();

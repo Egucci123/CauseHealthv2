@@ -60,26 +60,26 @@ export const ClinicalSummary = ({ doc }: { doc: DoctorPrepDocument }) => {
       {/* Patient History */}
       <FolderSection
         icon="person"
-        title="Your Story (HPI & History)"
-        explanation="Chief complaint, history of present illness, and past medical history — written in clinical format your doctor expects to see. This is the context that frames everything else."
+        title="Your Story"
+        explanation="The context your doctor needs in 30 seconds. The first part is what's bothering you most. The second is what's been going on. The third is your medical background."
         accentColor="#1B423A"
       >
         <div className="space-y-4">
           {doc.chief_complaint && (
             <div>
-              <p className="text-precision text-[0.6rem] font-bold text-clinical-stone tracking-widest uppercase mb-1">Chief Complaint</p>
+              <p className="text-precision text-[0.6rem] font-bold text-clinical-stone tracking-widest uppercase mb-1">What's bothering you most</p>
               <p className="text-body text-clinical-charcoal text-sm leading-relaxed">{doc.chief_complaint}</p>
             </div>
           )}
           {doc.hpi && (
             <div>
-              <p className="text-precision text-[0.6rem] font-bold text-clinical-stone tracking-widest uppercase mb-1">History of Present Illness</p>
+              <p className="text-precision text-[0.6rem] font-bold text-clinical-stone tracking-widest uppercase mb-1">What's been going on</p>
               <p className="text-body text-clinical-charcoal text-sm leading-relaxed">{doc.hpi}</p>
             </div>
           )}
           {doc.pmh && (
             <div>
-              <p className="text-precision text-[0.6rem] font-bold text-clinical-stone tracking-widest uppercase mb-1">Past Medical History</p>
+              <p className="text-precision text-[0.6rem] font-bold text-clinical-stone tracking-widest uppercase mb-1">Your medical background</p>
               <p className="text-body text-clinical-charcoal text-sm leading-relaxed">{doc.pmh}</p>
             </div>
           )}
@@ -115,10 +115,10 @@ export const ClinicalSummary = ({ doc }: { doc: DoctorPrepDocument }) => {
       {rosPositive.length > 0 && (
         <FolderSection
           icon="checklist"
-          title="Review of Systems"
+          title="How you're feeling — by body system"
           count={rosPositive.length}
-          countLabel="systems with findings"
-          explanation="A system-by-system review of your symptoms — what your doctor uses to focus the physical exam and decide which specialists to involve."
+          countLabel={rosPositive.length === 1 ? 'system' : 'systems'}
+          explanation="A quick map of your symptoms by body system. Your doctor uses this to focus the exam and decide which specialists, if any, to bring in."
           accentColor="#2D6A4F"
         >
           <div className="space-y-1.5">
@@ -220,8 +220,8 @@ export const ClinicalSummary = ({ doc }: { doc: DoctorPrepDocument }) => {
       {doc.functional_medicine_note && (
         <FolderSection
           icon="psychology"
-          title="Root Cause Analysis"
-          explanation="A functional-medicine synthesis of your full picture — how all the findings connect to underlying mechanisms. This is the why behind everything else in this document."
+          title="The bigger picture"
+          explanation="How everything in this document connects. This is the 'why' behind your findings — not just what's wrong, but what's likely driving it."
           accentColor="#2A9D8F"
         >
           <p className="text-body text-clinical-charcoal text-sm italic leading-relaxed">{doc.functional_medicine_note}</p>

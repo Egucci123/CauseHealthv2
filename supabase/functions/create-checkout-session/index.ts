@@ -26,10 +26,15 @@ serve(async (req) => {
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId, payment_method_types: ['card'], mode: 'subscription',
+      // client_reference_id ensures the webhook can resolve the user even if metadata
+      // gets dropped somewhere in the Stripe pipeline.
+      client_reference_id: user.id,
       line_items: [{ price: Deno.env.get('STRIPE_PRICE_ID')!, quantity: 1 }],
       success_url: `${Deno.env.get('APP_URL') ?? 'https://causehealth.app'}/settings?subscription=success`,
       cancel_url: `${Deno.env.get('APP_URL') ?? 'https://causehealth.app'}/settings?subscription=canceled`,
-      subscription_data: { metadata: { supabase_user_id: user.id } }, allow_promotion_codes: true,
+      subscription_data: { metadata: { supabase_user_id: user.id } },
+      metadata: { supabase_user_id: user.id },
+      allow_promotion_codes: true,
     })
 
     return new Response(JSON.stringify({ url: session.url }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
