@@ -168,14 +168,14 @@ export const HeroSection = () => (
           </h2>
 
           <p className="text-body text-clinical-stone text-lg leading-relaxed mb-4 max-w-lg">
-            Upload your bloodwork. Get root cause analysis, optimal range
-            interpretation, and a doctor visit prep document — with the ICD-10
-            codes to get your tests covered by insurance.
+            Upload a <strong className="text-clinical-charcoal">PDF or photo</strong> of your labs.
+            Get a doctor-grade summary in 30 seconds — root causes, optimal-range
+            interpretation, and a clinical prep document with ICD-10 codes.
           </p>
           <p className="text-body text-clinical-stone text-base leading-relaxed mb-10 max-w-lg">
-            We find what 12-minute appointments miss. Medication depletions.
-            Autoimmune cascade risk. Patterns across multiple markers. The
-            connections that explain how you actually feel.
+            We find what 12-minute appointments miss. Medication depletions,
+            multi-marker patterns, autoimmune cascade risk, the connections that
+            explain how you actually feel.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 mb-8">
@@ -185,7 +185,7 @@ export const HeroSection = () => (
               onClick={() => window.location.href = '/register'}
               icon="upload_file"
             >
-              Upload My Labs — Free
+              Try It Free — No Card
             </Button>
             <Button
               variant="secondary"
@@ -199,7 +199,7 @@ export const HeroSection = () => (
           </div>
 
           <p className="text-precision text-[0.68rem] text-clinical-stone tracking-wide">
-            No credit card required · No fluff · Cancel anytime
+            Free to upload · $19/month for full AI · Cancel anytime · Master codes for friends
           </p>
 
           <div className="flex flex-wrap gap-3 mt-10">

@@ -9,12 +9,24 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { pdfText, pdfBase64, drawDate } = body;
+    const { pdfText, pdfBase64, imageBase64, imageMimeType, drawDate } = body;
+
+    // Shared prompt — same parser instructions for PDF and image inputs
+    const PARSER_PROMPT = `You are a medical lab report parser. First determine if this is a medical laboratory report. If it is NOT a lab report (e.g. bank statement, resume, invoice, or any non-medical document), return: { "draw_date": null, "lab_name": null, "ordering_provider": null, "values": [] }\n\nIf it IS a lab report, extract all laboratory test values.\n\nReturn ONLY valid JSON — no markdown, no explanation.\n\nReturn: { "draw_date": "YYYY-MM-DD or null", "lab_name": "name or null", "ordering_provider": "name or null", "values": [{ "marker_name": "name", "value": 97.0, "unit": "IU/L", "standard_low": 0, "standard_high": 44, "standard_flag": "normal|low|high|critical_low|critical_high", "category": "metabolic|cardiovascular|liver|kidney|thyroid|hormones|nutrients|cbc|inflammation|other" }] }\n\nInclude every single lab value. value must be a number. IMPORTANT: If lab values use international units (mmol/L, umol/L, nmol/L), convert them to US conventional units (mg/dL, ng/mL, ug/dL) before returning. Common conversions: glucose mmol/L x 18 = mg/dL, cholesterol mmol/L x 38.67 = mg/dL, triglycerides mmol/L x 88.57 = mg/dL, creatinine umol/L / 88.4 = mg/dL, calcium mmol/L x 4.0 = mg/dL, uric acid umol/L / 59.48 = mg/dL. Always return values in US conventional units with the US unit label.\n\nFor IMAGES of lab paperwork (photos taken with a phone camera): focus on the printed result columns. Skip handwritten notes. If the image is blurry or you can't read a value confidently, omit that row rather than guess.`;
 
     // Build the message content based on what the client sent
     let messages;
 
-    if (pdfBase64) {
+    if (imageBase64 && imageMimeType) {
+      // Phone-camera photo of a paper lab report
+      messages = [{
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: imageMimeType, data: imageBase64 } },
+          { type: 'text', text: PARSER_PROMPT },
+        ],
+      }];
+    } else if (pdfBase64) {
       // Raw PDF sent as base64 — use Claude's document reading
       messages = [{
         role: 'user',
@@ -23,10 +35,7 @@ serve(async (req) => {
             type: 'document',
             source: { type: 'base64', media_type: 'application/pdf', data: pdfBase64 },
           },
-          {
-            type: 'text',
-            text: `You are a medical lab report parser. First determine if this PDF is a medical laboratory report. If it is NOT a lab report (e.g. bank statement, resume, invoice, or any non-medical document), return: { "draw_date": null, "lab_name": null, "ordering_provider": null, "values": [] }\n\nIf it IS a lab report, extract all laboratory test values.\n\nReturn ONLY valid JSON — no markdown, no explanation.\n\nReturn: { "draw_date": "YYYY-MM-DD or null", "lab_name": "name or null", "ordering_provider": "name or null", "values": [{ "marker_name": "name", "value": 97.0, "unit": "IU/L", "standard_low": 0, "standard_high": 44, "standard_flag": "normal|low|high|critical_low|critical_high", "category": "metabolic|cardiovascular|liver|kidney|thyroid|hormones|nutrients|cbc|inflammation|other" }] }\n\nInclude every single lab value. value must be a number. IMPORTANT: If lab values use international units (mmol/L, umol/L, nmol/L), convert them to US conventional units (mg/dL, ng/mL, ug/dL) before returning. Common conversions: glucose mmol/L x 18 = mg/dL, cholesterol mmol/L x 38.67 = mg/dL, triglycerides mmol/L x 88.57 = mg/dL, creatinine umol/L / 88.4 = mg/dL, calcium mmol/L x 4.0 = mg/dL, uric acid umol/L / 59.48 = mg/dL. Always return values in US conventional units with the US unit label.`,
-          },
+          { type: 'text', text: PARSER_PROMPT },
         ],
       }];
     } else if (pdfText && pdfText.length >= 50) {

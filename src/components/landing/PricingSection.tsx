@@ -67,10 +67,13 @@ export const PricingSection = () => {
               variant="primary"
               size="md"
               onClick={() => window.location.href = '/register'}
-              className="w-full justify-center mb-8"
+              className="w-full justify-center mb-3"
             >
               Start Your Health Intelligence
             </Button>
+            <p className="text-precision text-[0.6rem] text-clinical-stone tracking-wide text-center mb-8">
+              Free signup · Free uploads · Have a code? Redeem it in Settings.
+            </p>
 
             <div className="space-y-3">
               <p className="text-precision text-[0.68rem] text-clinical-stone tracking-widest uppercase font-bold mb-4">

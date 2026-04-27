@@ -6,6 +6,7 @@ import { ProblemSection }    from '../components/landing/ProblemSection';
 import { HowItWorks }        from '../components/landing/HowItWorks';
 import { FeaturesSection }   from '../components/landing/FeaturesSection';
 import { ConditionsSection } from '../components/landing/ConditionsSection';
+import { VsFunction }        from '../components/landing/VsFunction';
 import { PricingSection }    from '../components/landing/PricingSection';
 import { TrustSection }      from '../components/landing/TrustSection';
 import { LandingFooter }     from '../components/landing/LandingFooter';
@@ -19,6 +20,7 @@ export const Landing = () => (
     <HowItWorks />
     <FeaturesSection />
     <ConditionsSection />
+    <VsFunction />
     <PricingSection />
     <TrustSection />
     <LandingFooter />

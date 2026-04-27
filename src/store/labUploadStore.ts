@@ -174,17 +174,21 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
         if (drawErr || !draw) throw new Error('Failed to create lab record');
         set({ drawId: draw.id });
 
-        // 3. Try client-side text extraction first
+        // 3. Try client-side text extraction first (PDFs only)
         set({ phase: 'extracting', statusMessage: `Reading ${plural ? `${fileCount} lab reports` : 'your lab report'}...`, progress: 35 });
 
+        const isImageFile = (f: File) => f.type.startsWith('image/');
+        const imageFiles = files.filter(isImageFile);
+        const pdfFiles = files.filter(f => !isImageFile(f));
+
         const allTexts: string[] = [];
-        let anyLooksLikeLab = false;
-        for (let i = 0; i < files.length; i++) {
-          if (plural) set({ statusMessage: `Reading file ${i + 1} of ${fileCount}: ${files[i].name}`, progress: 35 + Math.round((i / fileCount) * 15) });
+        let anyLooksLikeLab = imageFiles.length > 0; // Images bypass text-extract; trust the AI
+        for (let i = 0; i < pdfFiles.length; i++) {
+          if (plural) set({ statusMessage: `Reading file ${i + 1} of ${fileCount}: ${pdfFiles[i].name}`, progress: 35 + Math.round((i / fileCount) * 15) });
           try {
-            const text = await extractPDFText(files[i]);
+            const text = await extractPDFText(pdfFiles[i]);
             if (text && text.length >= 50) { allTexts.push(text); if (looksLikeLabReport(text)) anyLooksLikeLab = true; }
-          } catch (err) { console.warn(`[LabUpload] Could not read ${files[i].name}:`, err); }
+          } catch (err) { console.warn(`[LabUpload] Could not read ${pdfFiles[i].name}:`, err); }
         }
 
         const combinedText = allTexts.join('\n---NEW DOCUMENT---\n');
@@ -203,15 +207,57 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
         let extractedLabName: string | null = null;
         let extractedProvider: string | null = null;
 
-        if (textExtractionFailed) {
+        // ── Process IMAGE files (phone camera photos) ── always sent to AI as images
+        if (imageFiles.length > 0) {
+          let lastError = '';
+          for (let i = 0; i < imageFiles.length; i++) {
+            set({ statusMessage: `Reading photo ${i + 1} of ${imageFiles.length}...`, progress: 55 });
+            startProgress(set, 55, 80, 30000);
+            try {
+              const arrayBuffer = await imageFiles[i].arrayBuffer();
+              const bytes = new Uint8Array(arrayBuffer);
+              let binary = '';
+              for (let j = 0; j < bytes.length; j++) binary += String.fromCharCode(bytes[j]);
+              const base64 = btoa(binary);
+              // Map mime: convert HEIC/HEIF to jpeg as fallback (browsers usually can't display HEIC inline anyway)
+              let mime = imageFiles[i].type || 'image/jpeg';
+              if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(mime)) mime = 'image/jpeg';
+              const { data: imgData, error: invokeErr } = await supabase.functions.invoke('extract-labs', {
+                body: { imageBase64: base64, imageMimeType: mime },
+              });
+              stopProgress();
+              if (invokeErr) {
+                const ctx = (invokeErr as any).context;
+                let detail = invokeErr.message;
+                try { if (ctx instanceof Response) { const t = await ctx.json(); detail = t?.error || t?.detail || JSON.stringify(t); } } catch {}
+                lastError = detail;
+                continue;
+              }
+              if (imgData?.values) allValues.push(...imgData.values);
+              if (imgData?.draw_date && !extractedDrawDate) extractedDrawDate = imgData.draw_date;
+              if (imgData?.lab_name && !extractedLabName) extractedLabName = imgData.lab_name;
+              if (imgData?.ordering_provider && !extractedProvider) extractedProvider = imgData.ordering_provider;
+            } catch (err: any) {
+              stopProgress();
+              lastError = err?.message || String(err);
+            }
+          }
+          if (allValues.length === 0 && pdfFiles.length === 0) {
+            await supabase.from('lab_draws').delete().eq('id', draw.id);
+            set({ phase: 'error', errorMessage: `Could not read your photo. ${lastError ? `Error: ${lastError}` : 'Try a sharper, well-lit shot or upload a PDF.'}`, isRunning: false });
+            return;
+          }
+        }
+
+        if (textExtractionFailed && pdfFiles.length > 0) {
           // Client-side extraction failed — send each PDF to Claude individually
           let lastError = '';
-          for (let i = 0; i < files.length; i++) {
-            set({ statusMessage: `Sending PDF ${i + 1} of ${fileCount} to AI...`, progress: 50 });
+          for (let i = 0; i < pdfFiles.length; i++) {
+            set({ statusMessage: `Sending PDF ${i + 1} of ${pdfFiles.length} to AI...`, progress: 50 });
             startProgress(set, 50, 85, 60000); // Animate 50→85% over ~60s
             for (let attempt = 0; attempt < 2; attempt++) {
             try {
-              const arrayBuffer = await files[i].arrayBuffer();
+              const arrayBuffer = await pdfFiles[i].arrayBuffer();
               const bytes = new Uint8Array(arrayBuffer);
               let binary = '';
               for (let j = 0; j < bytes.length; j++) binary += String.fromCharCode(bytes[j]);
@@ -246,7 +292,7 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
             set({ phase: 'error', errorMessage: `Could not extract lab values. ${lastError ? `Error: ${lastError}` : 'Try using manual entry.'}`, isRunning: false });
             return;
           }
-        } else {
+        } else if (!textExtractionFailed && pdfFiles.length > 0) {
           // Text extraction worked — send combined text in one call
           set({ statusMessage: 'Analyzing lab values...', progress: 55 });
           startProgress(set, 55, 85, 30000); // Animate 55→85% over ~30s (text path is faster)
@@ -261,10 +307,10 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
             try { const ctx = (textErr as any).context; if (ctx instanceof Response) { const t = await ctx.json(); detail = t?.error || t?.detail || JSON.stringify(t); } } catch {}
             throw new Error(`Extraction failed: ${detail}`);
           }
-          allValues = textData?.values || [];
-          extractedDrawDate = textData?.draw_date;
-          extractedLabName = textData?.lab_name;
-          extractedProvider = textData?.ordering_provider;
+          if (Array.isArray(textData?.values)) allValues.push(...textData.values);
+          if (textData?.draw_date && !extractedDrawDate) extractedDrawDate = textData.draw_date;
+          if (textData?.lab_name && !extractedLabName) extractedLabName = textData.lab_name;
+          if (textData?.ordering_provider && !extractedProvider) extractedProvider = textData.ordering_provider;
         }
 
         // Build extraction result from merged values

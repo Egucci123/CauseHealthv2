@@ -1,0 +1,17 @@
+User-agent: *
+Allow: /
+Allow: /pricing
+Allow: /how-it-works
+
+# Block private routes
+Disallow: /dashboard
+Disallow: /labs/
+Disallow: /wellness
+Disallow: /doctor-prep
+Disallow: /symptoms
+Disallow: /chat
+Disallow: /settings
+Disallow: /onboarding
+Disallow: /auth/
+
+Sitemap: https://causehealth.app/sitemap.xml
