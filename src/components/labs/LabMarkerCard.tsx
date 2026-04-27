@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
+import { Link } from 'react-router-dom';
 import { OptimalRangeBar } from '../lab/OptimalRangeBar';
 import { MarkerDotBar } from './MarkerDotBar';
 import { Badge } from '../ui/Badge';
@@ -9,6 +10,7 @@ import { ClinicalLink } from '../ui/Button';
 import { Sparkline } from '../ui/Sparkline';
 import { MarkerTerm } from '../ui/MarkerTerm';
 import { useMarkerHistory } from '../../hooks/useMarkerHistory';
+import { useSubscription } from '../../lib/subscription';
 
 interface LabValueRow {
   id: string; marker_name: string; marker_category: string; value: number; unit: string;
@@ -31,6 +33,9 @@ function getStatus(flag: string | undefined | null): 'urgent' | 'monitor' | 'opt
 export const LabMarkerCard = ({ value, analysis, onAddToPrep }: LabMarkerCardProps) => {
   const [expanded, setExpanded] = useState(false);
   const status = getStatus(value.optimal_flag);
+  const { isPro } = useSubscription();
+  // Free users see the flag + dot bar + sparkline. AI explanations are locked.
+  const showAnalysis = isPro && !!analysis;
   const topBorder = status === 'urgent' ? 'border-t-[3px] border-[#C94F4F]' : status === 'monitor' ? 'border-t-[3px] border-[#E8922A]' : 'border-t-[3px] border-[#D4A574]';
 
   // Fetch historical values for this marker — sparkline + previous comparison
@@ -137,13 +142,25 @@ export const LabMarkerCard = ({ value, analysis, onAddToPrep }: LabMarkerCardPro
           </div>
         ) : null}
 
-        {analysis && status === 'urgent' && !expanded && (
+        {showAnalysis && analysis && status === 'urgent' && !expanded && (
           <div className="mt-4 p-4 bg-[#C94F4F]/5 border-l-2 border-[#C94F4F] rounded-r-lg">
             <p className="text-body text-clinical-charcoal text-sm font-medium">{analysis.headline}</p>
           </div>
         )}
 
-        {analysis && (
+        {/* Free-user lock for off-range markers — show "what does this mean" CTA */}
+        {!isPro && status !== 'optimal' && (
+          <Link to="/settings?tab=subscription" className="mt-4 flex items-center gap-3 p-3 bg-[#D4A574]/10 border border-[#D4A574]/30 rounded-lg hover:bg-[#D4A574]/15 transition-colors">
+            <span className="material-symbols-outlined text-[#D4A574] text-[18px] flex-shrink-0">lock</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-body text-clinical-charcoal text-sm font-semibold">What does this mean?</p>
+              <p className="text-precision text-[0.6rem] text-clinical-stone">Unlock AI analysis with Pro · $19/mo</p>
+            </div>
+            <span className="material-symbols-outlined text-[#D4A574] text-[18px]">arrow_forward</span>
+          </Link>
+        )}
+
+        {showAnalysis && analysis && (
           <button onClick={() => setExpanded(!expanded)} className="mt-4 flex items-center gap-2 text-precision text-[0.68rem] text-primary-container font-bold tracking-widest uppercase hover:underline">
             CLINICAL ANALYSIS
             <span className="material-symbols-outlined text-[14px] transition-transform duration-200" style={{ transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>expand_more</span>
@@ -151,7 +168,7 @@ export const LabMarkerCard = ({ value, analysis, onAddToPrep }: LabMarkerCardPro
         )}
 
         <AnimatePresence>
-          {expanded && analysis && (
+          {expanded && showAnalysis && analysis && (
             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }} className="overflow-hidden">
               <div className="mt-6 space-y-4 pt-4 border-t border-outline-variant/10">
                 <p className="text-body text-clinical-charcoal font-semibold">{analysis.headline}</p>

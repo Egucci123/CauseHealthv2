@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '../../store/authStore';
+import { useSubscription } from '../../lib/subscription';
 
 
 interface ChatMessage {
@@ -22,6 +23,7 @@ const QUICK_PROMPTS = [
 export const FloatingChat = () => {
   const userId = useAuthStore(s => s.user?.id);
   const firstName = useAuthStore(s => s.profile?.firstName) ?? '';
+  const { isPro } = useSubscription();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -64,7 +66,9 @@ export const FloatingChat = () => {
     }
   };
 
-  if (!userId) return null;
+  // Free users don't see the floating chat at all — pure paywall, no teaser bubble
+  // (full chat page handles its own paywall card)
+  if (!userId || !isPro) return null;
 
   return (
     <>

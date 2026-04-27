@@ -32,7 +32,7 @@ const PaywallCard = ({ feature, description }: { feature: string; description?: 
       {description && (
         <p className="text-body text-clinical-stone text-sm mb-6 max-w-sm mx-auto leading-relaxed">{description}</p>
       )}
-      <p className="text-authority text-3xl text-clinical-charcoal font-bold mb-1">$15<span className="text-base text-clinical-stone font-normal">/month</span></p>
+      <p className="text-authority text-3xl text-clinical-charcoal font-bold mb-1">$19<span className="text-base text-clinical-stone font-normal">/month</span></p>
       <p className="text-precision text-[0.65rem] text-clinical-stone tracking-wide mb-6">Cancel anytime · Includes everything</p>
       <div className="flex flex-col gap-2 max-w-sm mx-auto">
         <Link to="/settings?tab=subscription">

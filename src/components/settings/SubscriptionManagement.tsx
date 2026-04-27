@@ -52,7 +52,7 @@ export const SubscriptionManagement = () => {
               </div>
             ) : (
               <div className="bg-clinical-cream rounded-lg p-4 mb-5">
-                <div className="flex items-baseline gap-1 mb-1"><span className="text-precision text-2xl font-bold text-clinical-charcoal">$15</span><span className="text-precision text-sm text-clinical-stone">/month</span></div>
+                <div className="flex items-baseline gap-1 mb-1"><span className="text-precision text-2xl font-bold text-clinical-charcoal">$19</span><span className="text-precision text-sm text-clinical-stone">/month</span></div>
                 <p className="text-body text-sm text-clinical-stone">CauseHealth Pro</p>
               </div>
             )}
@@ -65,7 +65,7 @@ export const SubscriptionManagement = () => {
           <div>
             <p className="text-body text-sm text-clinical-stone mb-5">You're on the free plan. Upgrade to unlock all AI-powered features.</p>
             <div className="bg-clinical-cream rounded-lg p-4 mb-5">
-              <div className="flex items-baseline gap-1 mb-1"><span className="text-precision text-3xl font-bold text-clinical-charcoal">$15</span><span className="text-precision text-sm text-clinical-stone">/month</span></div>
+              <div className="flex items-baseline gap-1 mb-1"><span className="text-precision text-3xl font-bold text-clinical-charcoal">$19</span><span className="text-precision text-sm text-clinical-stone">/month</span></div>
               <p className="text-body text-sm text-clinical-stone">CauseHealth Pro — cancel anytime</p>
             </div>
             <button onClick={() => checkout.mutate()} disabled={checkout.isPending} className="w-full bg-primary-container text-white text-sm font-semibold py-3 hover:bg-[#2D6A4F] transition-colors disabled:opacity-60" style={{ borderRadius: '6px' }}>{checkout.isPending ? 'Redirecting to checkout...' : 'Upgrade to Pro'}</button>

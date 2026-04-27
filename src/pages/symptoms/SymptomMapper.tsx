@@ -7,6 +7,8 @@ import { SectionLabel } from '../../components/ui/SectionLabel';
 import { SymptomCard } from '../../components/symptoms/SymptomCard';
 import { PatternAnalysis } from '../../components/symptoms/PatternAnalysis';
 import { BodyMap } from '../../components/symptoms/BodyMap';
+import { PaywallGate } from '../../components/paywall/PaywallGate';
+import { useSubscription } from '../../lib/subscription';
 import { useSymptoms, useSymptomAnalysis, useRunSymptomAnalysis } from '../../hooks/useSymptoms';
 
 const TABS = [{ id: 'symptoms', label: 'My Symptoms', icon: 'symptoms' }, { id: 'patterns', label: 'Pattern Analysis', icon: 'pattern' }];
@@ -17,8 +19,13 @@ export const SymptomMapper = () => {
   const { data: symptoms, isLoading: symptomsLoading } = useSymptoms();
   const { data: analysis } = useSymptomAnalysis();
   const runAnalysis = useRunSymptomAnalysis();
+  const { isPro } = useSubscription();
 
-  const handleRunAnalysis = async () => { setAnalyzing(true); setActiveTab('patterns'); try { await runAnalysis.mutateAsync(); } finally { setAnalyzing(false); } };
+  const handleRunAnalysis = async () => {
+    if (!isPro) return; // safety: paywall card handles UI
+    setAnalyzing(true); setActiveTab('patterns');
+    try { await runAnalysis.mutateAsync(); } finally { setAnalyzing(false); }
+  };
 
   const findSymptomAnalysis = (name: string) => analysis?.symptom_connections?.find(c => c.symptom.toLowerCase().includes(name.toLowerCase()) || name.toLowerCase().includes(c.symptom.toLowerCase())) ?? null;
   const hasSymptoms = (symptoms?.length ?? 0) > 0;
@@ -27,7 +34,7 @@ export const SymptomMapper = () => {
     <AppShell pageTitle="Symptom Mapper">
       <div className="flex flex-col md:flex-row justify-between items-start gap-4">
         <SectionHeader title="Symptom Mapper" description="Connect your symptoms to root causes — not just treatments." />
-        {hasSymptoms && <Button variant="primary" size="md" icon="auto_awesome" loading={analyzing} onClick={handleRunAnalysis}>{analysis ? 'Re-Analyze' : 'Run Analysis'}</Button>}
+        {hasSymptoms && isPro && <Button variant="primary" size="md" icon="auto_awesome" loading={analyzing} onClick={handleRunAnalysis}>{analysis ? 'Re-Analyze' : 'Run Analysis'}</Button>}
       </div>
 
       {analysis?.summary && !analyzing && (
@@ -84,7 +91,14 @@ export const SymptomMapper = () => {
         </div>
       )}
 
-      {activeTab === 'patterns' && (
+      {activeTab === 'patterns' && !isPro ? (
+        <PaywallGate
+          feature="Symptom Pattern Analysis"
+          description="Map your symptoms to root causes. The AI cross-references your labs, medications, and symptoms to identify patterns and the exact tests to ask your doctor for."
+        >
+          <div />
+        </PaywallGate>
+      ) : activeTab === 'patterns' && (
         <div>
           {analyzing ? (
             <div className="bg-clinical-white rounded-[10px] shadow-card border-t-[3px] border-primary-container p-12 text-center">
