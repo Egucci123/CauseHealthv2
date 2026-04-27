@@ -1,9 +1,7 @@
 // src/pages/symptoms/SymptomMapper.tsx
 import { useState } from 'react';
 import { AppShell } from '../../components/layout/AppShell';
-import { SectionHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { SectionLabel } from '../../components/ui/SectionLabel';
 import { SymptomCard } from '../../components/symptoms/SymptomCard';
 import { PatternAnalysis } from '../../components/symptoms/PatternAnalysis';
 import { BodyMap } from '../../components/symptoms/BodyMap';
@@ -32,18 +30,33 @@ export const SymptomMapper = () => {
 
   return (
     <AppShell pageTitle="Symptom Mapper">
-      <div className="flex flex-col md:flex-row justify-between items-start gap-4">
-        <SectionHeader title="Symptom Mapper" description="Connect your symptoms to root causes — not just treatments." />
-        {hasSymptoms && isPro && <Button variant="primary" size="md" icon="auto_awesome" loading={analyzing} onClick={handleRunAnalysis}>{analysis ? 'Re-Analyze' : 'Run Analysis'}</Button>}
-      </div>
-
-      {analysis?.summary && !analyzing && (
-        <div className="bg-[#131313] rounded-[10px] p-6">
-          <SectionLabel light icon="insights" className="text-on-surface-variant mb-3">Why I feel this way</SectionLabel>
-          {(analysis as any).headline && (
-            <p className="text-authority text-xl text-on-surface font-bold leading-tight mb-3">{(analysis as any).headline}</p>
+      {/* Dark hero card — body map lives inside when analysis exists */}
+      <div className="bg-[#131313] rounded-[14px] p-6 shadow-card">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div className="flex-1 min-w-0">
+            <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-[#D4A574] mb-2">Why I Feel This Way</p>
+            {analysis?.summary && (analysis as any).headline ? (
+              <h1 className="text-authority text-2xl md:text-3xl text-on-surface font-bold leading-tight">{(analysis as any).headline}</h1>
+            ) : (
+              <h1 className="text-authority text-3xl md:text-4xl text-on-surface font-bold leading-tight">Symptom Mapper.</h1>
+            )}
+            <p className="text-body text-on-surface-variant text-sm mt-2 max-w-md">Connect your symptoms to root causes — not just treatments.</p>
+          </div>
+          {hasSymptoms && isPro && (
+            <button
+              onClick={handleRunAnalysis}
+              disabled={analyzing}
+              className="inline-flex items-center gap-1.5 text-precision text-[0.65rem] font-bold tracking-wider uppercase px-3 py-2 bg-[#D4A574] hover:bg-[#B8915F] text-clinical-charcoal rounded-[8px] transition-colors disabled:opacity-60 flex-shrink-0"
+            >
+              <span className="material-symbols-outlined text-[14px]">auto_awesome</span>
+              {analyzing ? 'Analyzing…' : analysis ? 'Re-Analyze' : 'Run Analysis'}
+            </button>
           )}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+        </div>
+
+        {/* Body map + summary inside hero when analysis exists */}
+        {analysis?.summary && !analyzing && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start mt-5 pt-5 border-t border-white/10">
             <div className="md:col-span-1 flex justify-center">
               <BodyMap
                 systems={Array.from(new Set((analysis.patterns ?? []).flatMap((p: any) => p.body_systems ?? [])))}
@@ -54,17 +67,30 @@ export const SymptomMapper = () => {
               <p className="text-body text-on-surface leading-relaxed">{analysis.summary}</p>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      <div className="flex border-b border-outline-variant/10">
-        {TABS.map(tab => (
-          <button key={tab.id} onClick={() => setActiveTab(tab.id as any)}
-            className={`flex items-center gap-2 px-5 py-3 text-precision text-[0.68rem] font-bold tracking-wider uppercase border-b-2 transition-all ${activeTab === tab.id ? 'border-primary-container text-primary-container' : 'border-transparent text-clinical-stone hover:text-clinical-charcoal'}`}>
-            <span className="material-symbols-outlined text-[16px]">{tab.icon}</span>{tab.label}
-            {tab.id === 'patterns' && analysis && <span className="text-precision text-[0.55rem] font-bold px-1.5 py-0.5 bg-primary-container text-white" style={{ borderRadius: '2px' }}>{analysis.patterns?.length ?? 0}</span>}
-          </button>
-        ))}
+      {/* Tab nav — same segmented control as Wellness + Lab Detail + Doctor Prep */}
+      <div className="flex gap-1 bg-clinical-cream rounded-[10px] p-1 overflow-x-auto">
+        {TABS.map(tab => {
+          const active = activeTab === tab.id;
+          const patternCount = tab.id === 'patterns' ? (analysis?.patterns?.length ?? 0) : 0;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`flex-1 min-w-[120px] flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-[8px] transition-all ${
+                active ? 'bg-clinical-white shadow-card' : 'hover:bg-clinical-white/50'
+              }`}
+            >
+              <span className={`material-symbols-outlined text-[16px] ${active ? 'text-primary-container' : 'text-clinical-stone'}`}>{tab.icon}</span>
+              <span className={`text-precision text-[0.68rem] font-bold tracking-wider ${active ? 'text-clinical-charcoal' : 'text-clinical-stone'}`}>{tab.label}</span>
+              {tab.id === 'patterns' && analysis && patternCount > 0 && (
+                <span className={`text-precision text-[0.55rem] font-bold px-1.5 py-0.5 rounded ${active ? 'bg-primary-container text-white' : 'bg-clinical-stone/15 text-clinical-stone'}`}>{patternCount}</span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {activeTab === 'symptoms' && (
