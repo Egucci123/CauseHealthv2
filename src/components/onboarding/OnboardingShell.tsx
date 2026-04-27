@@ -60,7 +60,7 @@ export const OnboardingShell = ({
 
       {/* Step content */}
       <div className="flex-1 overflow-hidden">
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={stepKey}
             variants={variants}
