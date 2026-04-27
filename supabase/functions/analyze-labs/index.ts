@@ -120,6 +120,8 @@ CRITICAL RULES:
 
 10. LIFESTYLE-FIRST GATE FOR RARE DISEASES (CRITICAL):
    The default user is overwhelmed. Do NOT scare them with rare-disease screening on day 1.
+   Borderline-upper-normal values do NOT qualify as "queue for rare-disease screening." Just put those markers in retest_timeline like routine retests. Don't trigger JAK2 on RBC 5.96, don't trigger celiac on a single GI complaint, don't trigger ANA reflex on a single elevated marker.
+   ApoB and lipid NMR are MAINSTREAM cardiology essentials, NOT rare-disease screening — those belong in missing_tests when lipids are abnormal.
    ABSOLUTE BLOCKLIST — these tests CAN NEVER appear in missing_tests unless the patient hits the hard urgent threshold:
      - JAK2 V617F → only when platelets >450 OR (RBC >6.0 AND Hct >54). Borderline-high RBC/Hct (e.g., 5.96 / 51.4) is NOT enough.
      - Erythropoietin level → same rule as JAK2.

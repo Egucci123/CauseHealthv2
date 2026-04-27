@@ -183,7 +183,12 @@ PLACEMENT RULES (which list a test belongs in):
    - Insurance Note should mention specific common scenarios: "usually covered under abnormal LFTs," "may need prior auth for specialty panels," "out-of-pocket cost ~$X if not covered."
 
 2. advanced_screening (RESERVED FOR DEEPER INVESTIGATION — gated UI):
-   READ THIS FIRST: 90% of users will have lifestyle-correctable labs. The default behavior of this list should be EMPTY or 1-2 entries max for borderline rare-disease screening. Only populate this section when the PATTERN in this user's labs CLEARLY suggests a specific rare condition worth investigating — and even then, the screening goes here (gated), not in tests_to_request.
+   DEFAULT: EMPTY ARRAY. 90% of users should see ZERO entries here. Stop trying to be thorough — this is the "you're scaring the user" list.
+   ONLY populate when:
+     a) A value is genuinely urgent (use the hard thresholds in the blocklist below). Mark priority="urgent". Borderline-upper-normal does NOT qualify — RBC 5.96 with Hct 51.4 is NOT a JAK2 case. Don't queue it for "if it stays elevated" either — just put the marker in retest_timeline like every other lab to recheck.
+     b) The user has a HIGHLY SPECIFIC symptom + lab pattern that maps to one rare condition (e.g., persistent unexplained pelvic pain + heavy bleeding → endometriosis workup; recurrent infections + low IgG → immunodeficiency workup). Generic "if labs stay abnormal at 90 days" is NOT a justification.
+   ApoB, lipid NMR, advanced lipid testing → these are MAINSTREAM cardiology essentials, not rare-disease screening. They go in tests_to_request, not advanced_screening.
+   Maximum 2 entries. Often 0 is correct.
    - These tests are GATED in the UI until the patient's 90-day retest. They are shown ONLY if marked urgent (genuine red flags) OR if the user manually unlocks them.
    - DO NOT spam this list. The lifestyle-first philosophy is: most abnormal labs improve with 90 days of clean diet, movement, sleep, and targeted supplementation. Rare-disease screening is the SECOND visit, not the first.
    - INCLUDE here ONLY:

@@ -81,6 +81,8 @@ CRITICAL RULES:
 
 9. LIFESTYLE-FIRST GATE FOR RARE DISEASES (CRITICAL):
    Default users are overwhelmed and lazy — do NOT scare them with rare-disease screening on day 1. Most abnormal labs in young adults improve with 90 days of lifestyle change.
+   Borderline-upper-normal values do NOT trigger rare-disease screening. RBC 5.96 / Hct 51.4 is NOT a JAK2 case.
+   ApoB / lipid NMR are MAINSTREAM cardiology essentials, not rare-disease — they belong in suggested_tests when lipids are abnormal.
    ABSOLUTE BLOCKLIST — these tests CAN NEVER appear in suggested_tests unless the patient hits the hard urgent threshold:
      - JAK2 V617F → only when platelets >450 OR (RBC >6.0 AND Hct >54).
      - Celiac panel → only with persistent malabsorption + iron deficiency + GI symptoms.
