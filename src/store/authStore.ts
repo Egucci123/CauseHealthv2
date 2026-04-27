@@ -71,9 +71,13 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
           try { await get().fetchProfile(); } catch (e) { console.warn('Profile fetch failed:', e); }
         }
-      } else {
+      } else if (event === 'SIGNED_OUT') {
+        // Only clear auth on EXPLICIT signout. Transient null sessions during
+        // TOKEN_REFRESH or initial hydration must not log the user out — that was
+        // causing mid-onboarding signouts on slow connections.
         get().clearAuth();
       }
+      // INITIAL_SESSION + null is handled by initialize(); no action needed here.
     });
     // Store subscription for cleanup — prevents listener stacking in StrictMode
     (globalThis as any).__authSub?.unsubscribe?.();

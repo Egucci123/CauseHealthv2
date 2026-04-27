@@ -57,6 +57,7 @@ export function useLabValues(drawId: string | null | undefined) {
   const user = useAuthStore(s => s.user);
   return useQuery({
     queryKey: ['labValues', drawId], enabled: !!user?.id && !!drawId,
+    staleTime: 30 * 1000, refetchOnMount: 'always',
     queryFn: async () => {
       const { data, error } = await supabase.from('lab_values').select('*').eq('draw_id', drawId!).order('marker_category', { ascending: true });
       if (error) throw error;

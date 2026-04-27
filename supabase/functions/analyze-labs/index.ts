@@ -32,7 +32,25 @@ serve(async (req) => {
     const { data: suppsData } = await supabase.from('user_supplements').select('name, dose, duration_category').eq('user_id', userId).eq('is_active', true);
     const supps: any[] = suppsData ?? [];
 
-    const labStr = labValues.map((v: any) => `${v.marker_name}: ${v.value} ${v.unit} (Std: ${v.standard_low ?? '?'}–${v.standard_high ?? '?'})${v.optimal_flag ? ` [${v.optimal_flag.toUpperCase()}]` : ''}`).join('\n');
+    // Build lab string. For very large panels (90+ markers), prioritize abnormal
+    // values first so the AI focuses on what matters and never runs out of tokens
+    // before it gets to the urgent stuff. Optimal-only markers get a compact summary.
+    const PRIORITY_FLAGS = new Set(['urgent', 'monitor', 'deficient', 'elevated', 'suboptimal_low', 'suboptimal_high']);
+    const isAbnormal = (v: any) => {
+      const f = (v.optimal_flag ?? v.standard_flag ?? '').toLowerCase();
+      return f && f !== 'optimal' && f !== 'normal';
+    };
+    const fmt = (v: any) => `${v.marker_name}: ${v.value} ${v.unit ?? ''} (Std: ${v.standard_low ?? '?'}–${v.standard_high ?? '?'})${v.optimal_flag ? ` [${v.optimal_flag.toUpperCase()}]` : ''}`;
+    const abnormal = labValues.filter(isAbnormal);
+    const optimal = labValues.filter((v: any) => !isAbnormal(v));
+    const labStr = [
+      `## ABNORMAL OR SUBOPTIMAL (${abnormal.length}) — ANALYZE EACH OF THESE`,
+      ...abnormal.map(fmt),
+      '',
+      `## WITHIN OPTIMAL RANGE (${optimal.length}) — list for completeness, don't elaborate`,
+      ...optimal.map(fmt),
+    ].join('\n');
+    void PRIORITY_FLAGS; // reserved for future targeting
     const medsStr = (meds ?? []).map((m: any) => m.name).join(', ');
     const sympStr = (symptoms ?? []).map((s: any) => `${s.symptom} (${s.severity}/10)`).join(', ');
     const suppsStr = supps.length > 0 ? supps.map((s: any) => `${s.name}${s.dose ? ` (${s.dose})` : ''}`).join(', ') : 'None reported';
@@ -47,7 +65,7 @@ serve(async (req) => {
         headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
         signal: apiController.signal,
         body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001', max_tokens: 6000,
+          model: 'claude-haiku-4-5-20251001', max_tokens: 10000,
           system: `You are CauseHealth AI. Return ONLY valid JSON.
 
 GLOBAL VOICE RULES (CRITICAL — every string in JSON):
