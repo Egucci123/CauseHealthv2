@@ -9,6 +9,8 @@ import { LabMarkerCard } from '../../components/labs/LabMarkerCard';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/authStore';
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useSubscription } from '../../lib/subscription';
 
 const CATEGORY_ORDER = ['liver', 'cardiovascular', 'metabolic', 'kidney', 'thyroid', 'hormones', 'nutrients', 'cbc', 'inflammation', 'other'];
 const CATEGORY_LABELS: Record<string, string> = {
@@ -23,6 +25,7 @@ export const LabDetail = () => {
   const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState<'all' | 'urgent' | 'monitor'>('all');
   const qc = useQueryClient();
+  const { isPro } = useSubscription();
 
   const retryAnalysis = useMutation({
     mutationFn: async () => {
@@ -126,7 +129,9 @@ export const LabDetail = () => {
           <h2 className="text-authority text-4xl text-clinical-charcoal font-bold">{draw.lab_name ?? 'Lab Report'}</h2>
           <p className="text-body text-clinical-stone mt-1">{format(new Date(draw.draw_date), 'MMMM d, yyyy')}{draw.ordering_provider && ` · ${draw.ordering_provider}`}</p>
         </div>
-        <Button variant="secondary" size="md" icon="description" onClick={() => navigate('/doctor-prep')}>Prep for Doctor</Button>
+        <Button variant="secondary" size="md" icon={isPro ? 'description' : 'lock'} onClick={() => navigate(isPro ? '/doctor-prep' : '/settings?tab=subscription')}>
+          {isPro ? 'Prep for Doctor' : 'Unlock Prep'}
+        </Button>
       </div>
 
       <div className="grid grid-cols-3 gap-4">
@@ -165,7 +170,26 @@ export const LabDetail = () => {
         </div>
       )}
 
-      {analysis?.summary && (
+      {/* Free users see a teaser locked card. Pro users see the full AI analysis. */}
+      {!isPro && analysis?.summary && (
+        <Link to="/settings?tab=subscription" className="block bg-clinical-white rounded-[14px] border-t-[3px] border-[#D4A574] shadow-card p-6 hover:shadow-card-md transition-shadow">
+          <div className="flex items-start gap-4">
+            <span className="material-symbols-outlined text-[#D4A574] text-[28px] flex-shrink-0">lock</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-[#D4A574] mb-1">Pro · AI Analysis Locked</p>
+              <p className="text-authority text-lg text-clinical-charcoal font-bold mb-1">Your labs have been analyzed.</p>
+              <p className="text-body text-clinical-stone text-sm leading-relaxed mb-3">
+                Unlock the full breakdown — what every abnormal value means, the patterns it reveals, the exact tests to ask your doctor for, and a 90-day plan to fix what's wrong.
+              </p>
+              <div className="inline-flex items-center gap-2 text-precision text-[0.65rem] font-bold tracking-widest uppercase text-primary-container">
+                Unlock with Pro · $19/month
+                <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+              </div>
+            </div>
+          </div>
+        </Link>
+      )}
+      {isPro && analysis?.summary && (
         <div className="bg-[#131313] rounded-[10px] p-6">
           <SectionLabel light icon="insights" className="text-on-surface-variant">Analysis Summary</SectionLabel>
           <p className="text-body text-on-surface leading-relaxed">{analysis.summary}</p>

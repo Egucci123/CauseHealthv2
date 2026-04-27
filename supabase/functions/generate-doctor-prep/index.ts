@@ -294,6 +294,72 @@ CRITICAL OUTPUT RULES (for the new card-stack UI):
       fixIcd(doc.advanced_screening);
     } catch (e) { console.error('ICD-10 correction error:', e); }
 
+    // ── HARD POST-FILTER: move blocked tests from tests_to_request to advanced_screening ──
+    // ── unless the patient hits the explicit urgent threshold. Belt-and-suspenders for AI drift. ──
+    try {
+      const findVal = (patterns: string[]): number | null => {
+        for (const v of labValues) {
+          const n = (v.marker_name ?? '').toLowerCase();
+          if (patterns.some((p: string) => n.includes(p))) {
+            const num = Number(v.value);
+            if (!Number.isNaN(num)) return num;
+          }
+        }
+        return null;
+      };
+      const platelets = findVal(['platelet']);
+      const rbc = findVal(['rbc', 'red blood cell']);
+      const hct = findVal(['hematocrit', 'hct']);
+      const ana = findVal(['ana ', 'anti-nuclear']);
+      const globulin = findVal(['globulin']);
+      const calcium = findVal(['calcium']);
+      const ferritin = findVal(['ferritin']);
+      const transferrinSat = findVal(['transferrin saturation', 'iron sat']);
+      const prolactin = findVal(['prolactin']);
+      const ageNum = age ?? 99;
+
+      const allowJak2 = (platelets ?? 0) > 450 || ((rbc ?? 0) > 6.0 && (hct ?? 0) > 54);
+      const allowAnaReflex = (ana ?? 0) > 0;
+      const allowMyeloma = (globulin ?? 0) > 3.5 && ageNum < 40;
+      const allowHemochromGenetics = (ferritin ?? 0) > 300 && (transferrinSat ?? 0) > 45;
+      const allowPituitaryMri = (prolactin ?? 0) > 100;
+      const allowCalciumPth = (calcium ?? 0) > 10.5;
+      void allowCalciumPth;
+
+      const blockedPatterns: { pattern: RegExp; allow: boolean }[] = [
+        { pattern: /\bjak2\b|v617f|erythropoietin|\bepo\b\s*level|peripheral\s+(blood\s+)?smear|myeloproliferative/i, allow: allowJak2 },
+        { pattern: /\bana\b\s*reflex|anti-?dsdna|anti-?sm|anti-?ro|anti-?la|anti-?scl|anti-?jo/i, allow: allowAnaReflex },
+        { pattern: /spep|upep|free\s+light\s+chain|multiple\s+myeloma/i, allow: allowMyeloma },
+        { pattern: /hereditary\s+hemochromatosis|hfe\s+gene/i, allow: allowHemochromGenetics },
+        { pattern: /pituitary\s+mri|sella\s+mri/i, allow: allowPituitaryMri },
+        { pattern: /24-?hour\s+urinary\s+cortisol|cushing/i, allow: false },
+        { pattern: /\bmthfr\b/i, allow: false },
+        { pattern: /hla-?b27/i, allow: false },
+      ];
+
+      const isBlocked = (t: any) => {
+        const name = `${t?.test_name ?? ''} ${t?.why_short ?? ''} ${t?.clinical_justification ?? ''}`;
+        return blockedPatterns.some(rule => rule.pattern.test(name) && !rule.allow);
+      };
+
+      if (Array.isArray(doc.tests_to_request)) {
+        const moved: any[] = [];
+        const kept = doc.tests_to_request.filter((t: any) => {
+          if (isBlocked(t)) {
+            console.log(`[doctor-prep] Moved blocked test "${t.test_name}" → advanced_screening`);
+            moved.push({ ...t, why_short: t.why_short || `Reserved for if your 90-day retest doesn't move ${(t.test_name || '').toLowerCase()}.` });
+            return false;
+          }
+          return true;
+        });
+        doc.tests_to_request = kept;
+        if (moved.length > 0) {
+          if (!Array.isArray(doc.advanced_screening)) doc.advanced_screening = [];
+          doc.advanced_screening = [...doc.advanced_screening, ...moved].slice(0, 5);
+        }
+      }
+    } catch (e) { console.error('[doctor-prep] post-filter error:', e); }
+
     // Validate required fields before saving — never save corrupt/partial documents
     if (!doc.chief_complaint && !doc.hpi && !doc.executive_summary) {
       return new Response(JSON.stringify({ error: 'Generated document is incomplete — missing required fields' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });

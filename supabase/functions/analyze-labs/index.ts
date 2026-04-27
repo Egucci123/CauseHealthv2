@@ -208,6 +208,79 @@ CRITICAL RULES:
     // Ensure panel_gaps array exists
     if (!Array.isArray(analysis.panel_gaps)) analysis.panel_gaps = [];
 
+    // ── HARD POST-FILTER: scrub rare-disease screening from missing_tests when ──
+    // ── the user's labs don't hit the urgent threshold. Belt-and-suspenders for ──
+    // ── prompt drift. The AI keeps suggesting JAK2 etc. for borderline values.   ──
+    {
+      const findVal = (patterns: string[]): number | null => {
+        for (const v of labValues) {
+          const n = (v.marker_name ?? '').toLowerCase();
+          if (patterns.some(p => n.includes(p))) {
+            const num = Number(v.value);
+            if (!Number.isNaN(num)) return num;
+          }
+        }
+        return null;
+      };
+      const platelets = findVal(['platelet']);
+      const rbc = findVal(['rbc', 'red blood cell']);
+      const hct = findVal(['hematocrit', 'hct']);
+      const ana = findVal(['ana ', 'anti-nuclear']);
+      const globulin = findVal(['globulin']);
+      const calcium = findVal(['calcium']);
+      const ferritin = findVal(['ferritin']);
+      const transferrinSat = findVal(['transferrin saturation', 'iron sat']);
+      const prolactin = findVal(['prolactin']);
+      const age = profile?.date_of_birth ? Math.floor((Date.now() - new Date(profile.date_of_birth).getTime()) / 31_557_600_000) : 99;
+
+      const allowJak2 = (platelets ?? 0) > 450 || ((rbc ?? 0) > 6.0 && (hct ?? 0) > 54);
+      const allowAnaReflex = (ana ?? 0) > 0;
+      const allowMyeloma = (globulin ?? 0) > 3.5 && age < 40;
+      const allowHemochromGenetics = (ferritin ?? 0) > 300 && (transferrinSat ?? 0) > 45;
+      const allowPituitaryMri = (prolactin ?? 0) > 100;
+      const allowCalciumPth = (calcium ?? 0) > 10.5;
+
+      const blockedPatterns: { pattern: RegExp; allow: boolean; label: string }[] = [
+        { pattern: /\bjak2\b|v617f|erythropoietin|\bepo\b\s*level|peripheral\s+(blood\s+)?smear|myeloproliferative/i, allow: allowJak2, label: 'JAK2/EPO/peripheral smear' },
+        { pattern: /\bana\b\s*reflex|anti-?dsdna|anti-?sm|anti-?ro|anti-?la|anti-?scl|anti-?jo/i, allow: allowAnaReflex, label: 'ANA reflex panel' },
+        { pattern: /spep|upep|free\s+light\s+chain|multiple\s+myeloma/i, allow: allowMyeloma, label: 'Myeloma panel' },
+        { pattern: /hereditary\s+hemochromatosis|hfe\s+gene/i, allow: allowHemochromGenetics, label: 'Hemochromatosis genetics' },
+        { pattern: /pituitary\s+mri|sella\s+mri/i, allow: allowPituitaryMri, label: 'Pituitary MRI' },
+        { pattern: /24-?hour\s+urinary\s+cortisol|cushing/i, allow: false, label: "Cushing's screening" },
+        { pattern: /\bmthfr\b/i, allow: false, label: 'MTHFR' },
+        { pattern: /hla-?b27/i, allow: false, label: 'HLA-B27 (gate to advanced_screening)' },
+      ];
+
+      const filterTests = (arr: any[] | undefined) => {
+        if (!Array.isArray(arr)) return arr;
+        return arr.filter((t: any) => {
+          const name = `${t?.test_name ?? ''} ${t?.test ?? ''} ${t?.why_needed ?? ''} ${t?.clinical_justification ?? ''}`;
+          for (const rule of blockedPatterns) {
+            if (rule.pattern.test(name) && !rule.allow) {
+              console.log(`[analyze-labs] Stripped blocked test "${t.test_name ?? t.test}" (${rule.label}) — does not meet urgent threshold`);
+              return false;
+            }
+          }
+          // Also dedupe: if same test_name appears twice in arr, drop later occurrences
+          return true;
+        }).filter((t: any, i: number, src: any[]) => {
+          const k = (t?.test_name ?? t?.test ?? '').toLowerCase().trim();
+          if (!k) return true;
+          return src.findIndex((x: any) => (x?.test_name ?? x?.test ?? '').toLowerCase().trim() === k) === i;
+        });
+      };
+
+      analysis.missing_tests = filterTests(analysis.missing_tests);
+      // Filter the human-readable summary too — strip sentences that mention JAK2/etc when not allowed
+      if (typeof analysis.summary === 'string') {
+        for (const rule of blockedPatterns) {
+          if (rule.allow) continue;
+          // Drop sentences that mention the blocked test
+          analysis.summary = analysis.summary.split(/(?<=[.!?])\s+/).filter((s: string) => !rule.pattern.test(s)).join(' ').trim();
+        }
+      }
+    }
+
     await supabase.from('lab_draws').update({ analysis_result: analysis, processing_status: 'complete' }).eq('id', drawId);
 
     // Generate priority alerts from analysis findings
