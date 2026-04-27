@@ -3,6 +3,8 @@ import { useState, useRef, useEffect } from 'react';
 import { AppShell } from '../../components/layout/AppShell';
 import { Button } from '../../components/ui/Button';
 import { useAuthStore } from '../../store/authStore';
+import { useSubscription } from '../../lib/subscription';
+import { PaywallGate } from '../../components/paywall/PaywallGate';
 
 
 interface ChatMessage {
@@ -58,6 +60,22 @@ export const HealthChat = () => {
       inputRef.current?.focus();
     }
   };
+
+  const { isPro } = useSubscription();
+
+  if (!isPro) {
+    return (
+      <AppShell pageTitle="Health Chat">
+        <PaywallGate
+          feature="Health Chat"
+          description="Ask anything about your labs, symptoms, supplements, or what to do next. The AI knows your data — labs, meds, conditions, goals — and answers like a smart friend who's read your file."
+        >
+          {/* never rendered — gate blocks free users */}
+          <div />
+        </PaywallGate>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell pageTitle="Health Chat">
