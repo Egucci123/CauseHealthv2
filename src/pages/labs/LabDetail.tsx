@@ -8,7 +8,7 @@ import { Button } from '../../components/ui/Button';
 import { LabMarkerCard } from '../../components/labs/LabMarkerCard';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/authStore';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useSubscription } from '../../lib/subscription';
 
@@ -100,6 +100,20 @@ export const LabDetail = () => {
   );
 
   const { draw, values, analysis, panelGaps } = data;
+
+  // Backup poll: while analysis is in flight (processing_status === 'processing'
+  // and no analysis_result yet), force-invalidate the query every 4 seconds.
+  // Belt-and-suspenders for React Query's refetchInterval — if it ever fails
+  // to fire, this kicks in. Stops as soon as analysis arrives or status flips.
+  useEffect(() => {
+    const stillRunning = draw?.processing_status === 'processing' && !analysis;
+    if (!stillRunning) return;
+    const id = setInterval(() => {
+      qc.invalidateQueries({ queryKey: ['lab-detail', drawId] });
+    }, 4000);
+    return () => clearInterval(id);
+  }, [draw?.processing_status, analysis, qc, drawId]);
+
   const grouped = CATEGORY_ORDER.reduce<Record<string, typeof values>>((acc, cat) => {
     const catValues = values.filter((v: any) => v.marker_category === cat);
     if (catValues.length > 0) acc[cat] = catValues;
@@ -134,6 +148,42 @@ export const LabDetail = () => {
         </Button>
       </div>
 
+      {/* Status banner — shown PROMINENTLY above counts so user always knows
+          if analysis is in flight or failed. Self-polling via useEffect for
+          extra reliability if React Query's refetchInterval isn't triggering. */}
+      {draw.processing_status === 'processing' && !analysis && (
+        <div className="bg-gradient-to-r from-[#1B423A] to-[#2D6A4F] rounded-[14px] p-5 flex items-center gap-4 shadow-card">
+          <div className="relative w-10 h-10 flex-shrink-0">
+            <div className="absolute inset-0 rounded-full border-2 border-white/20" />
+            <div className="absolute inset-0 rounded-full border-2 border-white border-t-transparent animate-spin" />
+          </div>
+          <div className="flex-1">
+            <p className="text-precision text-[0.65rem] font-bold tracking-widest uppercase text-[#D4A574] mb-1">Analyzing your bloodwork</p>
+            <p className="text-body text-on-surface text-sm">
+              Reading every marker, finding patterns, building your plan. About 30 seconds — this page updates automatically.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {draw.processing_status === 'failed' && (
+        <div className="rounded-[10px] p-6 flex items-center gap-4 bg-[#C94F4F]/10 border border-[#C94F4F]/30">
+          <span className="material-symbols-outlined text-[24px] flex-shrink-0 text-[#C94F4F]">error</span>
+          <div className="flex-1">
+            <p className="text-body text-clinical-charcoal font-semibold text-sm">Analysis failed</p>
+            <p className="text-body text-clinical-stone text-xs mt-0.5">
+              The AI analysis timed out or encountered an error. Your lab values are saved — you can retry the analysis.
+            </p>
+          </div>
+          <Button variant="primary" size="sm" icon="refresh"
+            onClick={() => retryAnalysis.mutate()}
+            disabled={retryAnalysis.isPending}
+          >
+            {retryAnalysis.isPending ? 'Retrying...' : 'Retry Analysis'}
+          </Button>
+        </div>
+      )}
+
       <div className="grid grid-cols-3 gap-4">
         {[{ count: urgentCount, label: 'Urgent', color: '#C94F4F' }, { count: monitorCount, label: 'Monitor', color: '#E8922A' }, { count: optimalCount, label: 'Optimal', color: '#D4A574' }].map(({ count, label, color }) => (
           <div key={label} className="bg-clinical-white rounded-[10px] shadow-card p-5 text-center cursor-pointer hover:shadow-card-md transition-shadow"
@@ -143,32 +193,6 @@ export const LabDetail = () => {
           </div>
         ))}
       </div>
-
-      {(draw.processing_status === 'failed' || (draw.processing_status === 'processing' && !analysis)) && (
-        <div className={`rounded-[10px] p-6 flex items-center gap-4 ${draw.processing_status === 'failed' ? 'bg-[#C94F4F]/10 border border-[#C94F4F]/30' : 'bg-[#614018]/10 border border-[#614018]/30'}`}>
-          <span className="material-symbols-outlined text-[24px] flex-shrink-0" style={{ color: draw.processing_status === 'failed' ? '#C94F4F' : '#E8922A' }}>
-            {draw.processing_status === 'failed' ? 'error' : 'hourglass_top'}
-          </span>
-          <div className="flex-1">
-            <p className="text-body text-clinical-charcoal font-semibold text-sm">
-              {draw.processing_status === 'failed' ? 'Analysis failed' : 'Analysis in progress'}
-            </p>
-            <p className="text-body text-clinical-stone text-xs mt-0.5">
-              {draw.processing_status === 'failed'
-                ? 'The AI analysis timed out or encountered an error. Your lab values are saved — you can retry the analysis.'
-                : 'Your lab values are being analyzed. This page will update automatically.'}
-            </p>
-          </div>
-          {draw.processing_status === 'failed' && (
-            <Button variant="primary" size="sm" icon="refresh"
-              onClick={() => retryAnalysis.mutate()}
-              disabled={retryAnalysis.isPending}
-            >
-              {retryAnalysis.isPending ? 'Retrying...' : 'Retry Analysis'}
-            </Button>
-          )}
-        </div>
-      )}
 
       {/* Free users see a teaser locked card. Pro users see the full AI analysis. */}
       {!isPro && analysis?.summary && (
