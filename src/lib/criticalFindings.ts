@@ -33,11 +33,27 @@ interface LabValue {
 }
 
 const name = (v: LabValue) => (v.marker_name ?? v.markerName ?? '').toLowerCase();
+
+// Global exclusions — any marker whose name contains these words/symbols is
+// NEVER eligible to match a base-marker rule. This prevents derived values
+// (ratios, indices, percentages, urine variants) from being mistaken for
+// the underlying lab. Add to this list, never remove.
+const GLOBAL_EXCLUDES = ['ratio', 'index', '/', '%', 'urine', 'urinary'];
+
+// Word-boundary match: pattern must appear as a whole word, not inside another
+// word. Treats `,` `(` `)` `-` and whitespace as boundaries.
+const matchesWord = (haystack: string, pattern: string): boolean => {
+  const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(`(^|[\\s,()\\-/])${escaped}($|[\\s,()\\-/])`, 'i');
+  return re.test(haystack);
+};
+
 const find = (vals: LabValue[], patterns: string[], exclude: string[] = []): LabValue | null => {
   for (const v of vals) {
     const n = name(v);
+    if (GLOBAL_EXCLUDES.some(e => n.includes(e))) continue;
     if (exclude.some(e => n.includes(e))) continue;
-    if (patterns.some(p => n.includes(p))) return v;
+    if (patterns.some(p => matchesWord(n, p))) return v;
   }
   return null;
 };
@@ -115,7 +131,7 @@ export function detectCriticalFindings(
     });
   }
 
-  const platelets = find(values, ['platelet']);
+  const platelets = find(values, ['platelets', 'platelet count']);
   if (platelets) {
     if (platelets.value < 30) {
       out.push({
