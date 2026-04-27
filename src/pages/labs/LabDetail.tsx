@@ -6,6 +6,7 @@ import { AppShell } from '../../components/layout/AppShell';
 import { SectionLabel } from '../../components/ui/SectionLabel';
 import { Button } from '../../components/ui/Button';
 import { LabMarkerCard } from '../../components/labs/LabMarkerCard';
+import { FolderSection } from '../../components/ui/FolderSection';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/authStore';
 import { useState, useEffect } from 'react';
@@ -135,17 +136,44 @@ export const LabDetail = () => {
 
   return (
     <AppShell pageTitle="Lab Results">
-      <div className="flex flex-col md:flex-row justify-between items-start gap-4">
-        <div>
-          <button onClick={() => navigate('/labs')} className="text-precision text-[0.68rem] text-clinical-stone tracking-widest uppercase hover:text-primary-container transition-colors flex items-center gap-1 mb-2">
-            <span className="material-symbols-outlined text-[14px]">arrow_back</span>All Labs
+      {/* Dark hero card — same DNA as Wellness Plan */}
+      <div className="bg-[#131313] rounded-[14px] p-6 shadow-card">
+        <button onClick={() => navigate('/labs')} className="text-precision text-[0.6rem] text-on-surface-variant tracking-widest uppercase hover:text-[#D4A574] transition-colors flex items-center gap-1 mb-3">
+          <span className="material-symbols-outlined text-[14px]">arrow_back</span>All Labs
+        </button>
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-[#D4A574] mb-2">Your Bloodwork</p>
+            <h1 className="text-authority text-3xl md:text-4xl text-on-surface font-bold leading-tight">{draw.lab_name ?? 'Lab Report'}</h1>
+            <p className="text-body text-on-surface-variant text-sm mt-2">{format(new Date(draw.draw_date), 'MMMM d, yyyy')}{draw.ordering_provider && ` · ${draw.ordering_provider}`}</p>
+          </div>
+          <button
+            onClick={() => navigate(isPro ? '/doctor-prep' : '/settings?tab=subscription')}
+            className={`inline-flex items-center gap-2 text-precision text-[0.65rem] font-bold tracking-wider uppercase px-4 py-2.5 rounded-[8px] transition-colors flex-shrink-0 ${
+              isPro ? 'bg-[#D4A574] hover:bg-[#B8915F] text-clinical-charcoal' : 'bg-white/10 hover:bg-white/20 text-on-surface'
+            }`}
+          >
+            <span className="material-symbols-outlined text-[16px]">{isPro ? 'description' : 'lock'}</span>
+            {isPro ? 'Prep for Doctor' : 'Unlock Prep'}
           </button>
-          <h2 className="text-authority text-4xl text-clinical-charcoal font-bold">{draw.lab_name ?? 'Lab Report'}</h2>
-          <p className="text-body text-clinical-stone mt-1">{format(new Date(draw.draw_date), 'MMMM d, yyyy')}{draw.ordering_provider && ` · ${draw.ordering_provider}`}</p>
         </div>
-        <Button variant="secondary" size="md" icon={isPro ? 'description' : 'lock'} onClick={() => navigate(isPro ? '/doctor-prep' : '/settings?tab=subscription')}>
-          {isPro ? 'Prep for Doctor' : 'Unlock Prep'}
-        </Button>
+        {/* Score chips inline — visible at a glance */}
+        <div className="grid grid-cols-3 gap-2 mt-5">
+          {[
+            { count: urgentCount, label: 'Urgent', color: '#C94F4F', tab: 'urgent' as const },
+            { count: monitorCount, label: 'Monitor', color: '#E8922A', tab: 'monitor' as const },
+            { count: optimalCount, label: 'Optimal', color: '#2A9D8F', tab: 'all' as const },
+          ].map(({ count, label, color, tab }) => (
+            <button
+              key={label}
+              onClick={() => setActiveTab(activeTab === tab ? 'all' : tab)}
+              className={`bg-white/5 hover:bg-white/10 rounded-[10px] p-3 border transition-all ${activeTab === tab ? 'border-white/30' : 'border-white/5'}`}
+            >
+              <div className="text-authority text-2xl font-bold" style={{ color }}>{count}</div>
+              <div className="text-precision text-[0.55rem] text-on-surface-variant tracking-widest uppercase mt-0.5">{label}</div>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Status banner — shown PROMINENTLY above counts so user always knows
@@ -183,16 +211,6 @@ export const LabDetail = () => {
           </Button>
         </div>
       )}
-
-      <div className="grid grid-cols-3 gap-4">
-        {[{ count: urgentCount, label: 'Urgent', color: '#C94F4F' }, { count: monitorCount, label: 'Monitor', color: '#E8922A' }, { count: optimalCount, label: 'Optimal', color: '#D4A574' }].map(({ count, label, color }) => (
-          <div key={label} className="bg-clinical-white rounded-[10px] shadow-card p-5 text-center cursor-pointer hover:shadow-card-md transition-shadow"
-            onClick={() => { if (label === 'Urgent') setActiveTab(activeTab === 'urgent' ? 'all' : 'urgent'); if (label === 'Monitor') setActiveTab(activeTab === 'monitor' ? 'all' : 'monitor'); if (label === 'Optimal') setActiveTab('all'); }}>
-            <div className="text-authority text-3xl font-bold" style={{ color }}>{count}</div>
-            <div className="text-precision text-[0.6rem] text-clinical-stone tracking-widest uppercase mt-1">{label}</div>
-          </div>
-        ))}
-      </div>
 
       {/* Free users see a teaser locked card. Pro users see the full AI analysis. */}
       {!isPro && analysis?.summary && (
@@ -263,24 +281,43 @@ export const LabDetail = () => {
         </div>
       )}
 
-      <div className="flex gap-2">
+      {/* Tab nav — same style as Wellness Plan */}
+      <div className="flex gap-1 bg-clinical-cream rounded-[10px] p-1 overflow-x-auto">
         {[{ id: 'all', label: `All (${values.length})` }, { id: 'urgent', label: `Urgent (${urgentCount})` }, { id: 'monitor', label: `Monitor (${monitorCount})` }].map(tab => (
-          <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} style={{ borderRadius: '4px' }}
-            className={`text-precision text-[0.68rem] font-bold tracking-wider uppercase px-4 py-2 border transition-all ${activeTab === tab.id ? 'bg-primary-container border-primary-container text-white' : 'border-outline-variant/20 text-clinical-stone hover:border-primary-container/30'}`}>{tab.label}</button>
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as any)}
+            className={`flex-1 min-w-[90px] py-2.5 px-3 rounded-[8px] transition-all ${
+              activeTab === tab.id ? 'bg-clinical-white shadow-card' : 'hover:bg-clinical-white/50'
+            }`}
+          >
+            <span className={`text-precision text-[0.7rem] font-bold tracking-wider ${activeTab === tab.id ? 'text-clinical-charcoal' : 'text-clinical-stone'}`}>
+              {tab.label}
+            </span>
+          </button>
         ))}
       </div>
 
       {activeTab === 'all' ? (
-        Object.entries(grouped).map(([category, catValues]) => (
-          <div key={category}>
-            <SectionLabel icon="category" className="mb-4">{CATEGORY_LABELS[category] ?? category}</SectionLabel>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {catValues.map((val: any) => <LabMarkerCard key={val.id} value={val} analysis={findAnalysis(val.marker_name)} onAddToPrep={() => navigate('/doctor-prep')} />)}
-            </div>
-          </div>
-        ))
+        <div className="space-y-3">
+          {Object.entries(grouped).map(([category, catValues]) => (
+            <FolderSection
+              key={category}
+              icon="category"
+              title={CATEGORY_LABELS[category] ?? category}
+              count={catValues.length}
+              countLabel={catValues.length === 1 ? 'marker' : 'markers'}
+              explanation={`Your ${(CATEGORY_LABELS[category] ?? category).toLowerCase()} markers — what's optimal, what needs watching, what's urgent.`}
+              defaultOpen
+            >
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {catValues.map((val: any) => <LabMarkerCard key={val.id} value={val} analysis={findAnalysis(val.marker_name)} onAddToPrep={() => navigate('/doctor-prep')} />)}
+              </div>
+            </FolderSection>
+          ))}
+        </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {getDisplayValues().map((val: any) => <LabMarkerCard key={val.id} value={val} analysis={findAnalysis(val.marker_name)} onAddToPrep={() => navigate('/doctor-prep')} />)}
         </div>
       )}
