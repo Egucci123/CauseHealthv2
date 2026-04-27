@@ -6,7 +6,9 @@ import { ClinicalSummary } from '../../components/doctorprep/ClinicalSummary';
 import { TestsToRequest } from '../../components/doctorprep/TestsToRequest';
 import { VisitCardStacks } from '../../components/doctorprep/VisitCardStacks';
 import { useLatestDoctorPrep, useGenerateDoctorPrep } from '../../hooks/useDoctorPrep';
-import { useLatestLabDraw } from '../../hooks/useLabData';
+import { useLatestLabDraw, useLatestLabValues } from '../../hooks/useLabData';
+import { detectCriticalFindings } from '../../lib/criticalFindings';
+import { useMemo } from 'react';
 import { useSymptomAnalysis } from '../../hooks/useSymptoms';
 import { PaywallGate } from '../../components/paywall/PaywallGate';
 import { useAuthStore } from '../../store/authStore';
@@ -25,7 +27,16 @@ export const DoctorPrep = () => {
   const { data: doc, isLoading } = useLatestDoctorPrep();
   const { generate, generating } = useGenerateDoctorPrep();
   const { data: latestDraw } = useLatestLabDraw();
+  const { data: latestValues } = useLatestLabValues();
   const { data: symptomAnalysis } = useSymptomAnalysis();
+
+  const ageNum = profile?.dateOfBirth
+    ? Math.floor((Date.now() - new Date(profile.dateOfBirth).getTime()) / 31_557_600_000)
+    : null;
+  const criticalFindings = useMemo(
+    () => latestValues ? detectCriticalFindings(latestValues as any, { age: ageNum, sex: profile?.sex ?? null }) : [],
+    [latestValues, ageNum, profile?.sex],
+  );
 
   const docCreatedAt = (doc as any)?._createdAt ? new Date((doc as any)._createdAt) : null;
   const drawCreatedAt = latestDraw?.createdAt ? new Date(latestDraw.createdAt) : null;
@@ -144,7 +155,46 @@ export const DoctorPrep = () => {
             ))}
           </div>
 
-          {activeTab === 'visit' && <VisitCardStacks doc={doc} symptomAnalysis={symptomAnalysis} />}
+          {activeTab === 'visit' && (
+            <>
+              {/* Pro-only critical findings card with full differential — for the doctor */}
+              {criticalFindings.length > 0 && (
+                <div className="bg-clinical-white rounded-[14px] border-l-4 border-[#9A3A20] shadow-card p-6 mb-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="material-symbols-outlined text-[#9A3A20] text-[20px]">priority_high</span>
+                    <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-[#9A3A20]">Critical findings · for your doctor</p>
+                  </div>
+                  <p className="text-authority text-base text-clinical-charcoal font-bold mb-4">
+                    {criticalFindings.length === 1 ? 'One finding' : `${criticalFindings.length} findings`} the doctor should investigate first.
+                  </p>
+                  <div className="space-y-3">
+                    {criticalFindings.map((f, i) => (
+                      <div key={i} className="bg-clinical-cream/50 rounded-[10px] p-4 border-l-2 border-[#9A3A20]">
+                        <div className="flex items-baseline gap-2 mb-1.5 flex-wrap">
+                          <span className="text-precision text-sm font-bold text-clinical-charcoal">{f.marker}</span>
+                          <span className="text-precision text-base font-bold text-[#9A3A20]">{f.value}{f.unit ? ` ${f.unit}` : ''}</span>
+                          <span className="text-precision text-[0.55rem] font-bold tracking-widest uppercase text-[#9A3A20] bg-[#9A3A20]/10 px-2 py-0.5 rounded">
+                            {f.severity}
+                          </span>
+                        </div>
+                        <p className="text-body text-clinical-charcoal text-sm leading-relaxed mb-2">{f.doctorConcern}</p>
+                        {f.icd10 && f.icd10.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mt-2">
+                            {f.icd10.map(code => (
+                              <span key={code} className="text-precision text-[0.6rem] font-bold text-clinical-charcoal bg-clinical-cream border border-outline-variant/30 px-2 py-0.5 rounded">
+                                {code}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <VisitCardStacks doc={doc} symptomAnalysis={symptomAnalysis} />
+            </>
+          )}
           {activeTab === 'summary' && <ClinicalSummary doc={doc} />}
           {activeTab === 'tests' && <TestsToRequest tests={Array.isArray(doc.tests_to_request) ? doc.tests_to_request : []} advanced={Array.isArray(doc.advanced_screening) ? doc.advanced_screening : []} />}
         </div>

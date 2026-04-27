@@ -6,9 +6,11 @@ import { AppShell } from '../../components/layout/AppShell';
 import { SectionLabel } from '../../components/ui/SectionLabel';
 import { Button } from '../../components/ui/Button';
 import { LabMarkerCard } from '../../components/labs/LabMarkerCard';
+import { CriticalBanner } from '../../components/labs/CriticalBanner';
+import { detectCriticalFindings } from '../../lib/criticalFindings';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/authStore';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useSubscription } from '../../lib/subscription';
 
@@ -113,6 +115,17 @@ export const LabDetail = () => {
 
   const { draw, values, analysis, panelGaps } = data;
 
+  // Deterministic critical-findings detection — runs in code, never via AI.
+  // Visible to free users too (safety > paywall).
+  const profile = useAuthStore.getState().profile;
+  const ageNum = profile?.dateOfBirth
+    ? Math.floor((Date.now() - new Date(profile.dateOfBirth).getTime()) / 31_557_600_000)
+    : null;
+  const criticalFindings = useMemo(
+    () => detectCriticalFindings(values as any, { age: ageNum, sex: profile?.sex ?? null }),
+    [values, ageNum, profile?.sex],
+  );
+
   const grouped = CATEGORY_ORDER.reduce<Record<string, typeof values>>((acc, cat) => {
     const catValues = values.filter((v: any) => v.marker_category === cat);
     if (catValues.length > 0) acc[cat] = catValues;
@@ -134,6 +147,9 @@ export const LabDetail = () => {
 
   return (
     <AppShell pageTitle="Lab Results">
+      {/* Critical / Emergency banner — ALWAYS visible to ALL tiers (safety, no paywall) */}
+      {criticalFindings.length > 0 && <CriticalBanner findings={criticalFindings} />}
+
       {/* Dark hero card — same DNA as Wellness Plan */}
       <div className="bg-[#131313] rounded-[14px] p-6 shadow-card">
         <button onClick={() => navigate('/labs')} className="text-precision text-[0.6rem] text-on-surface-variant tracking-widest uppercase hover:text-[#D4A574] transition-colors flex items-center gap-1 mb-3">

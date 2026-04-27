@@ -14,6 +14,9 @@ import { PrimaryCard } from '../components/ui/Card';
 import { useAuthStore } from '../store/authStore';
 import { useLatestLabValues, useLabDraws } from '../hooks/useLabData';
 import { useHealthScore } from '../hooks/useHealthScore';
+import { CriticalBanner } from '../components/labs/CriticalBanner';
+import { detectCriticalFindings } from '../lib/criticalFindings';
+import { useMemo } from 'react';
 
 export const Dashboard = () => {
   const { profile } = useAuthStore();
@@ -32,8 +35,20 @@ export const Dashboard = () => {
   const firstName = profile?.firstName ?? '';
   const dateLine = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
+  // Deterministic critical findings — surfaces above hero, ALL tiers
+  const ageNum = profile?.dateOfBirth
+    ? Math.floor((Date.now() - new Date(profile.dateOfBirth).getTime()) / 31_557_600_000)
+    : null;
+  const criticalFindings = useMemo(
+    () => latestValues ? detectCriticalFindings(latestValues as any, { age: ageNum, sex: profile?.sex ?? null }) : [],
+    [latestValues, ageNum, profile?.sex],
+  );
+
   return (
     <AppShell pageTitle="Intelligence Hub">
+      {/* Critical / Emergency banner — ALWAYS visible (safety overrides paywall) */}
+      {criticalFindings.length > 0 && <CriticalBanner findings={criticalFindings} />}
+
       {/* Dark hero card — clean text only. Score lives below in its own light card. */}
       <div className="bg-[#131313] rounded-[14px] p-6 shadow-card">
         <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-[#D4A574] mb-2">{dateLine}</p>
