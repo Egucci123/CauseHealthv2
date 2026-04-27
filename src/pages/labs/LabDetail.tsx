@@ -81,6 +81,18 @@ export const LabDetail = () => {
     return () => clearInterval(id);
   }, [data?.draw?.processing_status, data?.analysis, qc, drawId]);
 
+  // Deterministic critical-findings detection — runs in code, never via AI.
+  // Visible to free users too (safety > paywall).
+  // MUST be before early returns (Rules of Hooks).
+  const profile = useAuthStore.getState().profile;
+  const ageNum = profile?.dateOfBirth
+    ? Math.floor((Date.now() - new Date(profile.dateOfBirth).getTime()) / 31_557_600_000)
+    : null;
+  const criticalFindings = useMemo(
+    () => detectCriticalFindings((data?.values ?? []) as any, { age: ageNum, sex: profile?.sex ?? null }),
+    [data?.values, ageNum, profile?.sex],
+  );
+
   if (isLoading) return (
     <AppShell pageTitle="Lab Results">
       <div className="space-y-4">
@@ -114,17 +126,6 @@ export const LabDetail = () => {
   );
 
   const { draw, values, analysis, panelGaps } = data;
-
-  // Deterministic critical-findings detection — runs in code, never via AI.
-  // Visible to free users too (safety > paywall).
-  const profile = useAuthStore.getState().profile;
-  const ageNum = profile?.dateOfBirth
-    ? Math.floor((Date.now() - new Date(profile.dateOfBirth).getTime()) / 31_557_600_000)
-    : null;
-  const criticalFindings = useMemo(
-    () => detectCriticalFindings(values as any, { age: ageNum, sex: profile?.sex ?? null }),
-    [values, ageNum, profile?.sex],
-  );
 
   const grouped = CATEGORY_ORDER.reduce<Record<string, typeof values>>((acc, cat) => {
     const catValues = values.filter((v: any) => v.marker_category === cat);
