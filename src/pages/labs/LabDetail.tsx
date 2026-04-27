@@ -6,7 +6,6 @@ import { AppShell } from '../../components/layout/AppShell';
 import { SectionLabel } from '../../components/ui/SectionLabel';
 import { Button } from '../../components/ui/Button';
 import { LabMarkerCard } from '../../components/labs/LabMarkerCard';
-import { FolderSection } from '../../components/ui/FolderSection';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/authStore';
 import { useState, useEffect } from 'react';
@@ -68,6 +67,18 @@ export const LabDetail = () => {
     },
   });
 
+  // ── Backup poll for in-flight analysis ──
+  // MUST be placed before any early returns to keep hook order stable across
+  // renders (Rules of Hooks). Reads draw + analysis safely via optional chaining.
+  useEffect(() => {
+    const stillRunning = data?.draw?.processing_status === 'processing' && !data?.analysis;
+    if (!stillRunning) return;
+    const id = setInterval(() => {
+      qc.invalidateQueries({ queryKey: ['lab-detail', drawId] });
+    }, 4000);
+    return () => clearInterval(id);
+  }, [data?.draw?.processing_status, data?.analysis, qc, drawId]);
+
   if (isLoading) return (
     <AppShell pageTitle="Lab Results">
       <div className="space-y-4">
@@ -101,19 +112,6 @@ export const LabDetail = () => {
   );
 
   const { draw, values, analysis, panelGaps } = data;
-
-  // Backup poll: while analysis is in flight (processing_status === 'processing'
-  // and no analysis_result yet), force-invalidate the query every 4 seconds.
-  // Belt-and-suspenders for React Query's refetchInterval — if it ever fails
-  // to fire, this kicks in. Stops as soon as analysis arrives or status flips.
-  useEffect(() => {
-    const stillRunning = draw?.processing_status === 'processing' && !analysis;
-    if (!stillRunning) return;
-    const id = setInterval(() => {
-      qc.invalidateQueries({ queryKey: ['lab-detail', drawId] });
-    }, 4000);
-    return () => clearInterval(id);
-  }, [draw?.processing_status, analysis, qc, drawId]);
 
   const grouped = CATEGORY_ORDER.reduce<Record<string, typeof values>>((acc, cat) => {
     const catValues = values.filter((v: any) => v.marker_category === cat);
@@ -299,21 +297,19 @@ export const LabDetail = () => {
       </div>
 
       {activeTab === 'all' ? (
-        <div className="space-y-3">
+        <div className="space-y-8">
           {Object.entries(grouped).map(([category, catValues]) => (
-            <FolderSection
-              key={category}
-              icon="category"
-              title={CATEGORY_LABELS[category] ?? category}
-              count={catValues.length}
-              countLabel={catValues.length === 1 ? 'marker' : 'markers'}
-              explanation={`Your ${(CATEGORY_LABELS[category] ?? category).toLowerCase()} markers — what's optimal, what needs watching, what's urgent.`}
-              defaultOpen
-            >
+            <div key={category}>
+              <div className="flex items-baseline justify-between mb-4">
+                <h3 className="text-authority text-lg text-clinical-charcoal font-bold">{CATEGORY_LABELS[category] ?? category}</h3>
+                <span className="text-precision text-[0.6rem] text-clinical-stone tracking-widest uppercase">
+                  {catValues.length} {catValues.length === 1 ? 'marker' : 'markers'}
+                </span>
+              </div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {catValues.map((val: any) => <LabMarkerCard key={val.id} value={val} analysis={findAnalysis(val.marker_name)} onAddToPrep={() => navigate('/doctor-prep')} />)}
               </div>
-            </FolderSection>
+            </div>
           ))}
         </div>
       ) : (
