@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { OptimalRangeBar } from '../lab/OptimalRangeBar';
+import { MarkerDotBar } from './MarkerDotBar';
 import { Badge } from '../ui/Badge';
 import { ClinicalLink } from '../ui/Button';
 import { Sparkline } from '../ui/Sparkline';
@@ -16,7 +17,7 @@ interface LabValueRow {
   standard_flag?: string | null; optimal_flag?: string | null;
 }
 
-interface AnalysisFinding { marker: string; flag: string; headline: string; explanation: string; }
+interface AnalysisFinding { marker: string; flag: string; headline: string; explanation: string; emoji?: string; what_to_do?: string; }
 
 interface LabMarkerCardProps { value: LabValueRow; analysis?: AnalysisFinding | null; onAddToPrep?: (markerName: string) => void; }
 
@@ -49,17 +50,34 @@ export const LabMarkerCard = ({ value, analysis, onAddToPrep }: LabMarkerCardPro
   return (
     <div className={`bg-clinical-white rounded-[10px] shadow-card ${topBorder} overflow-hidden`}>
       <div className="p-8">
-        <div className="flex justify-between items-start mb-6">
-          <div>
-            <h3 className="text-body text-clinical-charcoal font-semibold text-lg">
-              <MarkerTerm name={value.marker_name} className="text-clinical-charcoal font-semibold">
-                {value.marker_name}
-              </MarkerTerm>
-            </h3>
-            <p className="text-precision text-[0.68rem] text-clinical-stone tracking-widest uppercase mt-0.5">{value.marker_category}</p>
+        <div className="flex justify-between items-start mb-6 gap-3">
+          <div className="flex items-start gap-3 flex-1 min-w-0">
+            {analysis?.emoji && <span className="text-3xl flex-shrink-0 leading-none">{analysis.emoji}</span>}
+            <div className="min-w-0">
+              <h3 className="text-body text-clinical-charcoal font-semibold text-lg">
+                <MarkerTerm name={value.marker_name} className="text-clinical-charcoal font-semibold">
+                  {value.marker_name}
+                </MarkerTerm>
+              </h3>
+              <p className="text-precision text-[0.68rem] text-clinical-stone tracking-widest uppercase mt-0.5">{value.marker_category}</p>
+            </div>
           </div>
           <Badge status={status} />
         </div>
+
+        {/* Visual-first: dot-on-bar at the top so even a glance tells the story */}
+        {value.optimal_low != null && value.optimal_high != null && (
+          <div className="mb-5">
+            <MarkerDotBar
+              value={value.value}
+              optimalLow={value.optimal_low}
+              optimalHigh={value.optimal_high}
+              standardLow={value.standard_low}
+              standardHigh={value.standard_high}
+              flag={status}
+            />
+          </div>
+        )}
 
         <div className="flex items-end justify-between gap-4 mb-6">
           <div>
@@ -138,6 +156,12 @@ export const LabMarkerCard = ({ value, analysis, onAddToPrep }: LabMarkerCardPro
               <div className="mt-6 space-y-4 pt-4 border-t border-outline-variant/10">
                 <p className="text-body text-clinical-charcoal font-semibold">{analysis.headline}</p>
                 <p className="text-body text-clinical-stone text-sm leading-relaxed">{analysis.explanation}</p>
+                {analysis.what_to_do && (
+                  <div className="bg-primary-container/5 border-l-2 border-primary-container rounded-r px-3 py-2">
+                    <p className="text-precision text-[0.55rem] font-bold text-primary-container tracking-widest uppercase mb-1">Do this</p>
+                    <p className="text-body text-clinical-charcoal text-sm">{analysis.what_to_do}</p>
+                  </div>
+                )}
                 {onAddToPrep && <ClinicalLink onClick={() => onAddToPrep(value.marker_name)}>ADD TO CLINICAL PREP</ClinicalLink>}
               </div>
             </motion.div>

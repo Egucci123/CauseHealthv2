@@ -6,6 +6,7 @@ import { Button } from '../../components/ui/Button';
 import { SectionLabel } from '../../components/ui/SectionLabel';
 import { SymptomCard } from '../../components/symptoms/SymptomCard';
 import { PatternAnalysis } from '../../components/symptoms/PatternAnalysis';
+import { BodyMap } from '../../components/symptoms/BodyMap';
 import { useSymptoms, useSymptomAnalysis, useRunSymptomAnalysis } from '../../hooks/useSymptoms';
 
 const TABS = [{ id: 'symptoms', label: 'My Symptoms', icon: 'symptoms' }, { id: 'patterns', label: 'Pattern Analysis', icon: 'pattern' }];
@@ -31,8 +32,21 @@ export const SymptomMapper = () => {
 
       {analysis?.summary && !analyzing && (
         <div className="bg-[#131313] rounded-[10px] p-6">
-          <SectionLabel light icon="insights" className="text-on-surface-variant mb-3">Pattern Intelligence</SectionLabel>
-          <p className="text-body text-on-surface leading-relaxed">{analysis.summary}</p>
+          <SectionLabel light icon="insights" className="text-on-surface-variant mb-3">Why I feel this way</SectionLabel>
+          {(analysis as any).headline && (
+            <p className="text-authority text-xl text-on-surface font-bold leading-tight mb-3">{(analysis as any).headline}</p>
+          )}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+            <div className="md:col-span-1 flex justify-center">
+              <BodyMap
+                systems={Array.from(new Set((analysis.patterns ?? []).flatMap((p: any) => p.body_systems ?? [])))}
+                size={180}
+              />
+            </div>
+            <div className="md:col-span-2">
+              <p className="text-body text-on-surface leading-relaxed">{analysis.summary}</p>
+            </div>
+          </div>
         </div>
       )}
 

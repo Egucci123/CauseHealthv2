@@ -2,6 +2,7 @@
 import { AppShell } from '../components/layout/AppShell';
 import { HealthScoreRing } from '../components/dashboard/HealthScoreRing';
 import { BiologicalAgeWidget } from '../components/dashboard/BiologicalAgeWidget';
+import { TodayCard } from '../components/dashboard/TodayCard';
 import { PriorityAlerts } from '../components/dashboard/PriorityAlerts';
 import { SupplementChecklist } from '../components/dashboard/SupplementChecklist';
 import { LabSummary } from '../components/dashboard/LabSummary';
@@ -40,6 +41,10 @@ export const Dashboard = () => {
             {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
           </p>
         </div>
+
+        <PrimaryCard status="brand" padding="lg">
+          <TodayCard />
+        </PrimaryCard>
 
         <QuickActions />
 

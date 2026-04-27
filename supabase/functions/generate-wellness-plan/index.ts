@@ -101,8 +101,16 @@ serve(async (req) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001', max_tokens: 8000,
-        system: `You are CauseHealth AI. Return ONLY valid JSON. Write in plain, simple language — no medical jargon without explaining it. Keep everything concise — 1-2 sentences per field.
+        model: 'claude-haiku-4-5-20251001', max_tokens: 10000,
+        system: `You are CauseHealth AI. Return ONLY valid JSON.
+
+GLOBAL VOICE RULES (CRITICAL — these apply to EVERY string in the JSON):
+- 6th-grade reading level. No word over 3 syllables unless followed by a definition in parentheses.
+- One sentence per bullet/field. Lead with a verb when it's an action ("Eat...", "Walk...", "Take...").
+- No medical jargon. "Inflammation marker" not "hs-CRP". "Iron stores" not "ferritin level". "Stress hormone" not "cortisol".
+- Users are tired, busy, and don't want to read. If a sentence isn't pulling weight, cut it.
+- Every actionable item gets an "emoji" field — a single emoji that captures the action (🥗 food, 💪 strength, 🏃 cardio, 😴 sleep, 🧘 stress, 💊 supplement, 🧪 test, 🩺 doctor, 💧 hydration, ☀️ sun, 🥩 protein, 🐟 omega-3, 🥬 leafy greens, 🍓 antioxidants, 🚶 walk, 🏋️ lift, 🧠 brain, ❤️ heart, 🫁 lungs, 🦴 bone).
+- Every "why" is one short sentence a 12-year-old understands.
 
 HARD RULES — FOLLOW EXACTLY:
 1. SUPPLEMENT STACK: Maximum 5 supplements. Read the MODE field in the user message:
@@ -174,7 +182,12 @@ ${allLabsStr.slice(0, 4000)}
 NUTRIENTS NOT TESTED (${isOptimizationMode ? 'recommend testing these for a complete optimization baseline' : 'do NOT recommend supplements for these'} — mention in ${isOptimizationMode ? 'retest_timeline' : 'disclaimer only'}):
 ${notTestedStr}
 
-Return JSON: {"generated_at":"${new Date().toISOString()}","summary":"3 sentences covering the most important findings across ALL organ systems","supplement_stack":[{"rank":1,"nutrient":"","form":"","dose":"","timing":"","why":"connect to specific lab value or medication effect","priority":"critical|high|moderate","sourced_from":"lab_finding|disease_mechanism","evidence_note":""}],"lifestyle_interventions":{"diet":[{"intervention":"","rationale":"address specific lab values","priority":""}],"sleep":[{"intervention":"","rationale":"","priority":""}],"exercise":[{"intervention":"","rationale":"","priority":""}],"stress":[{"intervention":"","rationale":"","priority":""}]},"action_plan":{"phase_1":{"name":"Stabilize (Weeks 1-4)","focus":"","actions":[]},"phase_2":{"name":"Optimize (Weeks 5-8)","focus":"","actions":[]},"phase_3":{"name":"Maintain (Weeks 9-12)","focus":"","actions":[]}},"retest_timeline":[{"marker":"","retest_at":"","why":""}],"medication_notes":[{"medication":"","organ_impact":"which organs this medication stresses","depletions":"what nutrients it depletes","monitoring":"what labs to watch","alternative":"natural or complementary approach if applicable"}],"disclaimer":"Educational only. Discuss all changes with your provider."}` }],
+Return JSON: {"generated_at":"${new Date().toISOString()}","headline":"one 12-word verdict in plain English (e.g. 'Your iron is low — fix it and the fatigue lifts')","summary":"3 short sentences max — what's wrong, what we'll fix, how long it takes","today_actions":[{"emoji":"","action":"one verb-led sentence the user does TODAY (e.g. 'Eat a 3-egg breakfast')","why":"one short sentence","category":"eat|move|take|sleep|stress"}],"supplement_stack":[{"rank":1,"emoji":"💊","nutrient":"","form":"","dose":"","timing":"","why_short":"6-10 word reason in plain English","why":"1 sentence linking to a lab or symptom","priority":"critical|high|moderate","sourced_from":"lab_finding|disease_mechanism","evidence_note":""}],"meals":[{"emoji":"🥗","name":"meal name (e.g. 'Salmon power bowl')","when":"breakfast|lunch|dinner|snack","ingredients":["short list, 4-6 items"],"why":"1 sentence — which lab/goal this targets"}],"workouts":[{"emoji":"🏃","day":"Mon|Tue|Wed|Thu|Fri|Sat|Sun","title":"e.g. 'Zone 2 walk'","duration_min":30,"description":"1 sentence","why":"1 sentence — which goal/lab this serves"}],"lifestyle_interventions":{"diet":[{"emoji":"🥗","intervention":"","rationale":"","priority":""}],"sleep":[{"emoji":"😴","intervention":"","rationale":"","priority":""}],"exercise":[{"emoji":"💪","intervention":"","rationale":"","priority":""}],"stress":[{"emoji":"🧘","intervention":"","rationale":"","priority":""}]},"action_plan":{"phase_1":{"name":"Stabilize (Weeks 1-4)","focus":"","actions":[]},"phase_2":{"name":"Optimize (Weeks 5-8)","focus":"","actions":[]},"phase_3":{"name":"Maintain (Weeks 9-12)","focus":"","actions":[]}},"retest_timeline":[{"marker":"","retest_at":"","why":""}],"medication_notes":[{"medication":"","organ_impact":"","depletions":"","monitoring":"","alternative":""}],"disclaimer":"Educational only. Talk to your doctor before changing anything."}
+
+CRITICAL OUTPUT RULES:
+- today_actions: EXACTLY 3 items — the most important things this user can do TODAY. Mix categories (one eat, one move, one take is ideal).
+- meals: 5-7 meals tied to this user's specific abnormal labs and goals. Real food, not "anti-inflammatory diet."
+- workouts: 3-5 workouts spanning a week, tailored to user's goals (longevity → zone 2 + lift, weight → resistance + walk, energy → easy cardio + sleep).` }],
       }),
     });
 
@@ -200,6 +213,10 @@ Return JSON: {"generated_at":"${new Date().toISOString()}","summary":"3 sentence
       return new Response(JSON.stringify({ error: 'Generated plan is incomplete' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
     if (!Array.isArray(plan.supplement_stack)) plan.supplement_stack = [];
+    if (!Array.isArray(plan.today_actions)) plan.today_actions = [];
+    if (!Array.isArray(plan.meals)) plan.meals = [];
+    if (!Array.isArray(plan.workouts)) plan.workouts = [];
+    if (!plan.headline) plan.headline = '';
     if (!plan.lifestyle_interventions) plan.lifestyle_interventions = { diet: [], sleep: [], exercise: [], stress: [] };
     if (!plan.action_plan) plan.action_plan = { phase_1: { name: '', focus: '', actions: [] }, phase_2: { name: '', focus: '', actions: [] }, phase_3: { name: '', focus: '', actions: [] } };
     if (!Array.isArray(plan.retest_timeline)) plan.retest_timeline = [];

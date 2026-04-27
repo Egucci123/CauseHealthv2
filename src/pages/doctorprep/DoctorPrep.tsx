@@ -5,17 +5,22 @@ import { SectionHeader } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { ClinicalSummary } from '../../components/doctorprep/ClinicalSummary';
 import { TestsToRequest } from '../../components/doctorprep/TestsToRequest';
+import { VisitCardStacks } from '../../components/doctorprep/VisitCardStacks';
 import { useLatestDoctorPrep, useGenerateDoctorPrep } from '../../hooks/useDoctorPrep';
 import { useLatestLabDraw } from '../../hooks/useLabData';
 import { useAuthStore } from '../../store/authStore';
 import { exportDoctorPrepPDF } from '../../lib/exportPDF';
 import { format } from 'date-fns';
 
-const TABS = [{ id: 'summary', label: 'Clinical Summary', icon: 'description' }, { id: 'tests', label: 'Suggested Tests', icon: 'biotech' }];
+const TABS = [
+  { id: 'visit', label: 'At Your Visit', icon: 'fact_check' },
+  { id: 'summary', label: 'Clinical Summary', icon: 'description' },
+  { id: 'tests', label: 'Suggested Tests', icon: 'biotech' },
+];
 
 export const DoctorPrep = () => {
   const { profile } = useAuthStore();
-  const [activeTab, setActiveTab] = useState<'summary' | 'tests'>('summary');
+  const [activeTab, setActiveTab] = useState<'visit' | 'summary' | 'tests'>('visit');
   const { data: doc, isLoading } = useLatestDoctorPrep();
   const { generate, generating } = useGenerateDoctorPrep();
   const { data: latestDraw } = useLatestLabDraw();
@@ -108,6 +113,7 @@ export const DoctorPrep = () => {
             ))}
           </div>
 
+          {activeTab === 'visit' && <VisitCardStacks doc={doc} />}
           {activeTab === 'summary' && <ClinicalSummary doc={doc} />}
           {activeTab === 'tests' && <TestsToRequest tests={Array.isArray(doc.tests_to_request) ? doc.tests_to_request : []} advanced={Array.isArray(doc.advanced_screening) ? doc.advanced_screening : []} />}
         </div>

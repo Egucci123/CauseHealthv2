@@ -44,7 +44,14 @@ serve(async (req) => {
       headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001', max_tokens: 6000,
-        system: `You are CauseHealth AI. Return ONLY valid JSON. Connect symptoms to root causes using the patient's actual labs and medications.
+        system: `You are CauseHealth AI. Return ONLY valid JSON.
+
+VOICE RULES (CRITICAL — every string in the JSON):
+- 6th-grade reading level. No medical jargon without plain-English definition.
+- One sentence per field max. Use words a 12-year-old understands.
+- "Stress hormone" not "cortisol". "Inflammation" not "hs-CRP". "Thyroid is sluggish" not "hypothyroidism."
+- Every pattern + autoimmune flag gets an "emoji" field as visual anchor.
+- Add a "body_systems" array to each pattern (subset of: brain, heart, gut, hormones, energy, immune, blood, liver, kidney, joints, skin) so we can highlight a body diagram.
 
 CRITICAL RULES:
 1. SEX-SPECIFIC RANGES: Use sex-appropriate reference ranges. NEVER use male testosterone ranges (e.g., 300-1000 ng/dL) for a female patient. For females: testosterone 15-70 ng/dL, free T 0.5-5.0 pg/mL, estradiol varies by cycle.
@@ -66,7 +73,7 @@ SUPPLEMENTS (factor into root-cause reasoning — e.g., creatine raises creatini
 ABNORMAL LABS:
 ${labStr}
 
-Return ONLY valid JSON: { "symptom_connections": [{ "symptom": "", "severity": 7, "root_causes": [{ "cause": "", "type": "lab_finding|medication_depletion|autoimmune|lifestyle|unknown", "confidence": "high|moderate|low", "evidence": "1 sentence plain English", "lab_marker": null }], "interventions": [] }], "patterns": [{ "pattern_name": "", "confidence": "high|moderate|low", "severity": "critical|high|moderate", "symptoms_involved": [], "explanation": "1-2 sentences plain English", "likely_mechanism": "1-2 sentences", "suggested_tests": ["one focused test per entry, no bundling"], "icd10_codes": [] }], "autoimmune_flags": [{ "condition": "", "supporting_symptoms": [], "supporting_labs": [], "confidence": "", "next_step": "1 sentence" }], "priority_actions": [{ "action": "", "urgency": "immediate|this_week|this_month", "rationale": "1 sentence why" }], "summary": "3-4 sentence overview connecting the dots" }` }],
+Return ONLY valid JSON: { "headline": "one 12-word verdict in plain English", "symptom_connections": [{ "emoji": "", "symptom": "", "severity": 7, "root_causes": [{ "cause": "", "type": "lab_finding|medication_depletion|autoimmune|lifestyle|unknown", "confidence": "high|moderate|low", "evidence": "1 sentence plain English", "lab_marker": null }], "interventions": [] }], "patterns": [{ "emoji": "", "pattern_name": "plain English (e.g. 'Tired and hormones off')", "body_systems": ["brain","hormones","energy"], "confidence": "high|moderate|low", "severity": "critical|high|moderate", "symptoms_involved": [], "explanation": "1 sentence plain English", "likely_mechanism": "1 sentence — no jargon", "suggested_tests": ["one focused test per entry"], "icd10_codes": [] }], "autoimmune_flags": [{ "emoji": "", "condition": "", "supporting_symptoms": [], "supporting_labs": [], "confidence": "", "next_step": "1 sentence" }], "priority_actions": [{ "emoji": "", "action": "verb-led 1 sentence", "urgency": "immediate|this_week|this_month", "rationale": "1 sentence why" }], "summary": "3 short sentences connecting the dots" }` }],
       }),
     });
 

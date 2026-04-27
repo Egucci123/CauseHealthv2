@@ -9,13 +9,14 @@ interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  chips?: string[];
 }
 
 const QUICK_PROMPTS = [
-  { label: 'Top 5 priorities', prompt: 'What are my top 5 health priorities right now based on my labs?' },
-  { label: 'Explain my labs', prompt: 'Give me a simple summary of my lab results — what should I be concerned about?' },
-  { label: 'Today\'s plan', prompt: 'What should I focus on today based on my wellness plan and labs?' },
-  { label: 'Supplement timing', prompt: 'When should I take each of my supplements today and why?' },
+  { label: 'Why am I tired?', prompt: 'Why am I tired? Use my labs to explain.' },
+  { label: 'Explain my labs', prompt: 'Explain my lab results in plain English in 1 minute.' },
+  { label: "Today's 3 things", prompt: 'What 3 things should I do today based on my plan?' },
+  { label: 'Top priorities', prompt: 'What are my top 3 health priorities right now?' },
 ];
 
 export const HealthChat = () => {
@@ -48,7 +49,8 @@ export const HealthChat = () => {
       });
       const data = await res.json();
       const reply = data.reply ?? data.error ?? 'Something went wrong. Please try again.';
-      setMessages(prev => [...prev, { role: 'assistant', content: reply, timestamp: new Date() }]);
+      const chips: string[] = Array.isArray(data.chips) ? data.chips : [];
+      setMessages(prev => [...prev, { role: 'assistant', content: reply, timestamp: new Date(), chips }]);
     } catch {
       setMessages(prev => [...prev, { role: 'assistant', content: 'Connection error. Please try again.', timestamp: new Date() }]);
     } finally {
@@ -78,19 +80,36 @@ export const HealthChat = () => {
             </div>
           )}
 
-          {messages.map((msg, i) => (
-            <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[85%] px-4 py-3 ${msg.role === 'user'
-                ? 'bg-primary-container text-white rounded-[16px] rounded-br-[4px]'
-                : 'bg-clinical-white border border-outline-variant/15 text-clinical-charcoal rounded-[16px] rounded-bl-[4px]'
-              }`}>
-                <p className="text-body text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
-                <p className={`text-precision text-[0.5rem] mt-1 ${msg.role === 'user' ? 'text-white/50' : 'text-clinical-stone/50'}`}>
-                  {msg.timestamp.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-                </p>
+          {messages.map((msg, i) => {
+            const isLastAssistant = msg.role === 'assistant' && i === messages.length - 1;
+            return (
+              <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                <div className={`max-w-[85%] px-4 py-3 ${msg.role === 'user'
+                  ? 'bg-primary-container text-white rounded-[16px] rounded-br-[4px]'
+                  : 'bg-clinical-white border border-outline-variant/15 text-clinical-charcoal rounded-[16px] rounded-bl-[4px]'
+                }`}>
+                  <p className="text-body text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                  <p className={`text-precision text-[0.5rem] mt-1 ${msg.role === 'user' ? 'text-white/50' : 'text-clinical-stone/50'}`}>
+                    {msg.timestamp.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                  </p>
+                </div>
+                {/* Suggested follow-up chips — only on the most recent assistant reply */}
+                {isLastAssistant && msg.chips && msg.chips.length > 0 && !loading && (
+                  <div className="flex flex-wrap gap-2 mt-2 max-w-[85%]">
+                    {msg.chips.map((chip, ci) => (
+                      <button
+                        key={ci}
+                        onClick={() => sendMessage(chip)}
+                        className="text-precision text-[0.65rem] font-bold tracking-wide px-3 py-1.5 bg-clinical-white border border-primary-container/30 text-primary-container hover:bg-primary-container/5 transition-colors rounded-full"
+                      >
+                        {chip}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {loading && (
             <div className="flex justify-start">

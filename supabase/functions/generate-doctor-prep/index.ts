@@ -64,7 +64,14 @@ serve(async (req) => {
       headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001', max_tokens: 6000,
-        system: `You are CauseHealth AI. Return ONLY valid JSON. Write a concise clinical visit prep document.
+        system: `You are CauseHealth AI. Return ONLY valid JSON.
+
+GLOBAL VOICE RULES (CRITICAL — apply to EVERY string in the JSON):
+- 6th-grade reading level. No medical jargon without a plain-English definition right after.
+- One sentence per bullet. Lead with a verb when it's an action ("Tell your doctor...", "Ask for...").
+- Replace clinician language with what a 12-year-old understands: "stress hormone" not "cortisol", "iron stores" not "ferritin".
+- Every card item gets a one-emoji "emoji" field as a visual anchor.
+- Users scan, they don't read. If a sentence isn't pulling weight, cut it.
 
 CRITICAL RULES:
 1. EVERY lab value outside optimal range MUST be addressed. Do NOT skip ANY abnormal finding, even if it seems unrelated to the chief complaint. Every monitor/urgent value gets a discussion point and test recommendation.
@@ -171,7 +178,13 @@ ALL LAB VALUES:
 ${allLabsStr.slice(0, 4000)}
 
 Return JSON:
-{"generated_at":"${new Date().toISOString()}","document_date":"${new Date().toISOString().split('T')[0]}","executive_summary":["3-5 plain English bullets"],"chief_complaint":"one sentence","hpi":"2-3 sentences","pmh":"","medications":[{"name":"","dose":"","notable_depletion":""}],"review_of_systems":{"constitutional":"","cardiovascular":"","gastrointestinal":"","endocrine":""},"lab_summary":{"draw_date":"","lab_name":"","urgent_findings":[{"marker":"","value":"","flag":"","clinical_note":""}],"other_abnormal":[{"marker":"","value":"","flag":""}]},"tests_to_request":[{"test_name":"","clinical_justification":"1 sentence","icd10_primary":"","icd10_description":"","priority":"urgent|high|moderate","insurance_note":""}],"advanced_screening":[{"test_name":"","clinical_justification":"1 sentence — pattern-based reason this rare condition needs ruling out","icd10_primary":"","icd10_description":"","priority":"high|moderate","insurance_note":"may require specialist referral"}],"discussion_points":["1-2 sentences, lead with the ask"],"patient_questions":["plain language"],"functional_medicine_note":"2-3 sentences"}` }],
+{"generated_at":"${new Date().toISOString()}","document_date":"${new Date().toISOString().split('T')[0]}","headline":"one 12-word verdict — the single most important thing for this visit","executive_summary":["3-5 plain English bullets, 1 sentence each"],"chief_complaint":"one sentence","hpi":"2-3 sentences in plain English","pmh":"","medications":[{"name":"","dose":"","notable_depletion":""}],"review_of_systems":{"constitutional":"","cardiovascular":"","gastrointestinal":"","endocrine":""},"lab_summary":{"draw_date":"","lab_name":"","urgent_findings":[{"emoji":"🚨","marker":"","value":"","flag":"","clinical_note":"plain English, 1 sentence"}],"other_abnormal":[{"emoji":"⚠️","marker":"","value":"","flag":""}]},"tell_doctor":[{"emoji":"💬","headline":"6-10 word headline of what to tell the doctor","detail":"1 sentence plain-English context"}],"tests_to_request":[{"emoji":"🧪","test_name":"","why_short":"6-10 word reason in plain English","clinical_justification":"1 sentence","icd10_primary":"","icd10_description":"","priority":"urgent|high|moderate","insurance_note":""}],"advanced_screening":[{"emoji":"🔬","test_name":"","why_short":"6-10 word reason","clinical_justification":"1 sentence — why this rare condition needs ruling out","icd10_primary":"","icd10_description":"","priority":"high|moderate","insurance_note":"may require specialist referral"}],"questions_to_ask":[{"emoji":"❓","question":"the exact plain-language question to read aloud","why":"1 sentence why it matters"}],"discussion_points":["1-2 sentences, lead with the ask"],"patient_questions":["plain language fallback list"],"functional_medicine_note":"2-3 sentences in plain English"}
+
+CRITICAL OUTPUT RULES (for the new card-stack UI):
+- tell_doctor: 3-5 cards. The most important things this patient must mention (chief complaint, key symptoms, key abnormal lab in lay terms).
+- tests_to_request: keep the existing rules — max 6, one workup per row.
+- questions_to_ask: 3-5 plain-language questions the patient can literally read aloud at the visit.
+- Every card has an emoji and a short headline so it's scannable in 2 seconds.` }],
       }),
     });
 
@@ -251,6 +264,9 @@ Return JSON:
     if (!Array.isArray(doc.discussion_points)) doc.discussion_points = [];
     if (!Array.isArray(doc.executive_summary)) doc.executive_summary = [];
     if (!Array.isArray(doc.patient_questions)) doc.patient_questions = [];
+    if (!Array.isArray(doc.tell_doctor)) doc.tell_doctor = [];
+    if (!Array.isArray(doc.questions_to_ask)) doc.questions_to_ask = [];
+    if (!doc.headline) doc.headline = '';
     if (!Array.isArray(doc.medication_alternatives)) doc.medication_alternatives = [];
     if (!doc.review_of_systems) doc.review_of_systems = {};
     if (!doc.lab_summary) doc.lab_summary = { draw_date: '', lab_name: '', urgent_findings: [], other_abnormal: [] };

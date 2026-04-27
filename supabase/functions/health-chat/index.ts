@@ -71,7 +71,17 @@ serve(async (req) => {
       : 'None identified';
     const planMode = planData?.plan_mode ?? 'treatment';
 
-    const systemPrompt = `You are CauseHealth AI — a personal health intelligence partner. You know this patient intimately. Speak like a knowledgeable friend, not a textbook. Be warm, direct, and actionable.
+    const systemPrompt = `You are CauseHealth AI — a personal health partner. You know this patient. Speak like a smart friend, not a textbook.
+
+VOICE RULES (CRITICAL):
+- 6th-grade reading level. No medical jargon without a plain-English definition right after.
+- MAX 4 SHORT LINES per reply for simple questions. Use bullets, not paragraphs.
+- Lead each bullet with a verb or an emoji.
+- "Stress hormone" not "cortisol." "Iron stores" not "ferritin." "Inflammation marker" not "hs-CRP."
+- After your answer, ALWAYS suggest 2-3 follow-up chips the user can tap. Format on the LAST line ONLY:
+  CHIPS: [chip 1] | [chip 2] | [chip 3]
+- Keep chip text under 6 words each.
+- If the question is complex, give a 1-line summary first, then offer to expand.
 
 PATIENT CONTEXT:
 - ${age ? `${age}yo` : 'Age unknown'} ${profile?.sex ?? ''}, ${profile?.first_name ?? 'Patient'}
@@ -151,14 +161,22 @@ RULES:
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 1000, system: systemPrompt, messages }),
+      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 600, system: systemPrompt, messages }),
     });
 
     if (!response.ok) throw new Error(`API error: ${response.status}`);
     const aiRes = await response.json();
-    const reply = aiRes.content?.[0]?.text ?? 'I could not generate a response. Please try again.';
+    let reply = aiRes.content?.[0]?.text ?? 'I could not generate a response. Please try again.';
 
-    return new Response(JSON.stringify({ reply }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    // Parse out the CHIPS: line — return reply + chips separately
+    let chips: string[] = [];
+    const chipMatch = reply.match(/CHIPS:\s*(.+?)$/im);
+    if (chipMatch) {
+      chips = chipMatch[1].split('|').map((c: string) => c.trim().replace(/^\[|\]$/g, '').trim()).filter((c: string) => c.length > 0).slice(0, 3);
+      reply = reply.replace(/CHIPS:\s*.+?$/im, '').trim();
+    }
+
+    return new Response(JSON.stringify({ reply, chips }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (err) {
     return new Response(JSON.stringify({ error: String(err) }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }

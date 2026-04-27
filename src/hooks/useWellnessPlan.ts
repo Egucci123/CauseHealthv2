@@ -11,15 +11,43 @@ export interface SupplementItem {
   sourced_from: string; evidence_note: string;
 }
 
+export interface TodayAction {
+  emoji: string;
+  action: string;
+  why: string;
+  category: 'eat' | 'move' | 'take' | 'sleep' | 'stress';
+}
+
+export interface MealItem {
+  emoji: string;
+  name: string;
+  when: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+  ingredients: string[];
+  why: string;
+}
+
+export interface WorkoutItem {
+  emoji: string;
+  day: string;
+  title: string;
+  duration_min: number;
+  description: string;
+  why: string;
+}
+
 export interface WellnessPlanData {
   generated_at: string;
+  headline?: string;
   summary: string;
-  supplement_stack: SupplementItem[];
+  today_actions?: TodayAction[];
+  meals?: MealItem[];
+  workouts?: WorkoutItem[];
+  supplement_stack: (SupplementItem & { emoji?: string; why_short?: string })[];
   lifestyle_interventions: {
-    diet: { intervention: string; rationale: string; priority: string }[];
-    sleep: { intervention: string; rationale: string; priority: string }[];
-    exercise: { intervention: string; rationale: string; priority: string }[];
-    stress: { intervention: string; rationale: string; priority: string }[];
+    diet: { emoji?: string; intervention: string; rationale: string; priority: string }[];
+    sleep: { emoji?: string; intervention: string; rationale: string; priority: string }[];
+    exercise: { emoji?: string; intervention: string; rationale: string; priority: string }[];
+    stress: { emoji?: string; intervention: string; rationale: string; priority: string }[];
   };
   action_plan: {
     phase_1: { name: string; focus: string; actions: string[] };

@@ -9,13 +9,14 @@ interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: string;
+  chips?: string[];
 }
 
 const QUICK_PROMPTS = [
-  { label: 'Top 5 priorities', prompt: 'What are my top 5 health priorities right now based on my labs?' },
-  { label: 'Explain my labs', prompt: 'Summarize my lab results simply — what should I focus on?' },
-  { label: "Today's plan", prompt: 'What should I do today based on my wellness plan?' },
-  { label: 'Supplements', prompt: 'When should I take each supplement today and why?' },
+  { label: 'Why am I tired?', prompt: 'Why am I tired? Use my labs to explain.' },
+  { label: 'Explain my labs', prompt: 'Explain my lab results in plain English in 1 minute.' },
+  { label: "Today's 3 things", prompt: 'What 3 things should I do today?' },
+  { label: 'Top priorities', prompt: 'What are my top 3 health priorities right now?' },
 ];
 
 export const FloatingChat = () => {
@@ -54,7 +55,8 @@ export const FloatingChat = () => {
       });
       const data = await res.json();
       const reply = data.reply ?? data.error ?? 'Something went wrong. Please try again.';
-      setMessages(prev => [...prev, { role: 'assistant', content: reply, timestamp: new Date().toISOString() }]);
+      const chips: string[] = Array.isArray(data.chips) ? data.chips : [];
+      setMessages(prev => [...prev, { role: 'assistant', content: reply, timestamp: new Date().toISOString(), chips }]);
     } catch {
       setMessages(prev => [...prev, { role: 'assistant', content: 'Connection error. Please try again.', timestamp: new Date().toISOString() }]);
     } finally {
@@ -130,16 +132,32 @@ export const FloatingChat = () => {
                 </div>
               )}
 
-              {messages.map((msg, i) => (
-                <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[85%] px-3 py-2 ${msg.role === 'user'
-                    ? 'bg-primary-container text-white rounded-[12px] rounded-br-[4px]'
-                    : 'bg-clinical-white border border-outline-variant/10 text-clinical-charcoal rounded-[12px] rounded-bl-[4px]'
-                  }`}>
-                    <p className="text-body text-[0.8rem] leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+              {messages.map((msg, i) => {
+                const isLastAssistant = msg.role === 'assistant' && i === messages.length - 1;
+                return (
+                  <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                    <div className={`max-w-[85%] px-3 py-2 ${msg.role === 'user'
+                      ? 'bg-primary-container text-white rounded-[12px] rounded-br-[4px]'
+                      : 'bg-clinical-white border border-outline-variant/10 text-clinical-charcoal rounded-[12px] rounded-bl-[4px]'
+                    }`}>
+                      <p className="text-body text-[0.8rem] leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                    </div>
+                    {isLastAssistant && msg.chips && msg.chips.length > 0 && !loading && (
+                      <div className="flex flex-wrap gap-1.5 mt-1.5 max-w-[85%]">
+                        {msg.chips.map((chip, ci) => (
+                          <button
+                            key={ci}
+                            onClick={() => sendMessage(chip)}
+                            className="text-precision text-[0.6rem] font-bold px-2.5 py-1 bg-clinical-white border border-primary-container/30 text-primary-container hover:bg-primary-container/5 rounded-full"
+                          >
+                            {chip}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
 
               {loading && (
                 <div className="flex justify-start">
