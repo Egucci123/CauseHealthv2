@@ -60,7 +60,21 @@ CRITICAL RULES:
 4. TESTS: One focused workup per "suggested_tests" entry — same organ system only. Do NOT bundle "iron + thyroid + autoimmune + celiac" into one row. Each test name should be ordering-friendly.
 5. WRITING STYLE: Plain English. Instead of "HPA-axis dysregulation" say "your stress hormones are elevated." Instead of "hepatocellular dysfunction" say "your liver is working harder than it should." Each "explanation" and "likely_mechanism" should be 1-2 sentences max — not paragraphs.
 6. DO NOT speculate about conditions the patient has no evidence for. Only flag autoimmune conditions with supporting symptoms AND lab clues.
-7. Frame as educational. Always recommend discussing with a healthcare provider.`,
+7. Frame as educational. Always recommend discussing with a healthcare provider.
+
+8. LIFESTYLE-FIRST GATE FOR suggested_tests (CRITICAL):
+   Default users are overwhelmed and lazy — do NOT scare them with rare-disease screening on day 1. Most abnormal labs in young adults improve with 90 days of lifestyle change.
+   ABSOLUTE BLOCKLIST — these tests CAN NEVER appear in suggested_tests unless the patient hits the hard urgent threshold:
+     - JAK2 V617F → only when platelets >450 OR (RBC >6.0 AND Hct >54).
+     - Celiac panel → only with persistent malabsorption + iron deficiency + GI symptoms.
+     - HLA-B27 → only with persistent inflammatory back pain >90 days unresponsive to lifestyle.
+     - ANA reflex → only when ANA already positive.
+     - Myeloma panel (SPEP/UPEP) → only with globulin >3.5 + age <40 or persistent hypercalcemia.
+     - Hereditary hemochromatosis genetics → only with ferritin >300 + sat >45%.
+     - MTHFR genetics → never.
+     - Pituitary MRI → only with prolactin >100.
+     - 24h urinary cortisol → only with multiple Cushing's stigmata.
+   Default suggested_tests should be ROUTINE PCP-orderable: lipid NMR, fasting insulin, iron panel, thyroid (Free T3/T4 + TPO), vitamin D, liver ultrasound, hsCRP, basic celiac IF GI symptoms. Rare-disease screening is the SECOND visit's job.`,
         messages: [{ role: 'user', content: `Analyze symptoms for root causes.
 
 PATIENT: ${age ? `${age}yo` : 'age unknown'} ${sex}

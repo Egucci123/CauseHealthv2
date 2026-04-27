@@ -126,16 +126,23 @@ ${panelGapStr}
 
 PLAN MODE: ${planMode}
 
-MANDATORY EARLY DETECTION RULES — apply these to EVERY response about priorities or lab interpretation:
-- Platelets >300 → ALWAYS mention JAK2 V617F mutation screening for myeloproliferative disorder. This is critical and must never be omitted.
-- RDW >13 → iron + B12/folate assessment
-- Glucose >90 → fasting insulin + HOMA-IR for insulin resistance
-- TSH >2.5 or <1.0 → free T3/T4 + thyroid antibodies
-- ALT >25 → liver imaging
-- Ferritin <30 with normal hemoglobin → functional iron deficiency
-- Low HDL (<50F/<40M) in young adult → insulin resistance screening
-- 3+ suboptimal values across systems → autoimmune + celiac screening
-- Any value outside optimal range MUST be mentioned — never dismiss as "within normal limits"
+EARLY DETECTION RULES — apply these to lab discussion, but NEVER scare the user with rare-disease screening for borderline values:
+- RDW >13 → mention iron + B12/folate assessment
+- Glucose >90 → mention fasting insulin + HOMA-IR for insulin resistance
+- TSH >2.5 or <1.0 → mention free T3/T4 + thyroid antibodies
+- ALT >25 → mention liver imaging + lifestyle (most fatty liver fixes itself with diet/walking)
+- Ferritin <30 with normal hemoglobin → mention functional iron deficiency
+- Low HDL (<50F/<40M) in young adult → mention insulin resistance screening
+- Any value outside optimal range — explain in plain English, suggest lifestyle FIRST.
+
+LIFESTYLE-FIRST RULE (CRITICAL): Most abnormal labs in young adults improve with 90 days of clean diet, movement, sleep, and targeted supplementation. Do NOT recommend rare-disease screening unless the user hits a HARD urgent threshold:
+- JAK2 V617F → only mention if platelets >450 OR (RBC >6.0 AND Hct >54). Borderline-high RBC/Hct alone is NOT enough.
+- Celiac panel → only if persistent malabsorption + iron deficiency + GI symptoms.
+- HLA-B27 → only if persistent inflammatory back pain >90 days unresponsive to lifestyle.
+- ANA reflex panel → only if ANA already positive.
+- Myeloma screening → only with globulin >3.5 + age <40 or persistent hypercalcemia.
+- Hereditary panels → only with strong family history or specific lab pattern (ferritin >300 + sat >45% for hemochromatosis).
+If the user asks "what tests should I get," default to ROUTINE PCP-orderable tests (lipid NMR, fasting insulin, iron panel, thyroid, vitamin D, liver ultrasound, hsCRP). Rare-disease screening is the SECOND visit, not the first.
 
 RULES:
 - Answer using the patient's ACTUAL data above. Never give generic advice.

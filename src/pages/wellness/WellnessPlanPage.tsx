@@ -287,8 +287,20 @@ export const WellnessPlanPage = () => {
                 {plan.plan_mode === 'optimization' && (
                   <span className="text-precision text-[0.55rem] font-bold px-2 py-0.5 bg-[#2A9D8F] text-white rounded">LONGEVITY</span>
                 )}
-                <Button variant="ghost" size="sm" icon="download" onClick={handleExportPDF}>PDF</Button>
-                <Button variant="ghost" size="sm" icon="refresh" onClick={handleGenerate}>Regenerate</Button>
+                <button
+                  onClick={handleExportPDF}
+                  className="inline-flex items-center gap-1.5 text-precision text-[0.65rem] font-bold tracking-wider uppercase px-3 py-1.5 bg-white/10 hover:bg-white/20 text-on-surface rounded transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[14px]">download</span>
+                  PDF
+                </button>
+                <button
+                  onClick={handleGenerate}
+                  className="inline-flex items-center gap-1.5 text-precision text-[0.65rem] font-bold tracking-wider uppercase px-3 py-1.5 bg-[#D4A574] hover:bg-[#B8915F] text-clinical-charcoal rounded transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[14px]">refresh</span>
+                  Regenerate
+                </button>
               </div>
             </div>
             <p className="text-body text-on-surface-variant text-sm leading-relaxed">{plan.summary}</p>
