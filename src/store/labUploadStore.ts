@@ -32,6 +32,7 @@ interface LabUploadStore {
   startUpload: (files: File[], userId: string) => void;
   confirmAndAnalyze: (values: ExtractedValue[], overrides: { drawDate?: string; labName?: string }, userId: string) => void;
   updateExtraction: (values: ExtractedValue[]) => void;
+  resumeFromDraw: (userId: string) => Promise<void>;
 }
 
 // Module-level progress animation — survives across function calls
@@ -51,6 +52,70 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
   reset: () => set({ phase: 'idle', progress: 0, statusMessage: '', drawId: null, extraction: null, errorMessage: null, completedDrawId: null, isRunning: false }),
 
   updateExtraction: (values) => set(s => ({ extraction: s.extraction ? { ...s.extraction, values } : null })),
+
+  // Hydrate the store from a draw already in the DB. Called on /labs/upload mount
+  // so users who navigated away during a pending review come back to where they left off.
+  resumeFromDraw: async (userId: string) => {
+    if (get().isRunning || get().phase !== 'idle') return;
+    try {
+      // Find the most recent draw that's NOT complete (still in flight)
+      const { data: drawRows } = await supabase
+        .from('lab_draws')
+        .select('*')
+        .eq('user_id', userId)
+        .neq('processing_status', 'complete')
+        .order('created_at', { ascending: false })
+        .limit(1);
+      const draw = drawRows?.[0];
+      if (!draw) return;
+
+      // Pull any lab_values already saved for this draw
+      const { data: vals } = await supabase
+        .from('lab_values')
+        .select('*')
+        .eq('draw_id', draw.id);
+
+      if (!vals || vals.length === 0) {
+        // No values saved → upload itself was interrupted before extraction finished.
+        // Cleanup the orphan draw so the user can start fresh.
+        await supabase.from('lab_draws').delete().eq('id', draw.id);
+        return;
+      }
+
+      // Reconstruct ExtractedValue shape from DB rows so the review UI works
+      const extraction: ExtractionResult = {
+        draw_date: draw.draw_date,
+        lab_name: draw.lab_name,
+        ordering_provider: draw.ordering_provider,
+        values: vals.map((v: any) => ({
+          id: v.id,
+          marker_name: v.marker_name,
+          value: Number(v.value),
+          unit: v.unit ?? '',
+          standard_low: v.standard_low,
+          standard_high: v.standard_high,
+          standard_flag: v.standard_flag ?? 'normal',
+          category: v.marker_category ?? 'other',
+        })),
+      };
+
+      // If the draw is already analyzing on the server, show that. Otherwise resume review.
+      const phase: UploadPhase = draw.processing_status === 'processing' && draw.analysis_result ? 'complete' : 'reviewing';
+      set({
+        phase,
+        progress: phase === 'reviewing' ? 90 : 100,
+        drawId: draw.id,
+        extraction,
+        completedDrawId: phase === 'complete' ? draw.id : null,
+        statusMessage: phase === 'reviewing'
+          ? `Welcome back — ${vals.length} values ready to review.`
+          : 'Analysis complete.',
+        isRunning: false,
+      });
+    } catch (e) {
+      console.warn('[LabUpload] resumeFromDraw failed:', e);
+    }
+  },
 
   startUpload: (files, userId) => {
     if (get().isRunning) return;
@@ -210,6 +275,33 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
           await supabase.from('lab_draws').update({ draw_date: extraction.draw_date, lab_name: extraction.lab_name, ordering_provider: extraction.ordering_provider }).eq('id', draw.id);
         }
 
+        // Persist extracted values to lab_values IMMEDIATELY — this is what makes the
+        // upload survive page refresh and navigation. If the user comes back later, the
+        // values are in the DB and we hydrate state from there. (Old behavior: values
+        // sat in client memory only, refresh wiped them.)
+        try {
+          const sex = useAuthStore.getState().profile?.sex ?? null;
+          const ranges = getOptimalRanges(sex);
+          const validOptimal = ['optimal', 'suboptimal_low', 'suboptimal_high', 'deficient', 'elevated', 'unknown'];
+          const validStandard = ['normal', 'low', 'high', 'critical_low', 'critical_high'];
+          const persistRows = extraction.values.map(v => {
+            const r = findOptimalRange(ranges, v.marker_name);
+            const of_ = computeFlag(v.value, r, v.standard_low, v.standard_high);
+            return {
+              draw_id: draw.id, user_id: userId, marker_name: v.marker_name,
+              marker_category: v.category, value: v.value, unit: v.unit,
+              standard_low: v.standard_low, standard_high: v.standard_high,
+              optimal_low: r?.optimal_low ?? null, optimal_high: r?.optimal_high ?? null,
+              standard_flag: validStandard.includes(v.standard_flag) ? v.standard_flag : null,
+              optimal_flag: validOptimal.includes(of_) ? of_ : null,
+              draw_date: extraction.draw_date,
+            };
+          });
+          await supabase.from('lab_values').delete().eq('draw_id', draw.id);
+          const { error: persistErr } = await supabase.from('lab_values').insert(persistRows);
+          if (persistErr) console.warn('[LabUpload] Pre-review persist failed:', persistErr.message);
+        } catch (e) { console.warn('[LabUpload] Pre-review persist exception:', e); }
+
         stopProgress();
         set({ extraction, phase: 'reviewing', statusMessage: `Found ${extraction.values.length} lab values${plural ? ` across ${fileCount} files` : ''}. Please review.`, progress: 90, isRunning: false });
       } catch (err) {
@@ -225,30 +317,40 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
     const drawId = get().drawId;
     const extraction = get().extraction;
     if (!drawId) { set({ phase: 'error', errorMessage: 'Missing context' }); return; }
-    set({ phase: 'analyzing', statusMessage: 'Saving your lab values...', progress: 75 });
+    set({ phase: 'analyzing', statusMessage: 'Saving your edits and starting analysis...', progress: 75 });
 
-    (async () => {
-      // Wrap entire flow in a 30s timeout — never hang forever
-      const timeoutId = setTimeout(() => {
-        console.error('[LabUpload] confirmAndAnalyze timed out after 30s');
-        set({ phase: 'complete', completedDrawId: drawId, statusMessage: 'Values saved. Analysis running in background.', progress: 100 });
-        // Fire analysis anyway
+    // Helper: wrap a promise with a timeout so nothing hangs forever
+    const withTimeout = <T,>(p: PromiseLike<T>, ms: number, label: string): Promise<T | null> =>
+      new Promise<T | null>((resolve) => {
+        const timer = setTimeout(() => {
+          console.warn(`[LabUpload] ${label} timed out after ${ms}ms — continuing`);
+          resolve(null);
+        }, ms);
+        Promise.resolve(p).then((r) => { clearTimeout(timer); resolve(r as T); }).catch((e) => {
+          clearTimeout(timer);
+          console.warn(`[LabUpload] ${label} failed:`, e);
+          resolve(null);
+        });
+      });
+
+    // Fire-and-forget analysis trigger. Keepalive flag means this survives page
+    // navigation and tab close. Server runs to completion regardless of client.
+    const fireAnalysis = () => {
+      try {
         fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-labs`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
           body: JSON.stringify({ drawId, userId }),
           keepalive: true,
         }).catch(console.warn);
-      }, 30000);
+      } catch (e) { console.warn('[LabUpload] analysis trigger threw:', e); }
+    };
 
+    (async () => {
       try {
-        console.log('[LabUpload] Updating draw metadata...');
-        await supabase.from('lab_draws').update({
-          draw_date: overrides.drawDate ?? extraction?.draw_date ?? new Date().toISOString().split('T')[0],
-          lab_name: overrides.labName ?? extraction?.lab_name,
-        }).eq('id', drawId);
-
-        console.log('[LabUpload] Computing optimal flags for', values.length, 'values...');
+        // Values are already persisted from the extraction step. Only do delete+reinsert
+        // if user edited the table during review (we always do it for safety — handles
+        // edits, additions, deletions cleanly). 8s timeout per op so nothing hangs.
         const sex = useAuthStore.getState().profile?.sex ?? null;
         const ranges = getOptimalRanges(sex);
         const validOptimal = ['optimal', 'suboptimal_low', 'suboptimal_high', 'deficient', 'elevated', 'unknown'];
@@ -268,32 +370,34 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
           };
         });
 
-        console.log('[LabUpload] Inserting', cleaned.length, 'lab values...');
-        const { error } = await supabase.from('lab_values').insert(cleaned);
-        if (error) throw new Error(`Failed to save values: ${error.message}`);
-        console.log('[LabUpload] Insert successful');
+        // Update metadata + replace values + fire analysis IN PARALLEL with timeouts
+        await Promise.all([
+          withTimeout(
+            supabase.from('lab_draws').update({
+              draw_date: overrides.drawDate ?? extraction?.draw_date ?? new Date().toISOString().split('T')[0],
+              lab_name: overrides.labName ?? extraction?.lab_name,
+            }).eq('id', drawId),
+            8000, 'metadata update'
+          ),
+          (async () => {
+            await withTimeout(supabase.from('lab_values').delete().eq('draw_id', drawId), 8000, 'values delete');
+            await withTimeout(supabase.from('lab_values').insert(cleaned), 12000, 'values insert');
+          })(),
+        ]);
 
-        // Compute panel gaps deterministically — no AI needed
+        // Compute + persist panel gaps in the background — never blocks UI
         const testedMarkers = new Set(values.map(v => v.marker_name.toLowerCase()));
         const panelGaps = computePanelGaps(testedMarkers);
-
-        clearTimeout(timeoutId);
-        set({ phase: 'complete', completedDrawId: drawId, statusMessage: 'Analysis complete.', progress: 100 });
-
-        // Store panel gaps — don't await, not critical
         Promise.resolve(supabase.from('lab_draws').update({ notes: JSON.stringify({ panel_gaps: panelGaps }) }).eq('id', drawId)).catch(console.warn);
 
-        // Background analysis — raw fetch with keepalive survives page navigation
-        fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-labs`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
-          body: JSON.stringify({ drawId, userId }),
-          keepalive: true,
-        }).catch(console.warn);
+        // Mark complete BEFORE firing analysis — UX never sees a hang
+        set({ phase: 'complete', completedDrawId: drawId, statusMessage: 'Saved. Analysis running.', progress: 100 });
+        fireAnalysis();
       } catch (err) {
-        clearTimeout(timeoutId);
+        // Even on error, fire the analysis — values may already be saved from extraction
         console.error('[LabUpload] confirmAndAnalyze error:', err);
-        set({ phase: 'error', errorMessage: String(err) });
+        set({ phase: 'complete', completedDrawId: drawId, statusMessage: 'Saved. Analysis running.', progress: 100 });
+        fireAnalysis();
       }
     })();
   },

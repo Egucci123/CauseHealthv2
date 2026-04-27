@@ -15,9 +15,16 @@ export const LabUpload = () => {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const user = useAuthStore(s => s.user);
-  const { phase, progress, statusMessage, drawId, extraction, errorMessage, completedDrawId, reset, startUpload, confirmAndAnalyze } = useLabUploadStore();
+  const { phase, progress, statusMessage, drawId, extraction, errorMessage, completedDrawId, reset, startUpload, confirmAndAnalyze, resumeFromDraw } = useLabUploadStore();
 
   const isActive = ['uploading', 'extracting', 'analyzing'].includes(phase);
+
+  // On mount, check for any in-flight draw and hydrate state from DB.
+  // Fixes the "navigated away during review → came back to nothing" bug.
+  useEffect(() => {
+    if (!user) return;
+    if (phase === 'idle') resumeFromDraw(user.id);
+  }, [user, phase, resumeFromDraw]);
 
   useEffect(() => {
     if (phase === 'complete' && completedDrawId) {
