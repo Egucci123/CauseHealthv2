@@ -34,20 +34,13 @@ export const Dashboard = () => {
 
   return (
     <AppShell pageTitle="Intelligence Hub">
-      {/* Dark hero card — same DNA as every other page now */}
+      {/* Dark hero card — clean text only. Score lives below in its own light card. */}
       <div className="bg-[#131313] rounded-[14px] p-6 shadow-card">
-        <div className="flex items-start justify-between gap-3 flex-wrap">
-          <div className="flex-1 min-w-0">
-            <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-[#D4A574] mb-2">{dateLine}</p>
-            <h1 className="text-authority text-3xl md:text-4xl text-on-surface font-bold leading-tight">
-              {greeting()}{firstName ? `, ${firstName}` : ''}.
-            </h1>
-            <p className="text-body text-on-surface-variant text-sm mt-2 max-w-md">Your health, summarized. Today's actions, what's changing in your bloodwork, what's calling for attention.</p>
-          </div>
-          <div className="flex-shrink-0">
-            <HealthScoreRing score={healthScore} loading={valuesLoading} analyzing={hasProcessingDraw} />
-          </div>
-        </div>
+        <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-[#D4A574] mb-2">{dateLine}</p>
+        <h1 className="text-authority text-3xl md:text-4xl text-on-surface font-bold leading-tight">
+          {greeting()}{firstName ? `, ${firstName}` : ''}.
+        </h1>
+        <p className="text-body text-on-surface-variant text-sm mt-2 max-w-md">Your health, summarized. Today's actions, what's changing in your bloodwork, what's calling for attention.</p>
       </div>
 
       {/* Today card — biggest call-to-action */}
@@ -57,14 +50,20 @@ export const Dashboard = () => {
 
       <QuickActions />
 
-      {/* Body intelligence row: bio age + organ ages */}
+      {/* Score + Bio age row — both on light cards so the colored ring is readable */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <PrimaryCard status="brand" padding="lg">
+          <p className="text-precision text-[0.68rem] font-bold text-clinical-stone tracking-widest uppercase mb-6">Health Intelligence Score</p>
+          <HealthScoreRing score={healthScore} loading={valuesLoading} analyzing={hasProcessingDraw} />
+        </PrimaryCard>
         <PrimaryCard status="brand" padding="lg">
           <BiologicalAgeWidget />
         </PrimaryCard>
-        <PrimaryCard status="brand" padding="lg">
-          <OrganAgesWidget />
-        </PrimaryCard>
+      </div>
+
+      {/* Organ ages — dark green gradient card matching the Wellness forecast */}
+      <div className="bg-gradient-to-br from-[#1B423A] to-[#0F2A24] rounded-[14px] p-6 shadow-card">
+        <OrganAgesWidget darkMode />
       </div>
 
       {/* Priority alerts: full width — these are the urgent findings */}
