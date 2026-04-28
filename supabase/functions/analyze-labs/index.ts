@@ -250,20 +250,28 @@ CRITICAL RULES:
       const prolactin = findVal(['prolactin']);
       const age = profile?.date_of_birth ? Math.floor((Date.now() - new Date(profile.date_of_birth).getTime()) / 31_557_600_000) : 99;
 
-      // Tightened thresholds — borderline-high values do NOT trigger
-      // rare-disease screening. Patients see this in their PDF and get
-      // alarmed unnecessarily.
+      // Age-aware thresholds. Reactive thrombocytosis / hyperferritinemia
+      // are common in older patients (chronic disease, infection).
+      // Same numbers in a young patient are more likely to reflect
+      // primary disease and warrant earlier workup.
       const hgbVal = findVal(['hemoglobin', 'hgb']);
+      const isYoung = age < 40;
+      const isMidAge = age < 50;
       const allowJak2 =
-        (platelets ?? 0) > 600 ||                                  // sustained thrombocytosis
-        ((rbc ?? 0) > 6.0 && (hct ?? 0) > 54) ||                   // both extreme
-        ((hgbVal ?? 0) > 17 && (hct ?? 0) > 52);                   // WHO PV criterion
+        (platelets ?? 0) > 600 ||
+        (isYoung && (platelets ?? 0) > 450) ||
+        (isMidAge && (platelets ?? 0) > 500) ||
+        ((rbc ?? 0) > 6.0 && (hct ?? 0) > 54) ||
+        (isYoung && (rbc ?? 0) > 5.7 && (hct ?? 0) > 51) ||
+        ((hgbVal ?? 0) > 17 && (hct ?? 0) > 52);
       const allowAnaReflex = (ana ?? 0) > 0;
       const allowMyeloma =
         (globulin ?? 0) > 5 ||
-        ((globulin ?? 0) > 3.5 && age < 40) ||
+        ((globulin ?? 0) > 3.5 && isYoung) ||
         (calcium ?? 0) > 11.5;
-      const allowHemochromGenetics = (ferritin ?? 0) > 300 && (transferrinSat ?? 0) > 50; // bumped 45 -> 50 (AASLD)
+      const allowHemochromGenetics =
+        ((ferritin ?? 0) > 300 && (transferrinSat ?? 0) > 50) ||
+        (isYoung && (ferritin ?? 0) > 200 && (transferrinSat ?? 0) > 45);
       const allowPituitaryMri = (prolactin ?? 0) > 100;
       const allowCalciumPth = (calcium ?? 0) > 11;
 
