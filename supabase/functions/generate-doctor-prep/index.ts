@@ -35,9 +35,13 @@ serve(async (req) => {
     const sympStr = symptoms.slice(0, 10).map((s: any) => `${s.symptom} - Severity: ${s.severity}/10`).join('\n') || 'None';
     const condStr = conditions.map((c: any) => c.name).join(', ') || 'None reported';
 
-    const allLabsStr = labValues.map((v: any) =>
-      `${v.marker_name}: ${v.value} ${v.unit ?? ''} (Ref: ${v.standard_low ?? '?'}–${v.standard_high ?? '?'}) ${v.standard_flag && v.standard_flag !== 'normal' ? '[' + v.standard_flag.toUpperCase() + ']' : ''}`
-    ).join('\n') || 'No labs';
+    // Tag each lab with its flag from the new range model
+    // (healthy/watch/low/high/critical_*) so the AI prioritizes correctly.
+    const allLabsStr = labValues.map((v: any) => {
+      const flag = (v.optimal_flag ?? v.standard_flag ?? '').toUpperCase();
+      const tag = flag && flag !== 'NORMAL' && flag !== 'HEALTHY' ? ` [${flag}]` : '';
+      return `${v.marker_name}: ${v.value} ${v.unit ?? ''} (Ref: ${v.standard_low ?? '?'}–${v.standard_high ?? '?'})${tag}`;
+    }).join('\n') || 'No labs';
 
     // Goals → readable labels for prompt tailoring
     const GOAL_LABELS: Record<string, string> = {
@@ -74,39 +78,21 @@ GLOBAL VOICE RULES (CRITICAL — apply to EVERY string in the JSON):
 - Users scan, they don't read. If a sentence isn't pulling weight, cut it.
 
 CRITICAL RULES:
-1. EVERY lab value outside optimal range MUST be addressed. Do NOT skip ANY abnormal finding, even if it seems unrelated to the chief complaint. Every monitor/urgent value gets a discussion point and test recommendation.
-2. PATTERN RECOGNITION: Look for multi-marker patterns that point to specific undiagnosed conditions. Connect abnormal values across organ systems. Examples of patterns to detect (apply universally, not just these):
-   - Elevated platelets + elevated RDW + fatigue → iron deficiency anemia, chronic inflammation, or myeloproliferative disorder — order iron panel, peripheral smear, JAK2 if persistent
-   - Elevated globulin + low albumin → chronic infection, autoimmune disease, or liver dysfunction
-   - Low HDL + elevated triglycerides + borderline glucose → metabolic syndrome / insulin resistance
-   - Elevated liver enzymes + elevated bilirubin → hepatotoxicity, hemolysis, or biliary disease
-   - Low CO2 + low chloride → metabolic acidosis, chronic diarrhea, or renal tubular issue
-   - Elevated WBC + elevated RDW + fatigue → occult infection, stress response, or hematologic process
-   Flag EVERY pattern you find in the executive_summary and dedicate a discussion_point to each. The goal is EARLY DETECTION — find what the doctor's 12-minute appointment will miss.
-3. VALUES ABOVE OPTIMAL BUT WITHIN STANDARD RANGE ARE NOT SAFE TO IGNORE. If a value exceeds optimal range, it requires investigation even if the standard lab report says "normal." This is what CauseHealth exists for. MANDATORY follow-up rules (apply to ALL patients):
-   - Platelets >300 → peripheral smear + JAK2 V617F mutation (myeloproliferative screening)
-   - RDW >13 → iron panel + B12/folate + reticulocyte count (early anemia/deficiency detection)
-   - Fasting glucose >90 → fasting insulin + HOMA-IR (insulin resistance often hides behind "normal" glucose)
-   - TSH >2.5 OR <1.0 → free T3 + free T4 + TPO + thyroglobulin antibodies (subclinical thyroid disease)
-   - ALT >25 → liver ultrasound + hepatitis panel (fatty liver disease starts well before "abnormal" range)
-   - Vitamin D <40 → repletion protocol + recheck in 8 weeks
-   - Homocysteine >8 → B12/folate/B6 + consider MTHFR (cardiovascular and neurologic risk)
-   - hs-CRP >1 → full inflammatory workup + autoimmune screening
-   - WBC >10 → differential + infection/inflammation workup
-   - Any combination of 3+ suboptimal values across different organ systems → screen for autoimmune disease, celiac, and metabolic syndrome regardless of chief complaint
-   ADDITIONAL EARLY DETECTION RULES:
-   - AST/ALT ratio >2 → screen for alcoholic liver disease + macrocytic anemia panel (often missed when both enzymes are within standard range)
-   - Triglyceride/HDL ratio >3.5 → strongest insulin resistance predictor; order fasting insulin + HOMA-IR + ApoB even if A1c is normal
-   - HbA1c >5.4 → fasting insulin + HOMA-IR (catches insulin resistance before glucose rises)
-   - MCH/MCV mismatch (low MCV with relatively normal MCH) → thalassemia trait screening (commonly missed in non-anemic patients)
-   - Globulin >3.5 in patient under 40 → urgent SPEP + UPEP + free light chains (multiple myeloma screening, even if albumin normal)
-   - Eosinophils >5% or absolute count >0.5 → parasitic stool studies + IgE + atopic disease workup
-   - Lymphocytes >40% with absolute count >4.0 (persistent across draws) → flow cytometry to rule out CLL; also check EBV/CMV serologies
-   - Reverse T3 elevation (when measured) → assess chronic stress, illness, or thyroid hormone resistance
-   - Polyuria + urine specific gravity <1.005 → diabetes insipidus screening (water deprivation test if confirmed)
-   - Calcium variability >0.4 mg/dL across draws → repeat with simultaneous PTH (hyperparathyroidism)
-   - Elevated RBC + hematocrit at upper limit + bilirubin elevated → secondary polycythemia vs primary MPN: order JAK2 V617F + erythropoietin level
-   - Positive ANA → reflex panel: anti-dsDNA, anti-Sm, anti-Ro/La, anti-Scl-70, anti-Jo-1, complement C3/C4
+1. RANGE MODEL — three states, treat them differently. Each lab in the labs section is tagged with its flag.
+   - HEALTHY (within standard, not on Watch list) → DO NOT add to lab_summary.urgent_findings. Mention only as part of a pattern.
+   - WATCH (within standard, on Watch list — HbA1c 5.4-5.6, ApoB ≥90, hs-CRP ≥0.5, fasting glucose 95-99, ferritin <50, vitamin D 30-40, etc.) → add to lab_summary.urgent_findings with calm tone. The point is lifestyle adjustment + 3-month retest, not rare-disease screening.
+   - LOW / HIGH / CRITICAL_* (out of standard) → urgent_findings. Each gets a clinical note + tests_to_request entry if a specific test would investigate.
+   The Watch list is curated. Do NOT add markers to it. Functional-medicine "optimal" ranges are deliberately not the trigger — many users will be high-normal on ALT/MCV/RDW/TSH/etc. and that is clinically fine.
+
+2. PATTERN RECOGNITION: Multi-marker patterns are the highest-value finding even when individual markers look OK. Each pattern goes in executive_summary AND a discussion_point. Examples:
+   - Triglycerides high + glucose high-normal + HDL low + waist gain → insulin resistance pattern → fasting insulin + HOMA-IR + ApoB.
+   - ALT out of range + triglycerides high + weight gain → NAFLD pattern → liver ultrasound + GGT.
+   - Hair loss + fatigue + ferritin <50 → functional iron deficiency → full iron panel.
+   - 3+ Watch or out-of-range values clustering in one organ system → escalate that system.
+
+3. WHEN TO RECOMMEND TESTS (tests_to_request):
+   Default rule — only recommend a test when there's a SPECIFIC abnormal finding (out-of-range OR Watch-tier) that the test would investigate. Healthy values do not earn follow-up tests.
+   The blocklist (rule below) still applies — rare-disease screening only fires at threshold.
    YOUNG ADULT EARLY DETECTION (under 30 — these are commonly missed for YEARS):
    - Ferritin <30 even with normal hemoglobin → functional iron deficiency (causes fatigue, hair loss, brain fog LONG before anemia shows)
    - Low HDL (<50 female, <40 male) in teens/20s → early metabolic syndrome, NOT "just genetics" — test insulin
