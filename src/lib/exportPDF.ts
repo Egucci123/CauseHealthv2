@@ -103,6 +103,30 @@ interface PanelGapPDF {
   icd10?: { code: string; description: string }[];
 }
 
+// jsPDF's standard fonts don't support emoji or many unicode symbols —
+// they render as garbled bytes ("Ø=Ý4") that often eat adjacent text.
+// Strip everything outside the basic Latin-1 range and a few safe symbols
+// before passing strings to pdf.text / splitTextToSize.
+const stripUnsupportedChars = (s: string): string => {
+  if (!s) return '';
+  return s
+    // Remove emoji and pictographic ranges
+    .replace(/[\u{1F300}-\u{1FAFF}]/gu, '')
+    .replace(/[\u{2600}-\u{27BF}]/gu, '')
+    .replace(/[\u{1F000}-\u{1F2FF}]/gu, '')
+    .replace(/[\u{FE00}-\u{FE0F}]/gu, '') // variation selectors
+    .replace(/[\u{200D}]/gu, '') // ZWJ used in emoji sequences
+    // Replace common smart-punct that helvetica handles inconsistently
+    .replace(/[‘’]/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/[–—]/g, '-')
+    .replace(/…/g, '...')
+    // Keep printable ASCII + Latin-1 supplement; drop the rest
+    .replace(/[^\x20-\xFF\n]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
 // Doctor Prep PDF
 export function exportDoctorPrepPDF(doc: DoctorPrepDocument, userName: string, panelGaps: PanelGapPDF[] = []) {
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -136,26 +160,26 @@ export function exportDoctorPrepPDF(doc: DoctorPrepDocument, userName: string, p
   // Chief Complaint
   addSectionHeader('Chief Complaint');
   pdf.setFontSize(9); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(26, 26, 26);
-  const ccLines = pdf.splitTextToSize(doc.chief_complaint, contentW);
+  const ccLines = pdf.splitTextToSize(stripUnsupportedChars(doc.chief_complaint), contentW);
   pdf.text(ccLines, margin, y); y += ccLines.length * 4.5 + 2;
 
   // HPI
   addSectionHeader('History of Present Illness');
   pdf.setFontSize(9); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(26, 26, 26);
-  const hpiLines = pdf.splitTextToSize(doc.hpi, contentW);
+  const hpiLines = pdf.splitTextToSize(stripUnsupportedChars(doc.hpi), contentW);
   pdf.text(hpiLines, margin, y); y += hpiLines.length * 4.5 + 2;
 
   // PMH
   addSectionHeader('Past Medical History');
   pdf.setFontSize(9); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(26, 26, 26);
-  const pmhLines = pdf.splitTextToSize(doc.pmh, contentW);
+  const pmhLines = pdf.splitTextToSize(stripUnsupportedChars(doc.pmh), contentW);
   pdf.text(pmhLines, margin, y); y += pmhLines.length * 4.5 + 2;
 
   // Medications
   addSectionHeader('Current Medications');
   doc.medications.forEach(med => {
     checkPage(8);
-    const line = `• ${med.name}${med.dose ? ` — ${med.dose}` : ''}${med.notable_depletion ? ` (depletes ${med.notable_depletion})` : ''}`;
+    const line = stripUnsupportedChars(`- ${med.name}${med.dose ? ` - ${med.dose}` : ''}${med.notable_depletion ? ` (depletes ${med.notable_depletion})` : ''}`);
     pdf.setFontSize(8); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(26, 26, 26);
     const lines = pdf.splitTextToSize(line, contentW);
     pdf.text(lines, margin, y); y += lines.length * 3.5 + 1;
@@ -163,15 +187,15 @@ export function exportDoctorPrepPDF(doc: DoctorPrepDocument, userName: string, p
 
   // Lab Findings
   if (doc.lab_summary?.urgent_findings?.length) {
-    addSectionHeader(`Lab Results — ${doc.lab_summary.lab_name ?? ''} (${doc.lab_summary.draw_date ?? ''})`);
+    addSectionHeader(`Lab Results - ${stripUnsupportedChars(doc.lab_summary.lab_name ?? '')} (${doc.lab_summary.draw_date ?? ''})`);
     pdf.setFontSize(7); pdf.setFont('helvetica', 'bold'); pdf.setTextColor('#C94F4F');
     pdf.text('FINDINGS REQUIRING ATTENTION:', margin, y); y += 5;
     doc.lab_summary.urgent_findings.forEach(f => {
       checkPage(10);
       pdf.setFontSize(8); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(26, 26, 26);
-      pdf.text(`${f.marker}: ${f.value} [${f.flag.toUpperCase()}]`, margin + 2, y); y += 4;
+      pdf.text(stripUnsupportedChars(`${f.marker}: ${f.value} [${f.flag.toUpperCase()}]`), margin + 2, y); y += 4;
       pdf.setFont('helvetica', 'italic'); pdf.setFontSize(7.5); pdf.setTextColor(107, 107, 107);
-      const nLines = pdf.splitTextToSize(f.clinical_note, contentW - 4);
+      const nLines = pdf.splitTextToSize(stripUnsupportedChars(f.clinical_note), contentW - 4);
       pdf.text(nLines, margin + 4, y); y += nLines.length * 3.5 + 2;
     });
   }
@@ -181,12 +205,12 @@ export function exportDoctorPrepPDF(doc: DoctorPrepDocument, userName: string, p
   doc.tests_to_request?.forEach((test, i) => {
     checkPage(22);
     pdf.setFontSize(9); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(26, 26, 26);
-    pdf.text(`${i + 1}. ${test.test_name} [${test.priority.toUpperCase()}]`, margin, y); y += 5;
+    pdf.text(stripUnsupportedChars(`${i + 1}. ${test.test_name} [${test.priority.toUpperCase()}]`), margin, y); y += 5;
     pdf.setFontSize(7.5); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(107, 107, 107);
-    pdf.text(`ICD-10: ${test.icd10_primary} — ${test.icd10_description}`, margin + 3, y); y += 4;
-    if (test.icd10_secondary) { pdf.text(`ICD-10: ${test.icd10_secondary} — ${test.icd10_secondary_description}`, margin + 3, y); y += 4; }
+    pdf.text(stripUnsupportedChars(`ICD-10: ${test.icd10_primary} - ${test.icd10_description}`), margin + 3, y); y += 4;
+    if (test.icd10_secondary) { pdf.text(stripUnsupportedChars(`ICD-10: ${test.icd10_secondary} - ${test.icd10_secondary_description}`), margin + 3, y); y += 4; }
     pdf.setTextColor(26, 26, 26);
-    const jLines = pdf.splitTextToSize(test.clinical_justification, contentW - 3);
+    const jLines = pdf.splitTextToSize(stripUnsupportedChars(test.clinical_justification), contentW - 3);
     pdf.text(jLines, margin + 3, y); y += jLines.length * 3.5 + 5;
   });
 
@@ -253,8 +277,10 @@ export function exportDoctorPrepPDF(doc: DoctorPrepDocument, userName: string, p
     checkPage(10);
     pdf.setFontSize(8); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(26, 26, 26);
     // Handle both string and object discussion points
-    const text = typeof point === 'string' ? point : (typeof point === 'object' && point !== null ? Object.values(point).filter(v => typeof v === 'string').join(' — ') : String(point));
-    const lines = pdf.splitTextToSize(`• ${text}`, contentW);
+    const raw = typeof point === 'string' ? point : (typeof point === 'object' && point !== null ? Object.values(point).filter(v => typeof v === 'string').join(' - ') : String(point));
+    const text = stripUnsupportedChars(raw);
+    if (!text) return;
+    const lines = pdf.splitTextToSize(`- ${text}`, contentW);
     pdf.text(lines, margin, y); y += lines.length * 3.5 + 2;
   });
 
