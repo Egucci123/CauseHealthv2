@@ -133,11 +133,11 @@ export function useGenerateWellnessPlan() {
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-    // 90-second hard timeout — Anthropic + Supabase combined latency should
-    // finish in ~30s; anything longer means the function hung or the
-    // network silently dropped. Without this the spinner ran forever.
+    // 120-second hard timeout — Supabase Edge Functions have a 150s hard
+    // cap, and our prompt + JSON output regularly takes 60-90s. 120s gives
+    // a buffer without exceeding the gateway timeout.
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 90_000);
+    const timeoutId = setTimeout(() => controller.abort(), 120_000);
 
     activeGeneration = fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-wellness-plan`, {
       method: 'POST',
@@ -159,7 +159,7 @@ export function useGenerateWellnessPlan() {
       return data as WellnessPlanData;
     }).catch((err: any) => {
       if (err?.name === 'AbortError') {
-        throw new Error('Generation took too long (90s). The server may be slow — try again in a moment.');
+        throw new Error('Generation took too long (120s). The AI is overloaded — wait a minute and try again.');
       }
       throw err;
     }).finally(() => {

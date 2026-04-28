@@ -166,41 +166,11 @@ MEDICATIONS: ${medsStr}
 CURRENT SUPPLEMENTS (already taking — do NOT re-recommend; account for lab interactions and avoid stacking duplicates): ${suppsStr}
 SYMPTOMS (for context only — do NOT supplement based on symptoms alone): ${sympStr}
 
-MEDICATION-INDUCED NUTRIENT DEPLETIONS (must appear in supplement_stack as sourced_from "medication_depletion" if the user is on the drug AND not already supplementing):
-- Statins (atorvastatin, rosuvastatin, simvastatin, etc.): deplete CoQ10 → 100-200mg ubiquinol/day. Also deplete vitamin K2 (mildly).
-- Metformin: depletes B12 (often subclinically before serum drops) → 500-1000mcg methylcobalamin.
-- PPIs (omeprazole, pantoprazole, esomeprazole, etc.): deplete B12, magnesium, calcium, iron → B12 + magnesium glycinate.
-- Mesalamine / sulfasalazine: deplete folate (sulfasalazine especially) and B-vitamins → methylfolate 400-800mcg.
-- Oral contraceptives: deplete B6, B12, folate, magnesium, zinc, vitamin C, selenium → B-complex with active forms + magnesium + zinc.
-- Oral steroids (prednisone, prednisolone): deplete calcium, vitamin D, potassium, magnesium → calcium + D3 + magnesium; also probiotic for gut.
-- Loop diuretics (furosemide, torsemide): deplete magnesium, potassium, B1 (thiamine), calcium, zinc → magnesium + B1.
-- Thiazide diuretics (HCTZ): deplete magnesium, potassium, zinc, CoQ10 → magnesium + CoQ10.
-- ACE inhibitors / ARBs: deplete zinc → zinc.
-- Beta-blockers: deplete CoQ10, melatonin → CoQ10.
-- SSRIs: deplete melatonin (subtle) — generally don't need supplementation, but flag.
-- Levothyroxine: doesn't deplete but interacts with calcium/iron (4-hour spacing required).
-- Antibiotics (any course): deplete probiotics → S. boulardii or multi-strain probiotic post-course.
-- Gabapentin / Pregabalin: deplete folate, B1.
+MED→DEPLETION (use as "medication_depletion" if user takes the drug and is not already supplementing the nutrient): statin→CoQ10 100-200mg ubiquinol; metformin→B12 500-1000mcg methyl; PPI→B12+Mg glycinate; mesalamine/sulfasalazine→methylfolate 400-800mcg; oral contraceptive→B-complex+Mg+Zn; oral steroid→Ca+D3+Mg; loop diuretic→Mg+B1; thiazide→Mg+CoQ10; beta-blocker→CoQ10; ACE/ARB→Zn; antibiotic course→S. boulardii post-course.
 
-CONDITION-SPECIFIC SUPPLEMENT REQUIREMENTS (must appear in supplement_stack as "disease_mechanism" unless contraindicated or already supplementing):
-- Ulcerative Colitis / Crohn's / IBD: gut barrier support — L-glutamine 5g/day OR slippery elm; anti-inflammatory — curcumin (with piperine) 500-1000mg/day; omega-3 EPA/DHA 2-3g/day; vitamin D (often deficient from malabsorption — push higher dose); S. boulardii probiotic 5-10B CFU/day. Recommend at least 2 of these.
-- Hashimoto's / autoimmune thyroid: selenium 200mcg/day (well-evidenced for lowering TPO antibodies).
-- Type 2 Diabetes / insulin resistance (lab-confirmed): berberine 500mg 2-3x/day OR alpha-lipoic acid 600mg/day; chromium 200-400mcg/day; magnesium.
-- PCOS: myo-inositol + d-chiro-inositol (40:1 ratio) 4g/day; vitamin D; omega-3.
-- Migraines (recurring): riboflavin (B2) 400mg/day; magnesium 400mg/day; CoQ10 100mg/day.
-- Restless legs syndrome: iron (if ferritin <75); magnesium glycinate.
-- Endometriosis: omega-3; curcumin; vitamin D; magnesium.
-- Hypertension (essential): magnesium; potassium (food first); CoQ10 (especially if on beta-blocker/statin); omega-3.
-- GERD on chronic PPI: B12; magnesium; zinc carnosine (gut healing).
-- Osteoporosis / osteopenia: calcium 800-1000mg; vitamin D3 2000-5000 IU; vitamin K2 100-200mcg MK-7; magnesium.
-- Major Depression / Anxiety: omega-3 EPA-dominant 1-2g; vitamin D; magnesium glycinate.
-- Atrial fibrillation: magnesium taurate; CoQ10; omega-3.
-- Heart failure: CoQ10 100-300mg; D-ribose; thiamine (loop diuretic depletion).
-- Chronic kidney disease: avoid high-dose vitamin C, magnesium, potassium without nephrologist input — flag in disclaimer.
-- Liver disease (NAFLD, hepatitis): NAC; milk thistle; omega-3; vitamin E (mixed tocopherols, NAFLD specifically).
-- Dementia / mild cognitive impairment: omega-3 DHA-dominant; B-vitamins (esp B12, folate); vitamin D; creatine.
+CONDITION→SUPPLEMENT (use as "disease_mechanism" if confirmed diagnosis, not already supplementing): UC/Crohn's→L-glutamine 5g + curcumin+piperine 500mg + omega-3 2g + S. boulardii (pick ≥2); Hashimoto's→selenium 200mcg; T2D/IR (lab-confirmed)→berberine 500mg 2-3x or ALA 600mg + Mg; PCOS→myo+d-chiro inositol 40:1 4g; migraines→B2 400mg+Mg 400mg+CoQ10; AFib→Mg taurate+CoQ10+omega-3; NAFLD→NAC+milk thistle+vitamin E; osteoporosis→Ca+D3+K2 MK-7+Mg; depression/anxiety→omega-3 EPA-dom+D+Mg; CKD→flag warning, avoid high Mg/K/C without nephrologist.
 
-If a medication AND a condition both indicate the same supplement, list it once and note both reasons in the why field.
+If a med and a condition both indicate the same supplement, list once with both reasons in why.
 
 SUPPLEMENT-LAB INTERACTION KNOWLEDGE (use when interpreting labs and building stack):
 - Biotin (>1mg/day): falsely alters TSH/T3/T4/Troponin/Vit D — pause 72hr before retest.
