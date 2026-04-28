@@ -130,10 +130,14 @@ export function useGenerateWellnessPlan() {
     setGenerating(true);
 
     // Grab a fresh JWT — edge function authenticates the user via Bearer token.
-    // Without this the request was silently rejected at the gateway and the
-    // user just saw the page bounce back with no feedback.
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+    // 90-second hard timeout — Anthropic + Supabase combined latency should
+    // finish in ~30s; anything longer means the function hung or the
+    // network silently dropped. Without this the spinner ran forever.
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 90_000);
 
     activeGeneration = fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-wellness-plan`, {
       method: 'POST',
@@ -143,6 +147,7 @@ export function useGenerateWellnessPlan() {
         'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify({ userId }),
+      signal: controller.signal,
     }).then(async (res) => {
       let data: any;
       try { data = await res.json(); } catch { data = null; }
@@ -152,7 +157,13 @@ export function useGenerateWellnessPlan() {
       }
       qc.setQueryData(['wellness-plan', userId], data as WellnessPlanData);
       return data as WellnessPlanData;
+    }).catch((err: any) => {
+      if (err?.name === 'AbortError') {
+        throw new Error('Generation took too long (90s). The server may be slow — try again in a moment.');
+      }
+      throw err;
     }).finally(() => {
+      clearTimeout(timeoutId);
       activeGeneration = null;
       generatingFlag = false;
       setGenerating(false);
