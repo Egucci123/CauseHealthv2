@@ -66,7 +66,13 @@ export interface LabValue {
   standardLow: number | null; standardHigh: number | null;
   optimalLow: number | null; optimalHigh: number | null;
   standardFlag: 'normal' | 'low' | 'high' | 'critical_low' | 'critical_high' | null;
-  optimalFlag: 'optimal' | 'suboptimal_low' | 'suboptimal_high' | 'deficient' | 'elevated' | null;
+  /** Status of marker against standard lab range:
+   *  - healthy: within standard range
+   *  - watch: within standard, on Watch list (e.g. HbA1c 5.4-5.6)
+   *  - low / high: outside standard, mild
+   *  - critical_low / critical_high: outside standard, severe
+   *  Field name kept as optimalFlag for DB compat — see lab_values table. */
+  optimalFlag: 'healthy' | 'watch' | 'low' | 'high' | 'critical_low' | 'critical_high' | null;
   drawDate: string | null;
 }
 

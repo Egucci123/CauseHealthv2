@@ -23,8 +23,19 @@ interface AnalysisFinding { marker: string; flag: string; headline: string; expl
 
 interface LabMarkerCardProps { value: LabValueRow; analysis?: AnalysisFinding | null; onAddToPrep?: (markerName: string) => void; }
 
+// Maps the new flag values back to the 3-state UI badge:
+//   urgent  — out of standard range (mild or critical)
+//   monitor — within standard but on Watch list
+//   optimal — within standard, not Watch (i.e. healthy)
+// Old flags (optimal/suboptimal_*/deficient/elevated) still mapped for
+// backward compat with rows saved before the range model overhaul.
 function getStatus(flag: string | undefined | null): 'urgent' | 'monitor' | 'optimal' {
   if (!flag) return 'optimal';
+  // New flags
+  if (flag === 'critical_low' || flag === 'critical_high' || flag === 'low' || flag === 'high') return 'urgent';
+  if (flag === 'watch') return 'monitor';
+  if (flag === 'healthy') return 'optimal';
+  // Old flags (DB rows pre-overhaul)
   if (flag === 'deficient' || flag === 'elevated') return 'urgent';
   if (flag === 'suboptimal_low' || flag === 'suboptimal_high') return 'monitor';
   return 'optimal';

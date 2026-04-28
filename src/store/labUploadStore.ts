@@ -347,7 +347,7 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
         try {
           const sex = useAuthStore.getState().profile?.sex ?? null;
           const ranges = getOptimalRanges(sex);
-          const validOptimal = ['optimal', 'suboptimal_low', 'suboptimal_high', 'deficient', 'elevated', 'unknown'];
+          const validOptimal = ['healthy', 'watch', 'low', 'high', 'critical_low', 'critical_high', 'unknown'];
           const validStandard = ['normal', 'low', 'high', 'critical_low', 'critical_high'];
           const persistRows = extraction.values.map(v => {
             const r = findOptimalRange(ranges, v.marker_name);
@@ -418,7 +418,7 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
         // edits, additions, deletions cleanly). 8s timeout per op so nothing hangs.
         const sex = useAuthStore.getState().profile?.sex ?? null;
         const ranges = getOptimalRanges(sex);
-        const validOptimal = ['optimal', 'suboptimal_low', 'suboptimal_high', 'deficient', 'elevated', 'unknown'];
+        const validOptimal = ['healthy', 'watch', 'low', 'high', 'critical_low', 'critical_high', 'unknown'];
         const validStandard = ['normal', 'low', 'high', 'critical_low', 'critical_high'];
 
         const cleaned = values.map(v => {
@@ -652,28 +652,82 @@ const HIGHER_IS_BETTER = [
   'amh', 'anti-mullerian',
 ];
 
+// ── Watch list ──────────────────────────────────────────────────────────────
+// Markers where high-normal (or low-normal) within the standard lab range
+// genuinely predicts disease trajectory and is worth pushing back from. Not
+// applied universally — only these specific markers have a "Watch" tier.
+// Returns reason text if the value qualifies, null otherwise.
+export function checkWatchList(value: number, markerName: string): string | null {
+  const n = (markerName ?? '').toLowerCase();
+  // HbA1c 5.4-5.6 — prediabetes path
+  if (/\b(hba1c|hemoglobin a1c|a1c)\b/.test(n) && value >= 5.4 && value <= 5.6)
+    return 'Trending toward prediabetes — push down with diet and movement.';
+  // Fasting glucose 95-99
+  if ((/fasting glucose/.test(n) || /^glucose/.test(n) || /glucose,? serum/.test(n)) && value >= 95 && value <= 99)
+    return 'High-normal blood sugar — early signal before prediabetes.';
+  // ApoB ≥90
+  if (/(apolipoprotein b|\bapo\s*b\b|apob)/.test(n) && value >= 90)
+    return 'High-normal cholesterol particle count — CV risk worth lowering.';
+  // Triglycerides 120-149 (within standard <150)
+  if (/triglyceride/.test(n) && value >= 120 && value < 150)
+    return 'Trending high — early metabolic syndrome marker.';
+  // HDL 40-49 (within standard but lower-protective)
+  if (/(\bhdl\b|hdl cholesterol)/.test(n) && value >= 40 && value < 50)
+    return 'Lower-end protective cholesterol — exercise and omega-3 raise it.';
+  // hs-CRP 0.5-1.0 (cardio risk band, still within standard <3)
+  if (/(hs-?crp|c-reactive protein,? cardiac|high sensitivity c)/.test(n) && value >= 0.5 && value < 3)
+    return 'Detectable inflammation — track and reduce.';
+  // Homocysteine 10-15 (within standard <15)
+  if (/homocysteine/.test(n) && value >= 10 && value < 15)
+    return 'High-normal homocysteine — B-vitamins help.';
+  // Uric acid 6.5-7.5 (within standard <8)
+  if (/uric acid/.test(n) && value > 6.5 && value < 8)
+    return 'Metabolic syndrome / gout signal worth tracking.';
+  // Vitamin D 30-40 (mild deficiency, within standard 30-100)
+  if (/(vitamin d|25-oh|25-hydroxy)/.test(n) && value >= 30 && value <= 40)
+    return 'Mild deficiency — fixable with supplementation.';
+  // Ferritin <50 (within standard, but functional iron deficiency band)
+  if (/^ferritin/.test(n) && value < 50)
+    return 'Low iron stores — early signal before anemia shows.';
+  return null;
+}
+
+// ── Flag computation ────────────────────────────────────────────────────────
+// New 4-state model:
+//   healthy       — within standard range
+//   watch         — within standard, on Watch list with reason
+//   low / high    — outside standard, mildly
+//   critical_low / critical_high — outside standard, severely (panic territory)
+//   unknown       — no standard range available
+// Severity threshold: more than 25% past stdLow/stdHigh = critical.
 function computeFlag(
   value: number,
-  range: { optimal_low: number; optimal_high: number } | null,
+  _range: { optimal_low: number; optimal_high: number } | null,
   stdLow?: number | null,
   stdHigh?: number | null,
   markerName?: string,
 ): string {
-  if (!range) return 'unknown';
-  const n = (markerName ?? '').toLowerCase();
+  void _range; // optimal range still stored for chart bands but no longer drives flag
+  const name = markerName ?? '';
+  const n = name.toLowerCase();
   const higherIsBetter = HIGHER_IS_BETTER.some(k => n.includes(k));
 
-  const lowThreshold = stdLow != null ? stdLow : range.optimal_low * 0.5;
-  if (value < lowThreshold) return 'deficient';
-  if (value < range.optimal_low) return 'suboptimal_low';
+  if (stdLow == null && stdHigh == null) return 'unknown';
 
-  // For higher-is-better markers, anything ≥ optimal_low is optimal — never flag high
-  if (higherIsBetter) return 'optimal';
+  if (stdHigh != null && value > stdHigh) {
+    if (higherIsBetter) return 'healthy'; // high is good (HDL, eGFR)
+    const margin = (value - stdHigh) / Math.max(Math.abs(stdHigh), 1);
+    return margin > 0.25 ? 'critical_high' : 'high';
+  }
+  if (stdLow != null && value < stdLow) {
+    const margin = (stdLow - value) / Math.max(Math.abs(stdLow), 1);
+    return margin > 0.25 ? 'critical_low' : 'low';
+  }
 
-  const highThreshold = stdHigh != null ? stdHigh : range.optimal_high * 2;
-  if (value > highThreshold) return 'elevated';
-  if (value > range.optimal_high) return 'suboptimal_high';
-  return 'optimal';
+  // Within standard range — check Watch list
+  const watchReason = checkWatchList(value, name);
+  if (watchReason) return 'watch';
+  return 'healthy';
 }
 
 // ── Panel gap analysis — deterministic, no AI ───────────────────────────────
