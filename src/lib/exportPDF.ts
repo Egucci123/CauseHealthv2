@@ -190,28 +190,29 @@ export function exportDoctorPrepPDF(doc: DoctorPrepDocument, userName: string, p
     pdf.text(jLines, margin + 3, y); y += jLines.length * 3.5 + 5;
   });
 
-  // Recommended Additional Testing — deterministic panel gaps with patient
-  // scripts and ICD-10 codes. This is the "doctor coverage" section.
+  // Comprehensive Health Screening — the clinical case for ordering
+  // a full workup. Frames the patient as deserving thorough evaluation,
+  // not as "asking for stuff." Each test has rationale + ICD-10 coverage.
   if (panelGaps && panelGaps.length > 0) {
     const tierMeta: Record<PanelGapPDF['category'], { label: string; subtitle: string }> = {
       essential: {
-        label: 'Essential Baseline',
-        subtitle: 'Every adult should have these. Insurance covers under listed ICD-10 codes.',
+        label: 'Tier 1 — Foundational Workup',
+        subtitle: 'Standard-of-care annual labs that catch endocrine, metabolic, and hematologic dysfunction before it progresses to disease.',
       },
       recommended: {
-        label: 'Functional Medicine',
-        subtitle: 'Root-cause baseline beyond standard care. ICD-10 justifies coverage.',
+        label: 'Tier 2 — Comprehensive Metabolic & Inflammatory Workup',
+        subtitle: 'Identifies insulin resistance, micronutrient deficiency, subclinical inflammation, and early thyroid dysfunction missed by basic panels. Catches root causes 5–10 years before standard markers shift.',
       },
       advanced: {
-        label: 'Longevity & Optimization',
-        subtitle: 'Deeper preventive markers. ICD-10 codes ensure insurance coverage.',
+        label: 'Tier 3 — Advanced Cardiovascular & Endocrine Risk Stratification',
+        subtitle: 'Cardiovascular particle analysis, genetic risk markers, adrenal and gonadal function. Identifies high-risk patients who appear "normal" on conventional labs.',
       },
     };
-    addSectionHeader('Recommended Additional Testing — Patient-Requested');
-    pdf.setFontSize(8); pdf.setFont('helvetica', 'italic'); pdf.setTextColor(107, 107, 107);
-    const intro = 'The patient is requesting the following tests. Each entry includes the patient\'s exact request, clinical rationale, and ICD-10 codes that justify insurance coverage.';
+    addSectionHeader('Comprehensive Health Screening — Recommended for This Patient');
+    pdf.setFontSize(8); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(26, 26, 26);
+    const intro = 'CLINICAL CASE FOR COMPREHENSIVE TESTING: Standard annual labs miss early dysfunction. The following tiered workup is designed to surface metabolic, hormonal, inflammatory, and cardiovascular risks that are clinically actionable but not detected by routine panels. Each test below includes ICD-10 codes that justify insurance coverage. Ordering this workup gives a complete baseline and identifies issues 5–10 years before they manifest as disease.';
     const introLines = pdf.splitTextToSize(intro, contentW);
-    pdf.text(introLines, margin, y); y += introLines.length * 3.5 + 4;
+    pdf.text(introLines, margin, y); y += introLines.length * 3.8 + 5;
 
     (['essential', 'recommended', 'advanced'] as const).forEach(tier => {
       const tierGaps = panelGaps.filter(g => g.category === tier);
@@ -227,23 +228,20 @@ export function exportDoctorPrepPDF(doc: DoctorPrepDocument, userName: string, p
         checkPage(28);
         pdf.setFontSize(9); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(26, 26, 26);
         pdf.text(`${i + 1}. ${g.test_name}`, margin, y); y += 4.5;
-        pdf.setFontSize(7.5); pdf.setFont('helvetica', 'italic'); pdf.setTextColor(80, 80, 80);
-        const whyLines = pdf.splitTextToSize(`Clinical rationale: ${g.why_needed}`, contentW - 3);
+        pdf.setFontSize(7.5); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(60, 60, 60);
+        const whyLines = pdf.splitTextToSize(`Clinical indication: ${g.why_needed}.`, contentW - 3);
         pdf.text(whyLines, margin + 3, y); y += whyLines.length * 3.5 + 1;
-        if (g.script) {
-          pdf.setFont('helvetica', 'normal'); pdf.setTextColor(26, 26, 26);
-          const scriptLines = pdf.splitTextToSize(`Patient request: ${g.script}`, contentW - 3);
-          pdf.text(scriptLines, margin + 3, y); y += scriptLines.length * 3.5 + 1;
-        }
         if (g.icd10 && g.icd10.length) {
-          pdf.setFont('helvetica', 'normal'); pdf.setTextColor(27, 67, 50);
+          pdf.setFont('helvetica', 'bold'); pdf.setTextColor(27, 67, 50);
+          pdf.text('ICD-10 (covered):', margin + 3, y); y += 3.5;
+          pdf.setFont('helvetica', 'normal');
           g.icd10.forEach(c => {
-            const codeLine = `ICD-10: ${c.code} — ${c.description}`;
-            const codeLines = pdf.splitTextToSize(codeLine, contentW - 3);
+            const codeLine = `  ${c.code} — ${c.description}`;
+            const codeLines = pdf.splitTextToSize(codeLine, contentW - 6);
             pdf.text(codeLines, margin + 3, y); y += codeLines.length * 3.5;
           });
         }
-        y += 3;
+        y += 4;
       });
       y += 2;
     });

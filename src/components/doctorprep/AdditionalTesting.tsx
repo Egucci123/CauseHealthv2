@@ -15,20 +15,20 @@ export interface PanelGap {
 
 const TIER_META: Record<PanelGap['category'], { label: string; subtitle: string; accent: string; bg: string }> = {
   essential: {
-    label: 'Essential Baseline',
-    subtitle: "Every adult should have these. Most primary-care doctors will order them — just bring this list and ask.",
+    label: 'Tier 1 — Foundational Workup',
+    subtitle: "Standard-of-care annual labs that catch endocrine, metabolic, and hematologic dysfunction before it progresses. Most PCPs will order these — bring this page and ask.",
     accent: '#C94F4F',
     bg: 'rgba(201,79,79,0.08)',
   },
   recommended: {
-    label: 'Functional Medicine',
-    subtitle: "Root-cause baseline tests that go beyond standard care. A typical PCP probably won't order these — that's why they're here. Ask for them by name.",
+    label: 'Tier 2 — Comprehensive Metabolic & Inflammatory',
+    subtitle: "Catches insulin resistance, micronutrient deficiency, subclinical inflammation, and early thyroid dysfunction 5–10 years before standard markers shift. Doctor may push back — ICD-10 codes below justify coverage.",
     accent: '#E8922A',
     bg: 'rgba(232,146,42,0.08)',
   },
   advanced: {
-    label: 'Longevity & Optimization',
-    subtitle: "Deeper preventive markers — cardiovascular, hormonal, metabolic. Most doctors don't order these unless asked. Show this list and request them.",
+    label: 'Tier 3 — Advanced Risk Stratification',
+    subtitle: "Cardiovascular particle analysis, genetic markers, adrenal and gonadal function. Identifies high-risk patients who appear 'normal' on routine labs. If declined, request a specialist referral.",
     accent: '#2A9D8F',
     bg: 'rgba(42,157,143,0.08)',
   },
@@ -41,11 +41,11 @@ export const AdditionalTesting = ({ gaps }: { gaps: PanelGap[] }) => {
 
   return (
     <FolderSection
-      icon="add_circle"
-      title="Recommended Additional Testing"
+      icon="science"
+      title="Comprehensive Health Screening"
       count={gaps.length}
       countLabel="tests"
-      explanation="Tests every adult should have, organized by tier. Standard insurance usually covers Essential and most Functional Medicine items. Bring this list to your appointment and ask for each tier."
+      explanation="Standard annual labs miss early dysfunction. This tiered workup is designed to surface metabolic, hormonal, inflammatory, and cardiovascular risks that are clinically actionable but not detected by routine panels. Each test ships with ICD-10 codes that justify insurance coverage. Ordering this gives you a complete baseline and identifies issues 5–10 years before they manifest as disease."
       accentColor="#1B4332"
     >
       <div className="space-y-5">
