@@ -120,20 +120,36 @@ export function useGenerateWellnessPlan() {
   const generate = async () => {
     if (!userId) throw new Error('Not authenticated');
     if (activeGeneration) return activeGeneration;
-    if (Date.now() - lastGenerationTime < 30000) throw new Error('Please wait before regenerating');
+    const cooldownMs = 30000 - (Date.now() - lastGenerationTime);
+    if (cooldownMs > 0) {
+      throw new Error(`Please wait ${Math.ceil(cooldownMs / 1000)}s before regenerating.`);
+    }
 
     generatingFlag = true;
     lastGenerationTime = Date.now();
     setGenerating(true);
 
+    // Grab a fresh JWT — edge function authenticates the user via Bearer token.
+    // Without this the request was silently rejected at the gateway and the
+    // user just saw the page bounce back with no feedback.
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
+
     activeGeneration = fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-wellness-plan`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${token}`,
+      },
       body: JSON.stringify({ userId }),
     }).then(async (res) => {
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error ?? 'Generation failed');
-      // Set the new plan directly in cache — no stale data
+      let data: any;
+      try { data = await res.json(); } catch { data = null; }
+      if (!res.ok) {
+        const msg = data?.error ?? data?.message ?? `Generation failed (${res.status})`;
+        throw new Error(msg);
+      }
       qc.setQueryData(['wellness-plan', userId], data as WellnessPlanData);
       return data as WellnessPlanData;
     }).finally(() => {

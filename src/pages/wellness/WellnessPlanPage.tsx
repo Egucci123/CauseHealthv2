@@ -312,8 +312,13 @@ export const WellnessPlanPage = () => {
   }, [plan?.generated_at]);
   const showRetestCTA = planWeek != null && planWeek >= 10 && !hasNewerLabs;
 
+  const [genError, setGenError] = useState<string | null>(null);
   const handleGenerate = () => {
-    generate().catch(err => console.error('[WellnessPlan] Generation error:', err));
+    setGenError(null);
+    generate().catch(err => {
+      console.error('[WellnessPlan] Generation error:', err);
+      setGenError(err?.message ?? 'Generation failed. Please try again.');
+    });
   };
 
   const handleExportPDF = () => {
@@ -364,6 +369,12 @@ export const WellnessPlanPage = () => {
             </div>
             <p className="text-body text-on-surface-variant text-sm leading-relaxed">{plan.summary}</p>
             <p className="text-precision text-[0.55rem] text-on-surface-variant/60 mt-3">Generated {plan.generated_at ? format(new Date(plan.generated_at), 'MMM d, yyyy') : 'recently'}</p>
+            {genError && (
+              <div className="mt-4 bg-[#C94F4F]/15 border border-[#C94F4F]/40 rounded-[8px] p-3 flex items-start gap-2">
+                <span className="material-symbols-outlined text-[#FF8A8A] text-[18px] flex-shrink-0 mt-0.5">error</span>
+                <p className="text-body text-[#FFD0D0] text-sm leading-snug">{genError}</p>
+              </div>
+            )}
           </div>
 
           {/* Transformation forecast — pure math, big motivation */}
