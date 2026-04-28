@@ -67,26 +67,92 @@ const MILESTONES_INLINE: { week: number; emoji: string; label: string }[] = [
 ];
 
 // ── Today Tab ──────────────────────────────────────────────────────────────────
+// Storage shape v2: { history: { [YYYY-MM-DD]: number[] } } keeping last 60 days.
+// v1 was { date, done } and lost history when date rolled over. We migrate on read.
+type ProgressHistory = Record<string, number[]>;
+
+const loadHistory = (key: string): ProgressHistory => {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    if (parsed?.history) return parsed.history as ProgressHistory;
+    // v1 migration: { date, done } -> { history: { [date]: done } }
+    if (parsed?.date && Array.isArray(parsed?.done)) {
+      const migrated: ProgressHistory = { [parsed.date]: parsed.done };
+      localStorage.setItem(key, JSON.stringify({ history: migrated }));
+      return migrated;
+    }
+  } catch { /* ignore */ }
+  return {};
+};
+
+const saveHistory = (key: string, history: ProgressHistory) => {
+  // Keep last 60 days only
+  const cutoff = new Date(Date.now() - 60 * 86_400_000).toISOString().slice(0, 10);
+  const trimmed: ProgressHistory = {};
+  for (const [d, list] of Object.entries(history)) {
+    if (d >= cutoff) trimmed[d] = list;
+  }
+  try { localStorage.setItem(key, JSON.stringify({ history: trimmed })); } catch { /* quota */ }
+};
+
+// Compute consecutive days ending today where at least one action was checked.
+function computeStreak(history: ProgressHistory): number {
+  let streak = 0;
+  for (let i = 0; i < 60; i++) {
+    const d = new Date(Date.now() - i * 86_400_000).toISOString().slice(0, 10);
+    const list = history[d];
+    if (list && list.length > 0) streak++;
+    else if (i === 0) {
+      // No checks today — still allow yesterday-counting (don't break streak before user has checked today)
+      continue;
+    } else break;
+  }
+  return streak;
+}
+
+// Days this week (Mon-Sun) with at least one check.
+function weekCompletion(history: ProgressHistory): { done: number; total: number } {
+  const now = new Date();
+  const dow = (now.getDay() + 6) % 7; // 0 = Mon
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - dow);
+  let done = 0;
+  for (let i = 0; i <= dow; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    const k = d.toISOString().slice(0, 10);
+    if ((history[k]?.length ?? 0) > 0) done++;
+  }
+  return { done, total: dow + 1 };
+}
+
 const TodayTab = ({ plan, uid }: { plan: any; uid: string }) => {
   const actions = (plan.today_actions ?? []).slice(0, 3);
   const key = `today_progress_${uid}`;
-  const [done, setDone] = useState<number[]>([]);
+  const [history, setHistory] = useState<ProgressHistory>({});
+  const today = todayKey();
+  const done = history[today] ?? [];
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(key);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed.date === todayKey()) setDone(parsed.done ?? []);
-      }
-    } catch { /* ignore */ }
+    setHistory(loadHistory(key));
   }, [key]);
 
   const toggle = (i: number) => {
-    const nextDone = done.includes(i) ? done.filter(d => d !== i) : [...done, i];
-    setDone(nextDone);
-    try { localStorage.setItem(key, JSON.stringify({ date: todayKey(), done: nextDone })); } catch { /* quota */ }
+    setHistory(prev => {
+      const todayList = prev[today] ?? [];
+      const nextTodayList = todayList.includes(i)
+        ? todayList.filter(d => d !== i)
+        : [...todayList, i];
+      const next = { ...prev, [today]: nextTodayList };
+      saveHistory(key, next);
+      return next;
+    });
   };
+
+  const streak = useMemo(() => computeStreak(history), [history]);
+  const week = useMemo(() => weekCompletion(history), [history]);
 
   // Compute current week of 12 from plan generation
   const planWeek = useMemo(() => {
@@ -124,6 +190,30 @@ const TodayTab = ({ plan, uid }: { plan: any; uid: string }) => {
           <div className="flex items-center gap-1.5">
             <span className="text-base leading-none">{nextMilestone.emoji}</span>
             <span className="text-precision text-[0.65rem] text-clinical-charcoal">{nextMilestone.label}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Habit streak + week summary — appears once user has any check-off history */}
+      {(streak > 0 || week.done > 0) && (
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-gradient-to-br from-[#1B423A] to-[#0F2A24] rounded-[10px] p-4 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-[8px] bg-[#D4A574]/20 flex items-center justify-center flex-shrink-0">
+              <span className="material-symbols-outlined text-[#D4A574] text-[20px]">local_fire_department</span>
+            </div>
+            <div>
+              <p className="text-authority text-2xl font-bold text-[#D4A574] leading-none">{streak}</p>
+              <p className="text-precision text-[0.55rem] text-on-surface-variant tracking-widest uppercase mt-1">{streak === 1 ? 'day' : 'days'} in a row</p>
+            </div>
+          </div>
+          <div className="bg-clinical-cream rounded-[10px] p-4 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-[8px] bg-primary-container/15 flex items-center justify-center flex-shrink-0">
+              <span className="material-symbols-outlined text-primary-container text-[20px]">date_range</span>
+            </div>
+            <div>
+              <p className="text-authority text-2xl font-bold text-clinical-charcoal leading-none">{week.done}<span className="text-precision text-sm text-clinical-stone">/{week.total}</span></p>
+              <p className="text-precision text-[0.55rem] text-clinical-stone tracking-widest uppercase mt-1">this week</p>
+            </div>
           </div>
         </div>
       )}
