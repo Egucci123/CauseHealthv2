@@ -22,16 +22,16 @@ const SupplementCard = ({ item, index }: { item: SupplementItem; index: number }
       className={`bg-clinical-white rounded-[10px] shadow-card ${cfg.border} overflow-hidden`}>
       <div className="p-6">
         <div className="flex justify-between items-start gap-4 mb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-clinical-cream rounded-full flex items-center justify-center flex-shrink-0">
-              <span className="text-precision text-xs text-clinical-charcoal font-bold">{item.rank}</span>
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-11 h-11 rounded-[10px] bg-gradient-to-br from-[#1B423A] to-[#0F2A24] flex items-center justify-center flex-shrink-0 shadow-card">
+              <span className="text-authority text-lg font-bold text-[#D4A574] leading-none">{item.rank}</span>
             </div>
-            <div>
-              <h4 className="text-body text-clinical-charcoal font-semibold break-words">{item.nutrient}</h4>
-              <p className="text-precision text-[0.6rem] text-clinical-stone tracking-wide break-words">{item.form}</p>
+            <div className="min-w-0">
+              <h4 className="text-body text-clinical-charcoal font-semibold break-words leading-tight">{item.nutrient}</h4>
+              <p className="text-precision text-[0.6rem] text-clinical-stone tracking-wide break-words mt-0.5">{item.form}</p>
             </div>
           </div>
-          <span className={`${cfg.badge} text-precision text-[0.55rem] font-bold px-2 py-0.5`} style={{ borderRadius: '2px' }}>{cfg.text}</span>
+          <span className={`${cfg.badge} text-precision text-[0.55rem] font-bold px-2 py-0.5 flex-shrink-0`} style={{ borderRadius: '2px' }}>{cfg.text}</span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
@@ -72,15 +72,26 @@ const SupplementCard = ({ item, index }: { item: SupplementItem; index: number }
 
 export const SupplementStack = ({ supplements }: { supplements: SupplementItem[] }) => {
   const [filter, setFilter] = useState<'all' | 'critical' | 'high' | 'moderate' | 'optimize'>('all');
-  const displayed = filter === 'all' ? supplements : supplements.filter(s => s.priority === filter);
-  const counts = { critical: supplements.filter(s => s.priority === 'critical').length, high: supplements.filter(s => s.priority === 'high').length, moderate: supplements.filter(s => s.priority === 'moderate').length, optimize: supplements.filter(s => s.priority === 'optimize').length };
+  // Always sort by rank — AI gives a goal-aligned order that the user
+  // should see top-down. Many users only take top 2-3.
+  const sorted = [...supplements].sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99));
+  const displayed = filter === 'all' ? sorted : sorted.filter(s => s.priority === filter);
+  const counts = { critical: sorted.filter(s => s.priority === 'critical').length, high: sorted.filter(s => s.priority === 'high').length, moderate: sorted.filter(s => s.priority === 'moderate').length, optimize: sorted.filter(s => s.priority === 'optimize').length };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <SectionLabel icon="medication">Supplement Protocol</SectionLabel>
-        <p className="text-body text-clinical-stone text-sm">{supplements.length} recommendations</p>
+        <p className="text-body text-clinical-stone text-sm">{supplements.length} recommendations · ranked by your goals</p>
       </div>
+      {supplements.length > 3 && (
+        <div className="bg-[#D4A574]/10 border border-[#D4A574]/30 rounded-[10px] p-4 flex items-start gap-3">
+          <span className="material-symbols-outlined text-[#B8915F] text-[20px] flex-shrink-0 mt-0.5">tips_and_updates</span>
+          <p className="text-body text-clinical-charcoal text-sm leading-relaxed">
+            Ranked 1 to {supplements.length} by what matters most for your goals. If you can only take a few, start with <strong>#1</strong> and add the rest as budget allows.
+          </p>
+        </div>
+      )}
       <div className="flex gap-2 flex-wrap">
         {[{ id: 'all', label: `All (${supplements.length})` }, { id: 'critical', label: `Critical (${counts.critical})` }, { id: 'high', label: `High (${counts.high})` }, { id: 'moderate', label: `Moderate (${counts.moderate})` }, ...(counts.optimize > 0 ? [{ id: 'optimize', label: `Optimize (${counts.optimize})` }] : [])].map(tab => (
           <button key={tab.id} onClick={() => setFilter(tab.id as any)} style={{ borderRadius: '4px' }}

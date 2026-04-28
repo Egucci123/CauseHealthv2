@@ -121,6 +121,9 @@ HARD RULES — FOLLOW EXACTLY:
    Priority order in stack: critical > high > moderate > optimize. Treatment-tier supplements (lab_finding, medication_depletion, disease_mechanism) always rank above optimization. Each medication-induced depletion that is realistic and not already supplemented MUST appear in the stack. Each diagnosed chronic condition with strong evidence supplements MUST have at least one disease_mechanism supplement in the stack unless already in user's CURRENT SUPPLEMENTS.
    - CRITICAL: If a supplement would address a SPECULATIVE/UNTESTED condition (e.g., possible SIBO, possible celiac, possible insulin resistance with normal labs), put the recommended TEST in retest_timeline, NOT a supplement in the stack.
 2. sourced_from: "lab_finding", "medication_depletion", "disease_mechanism", or "optimization". Never "symptom_pattern".
+2a. STRICT RANKING (rank field, 1 = most important): Number every supplement 1, 2, 3... up to N (the count returned). The rank must reflect TWO factors in order: (a) alignment with the user's TOP GOALS, (b) clinical severity. Many users will only take the top 2-3 supplements — make sure rank 1 is the single most impactful one for the goals they picked. Within the same goal-alignment level, rank by severity: critical > high > moderate > optimize. Never skip rank numbers, never duplicate, never reorder mid-stack.
+   Example for a user with goal=energy taking a statin with low B12 lab and UC: rank 1 = B12 (critical lab finding + energy goal), rank 2 = CoQ10 (statin depletion + energy/fatigue), rank 3 = L-glutamine (UC mechanism), etc.
+   Example for goal=longevity with optimal labs: rank 1 = creatine 5g, rank 2 = omega-3 EPA/DHA 2g, rank 3 = vitamin D, etc.
 3. CONDITIONS — GROUND TRUTH RULE: Use the user's DIAGNOSED CONDITIONS list verbatim.
    - Never substitute related conditions (UC ≠ Crohn's, even though they share treatments).
    - MEDICATIONS DO NOT REVEAL DIAGNOSES. A prescription tells you what a doctor wrote, not what the patient has, what's active, or what's been ruled out. Many drugs treat multiple conditions. Never infer or rename a diagnosis based on what's in the meds list.
@@ -247,16 +250,20 @@ CRITICAL OUTPUT RULES:
     // Tag plan mode for frontend display
     plan.plan_mode = isOptimizationMode ? 'optimization' : 'treatment';
 
-    // HARD CAP: max 7 supplements — trim if AI returned more. Bumped from 5
-    // to leave room for medication_depletion + disease_mechanism alongside
-    // lab_finding entries on patients with multiple conditions/meds.
-    if (plan.supplement_stack && Array.isArray(plan.supplement_stack) && plan.supplement_stack.length > 7) {
-      // Preserve priority order: critical > high > moderate > optimize. Within
-      // the same priority, preserve order returned by the model.
+    // Normalize supplement_stack: cap at 7, sort by rank, renumber 1..N.
+    // Many users take only top 2-3 — rank ordering must be reliable.
+    if (plan.supplement_stack && Array.isArray(plan.supplement_stack)) {
       const priorityRank = (p: string) => p === 'critical' ? 0 : p === 'high' ? 1 : p === 'moderate' ? 2 : 3;
+      // Sort first by rank if present, otherwise by priority. Stable sort preserves AI order within ties.
       plan.supplement_stack = [...plan.supplement_stack]
-        .sort((a: any, b: any) => priorityRank(a.priority ?? 'optimize') - priorityRank(b.priority ?? 'optimize'))
-        .slice(0, 7);
+        .sort((a: any, b: any) => {
+          const ar = typeof a.rank === 'number' ? a.rank : 999;
+          const br = typeof b.rank === 'number' ? b.rank : 999;
+          if (ar !== br) return ar - br;
+          return priorityRank(a.priority ?? 'optimize') - priorityRank(b.priority ?? 'optimize');
+        })
+        .slice(0, 7)
+        .map((s: any, i: number) => ({ ...s, rank: i + 1 })); // force 1..N, no gaps or duplicates
     }
 
     // Validate before saving — never save corrupt/partial plans
