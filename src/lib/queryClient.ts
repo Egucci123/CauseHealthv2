@@ -1,22 +1,25 @@
 // src/lib/queryClient.ts
-import { QueryClient } from '@tanstack/react-query';
+import { QueryClient, keepPreviousData } from '@tanstack/react-query';
 
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // Treat data as immediately stale so any focus/visibility/mount
-      // unconditionally triggers a refetch. The cached value still renders
-      // instantly while the network request runs in the background.
-      staleTime: 0,
+      // 30s within-app freshness — page transitions reuse cache instead of
+      // refetching on every mount. Visibility/pageshow handlers below still
+      // invalidate everything when the user returns to the tab, so true
+      // "fresh data on return" still works.
+      staleTime: 30 * 1000,
       gcTime: 5 * 60 * 1000,
       retry: 2,
       retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
-      // Always refetch when a component using this query mounts.
-      refetchOnMount: 'always',
-      // 'always' = refetch on focus regardless of staleness. Required because
-      // the default ('true') only refetches if the query is past staleTime.
-      refetchOnWindowFocus: 'always',
-      refetchOnReconnect: 'always',
+      // Keep showing the previous query's data when the queryKey changes
+      // (e.g., userId transient null during route transitions). Without
+      // this, components flash a skeleton while the new key fetches.
+      placeholderData: keepPreviousData,
+      // Refetch on mount only if data is stale.
+      refetchOnMount: true,
+      refetchOnWindowFocus: true,
+      refetchOnReconnect: true,
     },
     mutations: {
       retry: 0,
