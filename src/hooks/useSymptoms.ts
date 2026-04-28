@@ -44,7 +44,8 @@ export function useSymptomAnalysis() {
       if (!userId) return null;
       const { data, error } = await supabase.from('symptom_analyses').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(1).maybeSingle();
       if (error) throw error;
-      return data ? (data.analysis_data as SymptomAnalysis) : null;
+      if (!data) return null;
+      return { ...(data.analysis_data as SymptomAnalysis), _createdAt: data.created_at as string };
     },
     enabled: !!userId, staleTime: 15 * 1000,
   });

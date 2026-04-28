@@ -1,5 +1,6 @@
 // src/pages/symptoms/SymptomMapper.tsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { AppShell } from '../../components/layout/AppShell';
 import { Button } from '../../components/ui/Button';
 import { SymptomCard } from '../../components/symptoms/SymptomCard';
@@ -7,22 +8,46 @@ import { PatternAnalysis } from '../../components/symptoms/PatternAnalysis';
 import { BodyMap } from '../../components/symptoms/BodyMap';
 import { PaywallGate } from '../../components/paywall/PaywallGate';
 import { useSubscription } from '../../lib/subscription';
-import { useSymptoms, useSymptomAnalysis, useRunSymptomAnalysis } from '../../hooks/useSymptoms';
+import { useSymptoms, useSymptomAnalysis } from '../../hooks/useSymptoms';
+import { useSymptomAnalysisStore } from '../../store/symptomAnalysisStore';
+import { useAuthStore } from '../../store/authStore';
 
 const TABS = [{ id: 'symptoms', label: 'My Symptoms', icon: 'symptoms' }, { id: 'patterns', label: 'Pattern Analysis', icon: 'pattern' }];
 
 export const SymptomMapper = () => {
   const [activeTab, setActiveTab] = useState<'symptoms' | 'patterns'>('symptoms');
-  const [analyzing, setAnalyzing] = useState(false);
   const { data: symptoms, isLoading: symptomsLoading } = useSymptoms();
   const { data: analysis } = useSymptomAnalysis();
-  const runAnalysis = useRunSymptomAnalysis();
   const { isPro } = useSubscription();
+  const userId = useAuthStore(s => s.user?.id);
+  const qc = useQueryClient();
+  const { isAnalyzing, startedAt, startAnalysis, markComplete } = useSymptomAnalysisStore();
+  const analyzing = isAnalyzing;
 
-  const handleRunAnalysis = async () => {
-    if (!isPro) return; // safety: paywall card handles UI
-    setAnalyzing(true); setActiveTab('patterns');
-    try { await runAnalysis.mutateAsync(); } finally { setAnalyzing(false); }
+  // Poll for completion while analyzing — survives navigation because the
+  // store lives outside React.
+  useEffect(() => {
+    if (!isAnalyzing) return;
+    const id = setInterval(() => {
+      qc.invalidateQueries({ queryKey: ['symptom-analysis'] });
+    }, 3000);
+    return () => clearInterval(id);
+  }, [isAnalyzing, qc]);
+
+  // When a NEW analysis lands (created_at after we started), mark complete.
+  useEffect(() => {
+    if (!isAnalyzing || !startedAt || !analysis) return;
+    const createdAt = (analysis as any)._createdAt;
+    if (!createdAt) return;
+    if (new Date(createdAt).getTime() >= startedAt - 5000) {
+      markComplete();
+    }
+  }, [isAnalyzing, startedAt, analysis, markComplete]);
+
+  const handleRunAnalysis = () => {
+    if (!isPro || !userId) return; // safety: paywall card handles UI
+    setActiveTab('patterns');
+    startAnalysis(userId);
   };
 
   const findSymptomAnalysis = (name: string) => analysis?.symptom_connections?.find(c => c.symptom.toLowerCase().includes(name.toLowerCase()) || name.toLowerCase().includes(c.symptom.toLowerCase())) ?? null;
