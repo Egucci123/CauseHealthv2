@@ -238,14 +238,32 @@ CRITICAL OUTPUT RULES:
       }),
     });
 
-    if (!response.ok) throw new Error(`API error: ${response.status}`);
+    if (!response.ok) {
+      const errBody = await response.text().catch(() => '');
+      console.error('[generate-wellness-plan] Anthropic API error', response.status, errBody);
+      throw new Error(`Anthropic API ${response.status}: ${errBody.slice(0, 200)}`);
+    }
     const aiRes = await response.json();
-    // Extract JSON from response — handle trailing text after the closing brace
+    const stopReason = aiRes.stop_reason;
+    // Extract JSON. Strip code fences. Find the FIRST { and LAST } to handle
+    // explanatory text the model may add before/after when given long prompts.
     let rawText = (aiRes.content?.[0]?.text ?? '').replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-    // Find the last closing brace to handle any trailing text
+    const firstBrace = rawText.indexOf('{');
     const lastBrace = rawText.lastIndexOf('}');
-    if (lastBrace > 0) rawText = rawText.slice(0, lastBrace + 1);
-    const plan = JSON.parse(rawText);
+    if (firstBrace >= 0 && lastBrace > firstBrace) {
+      rawText = rawText.slice(firstBrace, lastBrace + 1);
+    }
+    let plan: any;
+    try {
+      plan = JSON.parse(rawText);
+    } catch (parseErr) {
+      console.error('[generate-wellness-plan] JSON parse failed', { stopReason, len: rawText.length, head: rawText.slice(0, 300), tail: rawText.slice(-300) });
+      // If max_tokens hit, the JSON is likely truncated. Surface that clearly.
+      if (stopReason === 'max_tokens') {
+        throw new Error('Plan response was truncated (output too large). Try regenerating.');
+      }
+      throw new Error('Plan JSON parse failed: ' + String(parseErr));
+    }
 
     // Tag plan mode for frontend display
     plan.plan_mode = isOptimizationMode ? 'optimization' : 'treatment';

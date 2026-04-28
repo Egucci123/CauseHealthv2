@@ -13,9 +13,21 @@ const corsHeaders = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
+  // Parse the body BEFORE the try block so drawId is in scope of the catch.
+  // Otherwise on any error we can't mark the draw as 'failed' and the user
+  // sees the spinner forever.
+  let drawId: string | undefined;
+  let userId: string | undefined;
   try {
-    const { drawId, userId } = await req.json();
-    if (!drawId || !userId) return new Response(JSON.stringify({ error: 'drawId and userId required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    const body = await req.json();
+    drawId = body?.drawId;
+    userId = body?.userId;
+  } catch {
+    return new Response(JSON.stringify({ error: 'invalid JSON body' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+  }
+  if (!drawId || !userId) return new Response(JSON.stringify({ error: 'drawId and userId required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+
+  try {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
@@ -410,14 +422,16 @@ CRITICAL RULES:
 
     return new Response(JSON.stringify(analysis), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (err) {
+    console.error('[analyze-labs] failed for draw', drawId, '-', String(err));
     // Mark draw as failed so it doesn't stay stuck in "processing"
     try {
-      const body = await req.clone().json().catch(() => null);
-      if (body?.drawId) {
+      if (drawId) {
         const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-        await sb.from('lab_draws').update({ processing_status: 'failed' }).eq('id', body.drawId);
+        await sb.from('lab_draws').update({ processing_status: 'failed' }).eq('id', drawId);
       }
-    } catch { /* best-effort */ }
+    } catch (markErr) {
+      console.error('[analyze-labs] could not mark draw failed', markErr);
+    }
     return new Response(JSON.stringify({ error: String(err) }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 });
