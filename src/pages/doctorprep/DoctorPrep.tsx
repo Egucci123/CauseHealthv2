@@ -6,7 +6,8 @@ import { ClinicalSummary } from '../../components/doctorprep/ClinicalSummary';
 import { TestsToRequest } from '../../components/doctorprep/TestsToRequest';
 import { VisitCardStacks } from '../../components/doctorprep/VisitCardStacks';
 import { AdditionalTesting, type PanelGap } from '../../components/doctorprep/AdditionalTesting';
-import { computePanelGaps } from '../../store/labUploadStore';
+import { computePanelGaps, computeProactiveScreenings } from '../../store/labUploadStore';
+import { useSymptoms } from '../../hooks/useSymptoms';
 import { useLatestDoctorPrep, useGenerateDoctorPrep } from '../../hooks/useDoctorPrep';
 import { useLatestLabDraw, useLatestLabValues } from '../../hooks/useLabData';
 import { detectCriticalFindings } from '../../lib/criticalFindings';
@@ -31,6 +32,7 @@ export const DoctorPrep = () => {
   const { data: latestDraw } = useLatestLabDraw();
   const { data: latestValues } = useLatestLabValues();
   const { data: symptomAnalysis } = useSymptomAnalysis();
+  const { data: symptoms } = useSymptoms();
 
   const ageNum = profile?.dateOfBirth
     ? Math.floor((Date.now() - new Date(profile.dateOfBirth).getTime()) / 31_557_600_000)
@@ -40,18 +42,6 @@ export const DoctorPrep = () => {
     [latestValues, ageNum, profile?.sex],
   );
 
-  // Compute panel gaps fresh from latest lab values. Don't trust the cached
-  // notes.panel_gaps because old draws were stored before script/ICD-10
-  // fields were added. Always run the current definition against the
-  // markers the user actually has tested.
-  const panelGaps: PanelGap[] = useMemo(() => {
-    if (!latestValues || latestValues.length === 0) return [];
-    const tested = new Set<string>(
-      latestValues.map((v: any) => (v.markerName ?? v.marker_name ?? '').toLowerCase()).filter(Boolean)
-    );
-    return computePanelGaps(tested) as PanelGap[];
-  }, [latestValues]);
-
   // Healthy-mode detection — same threshold as the edge function (<25% need attention).
   const isHealthyMode = useMemo(() => {
     if (!latestValues || latestValues.length === 0) return false;
@@ -59,6 +49,42 @@ export const DoctorPrep = () => {
     const count = latestValues.filter((v: any) => needsAttentionFlags.has(v.optimalFlag ?? v.optimal_flag)).length;
     return (count / latestValues.length) < 0.25;
   }, [latestValues]);
+
+  // Compute panel gaps fresh from latest lab values + proactive screenings
+  // for healthy / longevity-focused users. Don't trust cached notes.panel_gaps.
+  const panelGaps: PanelGap[] = useMemo(() => {
+    const baseGaps: PanelGap[] = (() => {
+      if (!latestValues || latestValues.length === 0) return [];
+      const tested = new Set<string>(
+        latestValues.map((v: any) => (v.markerName ?? v.marker_name ?? '').toLowerCase()).filter(Boolean)
+      );
+      return computePanelGaps(tested) as PanelGap[];
+    })();
+
+    // Detect GI symptoms for the gut-microbiome trigger
+    const giKeywords = ['bloat', 'gas', 'diarrhea', 'constipation', 'reflux', 'heartburn', 'ibs', 'cramp', 'nausea', 'stool'];
+    const hasGiSymptoms = (symptoms ?? []).some((s: any) =>
+      giKeywords.some(k => (s.symptom ?? '').toLowerCase().includes(k))
+    );
+
+    const proactive = computeProactiveScreenings({
+      age: ageNum,
+      sex: profile?.sex ?? null,
+      primaryGoal: profile?.primaryGoals?.[0] ?? null,
+      isHealthyMode,
+      hasGiSymptoms,
+    }) as PanelGap[];
+
+    // Dedupe by test name — proactive screenings should never collide with
+    // panel gaps (different test types) but be safe.
+    const seen = new Set<string>();
+    return [...baseGaps, ...proactive].filter(g => {
+      const key = g.test_name.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [latestValues, ageNum, profile?.sex, profile?.primaryGoals, isHealthyMode, symptoms]);
 
   const docCreatedAt = (doc as any)?._createdAt ? new Date((doc as any)._createdAt) : null;
   const drawCreatedAt = latestDraw?.createdAt ? new Date(latestDraw.createdAt) : null;
