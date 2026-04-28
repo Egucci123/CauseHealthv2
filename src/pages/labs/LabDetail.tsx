@@ -153,13 +153,23 @@ export const LabDetail = () => {
 
       {/* Dark hero card — same DNA as Wellness Plan */}
       <div className="bg-[#131313] rounded-[14px] p-6 shadow-card">
-        <div className="flex items-center justify-between mb-3 gap-3">
+        <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
           <button onClick={() => navigate('/labs/history')} className="text-precision text-[0.6rem] text-on-surface-variant tracking-widest uppercase hover:text-[#D4A574] transition-colors flex items-center gap-1">
             <span className="material-symbols-outlined text-[14px]">folder</span>All Uploads
           </button>
-          <button onClick={() => navigate('/labs/upload')} className="text-precision text-[0.6rem] text-on-surface-variant tracking-widest uppercase hover:text-[#D4A574] transition-colors flex items-center gap-1">
-            <span className="material-symbols-outlined text-[14px]">upload_file</span>Upload New
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => retryAnalysis.mutate()}
+              disabled={retryAnalysis.isPending || draw.processing_status === 'processing'}
+              className="text-precision text-[0.6rem] text-on-surface-variant tracking-widest uppercase hover:text-[#D4A574] transition-colors flex items-center gap-1 disabled:opacity-50"
+            >
+              <span className={`material-symbols-outlined text-[14px] ${retryAnalysis.isPending ? 'animate-spin' : ''}`}>refresh</span>
+              {retryAnalysis.isPending ? 'Re-running…' : draw.processing_status === 'processing' ? 'Running…' : 'Re-run Analysis'}
+            </button>
+            <button onClick={() => navigate('/labs/upload')} className="text-precision text-[0.6rem] text-on-surface-variant tracking-widest uppercase hover:text-[#D4A574] transition-colors flex items-center gap-1">
+              <span className="material-symbols-outlined text-[14px]">upload_file</span>Upload New
+            </button>
+          </div>
         </div>
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div className="flex-1 min-w-0">
