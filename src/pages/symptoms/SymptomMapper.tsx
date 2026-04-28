@@ -11,11 +11,18 @@ import { useSubscription } from '../../lib/subscription';
 import { useSymptoms, useSymptomAnalysis } from '../../hooks/useSymptoms';
 import { useSymptomAnalysisStore } from '../../store/symptomAnalysisStore';
 import { useAuthStore } from '../../store/authStore';
+import { PerformanceAudit } from '../../components/symptoms/PerformanceAudit';
 
-const TABS = [{ id: 'symptoms', label: 'My Symptoms', icon: 'symptoms' }, { id: 'patterns', label: 'Pattern Analysis', icon: 'pattern' }];
+const TABS = [
+  { id: 'symptoms', label: 'My Symptoms', icon: 'symptoms' },
+  { id: 'patterns', label: 'Pattern Analysis', icon: 'pattern' },
+  { id: 'audit', label: 'Performance Audit', icon: 'tune' },
+];
+
+type TabId = 'symptoms' | 'patterns' | 'audit';
 
 export const SymptomMapper = () => {
-  const [activeTab, setActiveTab] = useState<'symptoms' | 'patterns'>('symptoms');
+  const [activeTab, setActiveTab] = useState<TabId>('symptoms');
   const { data: symptoms, isLoading: symptomsLoading } = useSymptoms();
   const { data: analysis } = useSymptomAnalysis();
   const { isPro } = useSubscription();
@@ -168,6 +175,10 @@ export const SymptomMapper = () => {
             <PatternAnalysis patterns={analysis.patterns ?? []} autoimmuneFlags={analysis.autoimmune_flags ?? []} priorityActions={analysis.priority_actions ?? []} />
           )}
         </div>
+      )}
+
+      {activeTab === 'audit' && (
+        userId ? <PerformanceAudit userId={userId} /> : <p className="text-body text-clinical-stone text-sm">Sign in to use the Performance Audit.</p>
       )}
     </AppShell>
   );
