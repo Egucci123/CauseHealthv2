@@ -318,12 +318,23 @@ CRITICAL OUTPUT RULES (for the new card-stack UI):
       const prolactin = findVal(['prolactin']);
       const ageNum = age ?? 99;
 
-      const allowJak2 = (platelets ?? 0) > 450 || ((rbc ?? 0) > 6.0 && (hct ?? 0) > 54);
-      const allowAnaReflex = (ana ?? 0) > 0;
-      const allowMyeloma = (globulin ?? 0) > 3.5 && ageNum < 40;
-      const allowHemochromGenetics = (ferritin ?? 0) > 300 && (transferrinSat ?? 0) > 45;
-      const allowPituitaryMri = (prolactin ?? 0) > 100;
-      const allowCalciumPth = (calcium ?? 0) > 10.5;
+      // Tightened thresholds — borderline-high values must NOT trigger
+      // rare-disease screening. Patients get scared by it and doctors
+      // dismiss the whole document if it looks alarmist.
+      const hgb = findVal(['hemoglobin', 'hgb']);
+      const allowJak2 =
+        (platelets ?? 0) > 600 ||                                  // sustained thrombocytosis (was 450)
+        ((rbc ?? 0) > 6.0 && (hct ?? 0) > 54) ||                   // both extreme
+        ((hgb ?? 0) > 17 && (hct ?? 0) > 52);                      // WHO PV criterion
+      const allowAnaReflex = (ana ?? 0) > 0;                       // any positive ANA
+      const allowMyeloma =
+        (globulin ?? 0) > 5 ||                                     // marked hyperglobulinemia
+        ((globulin ?? 0) > 3.5 && ageNum < 40) ||                  // unusual for young patients
+        (calcium ?? 0) > 11.5;                                     // hypercalcemia + workup
+      const allowHemochromGenetics =
+        (ferritin ?? 0) > 300 && (transferrinSat ?? 0) > 50;        // bumped TSat 45 -> 50 (AASLD)
+      const allowPituitaryMri = (prolactin ?? 0) > 100;            // moderate hyperprolactinemia
+      const allowCalciumPth = (calcium ?? 0) > 11;                 // mild hypercalcemia + workup
       void allowCalciumPth;
 
       const blockedPatterns: { pattern: RegExp; allow: boolean }[] = [
@@ -357,6 +368,65 @@ CRITICAL OUTPUT RULES (for the new card-stack UI):
           if (!Array.isArray(doc.advanced_screening)) doc.advanced_screening = [];
           doc.advanced_screening = [...doc.advanced_screening, ...moved].slice(0, 5);
         }
+      }
+
+      // ── Scrub blocked terms from PROSE fields ────────────────────────
+      // Even when we filter the test arrays, the AI mentions JAK2 / SPEP /
+      // Cushing's / etc. inside discussion_points, clinical_note, the
+      // executive summary, and the functional medicine note. That's how
+      // they leak into the patient PDF and scare the patient. Strip any
+      // sentence containing a blocked term unless its activation
+      // threshold was met.
+      const stripSentences = (text: string): string => {
+        if (typeof text !== 'string' || !text) return text;
+        const sentences = text.split(/(?<=[.!?])\s+/);
+        const kept = sentences.filter(s => {
+          for (const rule of blockedPatterns) {
+            if (rule.allow) continue;
+            if (rule.pattern.test(s)) return false;
+          }
+          return true;
+        });
+        return kept.join(' ').trim();
+      };
+
+      // Apply to every prose field that the patient/doctor will read.
+      if (Array.isArray(doc.executive_summary)) {
+        doc.executive_summary = doc.executive_summary.map((s: any) => typeof s === 'string' ? stripSentences(s) : s).filter((s: any) => typeof s !== 'string' || s.length > 0);
+      }
+      if (typeof doc.functional_medicine_note === 'string') doc.functional_medicine_note = stripSentences(doc.functional_medicine_note);
+      if (typeof doc.chief_complaint === 'string') doc.chief_complaint = stripSentences(doc.chief_complaint);
+      if (typeof doc.hpi === 'string') doc.hpi = stripSentences(doc.hpi);
+
+      if (Array.isArray(doc.discussion_points)) {
+        doc.discussion_points = doc.discussion_points
+          .map((p: any) => typeof p === 'string' ? stripSentences(p) : p)
+          .filter((p: any) => typeof p !== 'string' || p.length > 0);
+      }
+      if (Array.isArray(doc.patient_questions)) {
+        doc.patient_questions = doc.patient_questions
+          .map((p: any) => typeof p === 'string' ? stripSentences(p) : p)
+          .filter((p: any) => typeof p !== 'string' || p.length > 0);
+      }
+      if (Array.isArray(doc.tell_doctor)) {
+        doc.tell_doctor = doc.tell_doctor.map((t: any) => ({
+          ...t,
+          headline: typeof t?.headline === 'string' ? stripSentences(t.headline) : t?.headline,
+          detail: typeof t?.detail === 'string' ? stripSentences(t.detail) : t?.detail,
+        })).filter((t: any) => (t?.headline?.length ?? 0) > 0 || (t?.detail?.length ?? 0) > 0);
+      }
+      if (Array.isArray(doc.questions_to_ask)) {
+        doc.questions_to_ask = doc.questions_to_ask.map((q: any) => ({
+          ...q,
+          question: typeof q?.question === 'string' ? stripSentences(q.question) : q?.question,
+          why: typeof q?.why === 'string' ? stripSentences(q.why) : q?.why,
+        })).filter((q: any) => (q?.question?.length ?? 0) > 0);
+      }
+      if (doc.lab_summary?.urgent_findings && Array.isArray(doc.lab_summary.urgent_findings)) {
+        doc.lab_summary.urgent_findings = doc.lab_summary.urgent_findings.map((f: any) => ({
+          ...f,
+          clinical_note: typeof f?.clinical_note === 'string' ? stripSentences(f.clinical_note) : f?.clinical_note,
+        }));
       }
     } catch (e) { console.error('[doctor-prep] post-filter error:', e); }
 
