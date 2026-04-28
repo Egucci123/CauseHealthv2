@@ -1,6 +1,8 @@
 // supabase/functions/generate-wellness-plan/index.ts
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { isHealthyMode } from '../_shared/healthMode.ts';
+import { GOAL_LABELS, formatGoals } from '../_shared/goals.ts';
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -28,25 +30,10 @@ serve(async (req) => {
     const supps = suppsRes.data ?? [];
     let labValues: any[] = []; let drawId: string | null = null;
 
-    // Translate user's primary goals to readable labels for the prompt
-    const GOAL_LABELS: Record<string, string> = {
-      understand_labs: 'Understand my bloodwork',
-      energy: 'Fix my energy and brain fog',
-      off_medications: 'Reduce my medications',
-      hair_regrowth: 'Regrow my hair',
-      heart_health: 'Improve heart health',
-      gut_health: 'Fix my gut',
-      weight: 'Lose weight',
-      hormones: 'Balance my hormones',
-      doctor_prep: 'Prepare for a doctor visit',
-      longevity: 'Longevity and prevention',
-      autoimmune: 'Manage autoimmune disease',
-      pain: 'Reduce pain',
-    };
+    // Translate user's primary goals to readable labels for the prompt.
+    // GOAL_LABELS lives in _shared/goals.ts.
     const userGoals: string[] = (profile?.primary_goals ?? []).filter((g: any) => typeof g === 'string');
-    const goalsStr = userGoals.length > 0
-      ? userGoals.map((g) => GOAL_LABELS[g] ?? g).join(', ')
-      : 'Not specified';
+    const goalsStr = formatGoals(userGoals);
 
     console.log('[wellness] userId:', userId);
     console.log('[wellness] latestDrawRes:', JSON.stringify(latestDrawRes.data), 'error:', latestDrawRes.error?.message);
@@ -96,10 +83,8 @@ serve(async (req) => {
     const notTestedStr = notTested.join(', ');
 
     // Determine optimization mode: if mostly healthy markers, switch to longevity protocol.
-    // Out-of-range OR Watch counts as "needs attention" — only fully healthy markers count toward optimization eligibility.
-    const needsAttentionFlags = new Set(['watch', 'low', 'high', 'critical_low', 'critical_high', 'suboptimal_low', 'suboptimal_high', 'deficient', 'elevated']);
-    const needsAttentionCount = labValues.filter((v: any) => needsAttentionFlags.has(v.optimal_flag)).length;
-    const isOptimizationMode = labValues.length > 0 && (needsAttentionCount / labValues.length) < 0.25;
+    // Threshold + flag set live in _shared/healthMode.ts.
+    const isOptimizationMode = isHealthyMode(labValues);
     const age = profile?.date_of_birth ? Math.floor((Date.now() - new Date(profile.date_of_birth).getTime()) / 31557600000) : null;
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {

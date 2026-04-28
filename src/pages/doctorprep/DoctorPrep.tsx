@@ -8,6 +8,7 @@ import { VisitCardStacks } from '../../components/doctorprep/VisitCardStacks';
 import { AdditionalTesting, type PanelGap } from '../../components/doctorprep/AdditionalTesting';
 import { computePanelGaps, computeProactiveScreenings } from '../../store/labUploadStore';
 import { useSymptoms } from '../../hooks/useSymptoms';
+import { isHealthyMode as computeIsHealthyMode } from '../../lib/healthMode';
 import { useLatestDoctorPrep, useGenerateDoctorPrep } from '../../hooks/useDoctorPrep';
 import { useLatestLabDraw, useLatestLabValues } from '../../hooks/useLabData';
 import { detectCriticalFindings } from '../../lib/criticalFindings';
@@ -42,13 +43,8 @@ export const DoctorPrep = () => {
     [latestValues, ageNum, profile?.sex],
   );
 
-  // Healthy-mode detection — same threshold as the edge function (<25% need attention).
-  const isHealthyMode = useMemo(() => {
-    if (!latestValues || latestValues.length === 0) return false;
-    const needsAttentionFlags = new Set(['watch', 'low', 'high', 'critical_low', 'critical_high', 'suboptimal_low', 'suboptimal_high', 'deficient', 'elevated']);
-    const count = latestValues.filter((v: any) => needsAttentionFlags.has(v.optimalFlag ?? v.optimal_flag)).length;
-    return (count / latestValues.length) < 0.25;
-  }, [latestValues]);
+  // Healthy-mode detection — uses _shared/healthMode logic (mirrored client-side).
+  const isHealthyMode = useMemo(() => computeIsHealthyMode(latestValues as any), [latestValues]);
 
   // Compute panel gaps fresh from latest lab values + proactive screenings
   // for healthy / longevity-focused users. Don't trust cached notes.panel_gaps.
