@@ -89,6 +89,56 @@ export async function fetchMarkerHistory(
 }
 
 /**
+ * Fetch history for many markers at once. Returns a map keyed by lower-cased
+ * marker name. Used by trajectory-strip components that render N markers
+ * instead of running N individual queries.
+ */
+export async function fetchMarkerHistoryBatch(
+  userId: string,
+  markerNames: string[],
+): Promise<Map<string, MarkerHistory[]>> {
+  const out = new Map<string, MarkerHistory[]>();
+  if (markerNames.length === 0) return out;
+
+  // Use OR clause to fetch all markers in one round trip
+  const orClause = markerNames.map(n => `marker_name.ilike.${n.trim().replace(/,/g, '')}`).join(',');
+  const { data, error } = await supabase
+    .from('lab_values')
+    .select('draw_id, marker_name, value, unit, optimal_low, optimal_high, optimal_flag, draw_date, lab_draws!inner(draw_date, processing_status)')
+    .eq('user_id', userId)
+    .or(orClause);
+
+  if (error || !data) return out;
+
+  for (const row of data as any[]) {
+    if (row.lab_draws?.processing_status !== 'complete') continue;
+    const value = Number(row.value);
+    if (isNaN(value)) continue;
+    const drawDate = row.lab_draws?.draw_date || row.draw_date;
+    if (!drawDate) continue;
+    const key = (row.marker_name as string).toLowerCase();
+    const list = out.get(key) ?? [];
+    list.push({
+      drawId: row.draw_id,
+      drawDate,
+      value,
+      unit: row.unit ?? null,
+      optimalLow: row.optimal_low,
+      optimalHigh: row.optimal_high,
+      optimalFlag: row.optimal_flag,
+    });
+    out.set(key, list);
+  }
+
+  // Sort each marker's history oldest -> newest
+  for (const [k, list] of out) {
+    list.sort((a, b) => new Date(a.drawDate).getTime() - new Date(b.drawDate).getTime());
+    out.set(k, list);
+  }
+  return out;
+}
+
+/**
  * Build comparison object from a marker's history.
  * Compares the most recent draw to the immediately previous one.
  */

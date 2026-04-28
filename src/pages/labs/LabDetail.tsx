@@ -7,6 +7,7 @@ import { SectionLabel } from '../../components/ui/SectionLabel';
 import { Button } from '../../components/ui/Button';
 import { LabMarkerCard } from '../../components/labs/LabMarkerCard';
 import { CriticalBanner } from '../../components/labs/CriticalBanner';
+import { TrajectoryStrip } from '../../components/labs/TrajectoryStrip';
 import { detectCriticalFindings } from '../../lib/criticalFindings';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/authStore';
@@ -288,6 +289,14 @@ export const LabDetail = () => {
           <SectionLabel light icon="insights" className="text-on-surface-variant">Analysis Summary</SectionLabel>
           <p className="text-body text-on-surface leading-relaxed">{analysis.summary}</p>
         </div>
+      )}
+
+      {/* Trajectory strip — multi-draw trend on Watch + Out-of-Range markers.
+          Component self-hides if no markers have 2+ draws of history. */}
+      {isPro && (urgentCount > 0 || monitorCount > 0) && (
+        <TrajectoryStrip
+          values={values.filter((v: any) => isOutOfRange(v.optimal_flag) || isWatch(v.optimal_flag))}
+        />
       )}
 
       {/* Hand-off to Doctor Prep — that's where test recommendations + ICD-10 codes live */}
