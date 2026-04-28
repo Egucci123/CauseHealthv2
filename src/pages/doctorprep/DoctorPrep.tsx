@@ -52,6 +52,14 @@ export const DoctorPrep = () => {
     return computePanelGaps(tested) as PanelGap[];
   }, [latestValues]);
 
+  // Healthy-mode detection — same threshold as the edge function (<25% need attention).
+  const isHealthyMode = useMemo(() => {
+    if (!latestValues || latestValues.length === 0) return false;
+    const needsAttentionFlags = new Set(['watch', 'low', 'high', 'critical_low', 'critical_high', 'suboptimal_low', 'suboptimal_high', 'deficient', 'elevated']);
+    const count = latestValues.filter((v: any) => needsAttentionFlags.has(v.optimalFlag ?? v.optimal_flag)).length;
+    return (count / latestValues.length) < 0.25;
+  }, [latestValues]);
+
   const docCreatedAt = (doc as any)?._createdAt ? new Date((doc as any)._createdAt) : null;
   const drawCreatedAt = latestDraw?.createdAt ? new Date(latestDraw.createdAt) : null;
   const hasNewerLabs = doc && docCreatedAt && drawCreatedAt && drawCreatedAt > docCreatedAt;
@@ -67,7 +75,7 @@ export const DoctorPrep = () => {
   };
   const handleExportPatientGuide = () => {
     if (!doc) return;
-    exportPatientVisitGuidePDF(doc, patientName, panelGaps);
+    exportPatientVisitGuidePDF(doc, patientName, panelGaps, isHealthyMode);
   };
 
   return (

@@ -207,12 +207,14 @@ export const LabDetail = () => {
             {isPro ? 'Prep for Doctor' : 'Unlock Prep'}
           </button>
         </div>
-        {/* Score chips inline — visible at a glance */}
+        {/* Score chips inline — visible at a glance.
+            Renamed under the new range model:
+            Out of Range (was Urgent), Watch (was Monitor), Healthy (was Optimal). */}
         <div className="grid grid-cols-3 gap-2 mt-5">
           {[
-            { count: urgentCount, label: 'Urgent', color: '#C94F4F', tab: 'urgent' as const },
-            { count: monitorCount, label: 'Monitor', color: '#E8922A', tab: 'monitor' as const },
-            { count: optimalCount, label: 'Optimal', color: '#2A9D8F', tab: 'all' as const },
+            { count: urgentCount, label: 'Out of Range', color: '#C94F4F', tab: 'urgent' as const },
+            { count: monitorCount, label: 'Watch', color: '#E8922A', tab: 'monitor' as const },
+            { count: optimalCount, label: 'Healthy', color: '#2A9D8F', tab: 'all' as const },
           ].map(({ count, label, color, tab }) => (
             <button
               key={label}
@@ -315,7 +317,7 @@ export const LabDetail = () => {
 
       {/* Tab nav — same style as Wellness Plan */}
       <div className="flex gap-1 bg-clinical-cream rounded-[10px] p-1 overflow-x-auto">
-        {[{ id: 'all', label: `All (${values.length})` }, { id: 'urgent', label: `Urgent (${urgentCount})` }, { id: 'monitor', label: `Monitor (${monitorCount})` }].map(tab => (
+        {[{ id: 'all', label: `All (${values.length})` }, { id: 'urgent', label: `Out of Range (${urgentCount})` }, { id: 'monitor', label: `Watch (${monitorCount})` }].map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
@@ -347,8 +349,29 @@ export const LabDetail = () => {
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {getDisplayValues().map((val: any) => <LabMarkerCard key={val.id} value={val} analysis={findAnalysis(val.marker_name)} onAddToPrep={() => navigate('/doctor-prep')} />)}
+        <div className="space-y-4">
+          {/* Explainer banner — gives context for what Watch / Out-of-Range mean */}
+          {activeTab === 'monitor' && monitorCount > 0 && (
+            <div className="bg-[#E8922A]/10 border border-[#E8922A]/30 rounded-[10px] p-4 flex items-start gap-3">
+              <span className="material-symbols-outlined text-[#B8763B] text-[20px] flex-shrink-0 mt-0.5">visibility</span>
+              <div>
+                <p className="text-body text-clinical-charcoal text-sm font-semibold leading-snug mb-1">These markers are technically in range — but trending the wrong way.</p>
+                <p className="text-body text-clinical-stone text-xs leading-relaxed">Push these down with diet, movement, or supplementation. Recheck in 3 months — trajectory matters more than a single number.</p>
+              </div>
+            </div>
+          )}
+          {activeTab === 'urgent' && urgentCount > 0 && (
+            <div className="bg-[#C94F4F]/10 border border-[#C94F4F]/30 rounded-[10px] p-4 flex items-start gap-3">
+              <span className="material-symbols-outlined text-[#C94F4F] text-[20px] flex-shrink-0 mt-0.5">priority_high</span>
+              <div>
+                <p className="text-body text-clinical-charcoal text-sm font-semibold leading-snug mb-1">These markers are outside the standard lab range.</p>
+                <p className="text-body text-clinical-stone text-xs leading-relaxed">Bring these to your doctor. Your Doctor Prep PDF has the test recommendations and ICD-10 codes.</p>
+              </div>
+            </div>
+          )}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {getDisplayValues().map((val: any) => <LabMarkerCard key={val.id} value={val} analysis={findAnalysis(val.marker_name)} onAddToPrep={() => navigate('/doctor-prep')} />)}
+          </div>
         </div>
       )}
 
