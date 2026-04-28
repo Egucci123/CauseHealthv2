@@ -435,6 +435,18 @@ CRITICAL OUTPUT RULES (for the new card-stack UI):
           clinical_note: typeof f?.clinical_note === 'string' ? stripSentences(f.clinical_note) : f?.clinical_note,
         }));
       }
+
+      // ── Trend-watch injector ─────────────────────────────────────────
+      // High-normal values in young patients warrant 3-month re-check
+      // without naming a rare disease. Catches the pattern (climbing
+      // trajectory) that actually surfaces ET/PV — not a single number.
+      if (!Array.isArray(doc.discussion_points)) doc.discussion_points = [];
+      if (isYoung && (platelets ?? 0) > 350 && (platelets ?? 0) <= 450) {
+        doc.discussion_points.push(`Platelets are ${platelets} — at the top of normal for someone your age. Ask for a repeat CBC in 3 months. If platelets are climbing across two draws, that's the signal worth investigating, not the single number.`);
+      }
+      if (isYoung && (rbc ?? 0) > 5.5 && (rbc ?? 0) <= 5.7 && (hct ?? 0) > 49 && (hct ?? 0) <= 51) {
+        doc.discussion_points.push(`Red blood cells (${rbc}) and hematocrit (${hct}%) are at the top of normal. Could be hydration, sleep quality, or baseline. Ask your doctor for a repeat CBC in 3 months and screen for sleep apnea (STOP-BANG) if you snore or wake unrefreshed.`);
+      }
     } catch (e) { console.error('[doctor-prep] post-filter error:', e); }
 
     // Validate required fields before saving — never save corrupt/partial documents
