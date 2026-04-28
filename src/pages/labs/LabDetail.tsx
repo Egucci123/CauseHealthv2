@@ -153,9 +153,14 @@ export const LabDetail = () => {
 
       {/* Dark hero card — same DNA as Wellness Plan */}
       <div className="bg-[#131313] rounded-[14px] p-6 shadow-card">
-        <button onClick={() => navigate('/labs')} className="text-precision text-[0.6rem] text-on-surface-variant tracking-widest uppercase hover:text-[#D4A574] transition-colors flex items-center gap-1 mb-3">
-          <span className="material-symbols-outlined text-[14px]">arrow_back</span>All Labs
-        </button>
+        <div className="flex items-center justify-between mb-3 gap-3">
+          <button onClick={() => navigate('/labs/history')} className="text-precision text-[0.6rem] text-on-surface-variant tracking-widest uppercase hover:text-[#D4A574] transition-colors flex items-center gap-1">
+            <span className="material-symbols-outlined text-[14px]">folder</span>All Uploads
+          </button>
+          <button onClick={() => navigate('/labs/upload')} className="text-precision text-[0.6rem] text-on-surface-variant tracking-widest uppercase hover:text-[#D4A574] transition-colors flex items-center gap-1">
+            <span className="material-symbols-outlined text-[14px]">upload_file</span>Upload New
+          </button>
+        </div>
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div className="flex-1 min-w-0">
             <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-[#D4A574] mb-2">Your Bloodwork</p>

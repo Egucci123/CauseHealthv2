@@ -28,6 +28,7 @@ import { Dashboard } from './pages/Dashboard';
 import { LabUpload } from './pages/labs/LabUpload';
 import { LabHistory } from './pages/labs/LabHistory';
 import { LabDetail } from './pages/labs/LabDetail';
+import { LabsIndex } from './pages/labs/LabsIndex';
 
 // Wellness
 import { WellnessPlanPage } from './pages/wellness/WellnessPlanPage';
@@ -99,7 +100,8 @@ function App() {
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
 
       {/* Labs */}
-      <Route path="/labs" element={<ProtectedRoute><LabHistory /></ProtectedRoute>} />
+      <Route path="/labs" element={<ProtectedRoute><LabsIndex /></ProtectedRoute>} />
+      <Route path="/labs/history" element={<ProtectedRoute><LabHistory /></ProtectedRoute>} />
       <Route path="/labs/upload" element={<ProtectedRoute><LabUpload /></ProtectedRoute>} />
       <Route path="/labs/upload/manual" element={<ProtectedRoute><LabUpload /></ProtectedRoute>} />
       <Route path="/labs/:drawId" element={<ProtectedRoute><LabDetail /></ProtectedRoute>} />
