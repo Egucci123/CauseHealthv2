@@ -32,11 +32,18 @@ export const LabDetail = () => {
   const retryAnalysis = useMutation({
     mutationFn: async () => {
       if (!drawId || !user) throw new Error('Missing context');
-      await supabase.from('lab_draws').update({ processing_status: 'processing' }).eq('id', drawId);
+      await supabase.from('lab_draws').update({ processing_status: 'processing', analysis_result: null }).eq('id', drawId);
+      // Get a fresh JWT so the edge function can authenticate the user.
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
       // Raw fetch with keepalive — survives navigation
       fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-labs`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify({ drawId, userId: user.id }),
         keepalive: true,
       }).catch(console.warn);
@@ -158,14 +165,22 @@ export const LabDetail = () => {
             <span className="material-symbols-outlined text-[14px]">folder</span>All Uploads
           </button>
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => retryAnalysis.mutate()}
-              disabled={retryAnalysis.isPending || draw.processing_status === 'processing'}
-              className="text-precision text-[0.6rem] text-on-surface-variant tracking-widest uppercase hover:text-[#D4A574] transition-colors flex items-center gap-1 disabled:opacity-50"
-            >
-              <span className={`material-symbols-outlined text-[14px] ${retryAnalysis.isPending ? 'animate-spin' : ''}`}>refresh</span>
-              {retryAnalysis.isPending ? 'Re-running…' : draw.processing_status === 'processing' ? 'Running…' : 'Re-run Analysis'}
-            </button>
+            {(() => {
+              const updatedAt = draw.updated_at ?? draw.created_at;
+              const ageMs = updatedAt ? Date.now() - new Date(updatedAt).getTime() : 0;
+              const stuck = draw.processing_status === 'processing' && ageMs > 90_000;
+              const isRunning = retryAnalysis.isPending || (draw.processing_status === 'processing' && !stuck);
+              return (
+                <button
+                  onClick={() => retryAnalysis.mutate()}
+                  disabled={retryAnalysis.isPending || isRunning}
+                  className="text-precision text-[0.6rem] text-on-surface-variant tracking-widest uppercase hover:text-[#D4A574] transition-colors flex items-center gap-1 disabled:opacity-70"
+                >
+                  <span className={`material-symbols-outlined text-[14px] ${isRunning ? 'animate-spin' : ''}`}>refresh</span>
+                  {isRunning ? 'Running…' : stuck ? 'Stuck — Retry' : 'Re-run Analysis'}
+                </button>
+              );
+            })()}
             <button onClick={() => navigate('/labs/upload')} className="text-precision text-[0.6rem] text-on-surface-variant tracking-widest uppercase hover:text-[#D4A574] transition-colors flex items-center gap-1">
               <span className="material-symbols-outlined text-[14px]">upload_file</span>Upload New
             </button>
