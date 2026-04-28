@@ -967,3 +967,134 @@ export function computePanelGaps(testedMarkers: Set<string>): PanelGap[] {
 
   return gaps;
 }
+
+// ── Proactive screenings ─────────────────────────────────────────────────────
+// Imaging studies and advanced tests beyond bloodwork. These don't depend on
+// what's tested, only on context: age, sex, primary goal, healthy mode.
+// Surfaced in the 'advanced' tier of Recommended Additional Testing on
+// Doctor Prep when the user fits the profile. Health-freak / longevity-focused
+// users especially want these.
+export interface ProactiveContext {
+  age?: number | null;
+  sex?: 'male' | 'female' | 'other' | null;
+  primaryGoal?: string | null;
+  isHealthyMode?: boolean;
+  hasGiSymptoms?: boolean;
+  hasFamilyCvHistory?: boolean;
+}
+
+export function computeProactiveScreenings(ctx: ProactiveContext): PanelGap[] {
+  const gaps: PanelGap[] = [];
+  const age = ctx.age ?? null;
+  const goal = ctx.primaryGoal ?? '';
+  const optimizationFocused = ctx.isHealthyMode || ['longevity', 'heart_health', 'weight'].includes(goal);
+
+  // CAC — recommended at 35+ for anyone optimization-focused, especially with
+  // family history. ICD-10 covers when there's a lipid abnormality or family hx.
+  if (age != null && age >= 35 && optimizationFocused) {
+    gaps.push({
+      test_name: 'Coronary Calcium Score (CAC)',
+      category: 'advanced',
+      why_needed: 'One-time CT scan that quantifies plaque in your coronary arteries — the single best non-invasive predictor of cardiac events',
+      script: '"I\'d like a coronary calcium score. It\'s a one-time non-contrast CT that gives a definitive number for cardiac risk. With my lipid profile and family history, this is the test I want."',
+      icd10: [
+        { code: 'Z13.6', description: 'Encounter for screening for cardiovascular disorders' },
+        { code: 'Z82.49', description: 'Family history of ischemic heart disease' },
+        { code: 'E78.5', description: 'Hyperlipidemia, unspecified' },
+      ],
+    });
+  }
+
+  // DEXA scan — universal at 50+ (women) / 65+ (men) for bone density.
+  // For optimization-focused users at any adult age: body composition baseline.
+  if (age != null && ((age >= 50 && ctx.sex === 'female') || age >= 65 || (age >= 30 && optimizationFocused))) {
+    gaps.push({
+      test_name: 'DEXA Scan (Body Composition + Bone Density)',
+      category: 'advanced',
+      why_needed: 'Single most accurate measurement of body fat, lean mass, visceral fat, and bone density — and the gold-standard baseline you can track yearly',
+      script: '"I\'d like a DEXA scan. It gives me a precise body composition baseline and screens for early bone loss. Either ordered through this office or referred — happy to use whichever insurance covers."',
+      icd10: [
+        { code: 'Z13.820', description: 'Encounter for screening for osteoporosis' },
+        { code: 'Z13.6', description: 'Encounter for screening for cardiovascular disorders' },
+        { code: 'M85.80', description: 'Other specified disorders of bone density and structure, site unspecified' },
+      ],
+    });
+  }
+
+  // VO2 max test — fitness benchmark. Most relevant for longevity/performance/heart goals.
+  if (optimizationFocused) {
+    gaps.push({
+      test_name: 'VO2 Max Test (Cardiopulmonary Exercise Test)',
+      category: 'advanced',
+      why_needed: 'Single strongest predictor of all-cause mortality — measures aerobic capacity. Establishes a baseline you can train against twice yearly',
+      script: '"I\'d like a VO2 max test referral. It\'s the strongest known predictor of all-cause mortality. Either through cardiopulmonary or sports medicine — whoever your office partners with."',
+      icd10: [
+        { code: 'Z02.5', description: 'Encounter for examination for participation in sport' },
+        { code: 'Z13.6', description: 'Encounter for screening for cardiovascular disorders' },
+      ],
+    });
+  }
+
+  // Sleep study — anyone overweight, snoring, or with cardiovascular risk + fatigue.
+  // Universal STOP-BANG screening for adults 30+.
+  if (age != null && age >= 30) {
+    gaps.push({
+      test_name: 'Sleep Study (STOP-BANG screen first, then polysomnography if positive)',
+      category: 'advanced',
+      why_needed: 'Untreated sleep apnea silently drives hypertension, weight gain, and cardiovascular events. Most cases go undiagnosed for a decade',
+      script: '"Can you have me fill out a STOP-BANG questionnaire? If I score positive, I\'d like a sleep study referral — home sleep apnea test or in-lab polysomnography depending on what\'s indicated."',
+      icd10: [
+        { code: 'G47.30', description: 'Sleep apnea, unspecified' },
+        { code: 'G47.33', description: 'Obstructive sleep apnea (adult) (pediatric)' },
+        { code: 'R53.83', description: 'Other fatigue' },
+      ],
+    });
+  }
+
+  // Continuous Glucose Monitor — for any optimization-focused or insulin-resistance-suspicious user.
+  if (optimizationFocused || goal === 'weight') {
+    gaps.push({
+      test_name: 'Continuous Glucose Monitor (CGM) — 14-Day Trial',
+      category: 'advanced',
+      why_needed: 'See your real-time glucose response to specific meals, exercise, and sleep. The single most personalized way to understand your metabolic health',
+      script: '"I\'d like a 14-day continuous glucose monitor trial. The data will help me identify foods that spike my blood sugar and validate any dietary changes. Most insurance covers under prediabetes screening."',
+      icd10: [
+        { code: 'R73.09', description: 'Other abnormal glucose' },
+        { code: 'R73.03', description: 'Prediabetes' },
+        { code: 'Z13.1', description: 'Encounter for screening for diabetes mellitus' },
+      ],
+    });
+  }
+
+  // Gut microbiome — for users with GI symptoms or autoimmune.
+  if (ctx.hasGiSymptoms || goal === 'gut_health' || goal === 'autoimmune') {
+    gaps.push({
+      test_name: 'Comprehensive Stool Analysis (GI-MAP or similar)',
+      category: 'advanced',
+      why_needed: 'Maps your gut microbiome, dysbiosis patterns, parasites, inflammation markers, and digestive function — root-cause data conventional CBC and metabolic panels cannot give',
+      script: '"With my GI symptoms, I\'d like a comprehensive stool test — GI-MAP or similar. It identifies dysbiosis, parasites, and inflammation that conventional labs miss. Many functional medicine offices order these directly. If you don\'t, can you refer me?"',
+      icd10: [
+        { code: 'K59.9', description: 'Functional intestinal disorder, unspecified' },
+        { code: 'R19.7', description: 'Diarrhea, unspecified' },
+        { code: 'K58.9', description: 'Irritable bowel syndrome without diarrhea' },
+      ],
+    });
+  }
+
+  // Full-body MRI — discuss for ages 50+ or with strong family hx of cancer.
+  // Gating to ages 50+ to avoid scaring younger users into expensive scans.
+  if (age != null && age >= 50) {
+    gaps.push({
+      test_name: 'Whole-Body MRI Screening (e.g., Prenuvo)',
+      category: 'advanced',
+      why_needed: 'Screens for early cancers and aneurysms before symptoms. NOT yet standard of care — false-positive rate is real, but with family history of cancer the risk-benefit shifts',
+      script: '"At my age and with [family history if applicable], I\'d like to discuss whole-body MRI screening. I understand the false-positive risk and want to weigh it against the catch-it-early upside. What\'s your view?"',
+      icd10: [
+        { code: 'Z13.9', description: 'Encounter for screening, unspecified' },
+        { code: 'Z80.9', description: 'Family history of malignant neoplasm, unspecified' },
+      ],
+    });
+  }
+
+  return gaps;
+}
