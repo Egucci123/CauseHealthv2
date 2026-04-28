@@ -73,10 +73,13 @@ serve(async (req) => {
     const condStr = conditions.map((c: any) => c.name).join(', ') || 'None reported';
     const suppsStr = supps.map((s: any) => `${s.name}${s.dose ? ` (${s.dose})` : ''}`).join(', ') || 'None';
 
-    // Send ALL lab values
-    const allLabsStr = labValues.map((v: any) =>
-      `${v.marker_name}: ${v.value} ${v.unit ?? ''} (Std: ${v.standard_low ?? '?'}–${v.standard_high ?? '?'}) ${v.standard_flag && v.standard_flag !== 'normal' ? '[' + v.standard_flag.toUpperCase() + ']' : ''}`
-    ).join('\n') || 'No labs uploaded';
+    // Send ALL lab values, tagged with status from the new range model
+    // (healthy/watch/low/high/critical_*) so the AI knows what to act on.
+    const allLabsStr = labValues.map((v: any) => {
+      const flag = (v.optimal_flag ?? v.standard_flag ?? '').toUpperCase();
+      const tag = flag && flag !== 'NORMAL' && flag !== 'HEALTHY' ? ` [${flag}]` : '';
+      return `${v.marker_name}: ${v.value} ${v.unit ?? ''} (Std: ${v.standard_low ?? '?'}–${v.standard_high ?? '?'})${tag}`;
+    }).join('\n') || 'No labs uploaded';
 
     // Dynamically build "not tested" list based on what's commonly relevant
     // This covers nutrients, hormones, and inflammatory markers that are frequently missed
@@ -92,9 +95,11 @@ serve(async (req) => {
       .filter(n => !testedNames.some(t => t.includes(n.toLowerCase().split(' ')[0])));
     const notTestedStr = notTested.join(', ');
 
-    // Determine optimization mode: if most labs are optimal, switch to longevity protocol
-    const abnormalCount = labValues.filter((v: any) => v.optimal_flag && v.optimal_flag !== 'optimal').length;
-    const isOptimizationMode = labValues.length > 0 && (abnormalCount / labValues.length) < 0.25;
+    // Determine optimization mode: if mostly healthy markers, switch to longevity protocol.
+    // Out-of-range OR Watch counts as "needs attention" — only fully healthy markers count toward optimization eligibility.
+    const needsAttentionFlags = new Set(['watch', 'low', 'high', 'critical_low', 'critical_high', 'suboptimal_low', 'suboptimal_high', 'deficient', 'elevated']);
+    const needsAttentionCount = labValues.filter((v: any) => needsAttentionFlags.has(v.optimal_flag)).length;
+    const isOptimizationMode = labValues.length > 0 && (needsAttentionCount / labValues.length) < 0.25;
     const age = profile?.date_of_birth ? Math.floor((Date.now() - new Date(profile.date_of_birth).getTime()) / 31557600000) : null;
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -114,7 +119,7 @@ GLOBAL VOICE RULES (CRITICAL — these apply to EVERY string in the JSON):
 
 HARD RULES — FOLLOW EXACTLY:
 1. SUPPLEMENT STACK: Maximum 7 supplements. Valid sourced_from values:
-   - "lab_finding": specific lab value outside optimal range; why must cite the marker.
+   - "lab_finding": specific lab value out of standard range OR on the curated Watch list (e.g. HbA1c 5.4-5.6, ApoB ≥90, hs-CRP ≥0.5, ferritin <50). The labStr will tag the status. Healthy values do NOT earn supplements.
    - "medication_depletion": user takes a drug with established nutrient-depleting effect (statin→CoQ10, metformin→B12, mesalamine→folate, etc.). why must name the medication.
    - "disease_mechanism": user has a CONFIRMED diagnosed condition with a well-evidenced supplement (UC→L-glutamine/curcumin/omega-3/S.boulardii; Hashimoto's→selenium; T2D→berberine; PCOS→inositol). Not for speculative conditions.
    - "optimization": longevity supplement when labs mostly optimal.

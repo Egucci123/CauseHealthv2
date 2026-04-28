@@ -49,25 +49,25 @@ serve(async (req) => {
     const { data: suppsData } = await supabase.from('user_supplements').select('name, dose, duration_category').eq('user_id', userId).eq('is_active', true);
     const supps: any[] = suppsData ?? [];
 
-    // Build lab string. For very large panels (90+ markers), prioritize abnormal
-    // values first so the AI focuses on what matters and never runs out of tokens
-    // before it gets to the urgent stuff. Optimal-only markers get a compact summary.
-    const PRIORITY_FLAGS = new Set(['urgent', 'monitor', 'deficient', 'elevated', 'suboptimal_low', 'suboptimal_high']);
-    const isAbnormal = (v: any) => {
-      const f = (v.optimal_flag ?? v.standard_flag ?? '').toLowerCase();
-      return f && f !== 'optimal' && f !== 'normal';
-    };
+    // Build lab string. Group by status: out-of-range first (the AI's
+    // priority), then watch-tier, then healthy (compact). The flags here
+    // come from the new range model — see labUploadStore.computeFlag.
+    const isOutOfRange = (f: string) => ['low', 'high', 'critical_low', 'critical_high', 'deficient', 'elevated'].includes(f);
+    const isWatch = (f: string) => ['watch', 'suboptimal_low', 'suboptimal_high'].includes(f);
     const fmt = (v: any) => `${v.marker_name}: ${v.value} ${v.unit ?? ''} (Std: ${v.standard_low ?? '?'}–${v.standard_high ?? '?'})${v.optimal_flag ? ` [${v.optimal_flag.toUpperCase()}]` : ''}`;
-    const abnormal = labValues.filter(isAbnormal);
-    const optimal = labValues.filter((v: any) => !isAbnormal(v));
+    const outOfRange = labValues.filter((v: any) => isOutOfRange((v.optimal_flag ?? v.standard_flag ?? '').toLowerCase()));
+    const watch = labValues.filter((v: any) => isWatch((v.optimal_flag ?? '').toLowerCase()));
+    const healthy = labValues.filter((v: any) => !isOutOfRange((v.optimal_flag ?? v.standard_flag ?? '').toLowerCase()) && !isWatch((v.optimal_flag ?? '').toLowerCase()));
     const labStr = [
-      `## ABNORMAL OR SUBOPTIMAL (${abnormal.length}) — ANALYZE EACH OF THESE`,
-      ...abnormal.map(fmt),
+      `## OUT OF STANDARD RANGE (${outOfRange.length}) — flag each as priority_finding with flag:"urgent"`,
+      ...outOfRange.map(fmt),
       '',
-      `## WITHIN OPTIMAL RANGE (${optimal.length}) — list for completeness, don't elaborate`,
-      ...optimal.map(fmt),
+      `## WATCH (${watch.length}) — within standard range but on the Watch list (HbA1c 5.4-5.6, ApoB ≥90, hs-CRP ≥0.5, fasting glucose 95-99, ferritin <50, etc.). Flag as priority_finding with flag:"monitor". One sentence each — no alarm.`,
+      ...watch.map(fmt),
+      '',
+      `## HEALTHY (${healthy.length}) — within standard range, not on Watch list. DO NOT list these as priority_findings. Mention only if relevant to a pattern.`,
+      ...healthy.map(fmt),
     ].join('\n');
-    void PRIORITY_FLAGS; // reserved for future targeting
     const medsStr = (meds ?? []).map((m: any) => m.name).join(', ');
     const sympStr = (symptoms ?? []).map((s: any) => `${s.symptom} (${s.severity}/10)`).join(', ');
     const suppsStr = supps.length > 0 ? supps.map((s: any) => `${s.name}${s.dose ? ` (${s.dose})` : ''}`).join(', ') : 'None reported';
@@ -93,43 +93,21 @@ GLOBAL VOICE RULES (CRITICAL — every string in JSON):
 - Every priority_finding gets a "headline" max 10 words, plain English.
 
 CRITICAL RULES:
-1. Flag EVERY value outside optimal range as a priority finding — do not skip any.
-2. PATTERN RECOGNITION: Connect abnormal values across organ systems. Look for multi-marker patterns (e.g., elevated platelets + elevated RDW = iron deficiency; low HDL + borderline glucose = metabolic syndrome). Each pattern goes in the "patterns" array.
-3. VALUES ABOVE OPTIMAL BUT WITHIN STANDARD RANGE ARE NOT SAFE. MANDATORY follow-ups (apply ALL that match):
-   CORE PATTERNS:
-   - Platelets >450 → JAK2 V617F + peripheral smear (rule out essential thrombocythemia/MPN).
-   - Platelets >300 with elevated RDW or fatigue → iron panel + JAK2 if persistent.
-   - RDW >13 → iron panel + B12/folate + reticulocyte count.
-   - Glucose >90 → fasting insulin + HOMA-IR (insulin resistance hides behind 'normal' glucose).
-   - HbA1c >5.4 → fasting insulin + HOMA-IR even if glucose normal.
-   - TSH >2.5 OR <1.0 → free T3 + free T4 + TPO + thyroglobulin antibodies.
-   - ALT >25 → liver ultrasound + hepatitis panel + GGT (NAFLD starts well before 'abnormal').
-   - AST/ALT ratio >2 → screen for alcoholic liver disease + macrocytic anemia.
-   - Triglyceride/HDL ratio >3.5 → strongest insulin resistance predictor; order fasting insulin + HOMA-IR + ApoB.
-   - Vitamin D <40 → repletion + recheck 8 weeks.
-   - Homocysteine >8 → B12/folate/B6 + consider MTHFR.
-   - hs-CRP >1 → full inflammatory workup + autoimmune screening.
-   - WBC >10 → differential + infection/inflammation workup.
-   - 3+ suboptimal values across organ systems → autoimmune + celiac + metabolic screening.
-   - Ferritin <30 even with normal Hgb → functional iron deficiency (causes hair loss/fatigue/brain fog).
-   - Low HDL (<50F/<40M) in young adult → insulin resistance + ApoB.
-   - MCV >92 without anemia → B12/folate or alcohol/liver disease.
-   - MCV <82 without anemia → iron deficiency or thalassemia trait → hemoglobin electrophoresis.
-   - MCH/MCV mismatch (low MCV with normal MCH) → thalassemia trait screening (often missed).
-   - Elevated globulin >3.0 → SPEP/UPEP for paraprotein (myeloma screening, especially in young adults).
-   - Globulin >3.5 in patient under 40 → urgent SPEP + free light chains.
-   - Calcium >10 (especially repeated) → PTH + vitamin D + 24h urine calcium (hyperparathyroidism).
-   - Calcium variability across draws → repeat with PTH simultaneously.
-   - Low CO2 <23 → metabolic acidosis workup (renal tubular acidosis, chronic diarrhea, malabsorption).
-   - Polyuria/dilute urine + low specific gravity (<1.005) → diabetes insipidus screening.
-   - Eosinophils >5% or absolute >0.5 → parasitic stool studies + IgE + atopic disease workup.
-   - Lymphocytes >40% with absolute >4.0 → flow cytometry if persistent (CLL screening), check EBV/CMV.
-   - Reverse T3 elevation (when tested) → assess for chronic stress, illness, or thyroid hormone resistance.
-   - Positive ANA → reflex panel (anti-dsDNA, anti-Sm, anti-Ro/La, anti-Scl-70, anti-Jo-1).
-   - Bilirubin 1.0-1.5 with normal liver enzymes → fractionate (Gilbert syndrome vs hemolysis).
-   - Uric acid >6 (F) or >7 (M) in young adult → metabolic syndrome screening + consider lifestyle.
-   - Elevated RBC + hematocrit at upper limit + bilirubin elevated → secondary polycythemia vs MPN (JAK2 + EPO level).
-   No "within normal limits" dismissals.
+1. RANGE MODEL — three states, treat them differently:
+   - HEALTHY (within standard range, not on Watch list) → DO NOT add to priority_findings. Mention only if part of a pattern.
+   - WATCH (within standard range, on Watch list — labStr will tag these) → priority_finding with flag:"monitor". One calm sentence. No alarm. The point is to track trend and adjust lifestyle, not order rare-disease screening.
+   - OUT OF RANGE (low/high/critical_*) → priority_finding with flag:"urgent". Each gets full headline + explanation + what_to_do.
+   The Watch list is curated — don't add markers to it. If a marker is healthy, leave it alone. Functional-medicine "optimal" ranges are deliberately not the trigger — many users will be high-normal on ALT/MCV/RDW/TSH/etc. and that's clinically fine.
+
+2. PATTERN RECOGNITION: Connect markers across organ systems. Multi-marker patterns are the highest-value finding even when individual markers look OK. Each pattern goes in the "patterns" array.
+   - Triglycerides high + glucose high-normal + HDL low + waist gain = insulin resistance pattern → recommend fasting insulin + HOMA-IR.
+   - ALT out of range + triglycerides high + weight gain = NAFLD pattern → recommend liver ultrasound + GGT.
+   - Hair loss + fatigue + ferritin <50 = functional iron deficiency → full iron panel.
+   - 3+ Watch-tier or out-of-range values clustering in one system → escalate that system in patterns.
+
+3. WHEN TO RECOMMEND FOLLOW-UP TESTS (missing_tests array):
+   Default rule: only recommend a test when there's a SPECIFIC abnormal finding (out-of-range OR Watch-tier) that the test would investigate. Healthy values don't earn follow-up tests.
+   Common-but-missed conditions still deserve aggressive surfacing — see rule 9 below — but only when the trigger pattern is present.
 4. AGE/SEX CONTEXT: Apply age and sex-appropriate reasoning.
 5. FEMALE HORMONE RULE: Do NOT interpret estradiol, progesterone, FSH, or LH as abnormal in premenopausal females unless the value is extreme (e.g., FSH >40, estradiol <10 or >500, progesterone >30). These hormones vary dramatically by menstrual cycle phase. Do NOT build clinical narratives like "estrogen dominance" from a single blood draw without knowing cycle day.
 6. EARLY DETECTION is the primary goal — find what a 12-minute doctor appointment would miss.
@@ -479,20 +457,23 @@ CRITICAL RULES:
       }
     }
 
-    // Log detections — track every value outside optimal that standard labs call "normal"
+    // Log detections — track Watch-tier markers that standard labs call "normal".
+    // These are clinically meaningful signals the user's PCP wouldn't flag.
     if (labValues && labValues.length > 0) {
+      const watchFlags = new Set(['watch', 'suboptimal_low', 'suboptimal_high']);
+      const outOfRangeFlags = new Set(['low', 'high', 'critical_low', 'critical_high', 'deficient', 'elevated']);
       const detections = labValues
-        .filter((v: any) => v.optimal_flag && v.optimal_flag !== 'optimal' && (!v.standard_flag || v.standard_flag === 'normal'))
+        .filter((v: any) => v.optimal_flag && (watchFlags.has(v.optimal_flag) || outOfRangeFlags.has(v.optimal_flag)) && (!v.standard_flag || v.standard_flag === 'normal'))
         .map((v: any) => ({
           user_id: userId,
-          detection_type: 'suboptimal_within_standard',
+          detection_type: 'watch_within_standard',
           marker_name: v.marker_name,
           value: v.value,
           optimal_high: v.optimal_high,
           standard_high: v.standard_high,
           condition_flagged: analysis.priority_findings?.find((f: any) => f.marker?.toLowerCase().includes(v.marker_name?.toLowerCase()))?.headline || null,
           test_recommended: analysis.missing_tests?.[0]?.test_name || null,
-          severity: v.optimal_flag === 'deficient' || v.optimal_flag === 'elevated' ? 'critical' : v.optimal_flag === 'suboptimal_low' || v.optimal_flag === 'suboptimal_high' ? 'moderate' : 'moderate',
+          severity: ['critical_low', 'critical_high', 'deficient', 'elevated'].includes(v.optimal_flag) ? 'critical' : 'moderate',
           was_within_standard_range: true,
         }));
       if (detections.length > 0) {
