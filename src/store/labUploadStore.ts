@@ -350,7 +350,7 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
           const validStandard = ['normal', 'low', 'high', 'critical_low', 'critical_high'];
           const persistRows = extraction.values.map(v => {
             const r = findOptimalRange(ranges, v.marker_name);
-            const of_ = computeFlag(v.value, r, v.standard_low, v.standard_high);
+            const of_ = computeFlag(v.value, r, v.standard_low, v.standard_high, v.marker_name);
             return {
               draw_id: draw.id, user_id: userId, marker_name: v.marker_name,
               marker_category: v.category, value: v.value, unit: v.unit,
@@ -422,7 +422,7 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
 
         const cleaned = values.map(v => {
           const r = findOptimalRange(ranges, v.marker_name);
-          const of_ = computeFlag(v.value, r, v.standard_low, v.standard_high);
+          const of_ = computeFlag(v.value, r, v.standard_low, v.standard_high, v.marker_name);
           return {
             draw_id: drawId, user_id: userId, marker_name: v.marker_name,
             marker_category: v.category, value: v.value, unit: v.unit,
@@ -627,13 +627,29 @@ function findOptimalRange(ranges: Record<string, { optimal_low: number; optimal_
   return null;
 }
 
-function computeFlag(value: number, range: { optimal_low: number; optimal_high: number } | null, stdLow?: number | null, stdHigh?: number | null): string {
+// Markers where HIGH values are GOOD (only low values matter clinically).
+// Match against lowercased marker name via includes().
+const HIGHER_IS_BETTER = ['egfr', 'gfr', 'hdl'];
+
+function computeFlag(
+  value: number,
+  range: { optimal_low: number; optimal_high: number } | null,
+  stdLow?: number | null,
+  stdHigh?: number | null,
+  markerName?: string,
+): string {
   if (!range) return 'unknown';
-  // Use standard range as the urgent boundary when available, fall back to 2x/0.5x optimal
+  const n = (markerName ?? '').toLowerCase();
+  const higherIsBetter = HIGHER_IS_BETTER.some(k => n.includes(k));
+
   const lowThreshold = stdLow != null ? stdLow : range.optimal_low * 0.5;
-  const highThreshold = stdHigh != null ? stdHigh : range.optimal_high * 2;
   if (value < lowThreshold) return 'deficient';
   if (value < range.optimal_low) return 'suboptimal_low';
+
+  // For higher-is-better markers, anything ≥ optimal_low is optimal — never flag high
+  if (higherIsBetter) return 'optimal';
+
+  const highThreshold = stdHigh != null ? stdHigh : range.optimal_high * 2;
   if (value > highThreshold) return 'elevated';
   if (value > range.optimal_high) return 'suboptimal_high';
   return 'optimal';
