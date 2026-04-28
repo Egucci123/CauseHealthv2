@@ -394,6 +394,69 @@ CRITICAL RULES:
     };
     analysis = walkAndPlainify(analysis);
 
+    // ── Trend-watch injector (deterministic) ────────────────────────────
+    // Catch single-draw signals that don't meet rare-disease thresholds
+    // but warrant follow-up. Avoids alarming patients with named diagnoses
+    // while still capturing the trajectory pattern that actually catches
+    // ET, polycythemia, etc. — which is rising over time, not one number.
+    if (!Array.isArray(analysis.priority_findings)) analysis.priority_findings = [];
+    const trendFindings: any[] = [];
+    const findValTrend = (patterns: string[]): { value: number; marker: string } | null => {
+      for (const v of labValues) {
+        const n = (v.marker_name ?? '').toLowerCase();
+        if (patterns.some(p => n.includes(p))) {
+          const num = Number(v.value);
+          if (!Number.isNaN(num)) return { value: num, marker: v.marker_name };
+        }
+      }
+      return null;
+    };
+    const ageT = age;
+
+    // Platelets in upper-normal band, young patient
+    const pltT = findValTrend(['platelet']);
+    if (pltT && ageT < 40 && pltT.value > 350 && pltT.value <= 450) {
+      const already = (analysis.priority_findings as any[]).some((f: any) =>
+        (f.marker ?? '').toLowerCase().includes('platelet')
+      );
+      if (!already) {
+        trendFindings.push({
+          emoji: '🔄',
+          marker: pltT.marker,
+          value: `${pltT.value}`,
+          flag: 'monitor',
+          headline: 'Platelets at the top of normal — recheck in 3 months',
+          explanation: `Your platelets are ${pltT.value}, near the top of the normal range. For your age, the trend matters more than the single number — recheck in 3 months and compare. If it's climbing, your doctor may want to investigate further.`,
+          what_to_do: 'Repeat CBC in 3 months and bring both results to your doctor.',
+        });
+      }
+    }
+
+    // RBC/Hct upper-normal in young patient (without hitting JAK2 gate)
+    const rbcT = findValTrend(['rbc', 'red blood cell']);
+    const hctT = findValTrend(['hematocrit', 'hct']);
+    if (rbcT && hctT && ageT < 40 && rbcT.value > 5.5 && rbcT.value <= 5.7 && hctT.value > 49 && hctT.value <= 51) {
+      const already = (analysis.priority_findings as any[]).some((f: any) => {
+        const m = (f.marker ?? '').toLowerCase();
+        return m.includes('hct') || m.includes('hematocrit') || m.includes('rbc');
+      });
+      if (!already) {
+        trendFindings.push({
+          emoji: '🔄',
+          marker: 'Red Blood Cells & Hematocrit',
+          value: `RBC ${rbcT.value}, Hct ${hctT.value}%`,
+          flag: 'monitor',
+          headline: 'Red blood cells at top of normal — track the trend',
+          explanation: `RBC ${rbcT.value} and hematocrit ${hctT.value}% are at the upper end of normal. Could be hydration status, sleep apnea, or just your baseline — but for your age, a 3-month repeat tells us if it's stable or climbing.`,
+          what_to_do: 'Hydrate well, repeat CBC in 3 months, and tell your doctor if you snore or wake unrefreshed.',
+        });
+      }
+    }
+
+    if (trendFindings.length) {
+      analysis.priority_findings.push(...trendFindings);
+    }
+
     await supabase.from('lab_draws').update({ analysis_result: analysis, processing_status: 'complete' }).eq('id', drawId);
 
     // Generate priority alerts from analysis findings
