@@ -140,16 +140,67 @@ HARD RULES — FOLLOW EXACTLY:
    COMMON-BUT-MISSED — STILL FLAG THESE: PCOS panel (women with cycle/acne/insulin issues), Hashimoto's antibodies (TSH outside 1-2.5), full thyroid panel (TSH 2.5-4.5 with symptoms), low T panel (men with fatigue), perimenopause panel (women 35+ with cycle changes), full iron panel (ferritin <50 or hair loss), MMA + homocysteine (B12 <500), liver ultrasound (any ALT >25), celiac (GI symptoms or autoimmune), sleep apnea screening (snoring + fatigue + weight). These are common, missable conditions and belong in retest_timeline.
    GATE ONLY THE RARE STUFF: Do NOT recommend rare-disease screening (JAK2, ANA reflex, HLA-B27, multiple myeloma SPEP/UPEP, hereditary hemochromatosis genetics, MTHFR, pituitary MRI, Cushing's 24h cortisol) in retest_timeline. Those live in Clinical Prep's deeper-investigation section, gated until after the 90-day retest.
 9. WRITING STYLE: Write like a knowledgeable friend, not a medical textbook. Instead of "HPA-axis dysregulation" say "your stress hormones are elevated." Explain the WHY in plain English. Keep the action plan actionable — specific things to do, not vague clinical language.
-10. GOAL TAILORING: The user provides up to 5 personal goals (energy, weight, hormones, longevity, etc.). The wellness plan MUST visibly reflect these:
-    - The summary should reference how the plan addresses each top goal
-    - Lifestyle interventions and action plan steps should prioritize what advances those goals
-    - If user picks "longevity" → focus on metabolic health, sleep, zone 2 cardio, resistance training
-    - If user picks "energy" → focus on iron, B12, thyroid, mitochondrial support, sleep architecture
-    - If user picks "gut health" → focus on diet, fiber/prebiotics, food triggers, stress
-    - If user picks "weight" → focus on insulin sensitivity, protein intake, resistance training
-    - If user picks "hormones" → focus on cycle support (women), testosterone optimization (men), sleep, stress
-    - If user picks "off_medications" → emphasize alternatives in medication_notes; provide natural substitutes for each medication where evidence-based
-    - The plan should NOT feel generic — every section should connect back to what the user said they wanted.
+10. GOAL-DRIVEN BRANCHING (HARD RULE — the plan structure CHANGES based on the user's PRIMARY goal, which is the FIRST goal in the goals list):
+    The summary, today_actions, workouts, lifestyle_interventions, and action_plan phases must visibly branch around the primary goal. Don't sprinkle goal references — actually structure the plan around it.
+
+    PRIMARY GOAL = LONGEVITY:
+    - Workouts: 3 zone-2 cardio (40-60min) + 3 strength (compound lifts) + 1 mobility/recovery per week.
+    - Today actions: zone-2 walk, protein target (1g/lb lean), sleep 7-9h.
+    - Lifestyle: time-restricted eating 12-14h window, 30g fiber/day, weekly sauna, cold exposure.
+    - Phase focus: metabolic health (1) → strength + VO2max (2) → maintenance + tracking (3).
+
+    PRIMARY GOAL = ENERGY:
+    - Workouts: lighter zone-2 only first 4 weeks, ramp into strength weeks 5-12. NO HIIT until baseline restored.
+    - Today actions: morning sunlight, protein breakfast, no screens 1h before bed.
+    - Lifestyle: prioritize sleep architecture (cool room, consistent wake time, magnesium glycinate at night), iron/B12 if labs flag, blood-sugar-stable meals.
+    - Phase focus: restore foundation (1) → energy production (2) → resilience (3).
+
+    PRIMARY GOAL = WEIGHT:
+    - Workouts: 4 strength + 2-3 zone-2 (low-impact). Strength first.
+    - Today actions: protein at every meal (1g/lb goal weight), 10-min walk after each meal, no liquid calories.
+    - Lifestyle: time-restricted eating 14-16h, low-glycemic foods, resistance training is primary, cardio supportive.
+    - Phase focus: insulin sensitivity (1) → muscle gain + recomp (2) → maintenance (3).
+
+    PRIMARY GOAL = HORMONES:
+    - Workouts: heavy compound strength 3x/week (testosterone optimization), zone-2 2x, no overtraining.
+    - Today actions: sleep 8h, sun exposure, zinc-rich + cholesterol-rich meals.
+    - Lifestyle: minimize stress, consistent sleep, body fat 12-18% men / 18-25% women, manage sleep apnea risks, alcohol <3 drinks/week.
+    - Phase focus: testing + foundation (1) → optimization (2) → maintenance (3).
+
+    PRIMARY GOAL = GUT_HEALTH:
+    - Workouts: gentle zone-2 + yoga first 4 weeks, ramp normally after gut symptoms quiet.
+    - Today actions: chew thoroughly, stop eating 3h before bed, food/symptom journal.
+    - Lifestyle: 30g fiber from real food, fermented foods daily, identify trigger foods (low-FODMAP trial if relevant), reduce stress.
+    - Phase focus: identify triggers (1) → repair barrier (2) → reintroduce + maintain (3).
+
+    PRIMARY GOAL = OFF_MEDICATIONS:
+    - Critical: NEVER recommend stopping medications. Emphasize working WITH the doctor toward reduction.
+    - Today actions: lifestyle changes that improve the metabolic conditions driving the medication.
+    - Lifestyle: aggressively address insulin resistance, BP, lipids — the conditions most amenable to reversal.
+    - Phase focus: build habits (1) → measurable improvement (2) → revisit medication need with doctor (3).
+    - medication_notes: give specific evidence-based natural alternatives for EACH med, framed as 'discuss with your doctor'.
+
+    PRIMARY GOAL = HEART_HEALTH:
+    - Workouts: 4 zone-2 cardio + 2 strength + flexibility.
+    - Today actions: 30g fiber, omega-3 rich food, daily 30-min walk, BP at home weekly.
+    - Lifestyle: Mediterranean-style eating, salt awareness, statin discussion (if not already on one and lab-warranted), sleep + stress.
+    - Phase focus: lipid + inflammation (1) → cardio capacity (2) → maintenance (3).
+
+    PRIMARY GOAL = HAIR_REGROWTH:
+    - Today actions: protein at breakfast, scalp massage 5 min/day, sleep 8h, ferritin-rich food.
+    - Lifestyle: address ferritin <50, full thyroid panel if not done, manage stress (cortisol disrupts cycle), zinc + biotin from food, no harsh treatments.
+    - Phase focus: nutritional foundation (1) → scalp + cycle (2) → maintenance (3).
+
+    PRIMARY GOAL = AUTOIMMUNE:
+    - Workouts: gentle zone-2 + strength, NO overtraining (raises CRP).
+    - Lifestyle: anti-inflammatory diet, identify food triggers, stress management, sleep is non-negotiable.
+    - Phase focus: lower inflammation (1) → identify triggers (2) → maintain remission (3).
+
+    PRIMARY GOAL = PAIN:
+    - Workouts: gentle movement first, build strength carefully, daily mobility.
+    - Lifestyle: anti-inflammatory diet, omega-3, magnesium, sleep, stress, weight if relevant.
+
+    For EVERY goal: the summary MUST open with how the plan ties to the user's primary goal. The user should feel the plan was built around them.
 11. LIMITED-DATA MODE: If the user has NO lab values uploaded (only symptoms, conditions, medications, goals), still generate a useful plan based on:
     - Diagnosed conditions and known mechanisms
     - Medication-related nutrient depletions (lab-confirmed by virtue of the prescription)
@@ -160,7 +211,8 @@ HARD RULES — FOLLOW EXACTLY:
         messages: [{ role: 'user', content: `Create a comprehensive wellness plan addressing ALL lab findings.
 
 PATIENT: ${age ? `${age}yo` : 'age unknown'} ${profile?.sex ?? ''}
-USER'S TOP GOALS (priority order — your plan MUST be tailored around these): ${goalsStr}
+USER'S PRIMARY GOAL (the structural anchor for the plan — branch around this per rule 10): ${userGoals[0] ? (GOAL_LABELS[userGoals[0]] ?? userGoals[0]) : 'understand bloodwork'}
+USER'S OTHER GOALS (secondary): ${goalsStr}
 MODE: ${isOptimizationMode ? 'optimization' : 'treatment'}
 ${isOptimizationMode ? 'OPTIMIZATION CONTEXT: Patient labs are mostly optimal. Frame the plan around longevity optimization, not disease treatment. Phase names should be: "Build Foundation (Weeks 1-4)", "Optimize (Weeks 5-8)", "Sustain & Track (Weeks 9-12)". Lifestyle interventions should focus on longevity science: zone 2 cardio, resistance training, sleep optimization, cold/heat exposure, stress resilience, metabolic health optimization, and proactive screening.' : ''}
 DIAGNOSED CONDITIONS (GROUND TRUTH — never substitute these with related conditions; never call UC 'Crohn's' or vice versa; never infer a different diagnosis from medications): ${condStr}
@@ -318,7 +370,71 @@ CRITICAL OUTPUT RULES:
         plan.supplement_stack.push(rule.entry);
         console.log(`[wellness-plan] Injected ${rule.nutrient} for ${rule.regex.source} match`);
       }
-      // Re-cap and re-rank after injection
+
+      // ── Goal-stack injector (optimization mode only) ───────────────────
+      // For users in optimization mode (mostly healthy), make sure the
+      // canonical longevity / goal-tuned stack is present even if the AI
+      // didn't include it. Same skip rule: if user already supplements it,
+      // don't re-add. These are 'optimization' tier — always rank below
+      // lab_finding / medication_depletion / disease_mechanism entries.
+      type GoalStackEntry = { matchInStack: RegExp; entry: any };
+      const baseLongevityStack: GoalStackEntry[] = [
+        {
+          matchInStack: /\bcreatine\b/i,
+          entry: { emoji: '💪', nutrient: 'Creatine Monohydrate', form: 'Powder', dose: '5g', timing: 'Any time daily', why_short: 'Universal — strength, cognition, bone density', why: 'Creatine is one of the most studied supplements. Daily 5g supports muscle strength, cognitive function, and bone density. No loading required.', priority: 'optimize', sourced_from: 'optimization', evidence_note: '500+ RCTs across decades support 3-5g daily for healthy adults.' },
+        },
+        {
+          matchInStack: /\b(omega[- ]?3|fish oil|epa|dha)\b/i,
+          entry: { emoji: '🐟', nutrient: 'Omega-3 (EPA + DHA)', form: 'Softgel', dose: '2g combined EPA+DHA', timing: 'With food', why_short: 'CV protection, brain, anti-inflammatory', why: 'Omega-3s lower triglycerides, hs-CRP, and CV risk. Aim for 2g combined EPA+DHA daily from a third-party-tested fish oil or algal source.', priority: 'optimize', sourced_from: 'optimization', evidence_note: 'AHA recommends 1g+/day; longevity protocols target 2g+.' },
+        },
+        {
+          matchInStack: /\bvitamin\s*d\b|cholecalciferol|d3/i,
+          entry: { emoji: '☀️', nutrient: 'Vitamin D3 + K2', form: 'Softgel', dose: '2000-5000 IU D3 + 100mcg K2 MK-7', timing: 'With breakfast (fat-soluble)', why_short: 'Bone, immune, mood — most people are low', why: 'Vitamin D3 with K2 directs calcium to bones, not arteries. Target a blood level of 50-70 ng/mL with retesting after 8-12 weeks.', priority: 'optimize', sourced_from: 'optimization', evidence_note: 'Endocrine Society recommends 1500-2000 IU/day baseline.' },
+        },
+        {
+          matchInStack: /\bmagnesium\b/i,
+          entry: { emoji: '🌙', nutrient: 'Magnesium Glycinate', form: 'Capsule', dose: '300-400mg elemental', timing: 'Evening (sleep aid)', why_short: 'Sleep, muscle, BP, blood sugar', why: 'Glycinate form is well-tolerated and supports sleep, muscle relaxation, blood pressure, and insulin sensitivity. Most adults are mildly deficient.', priority: 'optimize', sourced_from: 'optimization', evidence_note: 'NHANES data: ~50% of US adults below RDA.' },
+        },
+      ];
+      const energyExtras: GoalStackEntry[] = [
+        {
+          matchInStack: /\b(b[\s-]?complex|methylated b)\b/i,
+          entry: { emoji: '⚡', nutrient: 'Methylated B-Complex', form: 'Capsule', dose: '1 capsule', timing: 'Breakfast', why_short: 'Energy production + methylation', why: 'B-vitamins (especially methylfolate, methylcobalamin) drive cellular energy and methylation. The methylated form bypasses MTHFR variation.', priority: 'optimize', sourced_from: 'optimization', evidence_note: 'Standard for energy + cognitive optimization protocols.' },
+        },
+      ];
+      const performanceExtras: GoalStackEntry[] = [
+        {
+          matchInStack: /\bashwagandha|withania/i,
+          entry: { emoji: '🪨', nutrient: 'Ashwagandha (KSM-66)', form: 'Capsule', dose: '600mg', timing: 'Evening', why_short: 'Cortisol, recovery, sleep', why: 'KSM-66 ashwagandha lowers cortisol, improves sleep quality, and supports testosterone in men. Take 8-12 weeks for full effect.', priority: 'optimize', sourced_from: 'optimization', evidence_note: 'RCTs show 14-22% cortisol reduction and modest T improvements.' },
+        },
+      ];
+      const heartExtras: GoalStackEntry[] = [
+        {
+          matchInStack: /\b(coq10|ubiquinol|coenzyme\s*q)\b/i,
+          entry: { emoji: '❤️', nutrient: 'CoQ10 (Ubiquinol)', form: 'Softgel', dose: '100mg', timing: 'Breakfast', why_short: 'Mitochondrial energy + heart support', why: 'CoQ10 supports cardiac muscle energy production. Especially relevant if on a statin or if heart-health is the goal.', priority: 'optimize', sourced_from: 'optimization', evidence_note: 'CV outcomes literature supports 100-200mg/day.' },
+        },
+      ];
+
+      const primaryGoal = userGoals[0] ?? '';
+      let goalStack: GoalStackEntry[] = [];
+      if (isOptimizationMode || ['longevity', 'energy', 'heart_health', 'weight'].includes(primaryGoal)) {
+        // Base longevity stack runs for all optimization-leaning paths
+        goalStack = [...baseLongevityStack];
+        if (primaryGoal === 'energy') goalStack.push(...energyExtras);
+        if (primaryGoal === 'heart_health') goalStack.push(...heartExtras);
+        if (['longevity', 'weight'].includes(primaryGoal)) goalStack.push(...performanceExtras);
+      }
+
+      const stackTextNow = () => plan.supplement_stack.map((s: any) => `${s.nutrient ?? ''} ${s.form ?? ''}`).join(' ').toLowerCase();
+      for (const item of goalStack) {
+        if (plan.supplement_stack.length >= 7) break;
+        if (item.matchInStack.test(stackTextNow())) continue;
+        if (item.matchInStack.test(userSuppNames)) continue; // already supplementing
+        plan.supplement_stack.push(item.entry);
+        console.log(`[wellness-plan] Goal-stack injected ${item.entry.nutrient} for primary goal "${primaryGoal}"`);
+      }
+
+      // Re-cap and re-rank after all injections
       const priorityRank = (p: string) => p === 'critical' ? 0 : p === 'high' ? 1 : p === 'moderate' ? 2 : 3;
       plan.supplement_stack = plan.supplement_stack
         .sort((a: any, b: any) => {
