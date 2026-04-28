@@ -1,6 +1,9 @@
 // supabase/functions/generate-doctor-prep/index.ts
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { buildRareDiseaseBlocklist, extractRareDiseaseContext } from '../_shared/rareDiseaseGate.ts';
+import { isHealthyMode } from '../_shared/healthMode.ts';
+import { GOAL_LABELS, formatGoals } from '../_shared/goals.ts';
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -43,31 +46,13 @@ serve(async (req) => {
       return `${v.marker_name}: ${v.value} ${v.unit ?? ''} (Ref: ${v.standard_low ?? '?'}–${v.standard_high ?? '?'})${tag}`;
     }).join('\n') || 'No labs';
 
-    // Goals → readable labels for prompt tailoring
-    const GOAL_LABELS: Record<string, string> = {
-      understand_labs: 'Understand my bloodwork',
-      energy: 'Fix my energy and brain fog',
-      off_medications: 'Reduce my medications',
-      hair_regrowth: 'Regrow my hair',
-      heart_health: 'Improve heart health',
-      gut_health: 'Fix my gut',
-      weight: 'Lose weight',
-      hormones: 'Balance my hormones',
-      doctor_prep: 'Prepare for a doctor visit',
-      longevity: 'Longevity and prevention',
-      autoimmune: 'Manage autoimmune disease',
-      pain: 'Reduce pain',
-    };
+    // Goals → readable labels for prompt tailoring. Lives in _shared/goals.ts.
     const userGoals: string[] = (profile?.primary_goals ?? []).filter((g: any) => typeof g === 'string');
-    const goalsStr = userGoals.length > 0
-      ? userGoals.map((g) => GOAL_LABELS[g] ?? g).join(', ')
-      : 'Not specified';
+    const goalsStr = formatGoals(userGoals);
 
-    // Healthy-mode detection — same threshold as wellness plan: <25% of
-    // markers need attention (Watch or out-of-range).
-    const needsAttentionFlags = new Set(['watch', 'low', 'high', 'critical_low', 'critical_high', 'suboptimal_low', 'suboptimal_high', 'deficient', 'elevated']);
-    const needsAttentionCount = labValues.filter((v: any) => needsAttentionFlags.has(v.optimal_flag)).length;
-    const isHealthyMode = labValues.length > 0 && (needsAttentionCount / labValues.length) < 0.25;
+    // Healthy-mode detection — same threshold as wellness plan.
+    // Lives in _shared/healthMode.ts.
+    const isHealthy = isHealthyMode(labValues);
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -211,7 +196,7 @@ Be concise. Scannable in 3 minutes.`,
         messages: [{ role: 'user', content: `Generate clinical visit prep document.
 
 PATIENT: ${age ? `${age}yo` : 'age unknown'} ${profile?.sex ?? ''}
-MODE: ${isHealthyMode ? 'healthy — apply HEALTHY MODE rules (proactive/optimization framing, no alarmism)' : 'standard'}
+MODE: ${isHealthy ? 'healthy — apply HEALTHY MODE rules (proactive/optimization framing, no alarmism)' : 'standard'}
 USER'S TOP GOALS (their stated reasons for using this app — your discussion points and tests should connect to these): ${goalsStr}
 DIAGNOSED CONDITIONS (GROUND TRUTH — use these exact names; UC is NOT Crohn's; do NOT infer a different diagnosis from medications): ${condStr}
 MEDICATIONS:\n${medsStr}
@@ -300,64 +285,11 @@ CRITICAL OUTPUT RULES (for the new card-stack UI):
 
     // ── HARD POST-FILTER: move blocked tests from tests_to_request to advanced_screening ──
     // ── unless the patient hits the explicit urgent threshold. Belt-and-suspenders for AI drift. ──
+    // Thresholds shared with analyze-labs — see _shared/rareDiseaseGate.ts.
     try {
-      const findVal = (patterns: string[]): number | null => {
-        for (const v of labValues) {
-          const n = (v.marker_name ?? '').toLowerCase();
-          if (patterns.some((p: string) => n.includes(p))) {
-            const num = Number(v.value);
-            if (!Number.isNaN(num)) return num;
-          }
-        }
-        return null;
-      };
-      const platelets = findVal(['platelet']);
-      const rbc = findVal(['rbc', 'red blood cell']);
-      const hct = findVal(['hematocrit', 'hct']);
-      const ana = findVal(['ana ', 'anti-nuclear']);
-      const globulin = findVal(['globulin']);
-      const calcium = findVal(['calcium']);
-      const ferritin = findVal(['ferritin']);
-      const transferrinSat = findVal(['transferrin saturation', 'iron sat']);
-      const prolactin = findVal(['prolactin']);
-      const ageNum = age ?? 99;
-
-      // Tightened thresholds — borderline-high values must NOT trigger
-      // rare-disease screening unless the patient profile also makes the
-      // rare diagnosis MORE likely (young age = less likely reactive,
-      // more likely primary).
-      const hgb = findVal(['hemoglobin', 'hgb']);
-      const isYoung = ageNum < 40;
-      const isMidAge = ageNum < 50;
-      const allowJak2 =
-        (platelets ?? 0) > 600 ||                                          // sustained thrombocytosis (any age)
-        (isYoung && (platelets ?? 0) > 450) ||                              // young + mild thrombocytosis = ET workup warranted
-        (isMidAge && (platelets ?? 0) > 500) ||                             // mid-age + moderate thrombocytosis
-        ((rbc ?? 0) > 6.0 && (hct ?? 0) > 54) ||                            // both extreme (any age)
-        (isYoung && (rbc ?? 0) > 5.7 && (hct ?? 0) > 51) ||                 // young + mild RBC/Hct elevation
-        ((hgb ?? 0) > 17 && (hct ?? 0) > 52);                               // WHO PV criterion
-      const allowAnaReflex = (ana ?? 0) > 0;                                // any positive ANA
-      const allowMyeloma =
-        (globulin ?? 0) > 5 ||                                              // marked hyperglobulinemia (any age)
-        ((globulin ?? 0) > 3.5 && isYoung) ||                               // young + mild = unusual, workup
-        (calcium ?? 0) > 11.5;                                              // hypercalcemia
-      const allowHemochromGenetics =
-        ((ferritin ?? 0) > 300 && (transferrinSat ?? 0) > 50) ||            // standard AASLD criterion
-        (isYoung && (ferritin ?? 0) > 200 && (transferrinSat ?? 0) > 45);    // young + lower threshold (less likely reactive)
-      const allowPituitaryMri = (prolactin ?? 0) > 100;                     // moderate hyperprolactinemia
-      const allowCalciumPth = (calcium ?? 0) > 11;
-      void allowCalciumPth;
-
-      const blockedPatterns: { pattern: RegExp; allow: boolean }[] = [
-        { pattern: /\bjak2\b|v617f|erythropoietin|\bepo\b\s*level|peripheral\s+(blood\s+)?smear|myeloproliferative/i, allow: allowJak2 },
-        { pattern: /\bana\b\s*reflex|anti-?dsdna|anti-?sm|anti-?ro|anti-?la|anti-?scl|anti-?jo/i, allow: allowAnaReflex },
-        { pattern: /spep|upep|free\s+light\s+chain|multiple\s+myeloma/i, allow: allowMyeloma },
-        { pattern: /hereditary\s+hemochromatosis|hfe\s+gene/i, allow: allowHemochromGenetics },
-        { pattern: /pituitary\s+mri|sella\s+mri/i, allow: allowPituitaryMri },
-        { pattern: /24-?hour\s+urinary\s+cortisol|cushing/i, allow: false },
-        { pattern: /\bmthfr\b/i, allow: false },
-        { pattern: /hla-?b27/i, allow: false },
-      ];
+      const ctx = extractRareDiseaseContext(labValues, age);
+      const isYoung = ctx.age < 40;
+      const blockedPatterns = buildRareDiseaseBlocklist(ctx);
 
       const isBlocked = (t: any) => {
         const name = `${t?.test_name ?? ''} ${t?.why_short ?? ''} ${t?.clinical_justification ?? ''}`;
@@ -445,11 +377,11 @@ CRITICAL OUTPUT RULES (for the new card-stack UI):
       // without naming a rare disease. Catches the pattern (climbing
       // trajectory) that actually surfaces ET/PV — not a single number.
       if (!Array.isArray(doc.discussion_points)) doc.discussion_points = [];
-      if (isYoung && (platelets ?? 0) > 350 && (platelets ?? 0) <= 450) {
-        doc.discussion_points.push(`Platelets are ${platelets} — at the top of normal for someone your age. Ask for a repeat CBC in 3 months. If platelets are climbing across two draws, that's the signal worth investigating, not the single number.`);
+      if (isYoung && (ctx.platelets ?? 0) > 350 && (ctx.platelets ?? 0) <= 450) {
+        doc.discussion_points.push(`Platelets are ${ctx.platelets} — at the top of normal for someone your age. Ask for a repeat CBC in 3 months. If platelets are climbing across two draws, that's the signal worth investigating, not the single number.`);
       }
-      if (isYoung && (rbc ?? 0) > 5.5 && (rbc ?? 0) <= 5.7 && (hct ?? 0) > 49 && (hct ?? 0) <= 51) {
-        doc.discussion_points.push(`Red blood cells (${rbc}) and hematocrit (${hct}%) are at the top of normal. Could be hydration, sleep quality, or baseline. Ask your doctor for a repeat CBC in 3 months and screen for sleep apnea (STOP-BANG) if you snore or wake unrefreshed.`);
+      if (isYoung && (ctx.rbc ?? 0) > 5.5 && (ctx.rbc ?? 0) <= 5.7 && (ctx.hct ?? 0) > 49 && (ctx.hct ?? 0) <= 51) {
+        doc.discussion_points.push(`Red blood cells (${ctx.rbc}) and hematocrit (${ctx.hct}%) are at the top of normal. Could be hydration, sleep quality, or baseline. Ask your doctor for a repeat CBC in 3 months and screen for sleep apnea (STOP-BANG) if you snore or wake unrefreshed.`);
       }
     } catch (e) { console.error('[doctor-prep] post-filter error:', e); }
 

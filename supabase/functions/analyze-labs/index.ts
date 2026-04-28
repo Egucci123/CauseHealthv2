@@ -4,6 +4,7 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { buildRareDiseaseBlocklist, extractRareDiseaseContext } from '../_shared/rareDiseaseGate.ts';
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -106,48 +107,26 @@ CRITICAL RULES:
    - 3+ Watch-tier or out-of-range values clustering in one system → escalate that system in patterns.
 
 3. WHEN TO RECOMMEND FOLLOW-UP TESTS (missing_tests array):
-   Default rule: only recommend a test when there's a SPECIFIC abnormal finding (out-of-range OR Watch-tier) that the test would investigate. Healthy values don't earn follow-up tests.
-   Common-but-missed conditions still deserve aggressive surfacing — see rule 9 below — but only when the trigger pattern is present.
-4. AGE/SEX CONTEXT: Apply age and sex-appropriate reasoning.
-5. FEMALE HORMONE RULE: Do NOT interpret estradiol, progesterone, FSH, or LH as abnormal in premenopausal females unless the value is extreme (e.g., FSH >40, estradiol <10 or >500, progesterone >30). These hormones vary dramatically by menstrual cycle phase. Do NOT build clinical narratives like "estrogen dominance" from a single blood draw without knowing cycle day.
-6. EARLY DETECTION is the primary goal — find what a 12-minute doctor appointment would miss.
-7. Write headlines and explanations in plain English. Instead of "hepatocellular dysfunction" say "your liver is working harder than it should." Keep explanations to 1-2 sentences max.
-8. Frame as educational information for discussion with a healthcare provider.
+   Only recommend a test when there's a SPECIFIC abnormal finding (out-of-range OR Watch-tier) it would investigate. Healthy values don't earn follow-up tests.
 
-9. COMMON-BUT-MISSED CONDITIONS (CATCH AGGRESSIVELY in missing_tests):
-   These are 1–10% prevalence conditions that 12-min appointments routinely miss. Surface them when ANY suggestive pattern is present:
-   - PCOS workup (women): testosterone + DHEA-S + LH:FSH + fasting insulin + SHBG + free androgen index. Trigger: irregular cycles, acne, hirsutism, weight gain, hair thinning, insulin resistance markers in a woman of reproductive age.
+4. AGE / SEX context: apply age- and sex-appropriate reasoning. For premenopausal females, do NOT flag estradiol, progesterone, FSH, or LH as abnormal unless extreme (FSH >40, estradiol <10 or >500, progesterone >30) — these vary by cycle phase.
+
+5. EARLY DETECTION is the primary goal — find what a 12-minute appointment misses.
+
+6. COMMON-BUT-MISSED CONDITIONS — surface in missing_tests when the trigger pattern is present:
+   - PCOS workup (women): testosterone + DHEA-S + LH:FSH + fasting insulin + SHBG. Trigger: irregular cycles, acne, hirsutism, weight gain, hair thinning.
    - Hashimoto's: TPO + thyroglobulin antibodies. Trigger: TSH outside 1.0-2.5, OR fatigue+weight changes+hair loss.
    - Subclinical hypothyroidism: Free T3 + Free T4 + reverse T3. Trigger: TSH 2.5-4.5 with symptoms.
-   - Low testosterone (men): total T + free T + SHBG + estradiol + LH/FSH. Trigger: men with fatigue, weight gain, low libido, OR T <500.
+   - Low testosterone (men): total T + free T + SHBG + estradiol + LH/FSH. Trigger: fatigue, weight gain, low libido, OR T <500.
    - Perimenopause (women 35-50): FSH + estradiol + progesterone + AMH. Trigger: irregular cycles, hot flashes, mood/sleep changes.
    - Adrenal/HPA-axis: AM cortisol + DHEA-S + ACTH. Trigger: chronic stress fatigue, salt cravings, anxiety.
-   - Functional iron deficiency: full iron panel. Trigger: ferritin <50 OR hair loss/fatigue/restless legs (especially menstruating women).
+   - Functional iron deficiency: full iron panel. Trigger: ferritin <50 OR hair loss/fatigue/restless legs.
    - True B12 status: MMA + homocysteine. Trigger: B12 <500, fatigue, brain fog, neuropathy.
-   - NAFLD: liver ultrasound + GGT. Trigger: ALT >25, especially with high triglycerides or insulin resistance.
-   - Celiac: tTG-IgA + total IgA. Trigger: GI symptoms, iron deficiency, low albumin, family history, autoimmune disease.
-   - SIBO: lactulose breath test. Trigger: persistent bloating, post-meal gas, IBS-like symptoms.
-   - Sleep apnea: STOP-BANG + sleep study. Trigger: snoring, daytime fatigue, hypertension, weight, insulin resistance.
-   - Endometriosis (women): pelvic ultrasound + GYN. Trigger: pelvic pain, heavy bleeding, infertility.
-   These get flagged on day 1, not gated.
+   - NAFLD: liver ultrasound + GGT. Trigger: ALT out of range with high triglycerides or insulin resistance.
+   - Celiac: tTG-IgA + total IgA. Trigger: persistent GI symptoms, iron deficiency, low albumin, autoimmune disease.
+   - Sleep apnea: STOP-BANG + sleep study. Trigger: snoring, daytime fatigue, hypertension, weight.
 
-10. LIFESTYLE-FIRST GATE FOR RARE DISEASES (CRITICAL):
-   The default user is overwhelmed. Do NOT scare them with rare-disease screening on day 1.
-   Borderline-upper-normal values do NOT qualify as "queue for rare-disease screening." Just put those markers in retest_timeline like routine retests. Don't trigger JAK2 on RBC 5.96, don't trigger celiac on a single GI complaint, don't trigger ANA reflex on a single elevated marker.
-   ApoB and lipid NMR are MAINSTREAM cardiology essentials, NOT rare-disease screening — those belong in missing_tests when lipids are abnormal.
-   ABSOLUTE BLOCKLIST — these tests CAN NEVER appear in missing_tests unless the patient hits the hard urgent threshold:
-     - JAK2 V617F → only when platelets >450 OR (RBC >6.0 AND Hct >54). Borderline-high RBC/Hct (e.g., 5.96 / 51.4) is NOT enough.
-     - Erythropoietin level → same rule as JAK2.
-     - Celiac panel (tTG-IgA) → only when persistent malabsorption symptoms or low albumin + iron deficiency + GI symptoms.
-     - HLA-B27 → only with persistent inflammatory back pain >90 days unresponsive to lifestyle.
-     - ANA reflex panel → only when ANA already positive on this draw.
-     - Multiple myeloma panel (SPEP/UPEP/free light chains) → only with globulin >3.5 AND age <40, OR persistent hypercalcemia.
-     - Hereditary hemochromatosis genetics → only with ferritin >300 AND transferrin saturation >45%.
-     - MTHFR genetics → never in missing_tests (controversial utility).
-     - Pituitary MRI → only with prolactin >100.
-     - 24h urinary cortisol → only with multiple Cushing's stigmata.
-     - Flow cytometry → only with critically abnormal absolute counts.
-   Default missing_tests should feel ROUTINE for a primary care doctor: lipid NMR, fasting insulin, iron panel, vitamin D recheck, liver ultrasound, thyroid panel (Free T3/T4 + TPO), hsCRP, basic celiac IF GI symptoms. Rare-disease screening is the SECOND visit's job, not the first.`,
+7. RARE-DISEASE GATE: borderline-upper-normal values do NOT trigger rare-disease screening. ApoB and lipid NMR are MAINSTREAM cardiology essentials and belong in missing_tests when lipids are abnormal. Server-side post-filter (in _shared/rareDiseaseGate.ts) strips JAK2/ANA reflex/SPEP-UPEP/HLA-B27/MTHFR/Pituitary MRI/Cushing's screening when activation thresholds aren't met — but you should still avoid suggesting them unless the underlying lab pattern clearly warrants it. Default missing_tests should feel ROUTINE for a primary care doctor.`,
         messages: [{ role: 'user', content: `Analyze these labs:\n\nPatient: ${age ? `${age}yo ` : ''}${profile?.sex ?? 'unknown'}\nDIAGNOSED CONDITIONS (GROUND TRUTH — never substitute related conditions; UC ≠ Crohn's; never infer different diagnoses from medications): ${condStr}\nMedications: ${medsStr || 'None'}\nSupplements: ${suppsStr}\nSymptoms: ${sympStr || 'None'}\n\nLab Results:\n${labStr}\n\nSUPPLEMENT-LAB INTERACTION KNOWLEDGE (use when interpreting labs):\n- Biotin (B7) >5mg/day: falsely alters TSH, Free T3, Free T4, troponin. Patient should stop 48-72h before thyroid/cardiac labs.\n- Creatine: raises serum creatinine 0.1-0.3 mg/dL artificially. Do NOT diagnose kidney dysfunction without other markers (cystatin C). eGFR also falsely lowered.\n- Vitamin D3 supplementation: 25-OH vitamin D >50 reflects supplementation, not endogenous status.\n- Vitamin B12 / methylcobalamin: serum B12 dramatically elevated (often >2000) once supplementing. Use methylmalonic acid (MMA) for true status.\n- Iron supplements: raise serum iron, ferritin, iron saturation. Draw labs at trough.\n- Niacin (B3) high-dose: raises HDL 15-35%, lowers triglycerides 20-50%, lowers LDL, can elevate ALT and uric acid.\n- Omega-3 / fish oil 2-4g: lowers triglycerides 20-50%, lowers hs-CRP, mildly raises HDL.\n- Berberine: lowers fasting glucose, A1c, triglycerides, LDL.\n- Vitamin K2: lowers INR — interferes with warfarin monitoring.\n- DHEA: raises DHEA-S, testosterone, estradiol.\n- TRT/Testosterone: raises Hct/Hgb (polycythemia risk), suppresses LH/FSH, raises estradiol.\n- Whey/protein supplements: mildly raise BUN and creatinine.\n- Curcumin: lowers hs-CRP, mildly lowers ALT.\n- TMG / methylfolate / B12: lower homocysteine.\n- Saw palmetto: mildly lowers PSA — be aware in cancer screening.\n- Ashwagandha: lowers cortisol, may modulate thyroid.\n- Vitamin C high-dose: can falsely lower glucose readings on some assays.\n\nIf the patient takes any supplement that affects an abnormal lab marker, NOTE this in the explanation. DO NOT diagnose pathology that may be artifact (especially elevated creatinine on creatine, B12 on supplementation, thyroid markers on biotin).\n\nReturn JSON: { "score_headline": "one 12-word verdict in plain English", "priority_findings": [{ "emoji": "", "marker": "", "value": "", "flag": "urgent|monitor|optimal", "headline": "max 10 words plain English", "explanation": "1 sentence plain English, no jargon", "what_to_do": "1 short verb-led sentence" }], "patterns": [{ "emoji": "", "pattern_name": "plain English", "severity": "critical|high|medium", "markers_involved": [], "description": "1 sentence", "likely_cause": "1 sentence" }], "medication_connections": [{ "medication": "", "lab_finding": "", "connection": "" }], "supplement_connections": [{ "supplement": "", "lab_finding": "", "connection": "" }], "missing_tests": [{ "emoji": "🧪", "test_name": "", "why_needed": "1 sentence plain English", "icd10": "", "priority": "urgent|high|moderate" }], "immediate_actions": [{ "emoji": "", "action": "verb-led 1 sentence" }], "summary": "3 short sentences plain English" }` }],
         }),
       });
@@ -206,63 +185,14 @@ CRITICAL RULES:
     // ── HARD POST-FILTER: scrub rare-disease screening from missing_tests when ──
     // ── the user's labs don't hit the urgent threshold. Belt-and-suspenders for ──
     // ── prompt drift. The AI keeps suggesting JAK2 etc. for borderline values.   ──
+    // Thresholds shared with generate-doctor-prep — see _shared/rareDiseaseGate.ts.
     {
-      const findVal = (patterns: string[]): number | null => {
-        for (const v of labValues) {
-          const n = (v.marker_name ?? '').toLowerCase();
-          if (patterns.some(p => n.includes(p))) {
-            const num = Number(v.value);
-            if (!Number.isNaN(num)) return num;
-          }
-        }
-        return null;
-      };
-      const platelets = findVal(['platelet']);
-      const rbc = findVal(['rbc', 'red blood cell']);
-      const hct = findVal(['hematocrit', 'hct']);
-      const ana = findVal(['ana ', 'anti-nuclear']);
-      const globulin = findVal(['globulin']);
-      const calcium = findVal(['calcium']);
-      const ferritin = findVal(['ferritin']);
-      const transferrinSat = findVal(['transferrin saturation', 'iron sat']);
-      const prolactin = findVal(['prolactin']);
       const age = profile?.date_of_birth ? Math.floor((Date.now() - new Date(profile.date_of_birth).getTime()) / 31_557_600_000) : 99;
-
-      // Age-aware thresholds. Reactive thrombocytosis / hyperferritinemia
-      // are common in older patients (chronic disease, infection).
-      // Same numbers in a young patient are more likely to reflect
-      // primary disease and warrant earlier workup.
-      const hgbVal = findVal(['hemoglobin', 'hgb']);
-      const isYoung = age < 40;
-      const isMidAge = age < 50;
-      const allowJak2 =
-        (platelets ?? 0) > 600 ||
-        (isYoung && (platelets ?? 0) > 450) ||
-        (isMidAge && (platelets ?? 0) > 500) ||
-        ((rbc ?? 0) > 6.0 && (hct ?? 0) > 54) ||
-        (isYoung && (rbc ?? 0) > 5.7 && (hct ?? 0) > 51) ||
-        ((hgbVal ?? 0) > 17 && (hct ?? 0) > 52);
-      const allowAnaReflex = (ana ?? 0) > 0;
-      const allowMyeloma =
-        (globulin ?? 0) > 5 ||
-        ((globulin ?? 0) > 3.5 && isYoung) ||
-        (calcium ?? 0) > 11.5;
-      const allowHemochromGenetics =
-        ((ferritin ?? 0) > 300 && (transferrinSat ?? 0) > 50) ||
-        (isYoung && (ferritin ?? 0) > 200 && (transferrinSat ?? 0) > 45);
-      const allowPituitaryMri = (prolactin ?? 0) > 100;
-      const allowCalciumPth = (calcium ?? 0) > 11;
-
-      const blockedPatterns: { pattern: RegExp; allow: boolean; label: string }[] = [
-        { pattern: /\bjak2\b|v617f|erythropoietin|\bepo\b\s*level|peripheral\s+(blood\s+)?smear|myeloproliferative/i, allow: allowJak2, label: 'JAK2/EPO/peripheral smear' },
-        { pattern: /\bana\b\s*reflex|anti-?dsdna|anti-?sm|anti-?ro|anti-?la|anti-?scl|anti-?jo/i, allow: allowAnaReflex, label: 'ANA reflex panel' },
-        { pattern: /spep|upep|free\s+light\s+chain|multiple\s+myeloma/i, allow: allowMyeloma, label: 'Myeloma panel' },
-        { pattern: /hereditary\s+hemochromatosis|hfe\s+gene/i, allow: allowHemochromGenetics, label: 'Hemochromatosis genetics' },
-        { pattern: /pituitary\s+mri|sella\s+mri/i, allow: allowPituitaryMri, label: 'Pituitary MRI' },
-        { pattern: /24-?hour\s+urinary\s+cortisol|cushing/i, allow: false, label: "Cushing's screening" },
-        { pattern: /\bmthfr\b/i, allow: false, label: 'MTHFR' },
-        { pattern: /hla-?b27/i, allow: false, label: 'HLA-B27 (gate to advanced_screening)' },
-      ];
+      const ctx = extractRareDiseaseContext(labValues, age);
+      const blockedPatterns = buildRareDiseaseBlocklist(ctx);
+      // Cushing/MTHFR/HLA-B27 are 'always blocked' inside the helper. We also need
+      // calcium-PTH allowance for any future use; keep the variable here for symmetry.
+      const allowCalciumPth = (ctx.calcium ?? 0) > 11;
 
       const filterTests = (arr: any[] | undefined) => {
         if (!Array.isArray(arr)) return arr;
