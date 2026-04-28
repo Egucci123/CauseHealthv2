@@ -95,8 +95,16 @@ export function exportWellnessPlanPDF(plan: WellnessPlanData, userName: string) 
   doc.save(`CauseHealth-WellnessPlan-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
 }
 
+interface PanelGapPDF {
+  test_name: string;
+  category: 'essential' | 'recommended' | 'advanced';
+  why_needed: string;
+  script?: string;
+  icd10?: { code: string; description: string }[];
+}
+
 // Doctor Prep PDF
-export function exportDoctorPrepPDF(doc: DoctorPrepDocument, userName: string) {
+export function exportDoctorPrepPDF(doc: DoctorPrepDocument, userName: string, panelGaps: PanelGapPDF[] = []) {
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageW = pdf.internal.pageSize.getWidth();
   const pageH = pdf.internal.pageSize.getHeight();
@@ -181,6 +189,65 @@ export function exportDoctorPrepPDF(doc: DoctorPrepDocument, userName: string) {
     const jLines = pdf.splitTextToSize(test.clinical_justification, contentW - 3);
     pdf.text(jLines, margin + 3, y); y += jLines.length * 3.5 + 5;
   });
+
+  // Recommended Additional Testing — deterministic panel gaps with patient
+  // scripts and ICD-10 codes. This is the "doctor coverage" section.
+  if (panelGaps && panelGaps.length > 0) {
+    const tierMeta: Record<PanelGapPDF['category'], { label: string; subtitle: string }> = {
+      essential: {
+        label: 'Essential Baseline',
+        subtitle: 'Every adult should have these. Insurance covers under listed ICD-10 codes.',
+      },
+      recommended: {
+        label: 'Functional Medicine',
+        subtitle: 'Root-cause baseline beyond standard care. ICD-10 justifies coverage.',
+      },
+      advanced: {
+        label: 'Longevity & Optimization',
+        subtitle: 'Deeper preventive markers. ICD-10 codes ensure insurance coverage.',
+      },
+    };
+    addSectionHeader('Recommended Additional Testing — Patient-Requested');
+    pdf.setFontSize(8); pdf.setFont('helvetica', 'italic'); pdf.setTextColor(107, 107, 107);
+    const intro = 'The patient is requesting the following tests. Each entry includes the patient\'s exact request, clinical rationale, and ICD-10 codes that justify insurance coverage.';
+    const introLines = pdf.splitTextToSize(intro, contentW);
+    pdf.text(introLines, margin, y); y += introLines.length * 3.5 + 4;
+
+    (['essential', 'recommended', 'advanced'] as const).forEach(tier => {
+      const tierGaps = panelGaps.filter(g => g.category === tier);
+      if (!tierGaps.length) return;
+      checkPage(15);
+      pdf.setFontSize(9); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(27, 67, 50);
+      pdf.text(`${tierMeta[tier].label} (${tierGaps.length})`, margin, y); y += 4;
+      pdf.setFontSize(7); pdf.setFont('helvetica', 'italic'); pdf.setTextColor(107, 107, 107);
+      const subLines = pdf.splitTextToSize(tierMeta[tier].subtitle, contentW);
+      pdf.text(subLines, margin, y); y += subLines.length * 3 + 3;
+
+      tierGaps.forEach((g, i) => {
+        checkPage(28);
+        pdf.setFontSize(9); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(26, 26, 26);
+        pdf.text(`${i + 1}. ${g.test_name}`, margin, y); y += 4.5;
+        pdf.setFontSize(7.5); pdf.setFont('helvetica', 'italic'); pdf.setTextColor(80, 80, 80);
+        const whyLines = pdf.splitTextToSize(`Clinical rationale: ${g.why_needed}`, contentW - 3);
+        pdf.text(whyLines, margin + 3, y); y += whyLines.length * 3.5 + 1;
+        if (g.script) {
+          pdf.setFont('helvetica', 'normal'); pdf.setTextColor(26, 26, 26);
+          const scriptLines = pdf.splitTextToSize(`Patient request: ${g.script}`, contentW - 3);
+          pdf.text(scriptLines, margin + 3, y); y += scriptLines.length * 3.5 + 1;
+        }
+        if (g.icd10 && g.icd10.length) {
+          pdf.setFont('helvetica', 'normal'); pdf.setTextColor(27, 67, 50);
+          g.icd10.forEach(c => {
+            const codeLine = `ICD-10: ${c.code} — ${c.description}`;
+            const codeLines = pdf.splitTextToSize(codeLine, contentW - 3);
+            pdf.text(codeLines, margin + 3, y); y += codeLines.length * 3.5;
+          });
+        }
+        y += 3;
+      });
+      y += 2;
+    });
+  }
 
   // Discussion Points
   addSectionHeader('Points to Raise');

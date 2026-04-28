@@ -62,7 +62,7 @@ export const DoctorPrep = () => {
 
   const handleExport = () => {
     if (!doc) return;
-    exportDoctorPrepPDF(doc, `${profile?.firstName ?? ''} ${profile?.lastName ?? ''}`.trim() || 'Patient');
+    exportDoctorPrepPDF(doc, `${profile?.firstName ?? ''} ${profile?.lastName ?? ''}`.trim() || 'Patient', panelGaps);
   };
 
   return (
