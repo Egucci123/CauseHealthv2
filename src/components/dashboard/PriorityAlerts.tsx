@@ -70,6 +70,7 @@ const AlertCard = ({ alert, onDismiss, isPro }: { alert: PriorityAlert; onDismis
 };
 
 export const PriorityAlerts = () => {
+  const navigate = useNavigate();
   const { data: alerts, isLoading } = usePriorityAlerts();
   const { mutate: dismiss } = useDismissAlert();
   const { isPro } = useSubscription();
@@ -87,7 +88,14 @@ export const PriorityAlerts = () => {
           <AnimatePresence>
             {alerts.slice(0, 5).map(alert => <AlertCard key={alert.id} alert={alert} onDismiss={() => dismiss(alert.id)} isPro={isPro} />)}
           </AnimatePresence>
-          {alerts.length > 5 && <button className="text-precision text-[0.68rem] text-primary-container font-bold tracking-widest uppercase hover:underline w-full text-center py-2">View all {alerts.length} findings →</button>}
+          {alerts.length > 5 && (
+            <button
+              onClick={() => navigate('/labs')}
+              className="text-precision text-[0.68rem] text-primary-container font-bold tracking-widest uppercase hover:underline w-full text-center py-2"
+            >
+              View all {alerts.length} findings →
+            </button>
+          )}
         </div>
       )}
     </div>
