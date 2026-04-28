@@ -6,6 +6,7 @@ import { ClinicalSummary } from '../../components/doctorprep/ClinicalSummary';
 import { TestsToRequest } from '../../components/doctorprep/TestsToRequest';
 import { VisitCardStacks } from '../../components/doctorprep/VisitCardStacks';
 import { AdditionalTesting, type PanelGap } from '../../components/doctorprep/AdditionalTesting';
+import { computePanelGaps } from '../../store/labUploadStore';
 import { useLatestDoctorPrep, useGenerateDoctorPrep } from '../../hooks/useDoctorPrep';
 import { useLatestLabDraw, useLatestLabValues } from '../../hooks/useLabData';
 import { detectCriticalFindings } from '../../lib/criticalFindings';
@@ -39,16 +40,17 @@ export const DoctorPrep = () => {
     [latestValues, ageNum, profile?.sex],
   );
 
-  // Pull deterministic panel gaps from the latest draw's notes JSON
+  // Compute panel gaps fresh from latest lab values. Don't trust the cached
+  // notes.panel_gaps because old draws were stored before script/ICD-10
+  // fields were added. Always run the current definition against the
+  // markers the user actually has tested.
   const panelGaps: PanelGap[] = useMemo(() => {
-    if (!latestDraw?.notes) return [];
-    try {
-      const parsed = JSON.parse(latestDraw.notes);
-      return Array.isArray(parsed?.panel_gaps) ? parsed.panel_gaps : [];
-    } catch {
-      return [];
-    }
-  }, [latestDraw?.notes]);
+    if (!latestValues || latestValues.length === 0) return [];
+    const tested = new Set<string>(
+      latestValues.map((v: any) => (v.markerName ?? v.marker_name ?? '').toLowerCase()).filter(Boolean)
+    );
+    return computePanelGaps(tested) as PanelGap[];
+  }, [latestValues]);
 
   const docCreatedAt = (doc as any)?._createdAt ? new Date((doc as any)._createdAt) : null;
   const drawCreatedAt = latestDraw?.createdAt ? new Date(latestDraw.createdAt) : null;

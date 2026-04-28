@@ -687,7 +687,7 @@ interface PanelGap {
   icd10: { code: string; description: string }[];
 }
 
-function computePanelGaps(testedMarkers: Set<string>): PanelGap[] {
+export function computePanelGaps(testedMarkers: Set<string>): PanelGap[] {
   const has = (keywords: string[]) => keywords.some(k => [...testedMarkers].some(m => m.includes(k)));
   const gaps: PanelGap[] = [];
 
