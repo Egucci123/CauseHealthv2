@@ -10,6 +10,8 @@ import { LabSummary } from '../components/dashboard/LabSummary';
 import { MedicationSnapshot } from '../components/dashboard/MedicationSnapshot';
 import { QuickActions } from '../components/dashboard/QuickActions';
 import { RecentActivity } from '../components/dashboard/RecentActivity';
+import { WearableMetrics } from '../components/dashboard/WearableMetrics';
+import { ResearchDigest } from '../components/dashboard/ResearchDigest';
 import { PrimaryCard } from '../components/ui/Card';
 import { useAuthStore } from '../store/authStore';
 import { useLatestLabValues, useLabDraws } from '../hooks/useLabData';
@@ -19,7 +21,7 @@ import { detectCriticalFindings } from '../lib/criticalFindings';
 import { useMemo } from 'react';
 
 export const Dashboard = () => {
-  const { profile } = useAuthStore();
+  const { profile, user } = useAuthStore();
   const { data: latestValues, isLoading: valuesLoading } = useLatestLabValues();
   const { data: allDraws } = useLabDraws();
   const healthScore = useHealthScore(latestValues, undefined);
@@ -95,6 +97,16 @@ export const Dashboard = () => {
           <SupplementChecklist />
         </PrimaryCard>
       </div>
+
+      {/* Wearable vitals — manual entry of RHR/HRV/sleep/VO2 max */}
+      {user?.id && (
+        <PrimaryCard status="brand" padding="lg">
+          <WearableMetrics userId={user.id} />
+        </PrimaryCard>
+      )}
+
+      {/* Research digest — what's new, dismissible */}
+      {user?.id && <ResearchDigest userId={user.id} />}
 
       {/* Meds + recent activity at the bottom */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
