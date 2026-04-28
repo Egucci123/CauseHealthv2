@@ -5,7 +5,12 @@ import { useLabTrends } from '../../hooks/useProgress';
 
 interface Props { markerName: string; displayName: string; unit: string; optimalMin: number; optimalMax: number; }
 
-const FLAG_COLORS: Record<string, string> = { optimal: '#1B4332', monitor: '#E8922A', critical: '#C94F4F', suboptimal_low: '#E8922A', suboptimal_high: '#E8922A', deficient: '#C94F4F', elevated: '#C94F4F' };
+// Color map for both new (healthy/watch/low/high/critical_*) and legacy
+// flag values so historical rows still render correctly.
+const FLAG_COLORS: Record<string, string> = {
+  healthy: '#1B4332', watch: '#E8922A', low: '#C94F4F', high: '#C94F4F', critical_low: '#C94F4F', critical_high: '#C94F4F',
+  optimal: '#1B4332', monitor: '#E8922A', critical: '#C94F4F', suboptimal_low: '#E8922A', suboptimal_high: '#E8922A', deficient: '#C94F4F', elevated: '#C94F4F',
+};
 
 const CustomDot = (props: any) => { const { cx, cy, payload } = props; const color = FLAG_COLORS[payload?.optimal_flag] ?? '#6B7280'; return <circle cx={cx} cy={cy} r={5} fill={color} stroke="#FDFAF5" strokeWidth={2} />; };
 const CustomTooltip = ({ active, payload, label }: any) => {

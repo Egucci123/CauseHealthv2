@@ -8,11 +8,17 @@ import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 
 function getStatus(v: LabValue): 'urgent' | 'monitor' | 'optimal' {
+  // New flags
+  if (v.optimalFlag === 'healthy') return 'optimal';
+  if (v.optimalFlag === 'watch') return 'monitor';
+  if (v.optimalFlag === 'low' || v.optimalFlag === 'high' || v.optimalFlag === 'critical_low' || v.optimalFlag === 'critical_high') return 'urgent';
+  // Legacy flags (rows pre-overhaul)
   if (v.optimalFlag === 'optimal') return 'optimal';
   if (v.optimalFlag === 'deficient' || v.optimalFlag === 'elevated') return 'urgent';
-  if (v.standardFlag === 'high' || v.standardFlag === 'low') return 'urgent';
-  if (v.standardFlag === 'normal') return 'monitor';
-  return 'monitor';
+  // Fallback to standard flag if optimal not set
+  if (v.standardFlag === 'high' || v.standardFlag === 'low' || v.standardFlag === 'critical_high' || v.standardFlag === 'critical_low') return 'urgent';
+  if (v.standardFlag === 'normal') return 'optimal';
+  return 'optimal';
 }
 
 const MarkerRow = ({ value }: { value: LabValue }) => {

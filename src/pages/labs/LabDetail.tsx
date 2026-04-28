@@ -140,16 +140,21 @@ export const LabDetail = () => {
     return acc;
   }, {});
 
-  const urgentCount = values.filter((v: any) => ['deficient', 'elevated'].includes(v.optimal_flag ?? '')).length;
-  const monitorCount = values.filter((v: any) => ['suboptimal_low', 'suboptimal_high'].includes(v.optimal_flag ?? '')).length;
-  const optimalCount = values.filter((v: any) => v.optimal_flag === 'optimal').length;
+  // Out-of-range flags include both new (low/high/critical_*) and legacy (deficient/elevated)
+  const isOutOfRange = (f: any) => ['low', 'high', 'critical_low', 'critical_high', 'deficient', 'elevated'].includes(f ?? '');
+  const isWatch = (f: any) => ['watch', 'suboptimal_low', 'suboptimal_high'].includes(f ?? '');
+  const isHealthy = (f: any) => ['healthy', 'optimal'].includes(f ?? '');
+
+  const urgentCount = values.filter((v: any) => isOutOfRange(v.optimal_flag)).length;
+  const monitorCount = values.filter((v: any) => isWatch(v.optimal_flag)).length;
+  const optimalCount = values.filter((v: any) => isHealthy(v.optimal_flag)).length;
 
   const findAnalysis = (markerName: string) =>
     analysis?.priority_findings?.find((f: any) => f.marker.toLowerCase().includes(markerName.toLowerCase()) || markerName.toLowerCase().includes(f.marker.toLowerCase())) ?? null;
 
   const getDisplayValues = () => {
-    if (activeTab === 'urgent') return values.filter((v: any) => ['deficient', 'elevated'].includes(v.optimal_flag ?? ''));
-    if (activeTab === 'monitor') return values.filter((v: any) => ['suboptimal_low', 'suboptimal_high'].includes(v.optimal_flag ?? ''));
+    if (activeTab === 'urgent') return values.filter((v: any) => isOutOfRange(v.optimal_flag));
+    if (activeTab === 'monitor') return values.filter((v: any) => isWatch(v.optimal_flag));
     return values;
   };
 
