@@ -677,37 +677,238 @@ function computeFlag(
 
 // ── Panel gap analysis — deterministic, no AI ───────────────────────────────
 
-interface PanelGap { test_name: string; category: 'essential' | 'recommended' | 'advanced'; why_needed: string }
+interface PanelGap {
+  test_name: string;
+  category: 'essential' | 'recommended' | 'advanced';
+  why_needed: string;
+  /** Exact words to say to the doctor to get the test ordered. */
+  script: string;
+  /** ICD-10 codes that justify the test for insurance billing. */
+  icd10: { code: string; description: string }[];
+}
 
 function computePanelGaps(testedMarkers: Set<string>): PanelGap[] {
   const has = (keywords: string[]) => keywords.some(k => [...testedMarkers].some(m => m.includes(k)));
   const gaps: PanelGap[] = [];
 
-  // Essential — should be standard for any adult
-  if (!has(['tsh'])) gaps.push({ test_name: 'TSH', category: 'essential', why_needed: 'Thyroid screening — standard for all adults' });
-  if (!has(['vitamin d', '25-oh', '25-hydroxy'])) gaps.push({ test_name: 'Vitamin D', category: 'essential', why_needed: 'Deficiency affects bone, immune, and mood — widespread' });
-  if (!has(['cholesterol', 'hdl', 'ldl', 'triglyceride'])) gaps.push({ test_name: 'Lipid Panel', category: 'essential', why_needed: 'Cardiovascular risk baseline' });
-  if (!has(['hba1c', 'hemoglobin a1c'])) gaps.push({ test_name: 'HbA1c', category: 'essential', why_needed: '3-month blood sugar average — catches prediabetes' });
-  if (!has(['ferritin'])) gaps.push({ test_name: 'Ferritin', category: 'essential', why_needed: 'Iron stores — low ferritin causes fatigue before anemia shows' });
+  // ── Essential — almost any PCP will order without resistance ────────────
+  if (!has(['tsh'])) gaps.push({
+    test_name: 'TSH',
+    category: 'essential',
+    why_needed: 'Thyroid screening — standard for all adults',
+    script: '"I\'d like a thyroid screen as part of my annual labs. Can you add a TSH?"',
+    icd10: [
+      { code: 'Z13.29', description: 'Encounter for screening for other suspected endocrine disorder' },
+      { code: 'E07.9', description: 'Disorder of thyroid, unspecified' },
+    ],
+  });
+  if (!has(['vitamin d', '25-oh', '25-hydroxy'])) gaps.push({
+    test_name: 'Vitamin D (25-OH)',
+    category: 'essential',
+    why_needed: 'Deficiency affects bone, immune, and mood — widespread',
+    script: '"I want to check my vitamin D status. Can you order a 25-hydroxy vitamin D level?"',
+    icd10: [
+      { code: 'E55.9', description: 'Vitamin D deficiency, unspecified' },
+      { code: 'Z13.21', description: 'Encounter for screening for nutritional disorder' },
+    ],
+  });
+  if (!has(['cholesterol', 'hdl', 'ldl', 'triglyceride'])) gaps.push({
+    test_name: 'Lipid Panel',
+    category: 'essential',
+    why_needed: 'Cardiovascular risk baseline',
+    script: '"I\'d like a full lipid panel — total cholesterol, HDL, LDL, triglycerides."',
+    icd10: [
+      { code: 'Z13.220', description: 'Encounter for screening for lipid disorders' },
+      { code: 'E78.5', description: 'Hyperlipidemia, unspecified' },
+    ],
+  });
+  if (!has(['hba1c', 'hemoglobin a1c'])) gaps.push({
+    test_name: 'HbA1c',
+    category: 'essential',
+    why_needed: '3-month blood sugar average — catches prediabetes early',
+    script: '"Can you add a hemoglobin A1c to check my 3-month blood sugar average?"',
+    icd10: [
+      { code: 'Z13.1', description: 'Encounter for screening for diabetes mellitus' },
+      { code: 'R73.03', description: 'Prediabetes' },
+    ],
+  });
+  if (!has(['ferritin'])) gaps.push({
+    test_name: 'Ferritin',
+    category: 'essential',
+    why_needed: 'Iron stores — low ferritin causes fatigue before anemia shows',
+    script: '"I want to check my iron stores. Can you add a ferritin level? I\'ve been tired."',
+    icd10: [
+      { code: 'R53.83', description: 'Other fatigue' },
+      { code: 'D50.9', description: 'Iron deficiency anemia, unspecified' },
+    ],
+  });
 
-  // Recommended — functional medicine baseline
-  if (!has(['iron', 'tibc', 'iron sat'])) gaps.push({ test_name: 'Iron Panel', category: 'recommended', why_needed: 'Full iron status — ferritin alone misses some patterns' });
-  if (!has(['b12', 'vitamin b12'])) gaps.push({ test_name: 'Vitamin B12', category: 'recommended', why_needed: 'Deficiency causes fatigue, neuropathy, brain fog' });
-  if (!has(['folate'])) gaps.push({ test_name: 'Folate', category: 'recommended', why_needed: 'Needed for DNA repair, often low with B12' });
-  if (!has(['magnesium'])) gaps.push({ test_name: 'Magnesium', category: 'recommended', why_needed: 'Involved in 300+ enzyme reactions — commonly deficient' });
-  if (!has(['hs-crp', 'crp'])) gaps.push({ test_name: 'hs-CRP', category: 'recommended', why_needed: 'Inflammation marker — cardiovascular and autoimmune risk' });
-  if (!has(['homocysteine'])) gaps.push({ test_name: 'Homocysteine', category: 'recommended', why_needed: 'Cardiovascular and neurological risk marker' });
-  if (!has(['insulin', 'fasting insulin'])) gaps.push({ test_name: 'Fasting Insulin', category: 'recommended', why_needed: 'Insulin resistance shows years before glucose rises' });
-  if (has(['tsh']) && !has(['free t3'])) gaps.push({ test_name: 'Free T3 + Free T4', category: 'recommended', why_needed: 'TSH alone misses subclinical thyroid dysfunction' });
+  // ── Recommended — typical PCP may push back; insist using the script ────
+  if (!has(['iron', 'tibc', 'iron sat'])) gaps.push({
+    test_name: 'Iron Panel (Serum Iron, TIBC, Iron Saturation)',
+    category: 'recommended',
+    why_needed: 'Full iron status — ferritin alone misses some patterns',
+    script: '"Ferritin alone doesn\'t tell the whole iron story. Can you add a complete iron panel — serum iron, TIBC, and iron saturation? I want to rule out functional iron deficiency."',
+    icd10: [
+      { code: 'D50.9', description: 'Iron deficiency anemia, unspecified' },
+      { code: 'E61.1', description: 'Iron deficiency' },
+      { code: 'R53.83', description: 'Other fatigue' },
+    ],
+  });
+  if (!has(['b12', 'vitamin b12'])) gaps.push({
+    test_name: 'Vitamin B12',
+    category: 'recommended',
+    why_needed: 'Deficiency causes fatigue, brain fog, and nerve symptoms',
+    script: '"Can you add a B12 level? I want to rule out deficiency — I\'ve had fatigue and brain fog."',
+    icd10: [
+      { code: 'D51.9', description: 'Vitamin B12 deficiency anemia, unspecified' },
+      { code: 'E53.8', description: 'Deficiency of other specified B group vitamins' },
+      { code: 'R53.83', description: 'Other fatigue' },
+    ],
+  });
+  if (!has(['folate'])) gaps.push({
+    test_name: 'Folate (Serum)',
+    category: 'recommended',
+    why_needed: 'Needed for DNA repair, often low alongside B12',
+    script: '"Can you add a serum folate? I want to check it alongside my B12."',
+    icd10: [
+      { code: 'D52.9', description: 'Folate deficiency anemia, unspecified' },
+      { code: 'E53.8', description: 'Deficiency of other specified B group vitamins' },
+    ],
+  });
+  if (!has(['magnesium'])) gaps.push({
+    test_name: 'Magnesium (Serum)',
+    category: 'recommended',
+    why_needed: 'Involved in 300+ enzyme reactions — commonly deficient',
+    script: '"I\'d like a serum magnesium. I want to rule out a deficiency that could be affecting my sleep, muscle function, or mood."',
+    icd10: [
+      { code: 'E83.42', description: 'Hypomagnesemia' },
+      { code: 'R53.83', description: 'Other fatigue' },
+    ],
+  });
+  if (!has(['hs-crp', 'crp'])) gaps.push({
+    test_name: 'hs-CRP (high-sensitivity)',
+    category: 'recommended',
+    why_needed: 'Inflammation marker — predicts cardiovascular risk',
+    script: '"I\'d like a high-sensitivity CRP for cardiovascular inflammation risk — not the regular CRP, the hs-CRP."',
+    icd10: [
+      { code: 'Z13.220', description: 'Encounter for screening for lipid disorders' },
+      { code: 'R79.89', description: 'Other specified abnormal findings of blood chemistry' },
+      { code: 'I25.10', description: 'Atherosclerotic heart disease without angina pectoris' },
+    ],
+  });
+  if (!has(['homocysteine'])) gaps.push({
+    test_name: 'Homocysteine',
+    category: 'recommended',
+    why_needed: 'Cardiovascular and neurological risk marker',
+    script: '"Can you add a homocysteine? It\'s a cardiovascular risk marker that\'s not on a standard lipid panel — I want a complete cardiovascular workup."',
+    icd10: [
+      { code: 'Z13.220', description: 'Encounter for screening for lipid disorders' },
+      { code: 'E72.11', description: 'Disorders of sulfur-bearing amino-acid metabolism' },
+      { code: 'Z82.49', description: 'Family history of ischemic heart disease' },
+    ],
+  });
+  if (!has(['insulin', 'fasting insulin'])) gaps.push({
+    test_name: 'Fasting Insulin (with HOMA-IR)',
+    category: 'recommended',
+    why_needed: 'Catches insulin resistance years before A1c rises',
+    script: '"I want a fasting insulin so I can calculate my HOMA-IR insulin resistance score. A1c is normal but I want to catch insulin resistance early. ICD-10 R73.09 covers it."',
+    icd10: [
+      { code: 'R73.09', description: 'Other abnormal glucose' },
+      { code: 'E88.81', description: 'Metabolic syndrome' },
+      { code: 'R73.03', description: 'Prediabetes' },
+    ],
+  });
+  if (has(['tsh']) && !has(['free t3'])) gaps.push({
+    test_name: 'Free T3 + Free T4',
+    category: 'recommended',
+    why_needed: 'TSH alone misses early thyroid dysfunction',
+    script: '"My TSH is borderline and I want a complete thyroid picture — Free T3 and Free T4. TSH alone misses early dysfunction. If you\'re hesitant, I\'m happy to see an endocrinologist."',
+    icd10: [
+      { code: 'E07.9', description: 'Disorder of thyroid, unspecified' },
+      { code: 'E03.9', description: 'Hypothyroidism, unspecified' },
+      { code: 'Z13.29', description: 'Encounter for screening for other suspected endocrine disorder' },
+    ],
+  });
 
-  // Advanced — longevity and optimization
-  if (!has(['apob', 'apolipoprotein b'])) gaps.push({ test_name: 'ApoB', category: 'advanced', why_needed: 'Better cardiovascular risk predictor than LDL' });
-  if (!has(['lp(a)', 'lipoprotein a', 'lp a'])) gaps.push({ test_name: 'Lp(a)', category: 'advanced', why_needed: 'Genetic cardiovascular risk — test once in lifetime' });
-  if (!has(['cortisol'])) gaps.push({ test_name: 'Cortisol', category: 'advanced', why_needed: 'Stress hormone — affects metabolism, sleep, immune function' });
-  if (!has(['dhea'])) gaps.push({ test_name: 'DHEA-S', category: 'advanced', why_needed: 'Adrenal function and hormone precursor' });
-  if (!has(['testosterone']) && !has(['estradiol'])) gaps.push({ test_name: 'Hormone Panel', category: 'advanced', why_needed: 'Sex hormones affect energy, mood, body composition' });
-  if (!has(['uric acid'])) gaps.push({ test_name: 'Uric Acid', category: 'advanced', why_needed: 'Metabolic health marker — linked to gout, kidney, cardiovascular risk' });
-  if (!has(['ggt'])) gaps.push({ test_name: 'GGT', category: 'advanced', why_needed: 'Sensitive liver marker and oxidative stress indicator' });
+  // ── Advanced — most doctors won't volunteer; you'll need to insist ──────
+  if (!has(['apob', 'apolipoprotein b'])) gaps.push({
+    test_name: 'ApoB (Apolipoprotein B)',
+    category: 'advanced',
+    why_needed: 'Better cardiovascular risk predictor than LDL alone',
+    script: '"I\'d like an ApoB. It measures cholesterol particle count — current cardiology guidelines recommend it as a better risk predictor than LDL. Insurance covers it under E78.5."',
+    icd10: [
+      { code: 'E78.5', description: 'Hyperlipidemia, unspecified' },
+      { code: 'Z13.220', description: 'Encounter for screening for lipid disorders' },
+      { code: 'Z82.49', description: 'Family history of ischemic heart disease' },
+    ],
+  });
+  if (!has(['lp(a)', 'lipoprotein a', 'lp a'])) gaps.push({
+    test_name: 'Lp(a) (Lipoprotein little a)',
+    category: 'advanced',
+    why_needed: 'Genetic cardiovascular risk — test once in lifetime',
+    script: '"I want a Lp(a) — lipoprotein little a. It\'s a genetic cardiovascular risk marker that only needs to be checked once in a lifetime. With family history, insurance covers it under Z82.49."',
+    icd10: [
+      { code: 'Z82.49', description: 'Family history of ischemic heart disease' },
+      { code: 'E78.5', description: 'Hyperlipidemia, unspecified' },
+      { code: 'Z13.220', description: 'Encounter for screening for lipid disorders' },
+    ],
+  });
+  if (!has(['cortisol'])) gaps.push({
+    test_name: 'AM Cortisol',
+    category: 'advanced',
+    why_needed: 'Stress hormone — affects energy, sleep, weight, immunity',
+    script: '"I want an 8 AM serum cortisol. I\'ve had fatigue/sleep issues and want to rule out adrenal dysfunction."',
+    icd10: [
+      { code: 'R53.83', description: 'Other fatigue' },
+      { code: 'E27.40', description: 'Unspecified adrenocortical insufficiency' },
+      { code: 'F43.10', description: 'Post-traumatic stress disorder, unspecified' },
+    ],
+  });
+  if (!has(['dhea'])) gaps.push({
+    test_name: 'DHEA-S',
+    category: 'advanced',
+    why_needed: 'Adrenal function and hormone precursor — declines with age and stress',
+    script: '"Can you add a DHEA-S? It tells me how my adrenals are aging and is a precursor to other hormones."',
+    icd10: [
+      { code: 'E27.49', description: 'Other adrenocortical insufficiency' },
+      { code: 'R53.83', description: 'Other fatigue' },
+      { code: 'E28.39', description: 'Other primary ovarian failure' },
+    ],
+  });
+  if (!has(['testosterone']) && !has(['estradiol'])) gaps.push({
+    test_name: 'Hormone Panel (Total Testosterone, Free Testosterone, Estradiol, SHBG)',
+    category: 'advanced',
+    why_needed: 'Sex hormones drive energy, mood, body composition',
+    script: '"I\'d like a complete hormone panel — total and free testosterone, estradiol, and SHBG. I want a baseline for energy, mood, and body composition. If declined, I\'d like a referral to endocrinology."',
+    icd10: [
+      { code: 'E29.1', description: 'Testicular hypofunction' },
+      { code: 'R53.83', description: 'Other fatigue' },
+      { code: 'F52.0', description: 'Hypoactive sexual desire disorder' },
+      { code: 'N95.1', description: 'Menopausal and female climacteric states' },
+    ],
+  });
+  if (!has(['uric acid'])) gaps.push({
+    test_name: 'Uric Acid',
+    category: 'advanced',
+    why_needed: 'Metabolic health marker — gout, kidney, cardiovascular risk',
+    script: '"Can you add a uric acid? I want to check metabolic health and gout risk."',
+    icd10: [
+      { code: 'E79.0', description: 'Hyperuricemia without signs of inflammatory arthritis' },
+      { code: 'M10.9', description: 'Gout, unspecified' },
+    ],
+  });
+  if (!has(['ggt'])) gaps.push({
+    test_name: 'GGT (Gamma-Glutamyl Transferase)',
+    category: 'advanced',
+    why_needed: 'Sensitive liver marker and oxidative stress indicator',
+    script: '"I\'d like a GGT added — it\'s a more sensitive liver marker than ALT/AST and reflects oxidative stress."',
+    icd10: [
+      { code: 'R74.0', description: 'Nonspecific elevation of levels of transaminase and lactic acid dehydrogenase' },
+      { code: 'K76.0', description: 'Fatty (change of) liver, not elsewhere classified' },
+      { code: 'Z13.89', description: 'Encounter for screening for other disorder' },
+    ],
+  });
 
   return gaps;
 }

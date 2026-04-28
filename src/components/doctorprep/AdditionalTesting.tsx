@@ -9,6 +9,8 @@ export interface PanelGap {
   test_name: string;
   category: 'essential' | 'recommended' | 'advanced';
   why_needed: string;
+  script?: string;
+  icd10?: { code: string; description: string }[];
 }
 
 const TIER_META: Record<PanelGap['category'], { label: string; subtitle: string; accent: string; bg: string }> = {
@@ -61,15 +63,45 @@ export const AdditionalTesting = ({ gaps }: { gaps: PanelGap[] }) => {
                 </div>
                 <p className="text-body text-clinical-stone text-xs leading-relaxed pl-4">{meta.subtitle}</p>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="space-y-3">
                 {tierGaps.map(g => (
                   <div
                     key={g.test_name}
-                    className="rounded-[8px] p-3 border-l-2"
-                    style={{ backgroundColor: meta.bg, borderColor: meta.accent }}
+                    className="rounded-[10px] p-4 border-l-2 bg-clinical-white"
+                    style={{ borderColor: meta.accent }}
                   >
-                    <p className="text-body text-clinical-charcoal text-sm font-semibold mb-0.5">{g.test_name}</p>
-                    <p className="text-body text-clinical-stone text-xs leading-snug">{g.why_needed}</p>
+                    <p className="text-authority text-sm text-clinical-charcoal font-bold mb-1">{g.test_name}</p>
+                    <p className="text-body text-clinical-stone text-xs leading-snug mb-3">{g.why_needed}</p>
+                    {g.script && (
+                      <div
+                        className="rounded-[6px] p-3 mb-3"
+                        style={{ backgroundColor: meta.bg }}
+                      >
+                        <p className="text-precision text-[0.55rem] font-bold tracking-widest uppercase mb-1.5" style={{ color: meta.accent }}>
+                          What to say to your doctor
+                        </p>
+                        <p className="text-body text-clinical-charcoal text-sm leading-relaxed italic">{g.script}</p>
+                      </div>
+                    )}
+                    {g.icd10 && g.icd10.length > 0 && (
+                      <div>
+                        <p className="text-precision text-[0.55rem] font-bold tracking-widest uppercase text-clinical-stone mb-1.5">
+                          ICD-10 codes for insurance
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {g.icd10.map(c => (
+                            <div
+                              key={c.code}
+                              className="inline-flex items-center gap-1.5 bg-clinical-cream border border-outline-variant/30 px-2 py-1 rounded"
+                              title={c.description}
+                            >
+                              <span className="text-precision text-[0.65rem] font-bold text-clinical-charcoal">{c.code}</span>
+                              <span className="text-precision text-[0.55rem] text-clinical-stone hidden sm:inline">{c.description}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
