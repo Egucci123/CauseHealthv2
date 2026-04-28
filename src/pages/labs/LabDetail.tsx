@@ -132,7 +132,7 @@ export const LabDetail = () => {
     </AppShell>
   );
 
-  const { draw, values, analysis, panelGaps } = data;
+  const { draw, values, analysis } = data;
 
   const grouped = CATEGORY_ORDER.reduce<Record<string, typeof values>>((acc, cat) => {
     const catValues = values.filter((v: any) => v.marker_category === cat);
@@ -280,50 +280,32 @@ export const LabDetail = () => {
         <div className="bg-[#131313] rounded-[10px] p-6">
           <SectionLabel light icon="insights" className="text-on-surface-variant">Analysis Summary</SectionLabel>
           <p className="text-body text-on-surface leading-relaxed">{analysis.summary}</p>
-          {analysis.missing_tests?.length > 0 && (
-            <div className="mt-4 pt-4 border-t border-outline-variant/20">
-              <p className="text-precision text-[0.68rem] text-on-surface-variant tracking-widest uppercase font-bold mb-2">Tests to Request</p>
-              <div className="flex flex-wrap gap-2">
-                {analysis.missing_tests.map((t: any) => (
-                  <span key={t.test_name} className="text-precision text-[0.6rem] text-on-surface bg-surface-container px-2 py-1 font-medium" style={{ borderRadius: '3px' }}>{t.test_name}</span>
-                ))}
+        </div>
+      )}
+
+      {/* Hand-off to Doctor Prep — that's where test recommendations + ICD-10 codes live */}
+      {isPro && analysis?.summary && (
+        <button
+          onClick={() => navigate('/doctor-prep')}
+          className="w-full bg-gradient-to-br from-[#1B423A] to-[#0F2A24] rounded-[14px] p-6 text-left hover:from-[#244F46] hover:to-[#163730] transition-all group"
+        >
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 bg-[#D4A574]/20 rounded-[10px] flex items-center justify-center flex-shrink-0 group-hover:bg-[#D4A574]/30 transition-colors">
+              <span className="material-symbols-outlined text-[#D4A574] text-[24px]">description</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-[#D4A574] mb-1">For Your Doctor</p>
+              <p className="text-authority text-lg text-on-surface font-bold mb-1">Bring this to your appointment</p>
+              <p className="text-body text-on-surface-variant text-sm leading-relaxed">
+                Your Doctor Prep has the exact tests to ask for — Essential Baseline, Functional Medicine, and Longevity tiers — with ICD-10 codes so insurance covers them.
+              </p>
+              <div className="inline-flex items-center gap-1 text-precision text-[0.65rem] font-bold tracking-widest uppercase text-[#D4A574] mt-3">
+                Open Doctor Prep
+                <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
               </div>
             </div>
-          )}
-          {panelGaps?.length > 0 && (
-            <div className="mt-4 pt-4 border-t border-outline-variant/20">
-              <p className="text-precision text-[0.68rem] text-on-surface-variant tracking-widest uppercase font-bold mb-3">
-                <span className="material-symbols-outlined text-[14px] align-middle mr-1">add_circle</span>
-                Recommended Additional Testing
-              </p>
-              {['essential', 'recommended', 'advanced'].map(tier => {
-                const tierGaps = panelGaps.filter((g: any) => g.category === tier);
-                if (!tierGaps.length) return null;
-                return (
-                  <div key={tier} className="mb-3">
-                    <p className="text-precision text-[0.55rem] text-on-surface-variant/70 tracking-widest uppercase mb-1.5">
-                      {tier === 'essential' ? 'Essential Baseline' : tier === 'recommended' ? 'Functional Medicine' : 'Longevity & Optimization'}
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {tierGaps.map((g: any) => (
-                        <span key={g.test_name}
-                          className="text-precision text-[0.6rem] text-on-surface px-2 py-1 font-medium cursor-help"
-                          style={{
-                            borderRadius: '3px',
-                            backgroundColor: tier === 'essential' ? 'rgba(201,79,79,0.15)' : tier === 'recommended' ? 'rgba(232,146,42,0.15)' : 'rgba(42,157,143,0.15)',
-                          }}
-                          title={g.why_needed}
-                        >
-                          {g.test_name}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+          </div>
+        </button>
       )}
 
       {/* Tab nav — same style as Wellness Plan */}

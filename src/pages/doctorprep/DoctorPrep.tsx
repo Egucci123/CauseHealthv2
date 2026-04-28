@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { ClinicalSummary } from '../../components/doctorprep/ClinicalSummary';
 import { TestsToRequest } from '../../components/doctorprep/TestsToRequest';
 import { VisitCardStacks } from '../../components/doctorprep/VisitCardStacks';
+import { AdditionalTesting, type PanelGap } from '../../components/doctorprep/AdditionalTesting';
 import { useLatestDoctorPrep, useGenerateDoctorPrep } from '../../hooks/useDoctorPrep';
 import { useLatestLabDraw, useLatestLabValues } from '../../hooks/useLabData';
 import { detectCriticalFindings } from '../../lib/criticalFindings';
@@ -37,6 +38,17 @@ export const DoctorPrep = () => {
     () => latestValues ? detectCriticalFindings(latestValues as any, { age: ageNum, sex: profile?.sex ?? null }) : [],
     [latestValues, ageNum, profile?.sex],
   );
+
+  // Pull deterministic panel gaps from the latest draw's notes JSON
+  const panelGaps: PanelGap[] = useMemo(() => {
+    if (!latestDraw?.notes) return [];
+    try {
+      const parsed = JSON.parse(latestDraw.notes);
+      return Array.isArray(parsed?.panel_gaps) ? parsed.panel_gaps : [];
+    } catch {
+      return [];
+    }
+  }, [latestDraw?.notes]);
 
   const docCreatedAt = (doc as any)?._createdAt ? new Date((doc as any)._createdAt) : null;
   const drawCreatedAt = latestDraw?.createdAt ? new Date(latestDraw.createdAt) : null;
@@ -196,7 +208,12 @@ export const DoctorPrep = () => {
             </>
           )}
           {activeTab === 'summary' && <ClinicalSummary doc={doc} />}
-          {activeTab === 'tests' && <TestsToRequest tests={Array.isArray(doc.tests_to_request) ? doc.tests_to_request : []} advanced={Array.isArray(doc.advanced_screening) ? doc.advanced_screening : []} />}
+          {activeTab === 'tests' && (
+            <div className="space-y-4">
+              <TestsToRequest tests={Array.isArray(doc.tests_to_request) ? doc.tests_to_request : []} advanced={Array.isArray(doc.advanced_screening) ? doc.advanced_screening : []} />
+              <AdditionalTesting gaps={panelGaps} />
+            </div>
+          )}
         </div>
       )}
     </AppShell>
