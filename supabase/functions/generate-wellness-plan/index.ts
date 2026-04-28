@@ -113,13 +113,14 @@ GLOBAL VOICE RULES (CRITICAL — these apply to EVERY string in the JSON):
 - Every "why" is one short sentence a 12-year-old understands.
 
 HARD RULES — FOLLOW EXACTLY:
-1. SUPPLEMENT STACK: Maximum 5 supplements. Read the MODE field in the user message:
-   - If MODE is "treatment": ONLY for nutrients where a SPECIFIC lab value is outside optimal range. Every supplement MUST reference which exact lab marker is abnormal and its value. If a nutrient's lab value is within optimal range, it CANNOT be in the supplement stack — put it in retest_timeline instead. sourced_from must be "lab_finding". priority must be "critical", "high", or "moderate".
-   - "disease_mechanism" as sourced_from is ONLY allowed when the supplement directly addresses a confirmed abnormal lab value (e.g., magnesium for suboptimal magnesium). It is NOT allowed for speculative conditions that haven't been confirmed by labs (e.g., don't recommend inositol for "possible insulin resistance" when insulin and glucose are optimal).
-   - If MODE is "optimization": Most/all labs are optimal. Recommend evidence-based longevity supplements with strong RCT support in healthy populations. sourced_from must be "optimization". priority must be "optimize".
-   Treatment supplements always rank above optimization supplements when both exist. Untested nutrients go in retest_timeline with a note to test first. Food-based interventions allowed for diagnosed conditions.
-   - CRITICAL: If a supplement would address an UNTESTED condition (e.g., SIBO, celiac, insulin resistance), put the recommended TEST in retest_timeline, NOT a supplement in the stack. Test first, supplement after confirmation.
-2. sourced_from: "lab_finding", "disease_mechanism", or "optimization" only. Never "medication_depletion" or "symptom_pattern" in supplement_stack.
+1. SUPPLEMENT STACK: Maximum 7 supplements. Read the MODE field in the user message. Three legitimate reasons a supplement enters the stack:
+   - LAB-CONFIRMED DEFICIENCY ("lab_finding"): A specific lab value is outside optimal range and the supplement directly addresses it. why must reference the marker name and value.
+   - MEDICATION-INDUCED DEPLETION ("medication_depletion"): The user is taking a medication with a well-established nutrient-depleting effect. The depletion is mechanistically certain even without a lab value (e.g., statin→CoQ10, metformin→B12, PPI→B12/Mg, mesalamine→folate, oral contraceptive→B6/folate/Mg/Zn, oral steroid→Ca/D, loop diuretic→Mg/K). why must name the medication and the depleted nutrient.
+   - DISEASE-MECHANISM SUPPORT ("disease_mechanism"): The user has a CONFIRMED diagnosed condition (from the DIAGNOSED CONDITIONS list, not inferred) with a well-evidenced supplement that addresses the disease mechanism — not the symptoms. Examples: UC/Crohn's → L-glutamine, slippery elm, curcumin, omega-3, S. boulardii (gut barrier and inflammation); Hashimoto's → selenium; Type 2 diabetes → berberine, alpha-lipoic acid; PCOS → inositol; migraines → riboflavin/magnesium/CoQ10; restless legs → iron/magnesium. Do NOT use this for speculative conditions or symptoms alone.
+   - If MODE is "optimization" and labs are mostly optimal, fill remaining slots with evidence-based longevity supplements ("optimization" sourced_from, "optimize" priority).
+   Priority order in stack: critical > high > moderate > optimize. Treatment-tier supplements (lab_finding, medication_depletion, disease_mechanism) always rank above optimization. Each medication-induced depletion that is realistic and not already supplemented MUST appear in the stack. Each diagnosed chronic condition with strong evidence supplements MUST have at least one disease_mechanism supplement in the stack unless already in user's CURRENT SUPPLEMENTS.
+   - CRITICAL: If a supplement would address a SPECULATIVE/UNTESTED condition (e.g., possible SIBO, possible celiac, possible insulin resistance with normal labs), put the recommended TEST in retest_timeline, NOT a supplement in the stack.
+2. sourced_from: "lab_finding", "medication_depletion", "disease_mechanism", or "optimization". Never "symptom_pattern".
 3. CONDITIONS — GROUND TRUTH RULE: Use the user's DIAGNOSED CONDITIONS list verbatim.
    - Never substitute related conditions (UC ≠ Crohn's, even though they share treatments).
    - MEDICATIONS DO NOT REVEAL DIAGNOSES. A prescription tells you what a doctor wrote, not what the patient has, what's active, or what's been ruled out. Many drugs treat multiple conditions. Never infer or rename a diagnosis based on what's in the meds list.
@@ -161,6 +162,42 @@ DIAGNOSED CONDITIONS (GROUND TRUTH — never substitute these with related condi
 MEDICATIONS: ${medsStr}
 CURRENT SUPPLEMENTS (already taking — do NOT re-recommend; account for lab interactions and avoid stacking duplicates): ${suppsStr}
 SYMPTOMS (for context only — do NOT supplement based on symptoms alone): ${sympStr}
+
+MEDICATION-INDUCED NUTRIENT DEPLETIONS (must appear in supplement_stack as sourced_from "medication_depletion" if the user is on the drug AND not already supplementing):
+- Statins (atorvastatin, rosuvastatin, simvastatin, etc.): deplete CoQ10 → 100-200mg ubiquinol/day. Also deplete vitamin K2 (mildly).
+- Metformin: depletes B12 (often subclinically before serum drops) → 500-1000mcg methylcobalamin.
+- PPIs (omeprazole, pantoprazole, esomeprazole, etc.): deplete B12, magnesium, calcium, iron → B12 + magnesium glycinate.
+- Mesalamine / sulfasalazine: deplete folate (sulfasalazine especially) and B-vitamins → methylfolate 400-800mcg.
+- Oral contraceptives: deplete B6, B12, folate, magnesium, zinc, vitamin C, selenium → B-complex with active forms + magnesium + zinc.
+- Oral steroids (prednisone, prednisolone): deplete calcium, vitamin D, potassium, magnesium → calcium + D3 + magnesium; also probiotic for gut.
+- Loop diuretics (furosemide, torsemide): deplete magnesium, potassium, B1 (thiamine), calcium, zinc → magnesium + B1.
+- Thiazide diuretics (HCTZ): deplete magnesium, potassium, zinc, CoQ10 → magnesium + CoQ10.
+- ACE inhibitors / ARBs: deplete zinc → zinc.
+- Beta-blockers: deplete CoQ10, melatonin → CoQ10.
+- SSRIs: deplete melatonin (subtle) — generally don't need supplementation, but flag.
+- Levothyroxine: doesn't deplete but interacts with calcium/iron (4-hour spacing required).
+- Antibiotics (any course): deplete probiotics → S. boulardii or multi-strain probiotic post-course.
+- Gabapentin / Pregabalin: deplete folate, B1.
+
+CONDITION-SPECIFIC SUPPLEMENT REQUIREMENTS (must appear in supplement_stack as "disease_mechanism" unless contraindicated or already supplementing):
+- Ulcerative Colitis / Crohn's / IBD: gut barrier support — L-glutamine 5g/day OR slippery elm; anti-inflammatory — curcumin (with piperine) 500-1000mg/day; omega-3 EPA/DHA 2-3g/day; vitamin D (often deficient from malabsorption — push higher dose); S. boulardii probiotic 5-10B CFU/day. Recommend at least 2 of these.
+- Hashimoto's / autoimmune thyroid: selenium 200mcg/day (well-evidenced for lowering TPO antibodies).
+- Type 2 Diabetes / insulin resistance (lab-confirmed): berberine 500mg 2-3x/day OR alpha-lipoic acid 600mg/day; chromium 200-400mcg/day; magnesium.
+- PCOS: myo-inositol + d-chiro-inositol (40:1 ratio) 4g/day; vitamin D; omega-3.
+- Migraines (recurring): riboflavin (B2) 400mg/day; magnesium 400mg/day; CoQ10 100mg/day.
+- Restless legs syndrome: iron (if ferritin <75); magnesium glycinate.
+- Endometriosis: omega-3; curcumin; vitamin D; magnesium.
+- Hypertension (essential): magnesium; potassium (food first); CoQ10 (especially if on beta-blocker/statin); omega-3.
+- GERD on chronic PPI: B12; magnesium; zinc carnosine (gut healing).
+- Osteoporosis / osteopenia: calcium 800-1000mg; vitamin D3 2000-5000 IU; vitamin K2 100-200mcg MK-7; magnesium.
+- Major Depression / Anxiety: omega-3 EPA-dominant 1-2g; vitamin D; magnesium glycinate.
+- Atrial fibrillation: magnesium taurate; CoQ10; omega-3.
+- Heart failure: CoQ10 100-300mg; D-ribose; thiamine (loop diuretic depletion).
+- Chronic kidney disease: avoid high-dose vitamin C, magnesium, potassium without nephrologist input — flag in disclaimer.
+- Liver disease (NAFLD, hepatitis): NAC; milk thistle; omega-3; vitamin E (mixed tocopherols, NAFLD specifically).
+- Dementia / mild cognitive impairment: omega-3 DHA-dominant; B-vitamins (esp B12, folate); vitamin D; creatine.
+
+If a medication AND a condition both indicate the same supplement, list it once and note both reasons in the why field.
 
 SUPPLEMENT-LAB INTERACTION KNOWLEDGE (use when interpreting labs and building stack):
 - Biotin (>1mg/day): falsely alters TSH/T3/T4/Troponin/Vit D — pause 72hr before retest.
@@ -210,9 +247,16 @@ CRITICAL OUTPUT RULES:
     // Tag plan mode for frontend display
     plan.plan_mode = isOptimizationMode ? 'optimization' : 'treatment';
 
-    // HARD CAP: max 5 supplements — trim if AI returned more
-    if (plan.supplement_stack && Array.isArray(plan.supplement_stack) && plan.supplement_stack.length > 5) {
-      plan.supplement_stack = plan.supplement_stack.slice(0, 5);
+    // HARD CAP: max 7 supplements — trim if AI returned more. Bumped from 5
+    // to leave room for medication_depletion + disease_mechanism alongside
+    // lab_finding entries on patients with multiple conditions/meds.
+    if (plan.supplement_stack && Array.isArray(plan.supplement_stack) && plan.supplement_stack.length > 7) {
+      // Preserve priority order: critical > high > moderate > optimize. Within
+      // the same priority, preserve order returned by the model.
+      const priorityRank = (p: string) => p === 'critical' ? 0 : p === 'high' ? 1 : p === 'moderate' ? 2 : 3;
+      plan.supplement_stack = [...plan.supplement_stack]
+        .sort((a: any, b: any) => priorityRank(a.priority ?? 'optimize') - priorityRank(b.priority ?? 'optimize'))
+        .slice(0, 7);
     }
 
     // Validate before saving — never save corrupt/partial plans
