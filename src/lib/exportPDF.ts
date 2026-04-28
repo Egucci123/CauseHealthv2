@@ -132,7 +132,7 @@ const stripUnsupportedChars = (s: string): string => {
 // for the patient: plain-English explanations, scripts, and what-to-do
 // if the doctor pushes back. The patient brings the doctor PDF for the
 // doctor and reads this one in the waiting room.
-export function exportPatientVisitGuidePDF(doc: DoctorPrepDocument, userName: string, panelGaps: PanelGapPDF[] = []) {
+export function exportPatientVisitGuidePDF(doc: DoctorPrepDocument, userName: string, panelGaps: PanelGapPDF[] = [], isHealthyMode: boolean = false) {
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageW = pdf.internal.pageSize.getWidth();
   const pageH = pdf.internal.pageSize.getHeight();
@@ -177,51 +177,61 @@ export function exportPatientVisitGuidePDF(doc: DoctorPrepDocument, userName: st
 
   // ── What this is ─────────────────────────────────────────────────────
   para(
-    "This is YOUR copy of what to bring up. Keep it with you in the waiting room and during the appointment. Your doctor gets a separate clinical document with ICD-10 codes and rationale - you focus on advocating for yourself.",
+    isHealthyMode
+      ? "This is YOUR copy. You're using this appointment to add advanced markers and confirm the trajectory you're already on. Hand over the Doctor PDF and use this guide to stay on track during the visit."
+      : "This is YOUR copy of what to bring up. Keep it with you in the waiting room and during the appointment. Your doctor gets a separate clinical document with ICD-10 codes and rationale - you focus on advocating for yourself.",
     { italic: true, color: [80, 80, 80], size: 8.5, gap: 6 }
   );
 
   // ── What's going on with your body ───────────────────────────────────
-  sectionHeader("What's going on with your body right now");
+  sectionHeader(isHealthyMode ? "Where you stand right now" : "What's going on with your body right now");
   para(doc.chief_complaint, { size: 9 });
   if (doc.lab_summary?.urgent_findings?.length) {
     y += 2;
-    para('Your most important lab findings:', { bold: true, size: 9, gap: 3 });
+    para(isHealthyMode ? 'Worth pushing on:' : 'Your most important lab findings:', { bold: true, size: 9, gap: 3 });
     doc.lab_summary.urgent_findings.forEach(f => {
       checkPage(14);
-      pdf.setFontSize(9); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(201, 79, 79);
+      pdf.setFontSize(9); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(isHealthyMode ? 232 : 201, isHealthyMode ? 146 : 79, isHealthyMode ? 42 : 79);
       pdf.text(stripUnsupportedChars(`- ${f.marker}: ${f.value}`), margin + 2, y); y += 4.5;
       pdf.setFont('helvetica', 'normal'); pdf.setTextColor(60, 60, 60); pdf.setFontSize(8.5);
       const noteLines = pdf.splitTextToSize(stripUnsupportedChars(f.clinical_note), contentW - 6);
       pdf.text(noteLines, margin + 6, y); y += noteLines.length * 3.8 + 2;
     });
+  } else if (isHealthyMode) {
+    para('Your bloodwork is solid — every marker in range. The visit is for adding new tests, not addressing problems.', { size: 9, color: [40, 80, 60], italic: true, gap: 3 });
   }
 
   // ── How to open the conversation ─────────────────────────────────────
   sectionHeader('How to open the conversation');
   para(
-    "Hand over your Doctor Prep PDF first. Then say something like:",
+    isHealthyMode ? "Hand over your Doctor Prep PDF first. Then say something like:" : "Hand over your Doctor Prep PDF first. Then say something like:",
     { size: 8.5, color: [80, 80, 80], gap: 3 }
   );
   para(
-    "\"I've been tracking my symptoms and I want a thorough workup so we can find the root causes, not just manage symptoms. I brought a summary with the tests I'm requesting and the ICD-10 codes that justify insurance coverage. Can we go through it together?\"",
+    isHealthyMode
+      ? "\"My labs look good — I'm using this visit to add a few advanced markers I haven't had before. I brought a summary with the specific tests and the ICD-10 codes that justify insurance coverage. Can we go through it together?\""
+      : "\"I've been tracking my symptoms and I want a thorough workup so we can find the root causes, not just manage symptoms. I brought a summary with the tests I'm requesting and the ICD-10 codes that justify insurance coverage. Can we go through it together?\"",
     { italic: true, size: 9.5, color: [19, 19, 19], indent: 4, gap: 5 }
   );
   para(
-    "This positions you as informed and collaborative. Most doctors respond well when you arrive prepared.",
+    isHealthyMode
+      ? "This signals you're not chasing symptoms — you're being proactive. Most doctors respect that framing."
+      : "This positions you as informed and collaborative. Most doctors respond well when you arrive prepared.",
     { size: 8.5, color: [80, 80, 80] }
   );
 
   // ── Tests to ask for + why ───────────────────────────────────────────
-  sectionHeader('Tests to ask for - and why each one matters');
+  sectionHeader(isHealthyMode ? 'Advanced markers to add this visit' : 'Tests to ask for - and why each one matters');
   para(
-    "Each test below is tied to a specific symptom or lab finding of yours. This isn't a generic checklist - we picked these because they could explain what you're feeling.",
+    isHealthyMode
+      ? "These aren't on a routine annual panel. They give you a complete baseline and catch trajectory drift years before disease shows up. Pick the ones your doctor will agree to today, save the rest for next visit."
+      : "Each test below is tied to a specific symptom or lab finding of yours. This isn't a generic checklist - we picked these because they could explain what you're feeling.",
     { size: 8.5, color: [80, 80, 80], italic: true, gap: 5 }
   );
 
   // 1. AI-suggested reactive tests (responding to specific abnormalities)
   if (doc.tests_to_request?.length) {
-    para('Tests based on your abnormal labs:', { bold: true, size: 9, color: [27, 67, 50], gap: 3 });
+    para(isHealthyMode ? 'Top requests:' : 'Tests based on your abnormal labs:', { bold: true, size: 9, color: [27, 67, 50], gap: 3 });
     doc.tests_to_request.forEach((t, i) => {
       checkPage(28);
       pdf.setFontSize(9.5); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(19, 19, 19);
@@ -300,8 +310,29 @@ export function exportPatientVisitGuidePDF(doc: DoctorPrepDocument, userName: st
   }
 
   // ── If your doctor pushes back ───────────────────────────────────────
-  sectionHeader("If your doctor says no");
-  const pushbackBlocks: { script: string; response: string }[] = [
+  sectionHeader(isHealthyMode ? "If your doctor pushes back" : "If your doctor says no");
+  const pushbackBlocks: { script: string; response: string }[] = isHealthyMode ? [
+    {
+      script: '"You don\'t need that, you\'re healthy."',
+      response: 'Reply: "I\'m tracking trajectory, not chasing symptoms. Catching drift early is the whole point. Would you order it as a one-time baseline I can use for comparison later?"',
+    },
+    {
+      script: '"Your insurance won\'t cover that."',
+      response: 'Reply: "I have ICD-10 codes on the document I gave you that justify coverage. Can we use those?" Most denials come from coding, not the test itself.',
+    },
+    {
+      script: '"That\'s not on the standard annual panel."',
+      response: 'Reply: "I understand. I\'m asking because [ApoB / Lp(a) / DEXA / etc.] is recommended in current cardiology / preventive guidelines. If you\'re not comfortable ordering it, can you refer me to someone who is?"',
+    },
+    {
+      script: '"Why do you want all these tests?"',
+      response: 'Reply: "I want a complete baseline now while I\'m healthy so we can track what changes. It\'s much cheaper to catch drift early than to react to disease."',
+    },
+    {
+      script: '"This is hypochondria."',
+      response: 'Reply: "I\'m being proactive, not anxious. I have specific markers I want to track over time. If you\'d rather I see a longevity-focused PCP or preventive cardiologist, please make the referral."',
+    },
+  ] : [
     {
       script: '"Your insurance won\'t cover that."',
       response: 'Reply: "I have ICD-10 codes that justify coverage. They\'re on the document I gave you. Can we use those?" Most denials are about coding, not the test itself.',

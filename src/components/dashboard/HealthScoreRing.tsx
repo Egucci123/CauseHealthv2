@@ -81,11 +81,11 @@ export const HealthScoreRing = ({ score, loading, analyzing }: HealthScoreRingPr
         </div>
       </div>
       <div className="flex gap-4 mt-1">
-        <div className="text-center"><p className="text-precision text-[0.68rem] font-bold text-primary-container">{score.optimalCount}</p><p className="text-precision text-[0.55rem] text-clinical-stone uppercase tracking-wider">Optimal</p></div>
+        <div className="text-center"><p className="text-precision text-[0.68rem] font-bold text-primary-container">{score.optimalCount}</p><p className="text-precision text-[0.55rem] text-clinical-stone uppercase tracking-wider">Healthy</p></div>
         <div className="w-px bg-outline-variant/20" />
-        <div className="text-center"><p className="text-precision text-[0.68rem] font-bold text-[#E8922A]">{score.monitorCount}</p><p className="text-precision text-[0.55rem] text-clinical-stone uppercase tracking-wider">Monitor</p></div>
+        <div className="text-center"><p className="text-precision text-[0.68rem] font-bold text-[#E8922A]">{score.monitorCount}</p><p className="text-precision text-[0.55rem] text-clinical-stone uppercase tracking-wider">Watch</p></div>
         <div className="w-px bg-outline-variant/20" />
-        <div className="text-center"><p className="text-precision text-[0.68rem] font-bold text-[#C94F4F]">{score.urgentCount}</p><p className="text-precision text-[0.55rem] text-clinical-stone uppercase tracking-wider">Urgent</p></div>
+        <div className="text-center"><p className="text-precision text-[0.68rem] font-bold text-[#C94F4F]">{score.urgentCount}</p><p className="text-precision text-[0.55rem] text-clinical-stone uppercase tracking-wider">Out of Range</p></div>
       </div>
     </div>
   );

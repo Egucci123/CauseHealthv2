@@ -63,6 +63,12 @@ serve(async (req) => {
       ? userGoals.map((g) => GOAL_LABELS[g] ?? g).join(', ')
       : 'Not specified';
 
+    // Healthy-mode detection — same threshold as wellness plan: <25% of
+    // markers need attention (Watch or out-of-range).
+    const needsAttentionFlags = new Set(['watch', 'low', 'high', 'critical_low', 'critical_high', 'suboptimal_low', 'suboptimal_high', 'deficient', 'elevated']);
+    const needsAttentionCount = labValues.filter((v: any) => needsAttentionFlags.has(v.optimal_flag)).length;
+    const isHealthyMode = labValues.length > 0 && (needsAttentionCount / labValues.length) < 0.25;
+
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
@@ -111,7 +117,18 @@ CRITICAL RULES:
 
 FEMALE HORMONE RULE: Do NOT interpret estradiol, progesterone, FSH, or LH as abnormal in premenopausal females unless extreme (FSH >40, estradiol <10 or >500, progesterone >30). These vary by cycle phase. A single blood draw cannot diagnose "estrogen dominance" without knowing cycle day. Note this limitation if discussing these values.
 
-GOAL-DRIVEN TAILORING: The user provides their personal goals (energy, longevity, hormones, weight, etc.). The discussion points, patient questions, and tests_to_request should visibly connect to these goals. If a user's top goal is "energy" — at minimum one discussion point should address energy-relevant findings (iron, B12, thyroid, sleep). If "longevity" — focus on metabolic optimization and preventive screening even when current labs look fine. The functional_medicine_note must explicitly tie the patient's biggest finding back to their stated goals.
+GOAL-DRIVEN TAILORING: The user provides their personal goals. Discussion points, patient questions, and tests_to_request must visibly connect to these. If primary goal is "energy" — one discussion point addresses energy-relevant findings. If "longevity" — focus on metabolic optimization and preventive screening. The functional_medicine_note must tie the patient's biggest finding back to their stated goals.
+
+HEALTHY MODE (when MODE=healthy is passed in the user message — patient's labs are mostly within standard range, no urgent findings):
+This patient is using the appointment to ADD advanced markers, not to address disease. Reframe everything:
+- chief_complaint: lead with "Optimization-focused visit" or similar — not a complaint.
+- hpi: describe the patient's strengths (markers in range, lifestyle effort) and the 1-2 Watch markers worth addressing. No alarmist tone.
+- executive_summary: 1) what's working well, 2) the 1-2 Watch markers (specific lifestyle adjustments to push them down), 3) the 2-3 advanced tests to add this visit.
+- tests_to_request: lean PROACTIVE — ApoB, Lp(a) (once-in-lifetime), full thyroid (Free T3/T4 + TPO if not done), homocysteine, advanced lipid (NMR), DEXA referral, VO2 max consultation, coronary calcium score (if 35+), 24-hr ambulatory BP if family hx.
+- discussion_points: framed as "I want to add these markers to my baseline" not "I have these problems." Tone is collaborative, not adversarial.
+- patient_questions: "What's my ApoB target?" "Should I get a DEXA at my age?" "When does Lp(a) need to be checked?" — proactive optimization questions.
+- functional_medicine_note: celebrate the strengths first, then the 2-3 things to optimize next.
+- The Patient Visit Guide PDF will be generated separately with healthy-mode framing — make sure your discussion_points support a "you're doing great, here's what to push next" tone.
 
 LIMITED-DATA MODE: If the user has NO lab values uploaded (only symptoms, conditions, medications, goals), generate a SCREENING-FOCUSED clinical prep:
 - executive_summary should say "Based on your symptoms and history, here's what to ask for at your visit" rather than referencing labs
@@ -194,6 +211,7 @@ Be concise. Scannable in 3 minutes.`,
         messages: [{ role: 'user', content: `Generate clinical visit prep document.
 
 PATIENT: ${age ? `${age}yo` : 'age unknown'} ${profile?.sex ?? ''}
+MODE: ${isHealthyMode ? 'healthy — apply HEALTHY MODE rules (proactive/optimization framing, no alarmism)' : 'standard'}
 USER'S TOP GOALS (their stated reasons for using this app — your discussion points and tests should connect to these): ${goalsStr}
 DIAGNOSED CONDITIONS (GROUND TRUTH — use these exact names; UC is NOT Crohn's; do NOT infer a different diagnosis from medications): ${condStr}
 MEDICATIONS:\n${medsStr}
