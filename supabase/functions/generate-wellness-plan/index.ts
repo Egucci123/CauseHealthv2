@@ -259,6 +259,73 @@ CRITICAL OUTPUT RULES:
     if (!Array.isArray(plan.retest_timeline)) plan.retest_timeline = [];
     if (!plan.generated_at) plan.generated_at = new Date().toISOString();
 
+    // ── Deterministic medication-depletion injector ──────────────────────
+    // The AI ignores the prompt rule sometimes (it dropped CoQ10 even when
+    // the user is on a statin). Don't trust the AI for this — scan the
+    // medications list and force-inject any missing depletion supplements.
+    type DepletionRule = { regex: RegExp; nutrient: string; matchInStack: RegExp; entry: any };
+    const userSuppNames = (supps ?? []).map((s: any) => (s.name ?? '').toLowerCase()).join(' ');
+    const depletionRules: DepletionRule[] = [
+      {
+        regex: /\b(atorvastatin|rosuvastatin|simvastatin|pravastatin|lovastatin|pitavastatin|fluvastatin|crestor|lipitor|zocor)\b/i,
+        nutrient: 'CoQ10',
+        matchInStack: /\b(coq[\s-]?10|ubiquinol|ubiquinone|coenzyme\s*q)\b/i,
+        entry: { emoji: '💊', nutrient: 'CoQ10 (Ubiquinol)', form: 'Softgel', dose: '100-200mg', timing: 'With breakfast (take with fat)', why_short: 'Statins block your body from making CoQ10', why: 'Statins (like atorvastatin) inhibit the same pathway your body uses to make CoQ10 — the energy molecule muscle and heart cells depend on. Replacing it cuts statin-related fatigue and muscle aches.', priority: 'high', sourced_from: 'medication_depletion', evidence_note: 'Multiple RCTs support 100-200mg ubiquinol daily for statin users.' },
+      },
+      {
+        regex: /\b(metformin|glucophage)\b/i,
+        nutrient: 'Vitamin B12',
+        matchInStack: /\b(b[\s-]?12|cobalamin|methylcobalamin)\b/i,
+        entry: { emoji: '💊', nutrient: 'Vitamin B12 (Methylcobalamin)', form: 'Sublingual', dose: '500-1000mcg', timing: 'Morning, away from food', why_short: 'Metformin blocks B12 absorption over time', why: 'Metformin reduces B12 absorption in the gut. Subclinical B12 deficiency causes fatigue, brain fog, and nerve symptoms before serum levels drop. Methylcobalamin bypasses the absorption block.', priority: 'high', sourced_from: 'medication_depletion', evidence_note: 'Studies show 10-30% of long-term metformin users develop B12 deficiency.' },
+      },
+      {
+        regex: /\b(omeprazole|pantoprazole|esomeprazole|lansoprazole|rabeprazole|prilosec|nexium|protonix)\b/i,
+        nutrient: 'Vitamin B12 + Magnesium',
+        matchInStack: /\b(b[\s-]?12|magnesium)\b/i,
+        entry: { emoji: '💊', nutrient: 'Magnesium Glycinate', form: 'Capsule', dose: '200-400mg', timing: 'Evening', why_short: 'PPIs deplete magnesium and B12', why: 'PPIs (like omeprazole) suppress stomach acid, reducing absorption of magnesium, B12, calcium, and iron. Glycinate form is gentle on the gut.', priority: 'high', sourced_from: 'medication_depletion', evidence_note: 'FDA black-box warning on PPI-induced hypomagnesemia.' },
+      },
+      {
+        regex: /\b(mesalamine|sulfasalazine|asacol|pentasa|lialda|apriso)\b/i,
+        nutrient: 'Methylfolate',
+        matchInStack: /\b(folate|folic\s*acid|methylfolate|5-mthf)\b/i,
+        entry: { emoji: '💊', nutrient: 'Methylfolate (5-MTHF)', form: 'Capsule', dose: '400-800mcg', timing: 'Morning with food', why_short: 'Mesalamine + UC both lower folate absorption', why: 'Mesalamine and sulfasalazine block folate absorption, and UC inflammation compounds the deficit. Methylfolate is the active form your body can use directly.', priority: 'high', sourced_from: 'medication_depletion', evidence_note: 'Sulfasalazine especially well-documented for inducing folate deficiency.' },
+      },
+      {
+        regex: /\b(prednisone|prednisolone|methylprednisolone|dexamethasone)\b/i,
+        nutrient: 'Vitamin D + Calcium',
+        matchInStack: /\b(vitamin\s*d|calcium)\b/i,
+        entry: { emoji: '💊', nutrient: 'Calcium + Vitamin D3', form: 'Tablet', dose: '500mg Ca + 2000 IU D3', timing: 'With dinner', why_short: 'Steroids leach bone minerals', why: 'Oral corticosteroids reduce calcium absorption and accelerate bone loss. Pairing calcium with D3 maintains bone density during treatment.', priority: 'critical', sourced_from: 'medication_depletion', evidence_note: 'ACR guidelines recommend Ca+D for any patient on >5mg prednisone for >3 months.' },
+      },
+      {
+        regex: /\b(furosemide|lasix|torsemide|bumetanide|hydrochlorothiazide|hctz|chlorthalidone|spironolactone)\b/i,
+        nutrient: 'Magnesium',
+        matchInStack: /\bmagnesium\b/i,
+        entry: { emoji: '💊', nutrient: 'Magnesium Glycinate', form: 'Capsule', dose: '300-400mg', timing: 'Evening', why_short: 'Diuretics flush magnesium out', why: 'Loop and thiazide diuretics increase urinary magnesium loss, often causing subclinical deficiency that worsens fatigue and BP control.', priority: 'high', sourced_from: 'medication_depletion', evidence_note: 'Routine supplementation recommended in cardiology guidelines.' },
+      },
+    ];
+
+    if (Array.isArray(plan.supplement_stack)) {
+      const stackText = plan.supplement_stack.map((s: any) => `${s.nutrient ?? ''} ${s.form ?? ''}`).join(' ').toLowerCase();
+      for (const rule of depletionRules) {
+        if (!rule.regex.test(medsStr)) continue;
+        if (rule.matchInStack.test(stackText)) continue;
+        if (rule.matchInStack.test(userSuppNames)) continue; // user already takes it
+        plan.supplement_stack.push(rule.entry);
+        console.log(`[wellness-plan] Injected ${rule.nutrient} for ${rule.regex.source} match`);
+      }
+      // Re-cap and re-rank after injection
+      const priorityRank = (p: string) => p === 'critical' ? 0 : p === 'high' ? 1 : p === 'moderate' ? 2 : 3;
+      plan.supplement_stack = plan.supplement_stack
+        .sort((a: any, b: any) => {
+          const ar = typeof a.rank === 'number' ? a.rank : 999;
+          const br = typeof b.rank === 'number' ? b.rank : 999;
+          if (ar !== br) return ar - br;
+          return priorityRank(a.priority ?? 'optimize') - priorityRank(b.priority ?? 'optimize');
+        })
+        .slice(0, 7)
+        .map((s: any, i: number) => ({ ...s, rank: i + 1 }));
+    }
+
     // Keep old plans for history — don't delete
     await supabase.from('wellness_plans').insert({ user_id: userId, draw_id: drawId, plan_data: plan, generation_status: 'complete' });
 

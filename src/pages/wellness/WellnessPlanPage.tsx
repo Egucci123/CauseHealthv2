@@ -18,14 +18,13 @@ import { useAuthStore } from '../../store/authStore';
 import { exportWellnessPlanPDF } from '../../lib/exportPDF';
 import { format } from 'date-fns';
 
-type TabKey = 'today' | 'eat' | 'move' | 'take' | 'details';
+type TabKey = 'today' | 'eat' | 'move' | 'take';
 
 const TABS: { key: TabKey; label: string; icon: string }[] = [
   { key: 'today', label: 'Today', icon: 'today' },
   { key: 'eat', label: 'Eat', icon: 'restaurant' },
   { key: 'move', label: 'Move', icon: 'directions_run' },
   { key: 'take', label: 'Take', icon: 'medication' },
-  { key: 'details', label: 'Details', icon: 'info' },
 ];
 
 const todayKey = () => new Date().toISOString().slice(0, 10);
@@ -146,21 +145,115 @@ const TodayTab = ({ plan, uid }: { plan: any; uid: string }) => {
           </button>
         );
       })}
+
+      {/* Plan deep-dive — Lifestyle, 90-day phases, retest. Folded into Today
+          since the standalone Details tab was removed. */}
+      <div className="space-y-4 pt-2">
+        <FolderSection icon="restaurant" title="Lifestyle Interventions" countLabel="categories" count={4} explanation="Diet, sleep, exercise, and stress strategies targeting your specific lab patterns.">
+          <LifestyleInterventions interventions={plan.lifestyle_interventions ?? { diet: [], sleep: [], exercise: [], stress: [] }} />
+        </FolderSection>
+        <FolderSection icon="event" title="Your 90-Day Action Plan" countLabel="phases" count={3} explanation="Three phases — stabilize, optimize, maintain. Don't try to do everything at once.">
+          <ActionPlan actionPlan={plan.action_plan ?? { phase_1: { name: '', focus: '', actions: [] }, phase_2: { name: '', focus: '', actions: [] }, phase_3: { name: '', focus: '', actions: [] } }} retestTimeline={[]} planKey={plan.generated_at ?? 'default'} />
+        </FolderSection>
+        {Array.isArray(plan.retest_timeline) && plan.retest_timeline.length > 0 && (
+          <FolderSection icon="science" title="Recommended Retest at Week 12" count={plan.retest_timeline.length} countLabel={plan.retest_timeline.length === 1 ? 'marker' : 'markers'} explanation="Markers from your bloodwork to recheck. For NEW tests to discuss with your doctor, see Doctor Prep." accentColor="#1B423A">
+            <div className="space-y-3">
+              {plan.retest_timeline.map((r: any, i: number) => (
+                <div key={i} className="bg-clinical-cream rounded-lg p-4 border-l-4 border-primary-container">
+                  <div className="flex justify-between items-start gap-3 mb-1.5">
+                    <p className="text-body text-clinical-charcoal font-semibold text-sm">{r.marker}</p>
+                    <span className="text-precision text-[0.55rem] font-bold tracking-widest uppercase text-primary-container flex-shrink-0">{r.retest_at}</span>
+                  </div>
+                  <p className="text-body text-clinical-stone text-xs leading-relaxed">{r.why}</p>
+                </div>
+              ))}
+            </div>
+          </FolderSection>
+        )}
+        {plan.disclaimer && (
+          <div className="border border-outline-variant/10 rounded-lg p-5">
+            <p className="text-precision text-[0.6rem] text-clinical-stone tracking-wide leading-relaxed">{plan.disclaimer}</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
 
 // ── Eat Tab ────────────────────────────────────────────────────────────────────
+// Build a deduplicated, alphabetical shopping list from all meal ingredients.
+function buildShoppingList(meals: any[]): string[] {
+  const set = new Set<string>();
+  for (const m of meals) {
+    for (const ing of m.ingredients ?? []) {
+      const cleaned = String(ing)
+        .toLowerCase()
+        // Strip leading quantities like "2 eggs", "1/2 cup spinach", "3oz salmon"
+        .replace(/^\s*\d+(\.\d+)?\s*(\/\s*\d+)?\s*(cup|cups|tbsp|tsp|oz|lb|g|ml|cans?|cloves?|pieces?|slices?|tbs|tablespoons?|teaspoons?)?\.?\s*/i, '')
+        .replace(/^\s*\d+(\.\d+)?\s*/i, '')
+        .trim();
+      if (cleaned) set.add(cleaned);
+    }
+  }
+  return [...set].sort();
+}
+
 const EatTab = ({ plan }: { plan: any }) => {
   const meals = plan.meals ?? [];
+  const [showList, setShowList] = useState(false);
   if (meals.length === 0) {
     return <p className="text-body text-clinical-stone text-sm">Regenerate your plan to get your weekly food list.</p>;
   }
   const order = ['breakfast', 'lunch', 'dinner', 'snack'];
   const sorted = [...meals].sort((a, b) => order.indexOf(a.when) - order.indexOf(b.when));
+  const shoppingList = buildShoppingList(meals);
+  // Amazon Fresh search URL — opens a search for the whole list comma-separated.
+  // Most users will recognize / refine items. Not a deep-link to cart (Amazon
+  // doesn't expose that for non-affiliate use), but one click away from buying.
+  const amazonFreshUrl = `https://www.amazon.com/alm/storefront?almBrandId=QW16YXpvbiBGcmVzaA%3D%3D&search=${encodeURIComponent(shoppingList.slice(0, 8).join(' '))}`;
+
   return (
-    <div className="space-y-3">
-      <p className="text-body text-clinical-stone text-sm">Real meals matched to your labs. Cook one, eat one — it counts.</p>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <p className="text-body text-clinical-stone text-sm">Real meals matched to your labs. Cook one, eat one — it counts.</p>
+        <button
+          onClick={() => setShowList(!showList)}
+          className="inline-flex items-center gap-1.5 text-precision text-[0.65rem] font-bold tracking-widest uppercase px-3 py-2 bg-gradient-to-br from-[#1B423A] to-[#0F2A24] hover:from-[#244F46] hover:to-[#163730] text-[#D4A574] rounded-[8px] transition-all"
+        >
+          <span className="material-symbols-outlined text-[14px]">shopping_basket</span>
+          {showList ? 'Hide List' : `Shopping List (${shoppingList.length})`}
+        </button>
+      </div>
+
+      {showList && (
+        <div className="bg-clinical-white rounded-[10px] shadow-card border-t-[3px] border-[#1B423A] p-5">
+          <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+            <div>
+              <p className="text-authority text-base text-clinical-charcoal font-bold">Your Shopping List</p>
+              <p className="text-precision text-[0.6rem] text-clinical-stone tracking-wide">Combined ingredients across all meals · {shoppingList.length} items</p>
+            </div>
+            <a
+              href={amazonFreshUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-precision text-[0.65rem] font-bold tracking-widest uppercase px-3 py-2 bg-[#D4A574] hover:bg-[#B8915F] text-clinical-charcoal rounded-[8px] transition-colors"
+            >
+              <span className="material-symbols-outlined text-[14px]">shopping_cart</span>
+              Shop on Amazon
+              <span className="material-symbols-outlined text-[12px]">open_in_new</span>
+            </a>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+            {shoppingList.map((item) => (
+              <label key={item} className="flex items-center gap-2 bg-clinical-cream rounded-md px-3 py-2 hover:bg-clinical-cream/70 cursor-pointer">
+                <input type="checkbox" className="accent-[#1B423A] w-4 h-4 flex-shrink-0" />
+                <span className="text-body text-clinical-charcoal text-sm capitalize">{item}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+
       {sorted.map((m: any, i: number) => (
         <div key={i} className="bg-clinical-white border border-outline-variant/15 rounded-[10px] p-4">
           <div className="flex items-start gap-3">
@@ -212,79 +305,70 @@ const MoveTab = ({ plan }: { plan: any }) => {
 };
 
 // ── Take Tab ───────────────────────────────────────────────────────────────────
+const amazonSearchUrl = (s: any) => {
+  const q = `${s.nutrient ?? ''} ${s.form ?? ''} ${s.dose ?? ''}`.replace(/\s+/g, ' ').trim();
+  return `https://www.amazon.com/s?k=${encodeURIComponent(q)}`;
+};
+
 const TakeTab = ({ plan }: { plan: any }) => {
-  const supps = plan.supplement_stack ?? [];
+  const supps = [...(plan.supplement_stack ?? [])].sort((a: any, b: any) => (a.rank ?? 99) - (b.rank ?? 99));
   if (supps.length === 0) {
     return <p className="text-body text-clinical-stone text-sm">No supplements recommended. Your plan focuses on food and movement.</p>;
   }
   return (
-    <div className="space-y-3">
-      <p className="text-body text-clinical-stone text-sm">{supps.length} supplement{supps.length !== 1 ? 's' : ''}. Each one fixes a specific lab.</p>
-      {supps.map((s: any, i: number) => (
-        <div key={i} className="bg-clinical-white border border-outline-variant/15 rounded-[10px] p-4">
-          <div className="flex items-start gap-3">
-            <span className="text-3xl flex-shrink-0">{s.emoji || '💊'}</span>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
-                <p className="text-body text-clinical-charcoal font-semibold">{s.nutrient}{s.form ? ` (${s.form})` : ''}</p>
-                {s.priority && (
-                  <span className={`text-precision text-[0.55rem] font-bold tracking-widest uppercase ${s.priority === 'critical' ? 'text-[#C94F4F]' : s.priority === 'high' ? 'text-[#E8922A]' : 'text-primary-container'}`}>
-                    {s.priority}
-                  </span>
-                )}
+    <div className="space-y-4">
+      <div className="bg-[#D4A574]/10 border border-[#D4A574]/30 rounded-[10px] p-4 flex items-start gap-3">
+        <span className="material-symbols-outlined text-[#B8915F] text-[20px] flex-shrink-0 mt-0.5">tips_and_updates</span>
+        <p className="text-body text-clinical-charcoal text-sm leading-relaxed">
+          Ranked 1 to {supps.length} by what matters most for your goals. If you can only take a few, start with <strong>#1</strong>. Tap "Buy" to find each one on Amazon.
+        </p>
+      </div>
+      {supps.map((s: any, i: number) => {
+        const priorityColor = s.priority === 'critical' ? '#C94F4F' : s.priority === 'high' ? '#E8922A' : s.priority === 'optimize' ? '#2A9D8F' : '#D4A574';
+        return (
+          <div key={i} className="bg-clinical-white rounded-[10px] shadow-card overflow-hidden" style={{ borderTop: `3px solid ${priorityColor}` }}>
+            <div className="p-5">
+              <div className="flex items-start gap-3">
+                <div className="w-11 h-11 rounded-[10px] bg-gradient-to-br from-[#1B423A] to-[#0F2A24] flex items-center justify-center flex-shrink-0 shadow-card">
+                  <span className="text-authority text-lg font-bold text-[#D4A574] leading-none">{s.rank ?? i + 1}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
+                    <p className="text-body text-clinical-charcoal font-semibold leading-tight">{s.nutrient}</p>
+                    {s.priority && (
+                      <span className="text-precision text-[0.55rem] font-bold tracking-widest uppercase px-2 py-0.5 rounded" style={{ backgroundColor: `${priorityColor}20`, color: priorityColor }}>
+                        {s.priority}
+                      </span>
+                    )}
+                  </div>
+                  {s.form && <p className="text-precision text-[0.6rem] text-clinical-stone tracking-wide">{s.form}</p>}
+                </div>
               </div>
-              <p className="text-body text-clinical-stone text-sm">
-                {s.dose}{s.timing ? ` · ${s.timing}` : ''}
-              </p>
-              {(s.why_short || s.why) && <p className="text-precision text-[0.7rem] text-clinical-stone mt-2 italic">{s.why_short || s.why}</p>}
+              <div className="grid grid-cols-2 gap-2 mt-4">
+                <div className="bg-clinical-cream rounded-lg p-3">
+                  <p className="text-precision text-[0.55rem] text-clinical-stone uppercase tracking-widest mb-0.5">Dose</p>
+                  <p className="text-body text-clinical-charcoal text-sm font-medium break-words">{s.dose}</p>
+                </div>
+                <div className="bg-clinical-cream rounded-lg p-3">
+                  <p className="text-precision text-[0.55rem] text-clinical-stone uppercase tracking-widest mb-0.5">When</p>
+                  <p className="text-body text-clinical-charcoal text-sm font-medium break-words">{s.timing}</p>
+                </div>
+              </div>
+              {(s.why_short || s.why) && <p className="text-body text-clinical-stone text-xs mt-3 italic leading-relaxed">{s.why_short || s.why}</p>}
+              <a
+                href={amazonSearchUrl(s)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 w-full inline-flex items-center justify-center gap-2 text-precision text-[0.65rem] font-bold tracking-widest uppercase px-3 py-2.5 bg-gradient-to-br from-[#1B423A] to-[#0F2A24] hover:from-[#244F46] hover:to-[#163730] text-[#D4A574] rounded-[8px] transition-all"
+              >
+                <span className="material-symbols-outlined text-[16px]">shopping_cart</span>
+                Buy on Amazon
+                <span className="material-symbols-outlined text-[14px]">open_in_new</span>
+              </a>
             </div>
           </div>
-        </div>
-      ))}
-    </div>
-  );
-};
-
-// ── Details Tab (legacy detailed view) ────────────────────────────────────────
-const DetailsTab = ({ plan }: { plan: any }) => {
-  const navigate = useNavigate();
-  const supplementCount = plan.supplement_stack?.length ?? 0;
-  const retestCount = plan.retest_timeline?.length ?? 0;
-  return (
-    <div className="space-y-4">
-      <FolderSection icon="medication" title="Supplement Protocol" count={supplementCount} countLabel={supplementCount === 1 ? 'supplement' : 'supplements'} explanation="Lab-backed supplements, ranked by clinical priority. Each one targets a specific abnormal value in your bloodwork." defaultOpen>
-        <SupplementStack supplements={plan.supplement_stack ?? []} />
-      </FolderSection>
-      <FolderSection icon="restaurant" title="Lifestyle Interventions" countLabel="categories" count={4} explanation="Diet, sleep, exercise, and stress strategies targeting your specific lab patterns.">
-        <LifestyleInterventions interventions={plan.lifestyle_interventions ?? { diet: [], sleep: [], exercise: [], stress: [] }} />
-      </FolderSection>
-      <FolderSection icon="event" title="Your 90-Day Action Plan" countLabel="phases" count={3} explanation="Three phases — stabilize, optimize, maintain. Don't try to do everything at once.">
-        <ActionPlan actionPlan={plan.action_plan ?? { phase_1: { name: '', focus: '', actions: [] }, phase_2: { name: '', focus: '', actions: [] }, phase_3: { name: '', focus: '', actions: [] } }} retestTimeline={[]} planKey={plan.generated_at ?? 'default'} />
-      </FolderSection>
-      <FolderSection icon="science" title="Recommended Retest at Week 12" count={retestCount} countLabel={retestCount === 1 ? 'marker' : 'markers'} explanation="Markers from your CURRENT bloodwork to recheck. For NEW tests to discuss with your doctor, see Clinical Prep." accentColor="#1B423A">
-        <div className="space-y-3">
-          {plan.retest_timeline && plan.retest_timeline.length > 0 ? plan.retest_timeline.map((r: any, i: number) => (
-            <div key={i} className="bg-clinical-cream rounded-lg p-4 border-l-4 border-primary-container">
-              <div className="flex justify-between items-start gap-3 mb-1.5">
-                <p className="text-body text-clinical-charcoal font-semibold text-sm">{r.marker}</p>
-                <span className="text-precision text-[0.55rem] font-bold tracking-widest uppercase text-primary-container flex-shrink-0">{r.retest_at}</span>
-              </div>
-              <p className="text-body text-clinical-stone text-xs leading-relaxed">{r.why}</p>
-            </div>
-          )) : <p className="text-body text-clinical-stone text-sm">No retests recommended.</p>}
-          <button onClick={() => navigate('/doctor-prep')} className="w-full mt-2 bg-primary-container/5 border border-primary-container/20 rounded-lg p-4 flex items-center gap-3 hover:bg-primary-container/10 transition-colors text-left">
-            <span className="material-symbols-outlined text-primary-container text-[20px]">description</span>
-            <div className="flex-1">
-              <p className="text-body text-clinical-charcoal font-semibold text-sm">Looking for new tests to add?</p>
-              <p className="text-precision text-[0.6rem] text-clinical-stone">Your Clinical Prep has the full diagnostic test list.</p>
-            </div>
-            <span className="material-symbols-outlined text-primary-container text-[18px]">arrow_forward</span>
-          </button>
-        </div>
-      </FolderSection>
-      <div className="border border-outline-variant/10 rounded-lg p-5">
-        <p className="text-precision text-[0.6rem] text-clinical-stone tracking-wide leading-relaxed">{plan.disclaimer}</p>
-      </div>
+        );
+      })}
     </div>
   );
 };
@@ -497,7 +581,6 @@ export const WellnessPlanPage = () => {
               {tab === 'eat' && <EatTab plan={plan} />}
               {tab === 'move' && <MoveTab plan={plan} />}
               {tab === 'take' && <TakeTab plan={plan} />}
-              {tab === 'details' && <DetailsTab plan={plan} />}
             </motion.div>
           </AnimatePresence>
         </div>
