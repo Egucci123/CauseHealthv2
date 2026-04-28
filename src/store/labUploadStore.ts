@@ -627,9 +627,29 @@ function findOptimalRange(ranges: Record<string, { optimal_low: number; optimal_
   return null;
 }
 
-// Markers where HIGH values are GOOD (only low values matter clinically).
+// Markers where HIGH values are GOOD or harmless (only low values matter
+// clinically). Conservative list — only include markers where elevation is
+// either protective or has no realistic toxicity at lab-reported levels.
 // Match against lowercased marker name via includes().
-const HIGHER_IS_BETTER = ['egfr', 'gfr', 'hdl'];
+const HIGHER_IS_BETTER = [
+  // Kidney function — higher eGFR = better filtration
+  'egfr', 'gfr',
+  // Cardio-protective lipids — high is protective
+  'hdl',
+  'apolipoprotein a', 'apoa', 'apoa-1', 'apo a',
+  // Water-soluble vitamins — excess excreted in urine, no clinical toxicity
+  'vitamin b12', 'b12',
+  'folate', 'folic acid',
+  'vitamin b1', 'thiamine',
+  'vitamin b6', 'pyridoxine',
+  // Vitamin D — toxicity only at extreme levels (>150 ng/mL); 50-100 is target
+  'vitamin d', '25-oh', '25-hydroxy',
+  // Antioxidants / metabolic — no realistic high-side risk at lab levels
+  'coq10', 'coenzyme q10',
+  'adiponectin',
+  // Fertility / reproductive
+  'amh', 'anti-mullerian',
+];
 
 function computeFlag(
   value: number,
