@@ -1,12 +1,11 @@
 // src/pages/wellness/WellnessPlanPage.tsx
-// Visual-first redesign — Today / Eat / Move / Take primary tabs, full Plan behind a Details tab.
+// Visual-first redesign — Today / Eat / Move / Take primary tabs.
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AppShell } from '../../components/layout/AppShell';
 import { Button } from '../../components/ui/Button';
 import { FolderSection } from '../../components/ui/FolderSection';
-import { SupplementStack } from '../../components/wellness/SupplementStack';
 import { LifestyleInterventions } from '../../components/wellness/LifestyleInterventions';
 import { ActionPlan } from '../../components/wellness/ActionPlan';
 import { TransformationForecast } from '../../components/wellness/TransformationForecast';
