@@ -14,7 +14,7 @@ import { useMemo } from 'react';
 import { useSymptomAnalysis } from '../../hooks/useSymptoms';
 import { PaywallGate } from '../../components/paywall/PaywallGate';
 import { useAuthStore } from '../../store/authStore';
-import { exportDoctorPrepPDF } from '../../lib/exportPDF';
+import { exportDoctorPrepPDF, exportPatientVisitGuidePDF } from '../../lib/exportPDF';
 import { format } from 'date-fns';
 
 const TABS = [
@@ -60,9 +60,14 @@ export const DoctorPrep = () => {
     generate().catch(err => console.error('[DoctorPrep] Generation error:', err));
   };
 
+  const patientName = `${profile?.firstName ?? ''} ${profile?.lastName ?? ''}`.trim() || 'Patient';
   const handleExport = () => {
     if (!doc) return;
-    exportDoctorPrepPDF(doc, `${profile?.firstName ?? ''} ${profile?.lastName ?? ''}`.trim() || 'Patient', panelGaps);
+    exportDoctorPrepPDF(doc, patientName, panelGaps);
+  };
+  const handleExportPatientGuide = () => {
+    if (!doc) return;
+    exportPatientVisitGuidePDF(doc, patientName, panelGaps);
   };
 
   return (
@@ -76,12 +81,20 @@ export const DoctorPrep = () => {
             <p className="text-body text-on-surface-variant text-sm mt-2 max-w-md">A clinical document your doctor takes seriously. ICD-10 codes, exact tests, prepared questions.</p>
           </div>
           {doc && !generating && (
-            <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
+              <button
+                onClick={handleExportPatientGuide}
+                className="inline-flex items-center gap-1.5 text-precision text-[0.65rem] font-bold tracking-wider uppercase px-3 py-2 bg-white/10 hover:bg-white/20 text-on-surface rounded-[8px] transition-colors"
+                title="Plain-English guide for you, with scripts and what to do if your doctor pushes back"
+              >
+                <span className="material-symbols-outlined text-[14px]">person</span>Your Guide
+              </button>
               <button
                 onClick={handleExport}
                 className="inline-flex items-center gap-1.5 text-precision text-[0.65rem] font-bold tracking-wider uppercase px-3 py-2 bg-white/10 hover:bg-white/20 text-on-surface rounded-[8px] transition-colors"
+                title="Clinical document for your doctor"
               >
-                <span className="material-symbols-outlined text-[14px]">print</span>PDF
+                <span className="material-symbols-outlined text-[14px]">medical_services</span>Doctor PDF
               </button>
               <button
                 onClick={handleGenerate}

@@ -127,6 +127,248 @@ const stripUnsupportedChars = (s: string): string => {
     .trim();
 };
 
+// ─── Patient-facing visit guide ─────────────────────────────────────────
+// Companion PDF to the Doctor Prep document. Same data, but rewritten
+// for the patient: plain-English explanations, scripts, and what-to-do
+// if the doctor pushes back. The patient brings the doctor PDF for the
+// doctor and reads this one in the waiting room.
+export function exportPatientVisitGuidePDF(doc: DoctorPrepDocument, userName: string, panelGaps: PanelGapPDF[] = []) {
+  const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const pageW = pdf.internal.pageSize.getWidth();
+  const pageH = pdf.internal.pageSize.getHeight();
+  const margin = 20;
+  const contentW = pageW - margin * 2;
+  let y = margin;
+
+  const checkPage = (needed = 20) => { if (y + needed > pageH - margin) { pdf.addPage(); y = margin; } };
+  const addRule = (color = '#E8E3DB') => { pdf.setDrawColor(color); pdf.line(margin, y, pageW - margin, y); y += 5; };
+
+  const sectionHeader = (label: string) => {
+    y += 4; checkPage(15);
+    pdf.setFillColor(212, 165, 116); // brand cream-gold accent line
+    pdf.rect(margin, y - 1, 6, 4, 'F');
+    pdf.setFontSize(11); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(19, 19, 19);
+    pdf.text(stripUnsupportedChars(label), margin + 10, y + 2);
+    y += 7; addRule();
+  };
+
+  const para = (text: string, opts: { size?: number; color?: [number, number, number]; bold?: boolean; italic?: boolean; indent?: number; gap?: number } = {}) => {
+    const size = opts.size ?? 9;
+    const color = opts.color ?? [40, 40, 40];
+    const fontStyle = opts.bold && opts.italic ? 'bolditalic' : opts.bold ? 'bold' : opts.italic ? 'italic' : 'normal';
+    const indent = opts.indent ?? 0;
+    pdf.setFontSize(size); pdf.setFont('helvetica', fontStyle); pdf.setTextColor(color[0], color[1], color[2]);
+    const lines = pdf.splitTextToSize(stripUnsupportedChars(text), contentW - indent);
+    checkPage(lines.length * (size * 0.5) + 2);
+    pdf.text(lines, margin + indent, y);
+    y += lines.length * (size * 0.5) + (opts.gap ?? 2);
+  };
+
+  // ── Header ────────────────────────────────────────────────────────────
+  pdf.setFillColor(19, 19, 19);
+  pdf.rect(0, 0, pageW, 38, 'F');
+  pdf.setFontSize(20); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(255, 255, 255);
+  pdf.text('CauseHealth.', margin, 16);
+  pdf.setFontSize(7); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(212, 165, 116);
+  pdf.text('YOUR VISIT GUIDE - PATIENT COPY', margin, 23);
+  pdf.setTextColor(170, 170, 170);
+  pdf.text(`${stripUnsupportedChars(userName)}   |   Prepared ${format(new Date(doc.document_date), 'MMMM d, yyyy')}`, margin, 30);
+  y = 48;
+
+  // ── What this is ─────────────────────────────────────────────────────
+  para(
+    "This is YOUR copy of what to bring up. Keep it with you in the waiting room and during the appointment. Your doctor gets a separate clinical document with ICD-10 codes and rationale - you focus on advocating for yourself.",
+    { italic: true, color: [80, 80, 80], size: 8.5, gap: 6 }
+  );
+
+  // ── What's going on with your body ───────────────────────────────────
+  sectionHeader("What's going on with your body right now");
+  para(doc.chief_complaint, { size: 9 });
+  if (doc.lab_summary?.urgent_findings?.length) {
+    y += 2;
+    para('Your most important lab findings:', { bold: true, size: 9, gap: 3 });
+    doc.lab_summary.urgent_findings.forEach(f => {
+      checkPage(14);
+      pdf.setFontSize(9); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(201, 79, 79);
+      pdf.text(stripUnsupportedChars(`- ${f.marker}: ${f.value}`), margin + 2, y); y += 4.5;
+      pdf.setFont('helvetica', 'normal'); pdf.setTextColor(60, 60, 60); pdf.setFontSize(8.5);
+      const noteLines = pdf.splitTextToSize(stripUnsupportedChars(f.clinical_note), contentW - 6);
+      pdf.text(noteLines, margin + 6, y); y += noteLines.length * 3.8 + 2;
+    });
+  }
+
+  // ── How to open the conversation ─────────────────────────────────────
+  sectionHeader('How to open the conversation');
+  para(
+    "Hand over your Doctor Prep PDF first. Then say something like:",
+    { size: 8.5, color: [80, 80, 80], gap: 3 }
+  );
+  para(
+    "\"I've been tracking my symptoms and I want a thorough workup so we can find the root causes, not just manage symptoms. I brought a summary with the tests I'm requesting and the ICD-10 codes that justify insurance coverage. Can we go through it together?\"",
+    { italic: true, size: 9.5, color: [19, 19, 19], indent: 4, gap: 5 }
+  );
+  para(
+    "This positions you as informed and collaborative. Most doctors respond well when you arrive prepared.",
+    { size: 8.5, color: [80, 80, 80] }
+  );
+
+  // ── Tests to ask for + why ───────────────────────────────────────────
+  sectionHeader('Tests to ask for - and why each one matters');
+  para(
+    "Each test below is tied to a specific symptom or lab finding of yours. This isn't a generic checklist - we picked these because they could explain what you're feeling.",
+    { size: 8.5, color: [80, 80, 80], italic: true, gap: 5 }
+  );
+
+  // 1. AI-suggested reactive tests (responding to specific abnormalities)
+  if (doc.tests_to_request?.length) {
+    para('Tests based on your abnormal labs:', { bold: true, size: 9, color: [27, 67, 50], gap: 3 });
+    doc.tests_to_request.forEach((t, i) => {
+      checkPage(28);
+      pdf.setFontSize(9.5); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(19, 19, 19);
+      pdf.text(stripUnsupportedChars(`${i + 1}. ${t.test_name}`), margin, y); y += 5;
+
+      pdf.setFontSize(8.5); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(212, 165, 116);
+      pdf.text('Why this test matters for you:', margin + 3, y); y += 4;
+      pdf.setFont('helvetica', 'normal'); pdf.setTextColor(40, 40, 40);
+      const whyLines = pdf.splitTextToSize(stripUnsupportedChars(t.clinical_justification), contentW - 6);
+      pdf.text(whyLines, margin + 3, y); y += whyLines.length * 3.8 + 2;
+
+      if (t.insurance_note) {
+        pdf.setFont('helvetica', 'bold'); pdf.setTextColor(212, 165, 116); pdf.setFontSize(8);
+        pdf.text('Insurance / cost note:', margin + 3, y); y += 3.5;
+        pdf.setFont('helvetica', 'italic'); pdf.setTextColor(80, 80, 80);
+        const insLines = pdf.splitTextToSize(stripUnsupportedChars(t.insurance_note), contentW - 6);
+        pdf.text(insLines, margin + 3, y); y += insLines.length * 3.5 + 4;
+      } else {
+        y += 2;
+      }
+    });
+  }
+
+  // 2. Panel-gap tests with scripts
+  if (panelGaps.length) {
+    y += 3;
+    para('Plus these baseline tests every adult should have:', { bold: true, size: 9, color: [27, 67, 50], gap: 3 });
+    para(
+      "These won't be ordered automatically. You have to ask. Use the exact words below.",
+      { size: 8.5, color: [80, 80, 80], italic: true, gap: 4 }
+    );
+
+    const tierLabels: Record<PanelGapPDF['category'], string> = {
+      essential: 'Foundational (most doctors will order these)',
+      recommended: 'Comprehensive (you may need to insist)',
+      advanced: 'Advanced (most doctors will not volunteer these)',
+    };
+
+    (['essential', 'recommended', 'advanced'] as const).forEach(tier => {
+      const tierGaps = panelGaps.filter(g => g.category === tier);
+      if (!tierGaps.length) return;
+      checkPage(15);
+      pdf.setFontSize(9); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(19, 19, 19);
+      pdf.text(stripUnsupportedChars(tierLabels[tier]), margin, y); y += 5;
+
+      tierGaps.forEach(g => {
+        checkPage(20);
+        pdf.setFontSize(9); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(40, 40, 40);
+        pdf.text(stripUnsupportedChars(`- ${g.test_name}`), margin + 2, y); y += 4;
+        pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8.5); pdf.setTextColor(80, 80, 80);
+        const whyLines = pdf.splitTextToSize(stripUnsupportedChars(`Why: ${g.why_needed}.`), contentW - 8);
+        pdf.text(whyLines, margin + 6, y); y += whyLines.length * 3.5;
+        if (g.script) {
+          pdf.setFont('helvetica', 'italic'); pdf.setTextColor(19, 19, 19);
+          const scriptLines = pdf.splitTextToSize(stripUnsupportedChars(`Say: ${g.script}`), contentW - 8);
+          pdf.text(scriptLines, margin + 6, y); y += scriptLines.length * 3.5;
+        }
+        y += 3;
+      });
+      y += 2;
+    });
+  }
+
+  // ── Other points to bring up ─────────────────────────────────────────
+  if (doc.discussion_points?.length) {
+    sectionHeader('Other things to bring up');
+    doc.discussion_points.forEach(point => {
+      checkPage(10);
+      const raw = typeof point === 'string' ? point : (typeof point === 'object' && point !== null ? Object.values(point as any).filter(v => typeof v === 'string').join(' - ') : String(point));
+      const text = stripUnsupportedChars(raw);
+      if (!text) return;
+      pdf.setFontSize(8.5); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(40, 40, 40);
+      const lines = pdf.splitTextToSize(`- ${text}`, contentW);
+      pdf.text(lines, margin, y); y += lines.length * 3.6 + 2;
+    });
+  }
+
+  // ── If your doctor pushes back ───────────────────────────────────────
+  sectionHeader("If your doctor says no");
+  const pushbackBlocks: { script: string; response: string }[] = [
+    {
+      script: '"Your insurance won\'t cover that."',
+      response: 'Reply: "I have ICD-10 codes that justify coverage. They\'re on the document I gave you. Can we use those?" Most denials are about coding, not the test itself.',
+    },
+    {
+      script: '"That\'s not a standard test."',
+      response: 'Reply: "I understand it\'s not in the routine panel. I\'m asking specifically because of [your symptom or lab finding]. Can you order it as a one-time investigation?"',
+    },
+    {
+      script: '"Your labs look normal, you don\'t need it."',
+      response: 'Reply: "Standard ranges miss early dysfunction. I want to catch problems before they progress. If you\'re uncomfortable ordering it, can you refer me to a specialist who will?"',
+    },
+    {
+      script: '"I don\'t have time today."',
+      response: 'Reply: "Can I leave this list with you and you order what you can today, then we can revisit the rest at the next visit?" Or schedule a dedicated lab-review appointment.',
+    },
+    {
+      script: '"Why do you need all this?"',
+      response: 'Reply: "I want a complete picture of my health, not just disease management. Catching things early is cheaper for everyone."',
+    },
+  ];
+  pushbackBlocks.forEach(b => {
+    checkPage(14);
+    pdf.setFontSize(8.5); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(201, 79, 79);
+    pdf.text(stripUnsupportedChars(`If they say: ${b.script}`), margin, y); y += 4;
+    pdf.setFont('helvetica', 'normal'); pdf.setTextColor(40, 40, 40);
+    const lines = pdf.splitTextToSize(stripUnsupportedChars(b.response), contentW - 4);
+    pdf.text(lines, margin + 4, y); y += lines.length * 3.6 + 3;
+  });
+
+  // ── Your rights ──────────────────────────────────────────────────────
+  sectionHeader('Your rights as a patient');
+  [
+    "You have the right to ask for any test - and your doctor has to either order it, document why they declined, or refer you to someone who will.",
+    "You have the right to a copy of your lab results. Always ask. Lab results belong to you.",
+    "You have the right to a second opinion. If your PCP keeps refusing, ask for a referral to endocrinology, cardiology, or functional medicine.",
+    "You have the right to switch doctors. A doctor who won't engage with your health questions is not the right doctor.",
+  ].forEach(t => {
+    checkPage(8);
+    pdf.setFontSize(8.5); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(40, 40, 40);
+    const lines = pdf.splitTextToSize(stripUnsupportedChars(`- ${t}`), contentW);
+    pdf.text(lines, margin, y); y += lines.length * 3.6 + 2;
+  });
+
+  // ── After the visit ──────────────────────────────────────────────────
+  sectionHeader('After the visit');
+  [
+    "Get your results sent to you (patient portal or email). You should always have a copy.",
+    "Re-upload them to CauseHealth so we can update your analysis and Doctor Prep.",
+    "If a test came back abnormal, the next Doctor Prep will tell you what to ask for as a follow-up.",
+  ].forEach(t => {
+    checkPage(8);
+    pdf.setFontSize(8.5); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(40, 40, 40);
+    const lines = pdf.splitTextToSize(stripUnsupportedChars(`- ${t}`), contentW);
+    pdf.text(lines, margin, y); y += lines.length * 3.6 + 2;
+  });
+
+  // ── Disclaimer ───────────────────────────────────────────────────────
+  if (y + 20 > pageH - margin) { pdf.addPage(); y = margin; }
+  y = pageH - 20;
+  pdf.setFontSize(6.5); pdf.setFont('helvetica', 'italic'); pdf.setTextColor(155, 155, 155);
+  const disc = 'CauseHealth provides educational information based on your data. This is not a substitute for professional medical advice. Always consult a licensed clinician for diagnosis and treatment decisions.';
+  pdf.text(pdf.splitTextToSize(disc, contentW), margin, y);
+
+  pdf.save(`CauseHealth-PatientVisitGuide-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+}
+
 // Doctor Prep PDF
 export function exportDoctorPrepPDF(doc: DoctorPrepDocument, userName: string, panelGaps: PanelGapPDF[] = []) {
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
