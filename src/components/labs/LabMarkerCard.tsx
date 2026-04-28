@@ -11,6 +11,8 @@ import { Sparkline } from '../ui/Sparkline';
 import { MarkerTerm } from '../ui/MarkerTerm';
 import { useMarkerHistory } from '../../hooks/useMarkerHistory';
 import { useSubscription } from '../../lib/subscription';
+import { useAuthStore } from '../../store/authStore';
+import { computeCohortPercentile } from '../../lib/cohortReference';
 
 interface LabValueRow {
   id: string; marker_name: string; marker_category: string; value: number; unit: string;
@@ -45,6 +47,18 @@ export const LabMarkerCard = ({ value, analysis, onAddToPrep }: LabMarkerCardPro
   const [expanded, setExpanded] = useState(false);
   const status = getStatus(value.optimal_flag);
   const { isPro } = useSubscription();
+  const profile = useAuthStore(s => s.profile);
+
+  // Cohort percentile — show only if reference data exists and we know age + sex
+  const ageNum = profile?.dateOfBirth
+    ? Math.floor((Date.now() - new Date(profile.dateOfBirth).getTime()) / 31_557_600_000)
+    : null;
+  const cohort = computeCohortPercentile(value.marker_name, value.value, ageNum, profile?.sex ?? null);
+  const cohortColor = cohort
+    ? cohort.percentile >= 75 ? '#2A9D8F'
+    : cohort.percentile >= 50 ? '#D4A574'
+    : cohort.percentile >= 25 ? '#E8922A' : '#C94F4F'
+    : null;
   // Free users see the flag + dot bar + sparkline. AI explanations are locked.
   const showAnalysis = isPro && !!analysis;
   const topBorder = status === 'urgent' ? 'border-t-[3px] border-[#C94F4F]' : status === 'monitor' ? 'border-t-[3px] border-[#E8922A]' : 'border-t-[3px] border-[#D4A574]';
@@ -114,6 +128,15 @@ export const LabMarkerCard = ({ value, analysis, onAddToPrep }: LabMarkerCardPro
             </div>
           )}
         </div>
+
+        {/* Cohort percentile chip — peer comparison for context */}
+        {cohort && cohortColor && (
+          <div className="mb-4 inline-flex items-center gap-2 rounded-lg px-3 py-1.5" style={{ backgroundColor: `${cohortColor}15`, border: `1px solid ${cohortColor}40` }}>
+            <span className="material-symbols-outlined text-[14px]" style={{ color: cohortColor }}>groups</span>
+            <span className="text-precision text-[0.65rem] font-bold tracking-wide" style={{ color: cohortColor }}>{cohort.percentile}{cohort.percentile === 1 ? 'st' : cohort.percentile === 2 ? 'nd' : cohort.percentile === 3 ? 'rd' : 'th'} percentile</span>
+            <span className="text-precision text-[0.6rem] text-clinical-stone">{cohort.context}</span>
+          </div>
+        )}
 
         {/* Previous → Current comparison */}
         {comparison?.previous && comparison.delta != null && (
