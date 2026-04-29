@@ -111,6 +111,20 @@ CRITICAL RULES:
    - Persistent GI symptoms (bloating, gas, alt-stool) + iron deficiency or low albumin → celiac panel (tTG-IgA + total IgA).
    - Snoring / daytime fatigue / hypertension / insulin resistance pattern → STOP-BANG + sleep study referral.
 
+   AUTOIMMUNE / ENDOCRINE PATTERNS (commonly missed for years — surface when triggers match):
+   - Hashimoto's (autoimmune hypothyroid): TSH 2.5–4.5 + fatigue/weight gain/cold/hair loss/family hx → TPO antibodies + thyroglobulin antibodies. Also if patient has another autoimmune dx (UC, T1D, vitiligo).
+   - Graves' / autoimmune hyperthyroid: TSH <1.0 + heat intolerance / weight loss / palpitations / anxiety → Free T3, Free T4, TSI antibodies.
+   - Pernicious anemia: B12 <500 + macrocytic indices (MCV >95) OR autoimmune hx → intrinsic factor antibodies + parietal cell antibodies + MMA + homocysteine.
+   - Sjögren's syndrome: dry eyes / dry mouth / joint pain + (positive ANA on this draw OR existing autoimmune dx) → SSA (Ro) + SSB (La) antibodies + rheumatology referral.
+   - LADA / late-onset type 1 diabetes (commonly mislabeled as T2D in lean adults): rising HbA1c + lean body type + age 25–55 + family hx of T1D or autoimmunity → GAD-65 antibodies + IA-2 antibodies + C-peptide.
+   - Adrenal insufficiency (Addison's): chronic fatigue + salt cravings + low Na + high K + low BP + skin hyperpigmentation → AM serum cortisol + ACTH (and consider ACTH stim test).
+   - Primary biliary cholangitis (PBC): female + ALP elevated DISPROPORTIONATELY to AST/ALT + fatigue / itching → AMA antibody + GGT.
+   - Autoimmune hepatitis: ALT/AST elevated + female + (positive ANA OR ASMA) → ASMA + anti-LKM antibodies + IgG level.
+   - Hemolytic anemia: anemia + elevated indirect bilirubin + elevated LDH → haptoglobin + reticulocyte count + peripheral smear + direct Coombs test.
+   - Chronic kidney disease (early): eGFR 60–89 sustained, OR any proteinuria → urine albumin-to-creatinine ratio (UACR) + cystatin C + nephrology referral if eGFR drops.
+   - MASH / fibrotic NAFLD risk: ALT/AST elevated + low-normal platelets + age 40+ → FIB-4 score (calculable from age/AST/ALT/platelets) + FibroScan / hepatology referral if FIB-4 >1.45.
+   - EBV reactivation / chronic fatigue: persistent fatigue >6 months + elevated lymphocytes or monocytes + low-grade lymphadenopathy → EBV panel (VCA-IgG, VCA-IgM, EBNA-1).
+
    Do NOT use this list to fish for tests on healthy patients. Use it when a marker on this draw or a symptom on file matches one of the patterns above. The pattern itself IS the trigger.
 4. AGE AND SEX CONTEXT: Always consider the patient's age and sex when evaluating findings. A value that is "normal" for a 50-year-old male may be concerning in an 18-year-old female. Apply age/sex-appropriate clinical reasoning.
 
