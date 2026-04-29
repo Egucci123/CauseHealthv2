@@ -99,8 +99,18 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
         })),
       };
 
-      // If the draw is already analyzing on the server, show that. Otherwise resume review.
-      const phase: UploadPhase = draw.processing_status === 'processing' && draw.analysis_result ? 'complete' : 'reviewing';
+      // Distinguish "user hasn't reviewed yet" from "user confirmed, analysis running".
+      // panel_gaps is written into notes by confirmAndAnalyze AFTER the user clicks
+      // confirm — so its presence is the signal that review is already done.
+      let alreadyConfirmed = false;
+      try { alreadyConfirmed = !!JSON.parse(draw.notes ?? '{}')?.panel_gaps; } catch {}
+
+      // Three states:
+      //   processing + has analysis_result  → 'complete' (done)
+      //   processing + alreadyConfirmed     → 'complete' (analyzing — LabUpload redirects to LabDetail)
+      //   processing + not yet confirmed    → 'reviewing' (show review table)
+      const isDone = draw.processing_status === 'processing' && draw.analysis_result;
+      const phase: UploadPhase = (isDone || alreadyConfirmed) ? 'complete' : 'reviewing';
       set({
         phase,
         progress: phase === 'reviewing' ? 90 : 100,
@@ -109,7 +119,7 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
         completedDrawId: phase === 'complete' ? draw.id : null,
         statusMessage: phase === 'reviewing'
           ? `Welcome back — ${vals.length} values ready to review.`
-          : 'Analysis complete.',
+          : (isDone ? 'Analysis complete.' : 'Analysis running — picking up where you left off.'),
         isRunning: false,
       });
     } catch (e) {
@@ -400,11 +410,19 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
 
     // Fire-and-forget analysis trigger. Keepalive flag means this survives page
     // navigation and tab close. Server runs to completion regardless of client.
-    const fireAnalysis = () => {
+    // CRITICAL: must include the user's JWT — edge function silently 401s without it,
+    // which is why analysis was stuck "running" forever and never completed.
+    const fireAnalysis = async () => {
       try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
         fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-labs`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${token}`,
+          },
           body: JSON.stringify({ drawId, userId }),
           keepalive: true,
         }).catch(console.warn);
