@@ -11,7 +11,7 @@ import { TrajectoryStrip } from '../../components/labs/TrajectoryStrip';
 import { detectCriticalFindings } from '../../lib/criticalFindings';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/authStore';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useSubscription } from '../../lib/subscription';
 import { logEvent } from '../../lib/clientLog';
@@ -134,6 +134,50 @@ export const LabDetail = () => {
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [drawId, user, qc]);
+
+  // ── Auto-trigger analyze-labs on landing if it hasn't run yet ─────────────
+  // The previous page (LabUpload's confirmAndAnalyze) does a fire-and-forget
+  // trigger but that races with React's redirect — sometimes the request
+  // never makes it out. This is the durable fallback: when the user actually
+  // lands on /labs/:drawId, if the draw has values + status=processing + no
+  // analysis yet, fire analyze-labs from here. Idempotent server-side.
+  // Once-per-mount via a ref so we don't spam if the query refetches.
+  const triggeredOnMount = useRef(false);
+  useEffect(() => {
+    if (triggeredOnMount.current) return;
+    if (!data || !drawId || !user) return;
+    const needsTrigger =
+      data.draw.processing_status === 'processing' &&
+      !data.analysis &&
+      data.values.length > 0;
+    if (!needsTrigger) return;
+    triggeredOnMount.current = true;
+    logEvent('labdetail_auto_trigger_analyze', {
+      drawId,
+      values_count: data.values.length,
+    });
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
+        await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-labs`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ drawId, userId: user.id }),
+          // Note: NOT keepalive — we WANT this to be a normal long-lived request
+          // since the user is on this page watching for the result. Realtime
+          // subscription will flip the UI when the row updates.
+        });
+        logEvent('labdetail_auto_trigger_returned', { drawId });
+      } catch (e: any) {
+        logEvent('labdetail_auto_trigger_failed', { drawId, message: e?.message?.slice(0, 200) });
+      }
+    })();
+  }, [data, drawId, user]);
 
   // Deterministic critical-findings detection — runs in code, never via AI.
   // Visible to free users too (safety > paywall).
