@@ -52,16 +52,36 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   initialize: async () => {
     set({ loading: true });
 
+    // Hard ceiling — if anything hangs (getSession or fetchProfile), force
+    // initialized: true after 4s so the user is never stuck on the spinner.
+    // The auth listener below picks up the session whenever it arrives.
+    const safetyTimer = setTimeout(() => {
+      if (!get().initialized) {
+        console.warn('[Auth] init hit 4s ceiling — forcing initialized=true');
+        set({ loading: false, initialized: true });
+      }
+    }, 4000);
+
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      // Race getSession against a 3s timeout — the call has no built-in timeout
+      // and has been known to hang on cold/slow connections.
+      const sessionResult = await Promise.race([
+        supabase.auth.getSession(),
+        new Promise<{ data: { session: null } }>(resolve =>
+          setTimeout(() => resolve({ data: { session: null } }), 3000)),
+      ]);
+      const session = (sessionResult as any).data?.session;
 
       if (session?.user) {
         set({ user: session.user, session });
-        try { await get().fetchProfile(); } catch (e) { console.warn('Profile fetch failed:', e); }
+        // fetchProfile in parallel with no-block — don't wait. Profile arrives
+        // eventually via the auth listener and triggers a re-render naturally.
+        get().fetchProfile().catch(e => console.warn('Profile fetch failed:', e));
       }
     } catch (e) {
       console.warn('Auth init error:', e);
     } finally {
+      clearTimeout(safetyTimer);
       set({ loading: false, initialized: true });
     }
 
