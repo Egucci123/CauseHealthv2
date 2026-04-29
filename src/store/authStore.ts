@@ -67,15 +67,23 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
     const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
-        set({ user: session.user, session });
+        // Skip the set() if user is already this exact user — avoids a needless
+        // re-render that was contributing to the login-page flicker.
+        const currentUserId = get().user?.id;
+        if (currentUserId !== session.user.id) {
+          set({ user: session.user, session });
+        }
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
           try { await get().fetchProfile(); } catch (e) { console.warn('Profile fetch failed:', e); }
         }
       } else if (event === 'SIGNED_OUT') {
-        // Only clear auth on EXPLICIT signout. Transient null sessions during
-        // TOKEN_REFRESH or initial hydration must not log the user out — that was
-        // causing mid-onboarding signouts on slow connections.
-        get().clearAuth();
+        // Only clear if there's actually something to clear. SIGNED_OUT fires
+        // spuriously on first page load when stale localStorage tokens fail to
+        // refresh — clearing already-null state was causing a redundant render
+        // and a visible flicker between auth-loading -> idle -> idle-again.
+        if (get().user || get().session || get().profile) {
+          get().clearAuth();
+        }
       }
       // INITIAL_SESSION + null is handled by initialize(); no action needed here.
     });
