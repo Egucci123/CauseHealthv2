@@ -198,23 +198,32 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
   loadSavedProgress: async () => {
     const user = useAuthStore.getState().user;
     const profile = useAuthStore.getState().profile;
-    if (!profile || !user) return;
+    if (!user) return;
 
     // Restore ALL existing data into the store so forms are pre-filled
     const updates: Partial<OnboardingState> = {};
 
-    // Step 1 data from profile
-    if (profile.firstName) updates.firstName = profile.firstName;
-    if (profile.lastName) updates.lastName = profile.lastName;
-    if (profile.dateOfBirth) updates.dateOfBirth = profile.dateOfBirth;
-    if (profile.sex) updates.sex = profile.sex;
-    if (profile.heightCm) {
+    // FIRST: restore from localStorage backup. This survives sign-out and
+    // catches the case where DB saves never landed (network/timeout). DB
+    // values further down OVERWRITE these if present, so DB is still
+    // source-of-truth when it has data.
+    const local = restoreLocalOnboarding();
+    if (local) {
+      Object.assign(updates, local);
+    }
+
+    // Step 1 data from profile (DB takes precedence over local)
+    if (profile?.firstName) updates.firstName = profile.firstName;
+    if (profile?.lastName) updates.lastName = profile.lastName;
+    if (profile?.dateOfBirth) updates.dateOfBirth = profile.dateOfBirth;
+    if (profile?.sex) updates.sex = profile.sex;
+    if (profile?.heightCm) {
       const totalInches = profile.heightCm / 2.54;
       updates.heightFt = String(Math.floor(totalInches / 12));
       updates.heightIn = String(Math.round(totalInches % 12));
     }
-    if (profile.weightKg) updates.weightLbs = String(Math.round(profile.weightKg / 0.453592));
-    if (profile.primaryGoals && profile.primaryGoals.length > 0) updates.primaryGoals = profile.primaryGoals;
+    if (profile?.weightKg) updates.weightLbs = String(Math.round(profile.weightKg / 0.453592));
+    if (profile?.primaryGoals && profile.primaryGoals.length > 0) updates.primaryGoals = profile.primaryGoals;
 
     // Determine which step to resume at — only skip forward if later steps have data
     let resumeStep = 1;
@@ -276,61 +285,45 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
     if (!user) return;
     set({ loading: true });
     const state = get();
+    const start = Date.now();
+    const { logEvent } = await import('../lib/clientLog');
+    logEvent('onboarding_complete_start');
 
     try {
-      // Quick session check — don't hang if it fails
-      try { await Promise.race([supabase.auth.getSession(), new Promise(r => setTimeout(r, 3000))]); } catch {}
+      // First do a final autosave so any unsaved Step 1-6 data lands. This
+      // also benefits from autosave's per-call 15s timeouts.
+      await autoSaveToDB();
 
-      // Fire all saves in parallel — don't let one block the others
-      const saves = [];
-
-      if (state.conditions.length > 0) {
-        saves.push(
-          supabase.from('conditions').delete().eq('user_id', user.id)
-            .then(() => supabase.from('conditions').insert(
-              state.conditions.map(c => ({ user_id: user.id, name: c.name, icd10: c.icd10 || null, is_active: true }))
-            ))
-        );
-      }
-      if (state.medications.length > 0) {
-        saves.push(
-          supabase.from('medications').delete().eq('user_id', user.id)
-            .then(() => supabase.from('medications').insert(
-              state.medications.map(m => ({ user_id: user.id, name: m.generic, brand_name: m.brand, dose: m.dose, duration_category: m.duration, prescribing_condition: m.condition, is_active: true }))
-            ))
-        );
-      }
-      if (state.symptoms.length > 0) {
-        saves.push(
-          supabase.from('symptoms').delete().eq('user_id', user.id)
-            .then(() => supabase.from('symptoms').insert(
-              state.symptoms.map(s => ({ user_id: user.id, symptom: s.symptom, severity: s.severity, category: s.category || null }))
-            ))
-        );
-      }
-      if (state.supplements.length > 0) {
-        saves.push(
-          supabase.from('user_supplements').delete().eq('user_id', user.id)
-            .then(() => supabase.from('user_supplements').insert(
-              state.supplements.map(s => ({ user_id: user.id, name: s.name, dose: s.dose ?? null, duration_category: s.duration, reason: s.reason ?? null, is_active: true }))
-            ))
-        );
-      }
-      saves.push(
+      // Then explicitly mark onboarding_completed. Profile fields (name, dob,
+      // sex, height, weight, primary_goals) were saved by autoSaveToDB above.
+      const profileFinal = await Promise.race([
         supabase.from('profiles').update({
           onboarding_completed: true,
           primary_goals: state.primaryGoals.filter(Boolean),
-        }).eq('id', user.id)
-      );
-
-      // Wait for all saves with a 10s timeout
-      await Promise.race([
-        Promise.allSettled(saves),
-        new Promise(resolve => setTimeout(resolve, 10000)),
+        }).eq('id', user.id),
+        new Promise<{ error: { message: string } }>(resolve =>
+          setTimeout(() => resolve({ error: { message: 'profile finalize timed out (15s)' } }), 15000)),
       ]);
+      const finalErr = (profileFinal as any)?.error;
+      logEvent('onboarding_profile_finalize', {
+        duration_ms: Date.now() - start,
+        error: finalErr?.message ?? null,
+      });
 
       try { await useAuthStore.getState().fetchProfile(); } catch {}
-    } catch (err) {
+
+      // Clear local backup once everything is durably in the DB
+      if (!finalErr) clearLocalOnboarding();
+
+      logEvent('onboarding_complete_done', {
+        duration_ms: Date.now() - start,
+        success: !finalErr,
+      });
+    } catch (err: any) {
+      logEvent('onboarding_complete_threw', {
+        duration_ms: Date.now() - start,
+        message: err?.message?.slice(0, 200),
+      });
       console.error('[Onboarding] completeOnboarding error:', err);
     } finally {
       set({ loading: false });
@@ -359,6 +352,16 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
 let autoSaveTimer: ReturnType<typeof setTimeout> | undefined;
 let isSaving = false;
 
+// Wrap a Supabase call with a hard timeout. Returns either the result or
+// a synthetic timeout error — never hangs forever, never throws.
+async function withTimeout<T>(p: PromiseLike<T>, ms: number, label: string): Promise<{ data: any; error: { message: string } | null }> {
+  const result: any = await Promise.race([
+    p,
+    new Promise(resolve => setTimeout(() => resolve({ data: null, error: { message: `${label} timed out after ${ms}ms` } }), ms)),
+  ]);
+  return result;
+}
+
 async function autoSaveToDB() {
   if (isSaving) return;
   const user = useAuthStore.getState().user;
@@ -366,8 +369,15 @@ async function autoSaveToDB() {
   const state = useOnboardingStore.getState();
 
   isSaving = true;
+  const start = Date.now();
+  // Lazy import so we don't create a circular dep at module load time
+  const { logEvent } = await import('../lib/clientLog');
+  logEvent('onboarding_autosave_start', { step: state.currentStep });
+
+  let savedKinds: string[] = [];
+  let errors: Record<string, string> = {};
+
   try {
-    // Save profile fields
     const heightCm = state.heightFt && state.heightIn
       ? (parseInt(state.heightFt) * 30.48) + (parseInt(state.heightIn) * 2.54) : null;
     const weightKg = state.weightLbs ? parseFloat(state.weightLbs) * 0.453592 : null;
@@ -382,64 +392,138 @@ async function autoSaveToDB() {
     if (state.primaryGoals && state.primaryGoals.length > 0) profileData.primary_goals = state.primaryGoals;
 
     if (Object.keys(profileData).length > 0) {
-      await supabase.from('profiles').update(profileData).eq('id', user.id);
+      const r = await withTimeout(
+        supabase.from('profiles').update(profileData).eq('id', user.id),
+        15000, 'profile update'
+      );
+      if (r.error) errors.profile = r.error.message; else savedKinds.push('profile');
     }
 
-    // Save conditions
     if (state.conditions.length > 0) {
-      await supabase.from('conditions').delete().eq('user_id', user.id);
-      await supabase.from('conditions').insert(
-        state.conditions.map(c => ({ user_id: user.id, name: c.name, icd10: c.icd10 || null, is_active: true }))
-      );
+      const d = await withTimeout(supabase.from('conditions').delete().eq('user_id', user.id), 15000, 'conditions delete');
+      if (!d.error) {
+        const i = await withTimeout(supabase.from('conditions').insert(
+          state.conditions.map(c => ({ user_id: user.id, name: c.name, icd10: c.icd10 || null, is_active: true }))
+        ), 15000, 'conditions insert');
+        if (i.error) errors.conditions = i.error.message; else savedKinds.push('conditions');
+      } else { errors.conditions_delete = d.error.message; }
     }
 
-    // Save medications
     if (state.medications.length > 0) {
-      await supabase.from('medications').delete().eq('user_id', user.id);
-      await supabase.from('medications').insert(
-        state.medications.map(m => ({ user_id: user.id, name: m.generic, brand_name: m.brand, dose: m.dose, duration_category: m.duration, prescribing_condition: m.condition, is_active: true }))
-      );
+      const d = await withTimeout(supabase.from('medications').delete().eq('user_id', user.id), 15000, 'medications delete');
+      if (!d.error) {
+        const i = await withTimeout(supabase.from('medications').insert(
+          state.medications.map(m => ({ user_id: user.id, name: m.generic, brand_name: m.brand, dose: m.dose, duration_category: m.duration, prescribing_condition: m.condition, is_active: true }))
+        ), 15000, 'medications insert');
+        if (i.error) errors.medications = i.error.message; else savedKinds.push('medications');
+      } else { errors.medications_delete = d.error.message; }
     }
 
-    // Save supplements
     if (state.supplements.length > 0) {
-      await supabase.from('user_supplements').delete().eq('user_id', user.id);
-      await supabase.from('user_supplements').insert(
-        state.supplements.map(s => ({ user_id: user.id, name: s.name, dose: s.dose ?? null, duration_category: s.duration, reason: s.reason ?? null, is_active: true }))
-      );
+      const d = await withTimeout(supabase.from('user_supplements').delete().eq('user_id', user.id), 15000, 'supplements delete');
+      if (!d.error) {
+        const i = await withTimeout(supabase.from('user_supplements').insert(
+          state.supplements.map(s => ({ user_id: user.id, name: s.name, dose: s.dose ?? null, duration_category: s.duration, reason: s.reason ?? null, is_active: true }))
+        ), 15000, 'supplements insert');
+        if (i.error) errors.supplements = i.error.message; else savedKinds.push('supplements');
+      } else { errors.supplements_delete = d.error.message; }
     }
 
-    // Save symptoms
     if (state.symptoms.length > 0) {
-      await supabase.from('symptoms').delete().eq('user_id', user.id);
-      await supabase.from('symptoms').insert(
-        state.symptoms.map(s => ({ user_id: user.id, symptom: s.symptom, severity: s.severity, duration: s.duration, category: s.category || null }))
-      );
+      const d = await withTimeout(supabase.from('symptoms').delete().eq('user_id', user.id), 15000, 'symptoms delete');
+      if (!d.error) {
+        const i = await withTimeout(supabase.from('symptoms').insert(
+          state.symptoms.map(s => ({ user_id: user.id, symptom: s.symptom, severity: s.severity, duration: s.duration, category: s.category || null }))
+        ), 15000, 'symptoms insert');
+        if (i.error) errors.symptoms = i.error.message; else savedKinds.push('symptoms');
+      } else { errors.symptoms_delete = d.error.message; }
     }
-  } catch (err) {
+
+    logEvent('onboarding_autosave_done', {
+      step: state.currentStep,
+      duration_ms: Date.now() - start,
+      saved: savedKinds,
+      errors,
+    });
+  } catch (err: any) {
+    logEvent('onboarding_autosave_threw', {
+      step: state.currentStep,
+      duration_ms: Date.now() - start,
+      message: err?.message?.slice(0, 200),
+    });
     console.warn('[AutoSave] Error:', err);
   } finally {
     isSaving = false;
   }
 }
 
-// Subscribe to store changes — auto-save 2 seconds after last change
+// ── localStorage backup so onboarding never loses input ────────────────
+// Even if every DB save fails (network down, RLS broken, whatever) the
+// user's typed data survives sign-out + refresh. Restored on app load
+// inside loadSavedProgress.
+const LOCAL_KEY = 'onboarding_progress_v1';
+
+function persistLocal(state: OnboardingState) {
+  try {
+    const snapshot = {
+      currentStep: state.currentStep,
+      firstName: state.firstName, lastName: state.lastName,
+      dateOfBirth: state.dateOfBirth, sex: state.sex,
+      heightFt: state.heightFt, heightIn: state.heightIn,
+      weightLbs: state.weightLbs, locationState: state.locationState,
+      conditions: state.conditions,
+      medications: state.medications, supplements: state.supplements,
+      symptoms: state.symptoms,
+      lifestyle: state.lifestyle,
+      primaryGoals: state.primaryGoals,
+      familyHistory: state.familyHistory,
+      geneticTesting: state.geneticTesting,
+      noMedications: state.noMedications, noSupplements: state.noSupplements,
+      specificConcern: state.specificConcern, triedBefore: state.triedBefore, hearAboutUs: state.hearAboutUs,
+      _saved_at: Date.now(),
+    };
+    localStorage.setItem(LOCAL_KEY, JSON.stringify(snapshot));
+  } catch { /* quota / private mode — ignore */ }
+}
+
+export function restoreLocalOnboarding(): Partial<OnboardingState> | null {
+  try {
+    const raw = localStorage.getItem(LOCAL_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return null;
+    // Don't restore if older than 7 days (stale)
+    if (parsed._saved_at && Date.now() - parsed._saved_at > 7 * 86_400_000) {
+      localStorage.removeItem(LOCAL_KEY);
+      return null;
+    }
+    delete parsed._saved_at;
+    return parsed as Partial<OnboardingState>;
+  } catch { return null; }
+}
+
+export function clearLocalOnboarding() {
+  try { localStorage.removeItem(LOCAL_KEY); } catch {}
+}
+
+// Subscribe to store changes — auto-save 2 seconds after last change.
+// Also persist to localStorage IMMEDIATELY on every change so data is never lost.
 useOnboardingStore.subscribe((state, prevState) => {
-  // Only auto-save if meaningful data changed (not loading/currentStep)
-  const changed = state.firstName !== prevState.firstName || state.lastName !== prevState.lastName ||
+  // Always persist locally on any data change — instant, no network needed
+  const dataChanged = state.firstName !== prevState.firstName || state.lastName !== prevState.lastName ||
     state.dateOfBirth !== prevState.dateOfBirth || state.sex !== prevState.sex ||
     state.heightFt !== prevState.heightFt || state.heightIn !== prevState.heightIn ||
     state.weightLbs !== prevState.weightLbs || state.primaryGoals.length !== prevState.primaryGoals.length ||
     state.conditions.length !== prevState.conditions.length ||
     state.medications.length !== prevState.medications.length ||
     state.symptoms.length !== prevState.symptoms.length ||
-    state.supplements.length !== prevState.supplements.length ||
-    state.currentStep !== prevState.currentStep;
+    state.supplements.length !== prevState.supplements.length;
+  const stepChanged = state.currentStep !== prevState.currentStep;
 
-  if (changed) {
+  if (dataChanged || stepChanged) {
+    persistLocal(state);
     clearTimeout(autoSaveTimer);
-    // Save immediately on step change (user might refresh), debounce on data edits
-    if (state.currentStep !== prevState.currentStep) {
+    if (stepChanged) {
       autoSaveToDB();
     } else {
       autoSaveTimer = setTimeout(autoSaveToDB, 2000);
