@@ -6,9 +6,28 @@
 
 import { useEffect, useState } from 'react';
 import { logEvent } from '../../lib/clientLog';
+import { queryClient } from '../../lib/queryClient';
 
 const POLL_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 const AUTO_RELOAD_AFTER_MS = 60 * 1000;  // 60s after banner shown
+
+// Force a true hard reload — bypass the HTTP cache for the HTML, clear all
+// caches, drop the React Query cache. window.location.reload() alone can
+// serve cached HTML referencing an old bundle hash, leaving the user on
+// stale code AGAIN.
+async function hardReload() {
+  try { queryClient.clear(); } catch {}
+  try {
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    }
+  } catch {}
+  // Cache-bust the URL so the browser MUST refetch HTML from the network
+  const url = new URL(window.location.href);
+  url.searchParams.set('_v', String(Date.now()));
+  window.location.replace(url.toString());
+}
 
 export const NewVersionBanner = () => {
   const buildVersion = import.meta.env.VITE_BUILD_VERSION || null;
@@ -52,7 +71,7 @@ export const NewVersionBanner = () => {
     if (!newVersionAvailable) return;
     const timer = setTimeout(() => {
       logEvent('new_version_auto_reload', { current: buildVersion, latest: serverVersion });
-      window.location.reload();
+      hardReload();
     }, AUTO_RELOAD_AFTER_MS);
     return () => clearTimeout(timer);
   }, [newVersionAvailable, buildVersion, serverVersion]);
@@ -70,7 +89,7 @@ export const NewVersionBanner = () => {
         <button
           onClick={() => {
             logEvent('new_version_manual_reload', { current: buildVersion, latest: serverVersion });
-            window.location.reload();
+            hardReload();
           }}
           className="text-precision text-[0.65rem] font-bold tracking-widest uppercase px-3 py-1.5 bg-[#D4A574] text-clinical-charcoal rounded-[6px] hover:bg-[#B8915F] transition-colors"
         >
