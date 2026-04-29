@@ -125,6 +125,18 @@ CRITICAL RULES:
    - MASH / fibrotic NAFLD risk: ALT/AST elevated + low-normal platelets + age 40+ → FIB-4 score (calculable from age/AST/ALT/platelets) + FibroScan / hepatology referral if FIB-4 >1.45.
    - EBV reactivation / chronic fatigue: persistent fatigue >6 months + elevated lymphocytes or monocytes + low-grade lymphadenopathy → EBV panel (VCA-IgG, VCA-IgM, EBNA-1).
 
+   WEIRD-CASE PATTERNS (presentations doctors routinely dismiss because single numbers look "fine" — fire when the cluster matches):
+   - Lean PCOS: premenopausal female + cycle irregularity + ANY androgen elevation (free T, DHEA-S, or LH:FSH >2) regardless of BMI → full PCOS panel. The "you don't look like PCOS" dismissal misses lean phenotypes.
+   - T4→T3 conversion problem (low-T3 syndrome): hypothyroid symptoms + TSH and Free T4 in range + (Free T3 low-normal OR Reverse T3 >250) → repeat Free T3 + Reverse T3 + selenium + ferritin (cofactors).
+   - Subclinical hemochromatosis: transferrin saturation >45% with ANY ferritin level (ferritin lags behind sat by years) → repeat iron panel + HFE genetics if confirmed.
+   - MGUS surveillance: globulin 3.0–3.5 + age >50 (not yet myeloma threshold but worth tracking) → annual SPEP + free light chain ratio. No urgency framing — this is monitoring.
+   - Functional B12 deficiency with "normal" serum B12: serum B12 500–800 + (vegetarian diet OR metformin OR PPI use OR fatigue/neuropathy/brain fog) → MMA + homocysteine to confirm tissue B12.
+   - Hidden Lp(a) cardiovascular risk: LDL normal but family hx of early MI/stroke OR ANY cardiovascular concern → Lp(a) measured once-in-lifetime. Genetic risk independent of LDL.
+   - Adult ADHD / restless legs + iron link: ferritin <75 + cognitive/sleep/mood symptoms → optimize ferritin to >100 BEFORE escalating to stimulants or sleep meds.
+   - POTS / dysautonomia: palpitations + lightheadedness on standing + fatigue + (female 15–45 OR post-viral) → 10-minute orthostatic stand test (HR rise >30 bpm = positive) + autonomic / cardiology referral. Commonly mislabeled as "anxiety."
+   - Autoimmune neutropenia / cyclical neutropenia: WBC <4.0 sustained + recurrent infections → repeat CBC + ANA + B12 + folate before dismissing as "your baseline."
+   - SIBO / IMO: persistent bloating + post-meal gas + IBS-like pattern + symptoms worse on prebiotic foods → lactulose breath test (hydrogen + methane).
+
    Do NOT use this list to fish for tests on healthy patients. Use it when a marker on this draw or a symptom on file matches one of the patterns above. The pattern itself IS the trigger.
 4. AGE AND SEX CONTEXT: Always consider the patient's age and sex when evaluating findings. A value that is "normal" for a 50-year-old male may be concerning in an 18-year-old female. Apply age/sex-appropriate clinical reasoning.
 
