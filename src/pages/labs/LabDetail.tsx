@@ -34,25 +34,25 @@ export const LabDetail = () => {
     mutationFn: async () => {
       if (!drawId || !user) throw new Error('Missing context');
       await supabase.from('lab_draws').update({ processing_status: 'processing', analysis_result: null }).eq('id', drawId);
-      // Use supabase.functions.invoke so the SDK auto-attaches the JWT and we
-      // get a real response (or a real error). Previous fire-and-forget pattern
-      // hid every error behind keepalive, which is why retry "spun and failed"
-      // with no diagnostic info. The function takes ~25-40s; we await fully.
-      const { data, error } = await supabase.functions.invoke('analyze-labs', {
-        body: { drawId, userId: user.id },
-      });
-      if (error) {
-        console.error('[LabDetail] analyze-labs error:', error);
-        throw new Error(error.message || 'Analysis failed — check console for details.');
-      }
-      return data;
+      // Get fresh JWT and fire the function. We DON'T await the full response —
+      // the function takes ~30s and blocking the UI on it is bad UX. Realtime
+      // + 2s poll on the page will detect completion and refresh automatically.
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
+      fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-labs`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ drawId, userId: user.id }),
+        keepalive: true,
+      }).catch(console.warn);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['lab-detail', drawId] });
       qc.invalidateQueries({ queryKey: ['labDraws'] });
-    },
-    onError: (err: any) => {
-      console.error('[LabDetail] retry mutation failed:', err);
     },
   });
 
@@ -70,25 +70,29 @@ export const LabDetail = () => {
       try { panelGaps = JSON.parse(drawRes.data.notes ?? '{}')?.panel_gaps ?? []; } catch {}
       return { draw: drawRes.data, values: valuesRes.data ?? [], analysis: drawRes.data.analysis_result, panelGaps };
     },
-    staleTime: 10 * 1000, refetchOnMount: 'always',
-    // Poll while analysis is still processing
+    staleTime: 0, refetchOnMount: 'always', refetchOnWindowFocus: true,
+    // Poll fast (2s) while processing — analysis transitions happen mid-poll
+    // and a 5s gap was leaving the UI on stale data even after completion.
     refetchInterval: (query) => {
       const status = query.state.data?.draw?.processing_status;
-      return status === 'processing' ? 5000 : false;
+      return status === 'processing' ? 2000 : false;
     },
   });
 
-  // ── Backup poll for in-flight analysis ──
-  // MUST be placed before any early returns to keep hook order stable across
-  // renders (Rules of Hooks). Reads draw + analysis safely via optional chaining.
+  // ── Realtime subscription: flip the moment the row updates server-side ──
+  // No more waiting for the next poll cycle. If the channel can't connect,
+  // the 2s poll above is the fallback so UX still works.
   useEffect(() => {
-    const stillRunning = data?.draw?.processing_status === 'processing' && !data?.analysis;
-    if (!stillRunning) return;
-    const id = setInterval(() => {
-      qc.invalidateQueries({ queryKey: ['lab-detail', drawId] });
-    }, 4000);
-    return () => clearInterval(id);
-  }, [data?.draw?.processing_status, data?.analysis, qc, drawId]);
+    if (!drawId || !user) return;
+    const channel = supabase
+      .channel(`lab-draw-${drawId}`)
+      .on('postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'lab_draws', filter: `id=eq.${drawId}` },
+        () => { qc.invalidateQueries({ queryKey: ['lab-detail', drawId] }); }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [drawId, user, qc]);
 
   // Deterministic critical-findings detection — runs in code, never via AI.
   // Visible to free users too (safety > paywall).
