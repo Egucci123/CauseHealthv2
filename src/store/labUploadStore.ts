@@ -4,6 +4,7 @@ import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from './authStore';
 import { extractPDFText, looksLikeLabReport } from '../lib/pdfParser';
+import { logEvent } from '../lib/clientLog';
 
 export type UploadPhase = 'idle' | 'uploading' | 'extracting' | 'reviewing' | 'analyzing' | 'complete' | 'error' | 'manual';
 
@@ -128,8 +129,17 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
   },
 
   startUpload: (files, userId) => {
-    if (get().isRunning) return;
+    if (get().isRunning) {
+      logEvent('upload_blocked_already_running', { userId });
+      return;
+    }
     set({ isRunning: true });
+    logEvent('upload_started', {
+      userId,
+      fileCount: files.length,
+      totalBytes: files.reduce((s, f) => s + f.size, 0),
+      fileTypes: files.map(f => f.type),
+    });
 
     // Fire and forget — this promise runs independently of React
     (async () => {
@@ -186,11 +196,11 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
           storagePaths.push(fileName);
         }
         set({ statusMessage: `${plural ? 'All files' : 'File'} received securely.`, progress: 20 });
-        console.log('[LabUpload] Storage upload complete, paths:', storagePaths);
+        logEvent('upload_storage_complete', { paths_count: storagePaths.length });
 
         // 2. Create lab_draws record — 15s timeout so a hung insert surfaces
         // a real error instead of leaving the UI frozen at 20%/0%.
-        console.log('[LabUpload] Inserting lab_draws row...');
+        logEvent('upload_inserting_draw');
         const insertP = supabase.from('lab_draws').insert({
           user_id: userId, raw_pdf_url: storagePaths[0], processing_status: 'processing',
           draw_date: new Date().toISOString().split('T')[0],
@@ -201,8 +211,14 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
             15_000
           )
         );
+        const insertStart = Date.now();
         const { data: draw, error: drawErr } = await Promise.race([insertP, insertTimeoutP]) as any;
-        console.log('[LabUpload] Insert result:', { draw, drawErr });
+        logEvent('upload_insert_result', {
+          duration_ms: Date.now() - insertStart,
+          got_draw: !!draw,
+          err: drawErr?.message ?? null,
+          draw_id: draw?.id ?? null,
+        });
         if (drawErr) throw new Error(`Failed to create lab record: ${drawErr.message}`);
         if (!draw) throw new Error('Failed to create lab record (no row returned — RLS may have blocked the read after insert)');
         set({ drawId: draw.id });
@@ -410,9 +426,14 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
 
         stopProgress();
         set({ extraction, phase: 'reviewing', statusMessage: `Found ${extraction.values.length} lab values${plural ? ` across ${fileCount} files` : ''}. Please review.`, progress: 90, isRunning: false });
-      } catch (err) {
+      } catch (err: any) {
         stopProgress();
         const drawId = get().drawId;
+        logEvent('upload_failed', {
+          message: err?.message?.slice(0, 500) || String(err).slice(0, 500),
+          stack: err?.stack?.slice(0, 1000) ?? null,
+          had_draw: !!drawId,
+        });
         if (drawId) { try { await supabase.from('lab_draws').delete().eq('id', drawId); } catch {} }
         set({ phase: 'error', errorMessage: String(err), isRunning: false });
       }
