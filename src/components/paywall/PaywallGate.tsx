@@ -60,9 +60,6 @@ export const RedeemCodeForm = ({ compact = false }: { compact?: boolean }) => {
     if (!code.trim()) return;
     setLoading(true); setResult(null);
     try {
-      // 10s timeout on the RPC — a stuck connection pool was leaving the
-      // button spinning forever. With this, worst case the user gets a
-      // 'Network slow' error in 10s and can retry, never an infinite spin.
       const rpcResult = await Promise.race([
         supabase.rpc('redeem_comp_code', { p_code: code.trim() }),
         new Promise<{ data: null; error: { message: string } }>(resolve =>
@@ -73,12 +70,26 @@ export const RedeemCodeForm = ({ compact = false }: { compact?: boolean }) => {
         setResult({ ok: false, msg: error.message });
       } else if (data?.ok) {
         setResult({ ok: true, msg: 'Code redeemed! Pro access unlocked.' });
-        // Same 5s timeout on the profile refetch — it succeeds server-side
-        // even if this fetch hangs, so worst case user reloads and sees Pro.
-        await Promise.race([
-          fetchProfile(),
-          new Promise(resolve => setTimeout(resolve, 5_000)),
-        ]);
+        // ── Optimistic profile update ──
+        // Don't wait for fetchProfile to round-trip — we KNOW the new tier
+        // server-side. Patch the zustand profile NOW so isPro flips to true
+        // immediately and every gated component re-renders Pro features
+        // without a manual refresh. fetchProfile still runs in the background
+        // for eventual full sync, but the UI doesn't depend on it.
+        const auth = useAuthStore.getState();
+        if (auth.profile) {
+          useAuthStore.setState({
+            profile: {
+              ...auth.profile,
+              subscriptionTier: (data.tier ?? 'comp') as any,
+              subscriptionStatus: 'active',
+              subscriptionExpiresAt: data.expires_at ?? null,
+              compCodeUsed: code.trim().toUpperCase(),
+            },
+          });
+        }
+        // Background sync — don't await
+        fetchProfile().catch(() => {});
         setCode('');
       } else {
         setResult({ ok: false, msg: data?.error ?? 'Could not redeem code' });
