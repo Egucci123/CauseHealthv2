@@ -465,7 +465,7 @@ const TakeTab = ({ plan }: { plan: any }) => {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export const WellnessPlanPage = () => {
   const { profile, user } = useAuthStore();
-  const { data: plan, isLoading } = useWellnessPlan();
+  const { data: plan} = useWellnessPlan();
   const { generate, generating } = useGenerateWellnessPlan();
   const { data: latestDraw } = useLatestLabDraw();
   const { data: latestValues } = useLatestLabValues();
@@ -501,9 +501,8 @@ export const WellnessPlanPage = () => {
 
   return (
     <AppShell pageTitle="Wellness Plan">
-      {/* Skeleton only on TRUE first load (no cached plan). Subsequent
-          navigations show the cached plan immediately. */}
-      {!plan && isLoading ? <WellnessSkeleton />
+      {/* Plan undefined = loading. Plan null = no plan generated yet. */}
+      {plan === undefined ? <WellnessSkeleton />
         : generating ? <GeneratingState />
         : !plan ? (
           <PaywallGate

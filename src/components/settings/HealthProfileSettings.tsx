@@ -17,7 +17,7 @@ import { SYMPTOM_CATEGORIES } from '../../data/symptoms';
 interface MedEntry { name: string; brand_name?: string; dose?: string; duration_category: string; }
 
 const MedicationsEditor = () => {
-  const { data: savedMeds, isLoading } = useMedications();
+  const { data: savedMeds} = useMedications();
   const saveMutation = useSaveMedications();
   const [meds, setMeds] = useState<MedEntry[]>([]);
   const [query, setQuery] = useState('');
@@ -78,7 +78,7 @@ const MedicationsEditor = () => {
     setTimeout(() => setSaved(false), 2000);
   };
 
-  if (!savedMeds && isLoading) return <div className="h-32 bg-[#E8E3DB] rounded-[10px] animate-pulse" />;
+  if (!savedMeds) return <div className="h-32 bg-[#E8E3DB] rounded-[10px] animate-pulse" />;
 
   return (
     <div className="space-y-4">
@@ -165,7 +165,7 @@ const MedicationsEditor = () => {
 interface SymEntry { symptom: string; severity: number; category: string; }
 
 const SymptomsEditor = () => {
-  const { data: savedSymptoms, isLoading } = useSymptoms();
+  const { data: savedSymptoms} = useSymptoms();
   const saveMutation = useSaveSymptoms();
   const [symptoms, setSymptoms] = useState<SymEntry[]>([]);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -201,7 +201,7 @@ const SymptomsEditor = () => {
     setTimeout(() => setSaved(false), 2000);
   };
 
-  if (!savedSymptoms && isLoading) return <div className="h-32 bg-[#E8E3DB] rounded-[10px] animate-pulse" />;
+  if (!savedSymptoms) return <div className="h-32 bg-[#E8E3DB] rounded-[10px] animate-pulse" />;
 
   return (
     <div className="space-y-4">
@@ -282,7 +282,7 @@ const SymptomsEditor = () => {
 // ─── Conditions Section ──────────────────────────────────────────────────────
 
 const ConditionsEditor = () => {
-  const { data: savedConditions, isLoading } = useConditions();
+  const { data: savedConditions} = useConditions();
   const saveMutation = useSaveConditions();
   const [conditions, setConditions] = useState<{ name: string; icd10?: string }[]>([]);
   const [input, setInput] = useState('');
@@ -313,7 +313,7 @@ const ConditionsEditor = () => {
     setTimeout(() => setSaved(false), 2000);
   };
 
-  if (!savedConditions && isLoading) return <div className="h-24 bg-[#E8E3DB] rounded-[10px] animate-pulse" />;
+  if (!savedConditions) return <div className="h-24 bg-[#E8E3DB] rounded-[10px] animate-pulse" />;
 
   return (
     <div className="space-y-4">
@@ -354,7 +354,7 @@ const ConditionsEditor = () => {
 interface SuppEntry { name: string; dose?: string; durationCategory?: string; reason?: string; }
 
 const SupplementsEditor = () => {
-  const { data: savedSupps, isLoading } = useSupplements();
+  const { data: savedSupps} = useSupplements();
   const saveMutation = useSaveSupplements();
   const [supps, setSupps] = useState<SuppEntry[]>([]);
   const [query, setQuery] = useState('');
@@ -401,7 +401,7 @@ const SupplementsEditor = () => {
     setTimeout(() => setSaved(false), 2000);
   };
 
-  if (!savedSupps && isLoading) return <div className="h-32 bg-[#E8E3DB] rounded-[10px] animate-pulse" />;
+  if (!savedSupps) return <div className="h-32 bg-[#E8E3DB] rounded-[10px] animate-pulse" />;
 
   return (
     <div className="space-y-4">

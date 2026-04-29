@@ -10,12 +10,12 @@ import { useNavigate } from 'react-router-dom';
 
 export const LabsIndex = () => {
   const navigate = useNavigate();
-  const { data: latest, isLoading: latestLoading } = useLatestLabDraw();
-  const { data: allDraws, isLoading: drawsLoading } = useLabDraws();
+  const { data: latest} = useLatestLabDraw();
+  const { data: allDraws} = useLabDraws();
 
-  // Skeleton only when neither query has any cached data (true first load).
-  // If we have either cached, navigate immediately based on what's cached.
-  if (!latest && !allDraws && (latestLoading || drawsLoading)) {
+  // Skeleton while either query hasn't resolved yet. After that, render
+  // navigates based on what's there.
+  if (latest === undefined || allDraws === undefined) {
     return (
       <AppShell pageTitle="Lab Analytics">
         <div className="space-y-4">

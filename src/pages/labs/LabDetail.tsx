@@ -191,10 +191,9 @@ export const LabDetail = () => {
     [data?.values, ageNum, profile?.sex],
   );
 
-  // Skeleton ONLY when there's no cached draw data. If we have any cached
-  // version of this draw (even stale), render it immediately and let realtime
-  // / refetch update silently.
-  if (!data && isLoading) return (
+  // Skeleton until query resolves at least once. Realtime + 2s polling
+  // refresh data silently in the background after that.
+  if (!data) return (
     <AppShell pageTitle="Lab Results">
       <div className="space-y-4">
         {[1, 2, 3, 4].map(i => (

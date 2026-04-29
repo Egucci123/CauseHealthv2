@@ -31,7 +31,7 @@ export const BiologicalAgeWidget = () => {
 
   // Skeleton ONLY on true first load (no cached values yet). When we have
   // cached values, render the result and let refetch happen silently.
-  if (!values && loading) {
+  if (!values) {
     return (
       <div className="animate-pulse">
         <div className="h-3 bg-clinical-cream rounded-sm w-1/3 mb-4" />

@@ -15,7 +15,7 @@ const MedSkeleton = () => (
 
 export const MedicationChecker = () => {
   const navigate = useNavigate();
-  const { data: medications, isLoading } = useActiveMedications();
+  const { data: medications } = useActiveMedications();
   const medNames = (medications ?? []).map(m => m.name);
 
   return (
@@ -25,7 +25,7 @@ export const MedicationChecker = () => {
         <Button variant="secondary" size="md" icon="settings" onClick={() => navigate('/settings')}>Edit Medications</Button>
       </div>
 
-      {!medications && isLoading ? <MedSkeleton /> : !medications?.length ? (
+      {!medications ? <MedSkeleton /> : !medications.length ? (
         <div className="bg-clinical-white rounded-[10px] shadow-card border-t-[3px] border-primary-container p-12 text-center">
           <span className="material-symbols-outlined text-clinical-stone text-5xl mb-4 block">medication</span>
           <p className="text-authority text-2xl text-clinical-charcoal font-bold mb-3">No medications added</p>

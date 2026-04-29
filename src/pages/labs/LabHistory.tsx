@@ -11,7 +11,7 @@ import { useLabUploadStore } from '../../store/labUploadStore';
 
 export const LabHistory = () => {
   const navigate = useNavigate();
-  const { data: draws, isLoading } = useLabDraws();
+  const { data: draws} = useLabDraws();
   const userId = useAuthStore(s => s.user?.id);
   const uploadPhase = useLabUploadStore(s => s.phase);
   const uploadMessage = useLabUploadStore(s => s.statusMessage);
@@ -109,10 +109,9 @@ export const LabHistory = () => {
         </button>
       )}
 
-      {/* Skeleton ONLY when we have zero cached data. If draws is defined
-          (even empty []), render the list/empty state. Avoids 'cream skeleton
-          flash' on every navigation back to this page. */}
-      {!draws && isLoading ? (
+      {/* Skeleton until query resolves. Empty array = loaded with no items
+          (show empty state). Undefined = still loading (skeleton). */}
+      {!draws ? (
         <div className="space-y-4">
           {[1, 2, 3].map(i => (
             <div key={i} className="bg-clinical-white rounded-[10px] p-6 animate-pulse">

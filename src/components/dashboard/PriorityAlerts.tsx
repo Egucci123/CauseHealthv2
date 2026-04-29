@@ -71,13 +71,13 @@ const AlertCard = ({ alert, onDismiss, isPro }: { alert: PriorityAlert; onDismis
 
 export const PriorityAlerts = () => {
   const navigate = useNavigate();
-  const { data: alerts, isLoading } = usePriorityAlerts();
+  const { data: alerts} = usePriorityAlerts();
   const { mutate: dismiss } = useDismissAlert();
   const { isPro } = useSubscription();
 
   // Skeleton only on TRUE first load. If we have cached alerts (even empty),
   // show them and refetch silently — no flicker on every dashboard remount.
-  if (!alerts && isLoading) return <div><SectionLabel className="mb-4">Priority Findings</SectionLabel><AlertSkeleton /></div>;
+  if (!alerts) return <div><SectionLabel className="mb-4">Priority Findings</SectionLabel><AlertSkeleton /></div>;
 
   return (
     <div>

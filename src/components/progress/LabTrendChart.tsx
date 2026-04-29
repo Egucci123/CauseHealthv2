@@ -25,12 +25,11 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export const LabTrendChart = ({ markerName, displayName, unit, optimalMin, optimalMax }: Props) => {
-  const { data, isLoading } = useLabTrends(markerName);
+  const { data} = useLabTrends(markerName);
   const points = data ?? [];
 
-  // Skeleton only on TRUE first load (no cached data). Cached points show
-  // immediately while a background refetch happens.
-  if (!data && isLoading) return <div className="bg-clinical-white rounded-[10px] shadow-card border-t-[3px] border-[#E8E3DB] p-6 animate-pulse"><div className="h-4 bg-[#E8E3DB] rounded w-1/3 mb-4" /><div className="h-32 bg-[#E8E3DB] rounded" /></div>;
+  // Skeleton until query resolves once.
+  if (!data) return <div className="bg-clinical-white rounded-[10px] shadow-card border-t-[3px] border-[#E8E3DB] p-6 animate-pulse"><div className="h-4 bg-[#E8E3DB] rounded w-1/3 mb-4" /><div className="h-32 bg-[#E8E3DB] rounded" /></div>;
 
   if (points.length < 2) return (
     <div className="bg-clinical-white rounded-[10px] shadow-card border-t-[3px] border-[#E8E3DB] p-6">

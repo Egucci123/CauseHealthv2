@@ -33,16 +33,15 @@ const MarkerRow = ({ value }: { value: LabValue }) => {
 
 export const LabSummary = () => {
   const navigate = useNavigate();
-  const { data: draw, isLoading: drawLoading } = useLatestLabDraw();
-  const { data: values, isLoading: valuesLoading } = useLatestLabValues();
-  const isLoading = drawLoading || valuesLoading;
+  const { data: draw } = useLatestLabDraw();
+  const { data: values } = useLatestLabValues();
 
   const sortedValues = values ? [...values].sort((a, b) => { const o = { urgent: 0, monitor: 1, optimal: 2 }; return o[getStatus(a)] - o[getStatus(b)]; }) : [];
   const displayValues = sortedValues.slice(0, 6);
 
   // Skeleton only on true first load (no cached values). Otherwise show
   // cached data and refetch silently.
-  if (!values && isLoading) return (
+  if (!values) return (
     <div><SectionLabel className="mb-4">Latest Lab Results</SectionLabel>
       <div className="space-y-3">{[1,2,3,4].map(i => <div key={i} className="flex justify-between items-center py-2.5 border-b border-outline-variant/5"><div className="flex items-center gap-3"><div className="w-12 h-4 bg-[#E8E3DB] rounded-sm animate-pulse" /><div className="w-24 h-4 bg-[#E8E3DB] rounded-sm animate-pulse" /></div><div className="w-16 h-4 bg-[#E8E3DB] rounded-sm animate-pulse" /></div>)}</div>
     </div>

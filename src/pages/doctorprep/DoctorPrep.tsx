@@ -28,7 +28,7 @@ const TABS = [
 export const DoctorPrep = () => {
   const { profile } = useAuthStore();
   const [activeTab, setActiveTab] = useState<'visit' | 'summary' | 'tests'>('visit');
-  const { data: doc, isLoading } = useLatestDoctorPrep();
+  const { data: doc} = useLatestDoctorPrep();
   const { generate, generating } = useGenerateDoctorPrep();
   const { data: latestDraw } = useLatestLabDraw();
   const { data: latestValues } = useLatestLabValues();
@@ -169,7 +169,7 @@ export const DoctorPrep = () => {
         </button>
       )}
 
-      {!doc && isLoading ? (
+      {doc === undefined ? (
         <div className="space-y-4 animate-pulse"><div className="h-32 bg-[#E8E3DB] rounded-[10px]" /><div className="h-64 bg-[#E8E3DB] rounded-[10px]" /></div>
       ) : generating ? (
         <div className="bg-clinical-white rounded-[10px] shadow-card border-t-[3px] border-primary-container p-12 text-center">

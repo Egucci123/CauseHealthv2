@@ -11,11 +11,11 @@ const ToggleRow = ({ label, description, value, onChange }: { label: string; des
 );
 
 export const NotificationPreferences = () => {
-  const { data: profile, isLoading } = useProfile();
+  const { data: profile} = useProfile();
   const update = useUpdateProfile();
   const toggle = (field: string, value: boolean) => update.mutate({ [field]: value });
 
-  if (!profile && isLoading) return <div className="bg-clinical-white rounded-[10px] border-t-[3px] border-primary-container shadow-card p-6 animate-pulse">{[1,2,3,4].map(i => <div key={i} className="h-14 bg-[#E8E3DB] rounded mb-2" />)}</div>;
+  if (!profile) return <div className="bg-clinical-white rounded-[10px] border-t-[3px] border-primary-container shadow-card p-6 animate-pulse">{[1,2,3,4].map(i => <div key={i} className="h-14 bg-[#E8E3DB] rounded mb-2" />)}</div>;
 
   return (
     <div className="bg-clinical-white rounded-[10px] border-t-[3px] border-primary-container shadow-card p-6">

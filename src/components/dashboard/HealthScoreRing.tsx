@@ -2,7 +2,11 @@
 import { useEffect, useRef, useState } from 'react';
 import type { HealthScore } from '../../types';
 
-interface HealthScoreRingProps { score: HealthScore | null; loading?: boolean; analyzing?: boolean; }
+interface HealthScoreRingProps {
+  score: HealthScore | null | undefined;
+  loading?: boolean;
+  analyzing?: boolean;
+}
 
 const RingSkeleton = () => (
   <div className="flex flex-col items-center gap-4">
@@ -31,7 +35,7 @@ const RingAnalyzing = () => (
   </div>
 );
 
-export const HealthScoreRing = ({ score, loading, analyzing }: HealthScoreRingProps) => {
+export const HealthScoreRing = ({ score, analyzing }: HealthScoreRingProps) => {
   const [animatedScore, setAnimatedScore] = useState(0);
   const animRef = useRef<number | null>(null);
 
@@ -51,7 +55,7 @@ export const HealthScoreRing = ({ score, loading, analyzing }: HealthScoreRingPr
   // Skeleton only on TRUE first load. If we have a cached score, render it
   // and refetch silently. This is what was causing the dashboard ring to
   // flash to skeleton every time the user came back to the page.
-  if (!score && loading) return <RingSkeleton />;
+  if (score === undefined) return <RingSkeleton />;
   if (analyzing && !score) return <RingAnalyzing />;
   if (!score) return <RingEmpty />;
 
