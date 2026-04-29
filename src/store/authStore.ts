@@ -85,7 +85,22 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       set({ loading: false, initialized: true });
     }
 
+    // Lazy-import queryClient to avoid a circular module load at boot
+    const { queryClient } = await import('../lib/queryClient');
+
     const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // ── On any auth change, blow away ALL React Query cache. ──
+      // Otherwise queries cached for a previous user/session can leak into the
+      // new session — empty results from before signup get served as fact
+      // after signup, and the user sees 'No labs' while their data is right
+      // there in the DB.
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+        const prevUserId = get().user?.id;
+        const newUserId = session?.user?.id;
+        if (prevUserId !== newUserId) {
+          queryClient.clear();
+        }
+      }
       if (session?.user) {
         // Skip the set() if user is already this exact user — avoids a needless
         // re-render that was contributing to the login-page flicker.
