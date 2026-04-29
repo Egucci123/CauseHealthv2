@@ -60,12 +60,25 @@ export const RedeemCodeForm = ({ compact = false }: { compact?: boolean }) => {
     if (!code.trim()) return;
     setLoading(true); setResult(null);
     try {
-      const { data, error } = await supabase.rpc('redeem_comp_code', { p_code: code.trim() });
+      // 10s timeout on the RPC — a stuck connection pool was leaving the
+      // button spinning forever. With this, worst case the user gets a
+      // 'Network slow' error in 10s and can retry, never an infinite spin.
+      const rpcResult = await Promise.race([
+        supabase.rpc('redeem_comp_code', { p_code: code.trim() }),
+        new Promise<{ data: null; error: { message: string } }>(resolve =>
+          setTimeout(() => resolve({ data: null, error: { message: 'Network is slow — try again in a moment.' } }), 10_000)),
+      ]);
+      const { data, error } = rpcResult as any;
       if (error) {
         setResult({ ok: false, msg: error.message });
       } else if (data?.ok) {
         setResult({ ok: true, msg: 'Code redeemed! Pro access unlocked.' });
-        await fetchProfile();
+        // Same 5s timeout on the profile refetch — it succeeds server-side
+        // even if this fetch hangs, so worst case user reloads and sees Pro.
+        await Promise.race([
+          fetchProfile(),
+          new Promise(resolve => setTimeout(resolve, 5_000)),
+        ]);
         setCode('');
       } else {
         setResult({ ok: false, msg: data?.error ?? 'Could not redeem code' });
