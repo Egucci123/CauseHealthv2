@@ -27,7 +27,9 @@ export function useLabDraws() {
   const qc = useQueryClient();
   const query = useQuery({
     queryKey: ['labDraws', user?.id], enabled: !!user?.id,
-    staleTime: 0, refetchOnMount: 'always', refetchOnWindowFocus: true,
+    // 10s staleTime keeps list responsive to upload completions but stops
+    // the sign-in flicker from refetching on every component remount.
+    staleTime: 10 * 1000, refetchOnMount: false, refetchOnWindowFocus: true,
     queryFn: async () => {
       const { data, error } = await supabase.from('lab_draws').select('*').eq('user_id', user!.id).order('draw_date', { ascending: false }).limit(100);
       if (error) throw error;
@@ -68,10 +70,21 @@ export function useLatestLabDraw() {
   const user = useAuthStore(s => s.user);
   return useQuery({
     queryKey: ['latestLabDraw', user?.id], enabled: !!user?.id,
-    staleTime: 30 * 1000, refetchOnMount: 'always',
+    // 30s staleTime + refetchOnMount: false stops the sign-in flicker.
+    // Components mount multiple times during auth -> profile -> dashboard,
+    // and refetchOnMount:'always' was firing this query 3-4x each time.
+    staleTime: 30 * 1000, refetchOnMount: false,
     queryFn: async () => {
-      const { data, error } = await supabase.from('lab_draws').select('*').eq('user_id', user!.id).eq('processing_status', 'complete').order('draw_date', { ascending: false }).order('created_at', { ascending: false }).limit(1).single();
-      if (error?.code === 'PGRST116') return null;
+      // maybeSingle() returns null cleanly when no rows match — single()
+      // returns 406 which polluted the console for new users with no drafts.
+      const { data, error } = await supabase
+        .from('lab_draws').select('*')
+        .eq('user_id', user!.id)
+        .eq('processing_status', 'complete')
+        .order('draw_date', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
       if (error) throw error;
       return data ? mapDraw(data) : null;
     },
