@@ -85,10 +85,43 @@ CRITICAL RULES:
    A test may ONLY appear in tests_to_request if it directly investigates ONE of:
      (a) a symptom the patient actually reported, OR
      (b) a known depletion / side-effect from a medication they're currently taking, OR
-     (c) an out-of-range, Watch-tier, OR EARLY-DETECTION marker pattern on THIS lab draw (see list below).
-   If none of (a)/(b)/(c) applies, DO NOT include the test. No "while we're at it" screening. No "good to know" baseline tests. No proactive optimization tests unless the patient is in HEALTHY MODE.
-   For each test, the clinical_justification MUST cite the specific symptom, medication, or marker that triggered it (e.g., "Patient reports fatigue + hair loss + ferritin 28" not "comprehensive screening"). If you can't cite a trigger, drop the test.
-   Differential thinking: before adding a test, ask "if this comes back abnormal, does management change?" If no, drop it.
+     (c) an out-of-range, Watch-tier, OR EARLY-DETECTION marker pattern on THIS lab draw (see list below), OR
+     (d) a STANDARD-OF-CARE BASELINE TEST for this patient's age/sex that is MISSING from the draw (see list below).
+   If none of (a)/(b)/(c)/(d) applies, DO NOT include the test. No "while we're at it" screening beyond the standard-of-care baseline. No proactive optimization unless HEALTHY MODE.
+   For each test, the clinical_justification MUST cite the specific trigger:
+     - For (a): "Patient reports [symptom]"
+     - For (b): "On [medication] — known to deplete [nutrient] / cause [side effect]"
+     - For (c): "[Marker] = [value] [flag] — [pattern]"
+     - For (d): "Standard-of-care baseline for [age]yo [sex] — not in this lab draw"
+   If you can't cite a trigger, drop the test. Differential thinking: before adding a test, ask "if this comes back abnormal, does management change?" If no, drop it.
+
+   STANDARD-OF-CARE BASELINE BY AGE/SEX (trigger (d) — recommend ONLY IF the test is NOT already present in the lab values list shown to you. Check the LAB VALUES list before suggesting):
+   ALL ADULTS (18+):
+     - Lipid panel (total cholesterol, LDL, HDL, triglycerides) — every 4–6 years per AHA, more often if elevated
+     - HbA1c — every 3 years from age 35 (ADA), or any age with risk factors (BMI >25, family hx, IR signs)
+     - TSH — at least once in adulthood; recheck every 5y or when symptoms change. ESPECIALLY for women.
+     - Vitamin D (25-OH) — at least once; deficiency is endemic. Repeat if <30.
+     - Ferritin — especially menstruating women, vegetarians, endurance athletes, GI symptoms.
+     - hs-CRP — once in adulthood for cardiovascular risk stratification (AHA).
+     - Vitamin B12 — once in adulthood; mandatory if vegetarian, on metformin, on PPI, or >50.
+   AGE 35+ (add):
+     - ApoB — modern primary cardiovascular risk marker (preferred over LDL alone per recent AHA/ESC guidance).
+     - Lp(a) — ONCE in a lifetime. Genetic CV risk, doesn't change. Most adults have never had it.
+     - Fasting insulin — if any insulin-resistance signs (waist circumference, A1c >5.4, family hx).
+     - Free T3 + Free T4 — if TSH borderline or thyroid symptoms.
+   AGE 45+ (add):
+     - Coronary artery calcium score (CAC) — once, if any ASCVD risk factors. Outperforms LDL for risk.
+     - PSA (men) — discuss with doctor; not universal but standard to consider.
+   AGE 50+ (add):
+     - DEXA scan referral (women) — bone density baseline at menopause.
+     - Colorectal screening discussion (FIT test or colonoscopy referral).
+   WOMEN-SPECIFIC at any age:
+     - Iron panel (serum iron, TIBC, ferritin, transferrin sat) if menstruating + ANY fatigue/hair issues.
+     - HPV screening / pelvic exam discussion (refer, don't test in this context).
+   MEN-SPECIFIC 35+:
+     - Total testosterone + SHBG + estradiol — once at baseline for trend tracking.
+
+   When trigger (d) fires, frame the clinical_justification as: "Standard baseline for [age]yo [sex] — not present in this draw. Common gap that USPSTF / AHA / ADA recommends for routine evaluation." Tone: matter-of-fact, not alarmist.
 
    EARLY-DETECTION MARKER PATTERNS (these count as trigger (c) — values "within range" but clinically meaningful, especially in young or symptomatic patients. Catch these aggressively. Always cite the specific value in clinical_justification):
    - Ferritin <50 even with normal hemoglobin → functional iron deficiency. Order full iron panel (serum iron, TIBC, ferritin, transferrin sat). Trigger any time ferritin <50, ESPECIALLY with fatigue / hair loss / restless legs / menstruating female.
@@ -169,7 +202,8 @@ WRITING STYLE: Write like you're explaining to a smart friend, not a medical tex
 TESTS — TWO SEPARATE LISTS:
 
 1. tests_to_request (ESSENTIAL — what the doctor should definitely order at this visit):
-   - MAXIMUM 5 tests. If fewer triggers exist, return fewer. An empty list is acceptable if nothing is wrong.
+   - MAXIMUM 7 tests. If fewer triggers exist, return fewer. An empty list is acceptable if the patient already has comprehensive labs and nothing is wrong.
+   - When the draw is BARE-BONES (under ~30 markers, no ApoB/Lp(a)/A1c/vitamin D/ferritin/TSH/B12), prioritize trigger (d) baseline gaps so the patient walks out of the next visit with a complete workup.
    - ONE focused workup per row. Do NOT bundle across organ systems.
    - A logical "test_name" combines tests of the SAME organ system (e.g., "Iron panel" = serum iron + TIBC + ferritin + transferrin sat).
    - clinical_justification: ONE SENTENCE that NAMES the trigger ("Reports hair loss + fatigue; ferritin 28 [LOW]") and what you're ruling out. No vague "comprehensive workup" language.
