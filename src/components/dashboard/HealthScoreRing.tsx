@@ -48,7 +48,10 @@ export const HealthScoreRing = ({ score, loading, analyzing }: HealthScoreRingPr
     return () => { if (animRef.current) cancelAnimationFrame(animRef.current); };
   }, [score?.score]);
 
-  if (loading) return <RingSkeleton />;
+  // Skeleton only on TRUE first load. If we have a cached score, render it
+  // and refetch silently. This is what was causing the dashboard ring to
+  // flash to skeleton every time the user came back to the page.
+  if (!score && loading) return <RingSkeleton />;
   if (analyzing && !score) return <RingAnalyzing />;
   if (!score) return <RingEmpty />;
 

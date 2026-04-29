@@ -75,7 +75,9 @@ export const PriorityAlerts = () => {
   const { mutate: dismiss } = useDismissAlert();
   const { isPro } = useSubscription();
 
-  if (isLoading) return <div><SectionLabel className="mb-4">Priority Findings</SectionLabel><AlertSkeleton /></div>;
+  // Skeleton only on TRUE first load. If we have cached alerts (even empty),
+  // show them and refetch silently — no flicker on every dashboard remount.
+  if (!alerts && isLoading) return <div><SectionLabel className="mb-4">Priority Findings</SectionLabel><AlertSkeleton /></div>;
 
   return (
     <div>
