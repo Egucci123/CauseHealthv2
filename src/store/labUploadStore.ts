@@ -157,17 +157,24 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
     (async () => {
       const fileCount = files.length;
       const plural = fileCount > 1;
-      set({ phase: 'uploading', progress: 0, statusMessage: `Uploading ${fileCount} file${plural ? 's' : ''} to secure storage...`, errorMessage: null });
+      set({ phase: 'uploading', progress: 1, statusMessage: `Preparing ${fileCount} file${plural ? 's' : ''}...`, errorMessage: null });
 
       try {
-        // ── Free-tier cap: 1 lab upload per rolling 30 days ──
+        // ── Free-tier cap check (5s timeout — must not block the whole upload).
+        //    If the count query hangs (we've seen Supabase client stall here on
+        //    cold connections) we just SKIP the cap check and proceed. The DB
+        //    has the data; rate-limiting is best-effort, not a hard gate.
         const profile = useAuthStore.getState().profile;
         const isPro = profile && (profile.subscriptionTier === 'pro' || profile.subscriptionTier === 'comp')
           && (profile.subscriptionStatus === 'active' || profile.subscriptionStatus === 'trialing');
         if (!isPro) {
           const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000).toISOString();
-          const { count } = await supabase.from('lab_draws').select('id', { count: 'exact', head: true }).eq('user_id', userId).gte('created_at', thirtyDaysAgo);
-          if ((count ?? 0) >= 1) {
+          const countRes = await Promise.race([
+            supabase.from('lab_draws').select('id', { count: 'exact', head: true }).eq('user_id', userId).gte('created_at', thirtyDaysAgo),
+            new Promise<{ count: null }>((resolve) => setTimeout(() => resolve({ count: null }), 5_000)),
+          ]);
+          const count = (countRes as any).count;
+          if (count !== null && count >= 1) {
             set({
               phase: 'error', isRunning: false, runningSince: null,
               errorMessage: 'Free plan includes 1 lab upload per month. Upgrade to Pro ($19/mo) for unlimited uploads, or redeem a code in Settings.',

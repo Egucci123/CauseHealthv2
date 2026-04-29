@@ -1,4 +1,4 @@
-const CACHE_NAME = 'causehealth-v2';
+const CACHE_NAME = 'causehealth-v4-snappy';
 
 // Install — skip waiting to activate immediately
 self.addEventListener('install', (event) => {
