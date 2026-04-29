@@ -1,5 +1,6 @@
 // src/hooks/useLabData.ts
-import { useQuery } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../store/authStore';
 import type { LabDraw, LabValue } from '../types';
@@ -23,19 +24,39 @@ const mapValue = (row: Record<string, unknown>): LabValue => ({
 
 export function useLabDraws() {
   const user = useAuthStore(s => s.user);
+  const qc = useQueryClient();
   const query = useQuery({
     queryKey: ['labDraws', user?.id], enabled: !!user?.id,
+    staleTime: 0, refetchOnMount: 'always', refetchOnWindowFocus: true,
     queryFn: async () => {
       const { data, error } = await supabase.from('lab_draws').select('*').eq('user_id', user!.id).order('draw_date', { ascending: false }).limit(100);
       if (error) throw error;
       return (data ?? []).map(mapDraw);
     },
-    // Poll every 5s while any draw is still processing
+    // Poll every 2s while any draw is processing — fallback if realtime is blocked
     refetchInterval: (query) => {
       const draws = query.state.data;
-      return draws?.some(d => d.processingStatus === 'processing') ? 5000 : false;
+      return draws?.some(d => d.processingStatus === 'processing') ? 2000 : false;
     },
   });
+
+  // Realtime: invalidate the list any time the user's lab_draws change
+  // (status flip from processing -> complete is what we care about most).
+  useEffect(() => {
+    if (!user?.id) return;
+    const channel = supabase
+      .channel(`lab-draws-list-${user.id}`)
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'lab_draws', filter: `user_id=eq.${user.id}` },
+        () => {
+          qc.invalidateQueries({ queryKey: ['labDraws'] });
+          qc.invalidateQueries({ queryKey: ['latestLabDraw'] });
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user?.id, qc]);
+
   return query;
 }
 
