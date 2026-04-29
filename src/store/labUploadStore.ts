@@ -484,18 +484,21 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
           };
         });
 
-        // Update metadata + replace values + fire analysis IN PARALLEL with timeouts
+        // Update metadata + replace values. Timeouts bumped to 30s — earlier
+        // 8s/12s was firing client-side even though the writes succeeded
+        // server-side. The browser thought it failed, fell into catch, and
+        // fired analyze-labs from a non-resolved state — analyze never landed.
         await Promise.all([
           withTimeout(
             supabase.from('lab_draws').update({
               draw_date: overrides.drawDate ?? extraction?.draw_date ?? new Date().toISOString().split('T')[0],
               lab_name: overrides.labName ?? extraction?.lab_name,
             }).eq('id', drawId),
-            8000, 'metadata update'
+            30000, 'metadata update'
           ),
           (async () => {
-            await withTimeout(supabase.from('lab_values').delete().eq('draw_id', drawId), 8000, 'values delete');
-            await withTimeout(supabase.from('lab_values').insert(cleaned), 12000, 'values insert');
+            await withTimeout(supabase.from('lab_values').delete().eq('draw_id', drawId), 30000, 'values delete');
+            await withTimeout(supabase.from('lab_values').insert(cleaned), 30000, 'values insert');
           })(),
         ]);
 
