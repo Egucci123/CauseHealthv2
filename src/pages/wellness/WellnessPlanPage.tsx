@@ -501,7 +501,9 @@ export const WellnessPlanPage = () => {
 
   return (
     <AppShell pageTitle="Wellness Plan">
-      {isLoading ? <WellnessSkeleton />
+      {/* Skeleton only on TRUE first load (no cached plan). Subsequent
+          navigations show the cached plan immediately. */}
+      {!plan && isLoading ? <WellnessSkeleton />
         : generating ? <GeneratingState />
         : !plan ? (
           <PaywallGate

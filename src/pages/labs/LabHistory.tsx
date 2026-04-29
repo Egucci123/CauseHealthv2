@@ -109,7 +109,10 @@ export const LabHistory = () => {
         </button>
       )}
 
-      {isLoading ? (
+      {/* Skeleton ONLY when we have zero cached data. If draws is defined
+          (even empty []), render the list/empty state. Avoids 'cream skeleton
+          flash' on every navigation back to this page. */}
+      {!draws && isLoading ? (
         <div className="space-y-4">
           {[1, 2, 3].map(i => (
             <div key={i} className="bg-clinical-white rounded-[10px] p-6 animate-pulse">

@@ -51,7 +51,7 @@ export const ProgressTracking = () => {
         ))}
       </div>
 
-      {isLoading ? (
+      {!entries && isLoading ? (
         <div className="space-y-4 animate-pulse">{[1, 2].map(i => <div key={i} className="bg-clinical-white rounded-[10px] border-t-[3px] border-[#E8E3DB] p-6"><div className="h-4 bg-[#E8E3DB] rounded w-1/3 mb-3" /><div className="h-24 bg-[#E8E3DB] rounded" /></div>)}</div>
       ) : (
         <>
