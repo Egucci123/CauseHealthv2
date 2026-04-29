@@ -176,40 +176,47 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
           }
         }
 
-        // 0. Refresh auth session unconditionally. The #1 cause of silent
-        //    upload failure was a stale access_token rejected by storage.
-        try {
-          await supabase.auth.refreshSession();
-        } catch (authErr) {
-          console.warn('[LabUpload] Auth refresh failed (will use existing session):', authErr);
-        }
-        // Verify we have a session at all — without it storage uploads silently 401.
-        const { data: { session: verifySession } } = await supabase.auth.getSession();
+        // 0. Verify session FAST. Don't block on refreshSession — if the network
+        //    is slow or the SDK hangs (we've seen it), the upload UI freezes at
+        //    0% forever. Get current session with a hard 4s ceiling, refresh in
+        //    background only, and proceed. If storage 401s we'll surface that
+        //    directly rather than pre-emptively stalling here.
+        const sessionRes = await Promise.race([
+          supabase.auth.getSession(),
+          new Promise<{ data: { session: null } }>((resolve) =>
+            setTimeout(() => resolve({ data: { session: null } }), 4_000)),
+        ]);
+        const verifySession = (sessionRes as any).data?.session;
         if (!verifySession) {
           set({
             phase: 'error', isRunning: false, runningSince: null,
-            errorMessage: 'Your session has expired. Sign out and back in, then try again.',
+            errorMessage: 'Your session expired or took too long to load. Sign out and back in, then try again.',
           });
           return;
         }
+        // Fire-and-forget refresh — don't await. If the token is stale, the
+        // first storage call will 401 and we'll throw a real error then.
+        supabase.auth.refreshSession().catch((e) =>
+          console.warn('[LabUpload] background auth refresh failed:', e));
 
-        // 1. Upload PDFs to storage with per-file timeout + per-file progress.
-        // Without timeouts, one hung upload leaves the loop awaiting forever
-        // and the UI stuck at progress=0% even though earlier files succeeded.
-        const storagePaths: string[] = [];
-        for (let i = 0; i < files.length; i++) {
-          const file = files[i];
-          const fileName = `${userId}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
-          const filePct = Math.round(((i + 1) / files.length) * 18); // 0-18% during uploads
-          set({ statusMessage: `Uploading ${i + 1} of ${files.length}: ${file.name}`, progress: filePct });
-
-          const uploadResult = await Promise.race([
+        // 1. Upload PDFs to storage in PARALLEL (was sequential — 8 files took
+        //    8x longer than necessary). Per-file 30s timeout still applies.
+        //    Progress ticks up as each file resolves so the UI doesn't look frozen.
+        let completedUploads = 0;
+        const uploadOne = async (file: File): Promise<string> => {
+          const fileName = `${userId}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+          const result = await Promise.race([
             supabase.storage.from('lab-pdfs').upload(fileName, file, { cacheControl: '3600', upsert: false }),
             new Promise<{ error: { message: string } }>((resolve) => setTimeout(() => resolve({ error: { message: `Upload timed out for ${file.name} (>30s)` } }), 30_000)),
           ]);
-          if ((uploadResult as any).error) throw new Error(`Storage upload failed: ${(uploadResult as any).error.message}`);
-          storagePaths.push(fileName);
-        }
+          if ((result as any).error) throw new Error(`Storage upload failed: ${(result as any).error.message}`);
+          completedUploads += 1;
+          const filePct = Math.round((completedUploads / files.length) * 18);
+          set({ statusMessage: `Uploaded ${completedUploads} of ${files.length}: ${file.name}`, progress: filePct });
+          return fileName;
+        };
+        set({ statusMessage: `Uploading ${files.length} file${plural ? 's' : ''} in parallel...`, progress: 2 });
+        const storagePaths = await Promise.all(files.map(uploadOne));
         set({ statusMessage: `${plural ? 'All files' : 'File'} received securely.`, progress: 20 });
 
         // 2. Create lab_draws record (raced against 15s timeout)
