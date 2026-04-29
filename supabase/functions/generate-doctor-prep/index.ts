@@ -85,10 +85,33 @@ CRITICAL RULES:
    A test may ONLY appear in tests_to_request if it directly investigates ONE of:
      (a) a symptom the patient actually reported, OR
      (b) a known depletion / side-effect from a medication they're currently taking, OR
-     (c) an out-of-range OR Watch-tier marker on THIS lab draw.
+     (c) an out-of-range, Watch-tier, OR EARLY-DETECTION marker pattern on THIS lab draw (see list below).
    If none of (a)/(b)/(c) applies, DO NOT include the test. No "while we're at it" screening. No "good to know" baseline tests. No proactive optimization tests unless the patient is in HEALTHY MODE.
    For each test, the clinical_justification MUST cite the specific symptom, medication, or marker that triggered it (e.g., "Patient reports fatigue + hair loss + ferritin 28" not "comprehensive screening"). If you can't cite a trigger, drop the test.
    Differential thinking: before adding a test, ask "if this comes back abnormal, does management change?" If no, drop it.
+
+   EARLY-DETECTION MARKER PATTERNS (these count as trigger (c) — values "within range" but clinically meaningful, especially in young or symptomatic patients. Catch these aggressively. Always cite the specific value in clinical_justification):
+   - Ferritin <50 even with normal hemoglobin → functional iron deficiency. Order full iron panel (serum iron, TIBC, ferritin, transferrin sat). Trigger any time ferritin <50, ESPECIALLY with fatigue / hair loss / restless legs / menstruating female.
+   - Serum B12 <500 (low end of "normal") with fatigue, brain fog, neuropathy, or depression → MMA + homocysteine to confirm tissue B12 status.
+   - MCV >92 without anemia → early B12/folate deficiency, alcohol, or liver. Order B12, folate, MMA.
+   - MCV <82 without anemia → iron deficiency or thalassemia trait. Iron panel + hemoglobin electrophoresis.
+   - HbA1c 5.4–5.6 OR fasting glucose 95–99 OR triglycerides high + HDL low → insulin resistance pattern. Fasting insulin + HOMA-IR.
+   - ApoB ≥90 → cardiovascular risk pattern. Order ApoB + Lp(a) (once-in-lifetime).
+   - hs-CRP ≥0.5 → subclinical inflammation. Repeat hs-CRP in 3 months + investigate source if persistent.
+   - ALT >25 (even within "range") + high triglycerides or weight gain → NAFLD pattern. Liver ultrasound + GGT.
+   - TSH 2.5–4.5 (within range, not optimal) + fatigue / weight gain / cold intolerance / hair loss → Free T3, Free T4, TPO antibodies, thyroglobulin antibodies (Hashimoto's screen).
+   - TSH <1.0 + symptoms → Free T3, Free T4, TSI antibodies (Graves' screen).
+   - Total testosterone <500 in symptomatic male → free T, SHBG, estradiol, LH, FSH.
+   - Premenopausal female with irregular cycles, acne, hirsutism, weight gain, OR insulin resistance markers → PCOS workup (total + free testosterone, DHEA-S, LH:FSH, fasting insulin, SHBG).
+   - Female 35–50 with irregular cycles, hot flashes, sleep changes → AMH + FSH + estradiol (perimenopause).
+   - Vitamin D 30–40 → recheck in 3 months after supplementation; <30 always retest.
+   - Uric acid >6 (female) or >7 (male) in young patient → gout / metabolic syndrome / kidney stone risk. Lifestyle counseling + recheck.
+   - Calcium >10.0 repeated → PTH + ionized calcium (primary hyperparathyroidism).
+   - Globulin >3.0 → albumin/globulin ratio + total protein context. Investigate if >3.5 with anemia or bone pain.
+   - Persistent GI symptoms (bloating, gas, alt-stool) + iron deficiency or low albumin → celiac panel (tTG-IgA + total IgA).
+   - Snoring / daytime fatigue / hypertension / insulin resistance pattern → STOP-BANG + sleep study referral.
+
+   Do NOT use this list to fish for tests on healthy patients. Use it when a marker on this draw or a symptom on file matches one of the patterns above. The pattern itself IS the trigger.
 4. AGE AND SEX CONTEXT: Always consider the patient's age and sex when evaluating findings. A value that is "normal" for a 50-year-old male may be concerning in an 18-year-old female. Apply age/sex-appropriate clinical reasoning.
 
 FEMALE HORMONE RULE: Do NOT interpret estradiol, progesterone, FSH, or LH as abnormal in premenopausal females unless extreme (FSH >40, estradiol <10 or >500, progesterone >30). These vary by cycle phase. A single blood draw cannot diagnose "estrogen dominance" without knowing cycle day. Note this limitation if discussing these values.
