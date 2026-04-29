@@ -9,6 +9,7 @@ import { useAuthStore } from './store/authStore';
 import { queryClient } from './lib/queryClient';
 import { logEvent, setLogUserId } from './lib/clientLog';
 import { supabase } from './lib/supabase';
+import { NewVersionBanner } from './components/layout/NewVersionBanner';
 import './index.css';
 
 // ── Wire user id into telemetry as soon as auth resolves ──
@@ -95,6 +96,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <AuthInitializer>
           <App />
         </AuthInitializer>
+        <NewVersionBanner />
       </BrowserRouter>
       {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
     </QueryClientProvider>
