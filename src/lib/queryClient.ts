@@ -5,20 +5,20 @@ import { logEvent } from './clientLog';
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // 30s within-app freshness — page transitions reuse cache instead of
-      // refetching on every mount. Visibility/pageshow handlers below still
-      // invalidate everything when the user returns to the tab, so true
-      // "fresh data on return" still works.
-      staleTime: 30 * 1000,
+      // staleTime: 0 — every mount checks for fresher data. Combined with
+      // placeholderData: keepPreviousData and the '!data ? Skeleton :' render
+      // pattern in components, users see CACHED data instantly on every page
+      // open while a background refetch silently updates if there's something
+      // newer. Net result: no flicker, no need to refresh.
+      staleTime: 0,
       gcTime: 5 * 60 * 1000,
       retry: 2,
       retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
-      // Keep showing the previous query's data when the queryKey changes
-      // (e.g., userId transient null during route transitions). Without
-      // this, components flash a skeleton while the new key fetches.
       placeholderData: keepPreviousData,
-      // Refetch on mount only if data is stale.
-      refetchOnMount: true,
+      // 'always' = refetch on every mount regardless of staleness. The
+      // user said it best: 'I shouldn't have to refresh to see what's
+      // there.' This guarantees every page navigation pulls fresh data.
+      refetchOnMount: 'always',
       refetchOnWindowFocus: true,
       refetchOnReconnect: true,
     },
