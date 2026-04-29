@@ -58,9 +58,15 @@ export const LabUpload = () => {
       qc.invalidateQueries({ queryKey: ['wellness-plan'] });
       qc.invalidateQueries({ queryKey: ['activePlan'] });
       qc.invalidateQueries({ queryKey: ['lab-detail'] });
-      setTimeout(() => { reset(); navigate(`/labs/${completedDrawId}`, { replace: true }); }, 800);
+      // Navigate IMMEDIATELY, no 800ms delay. The yellow 'Analysis complete'
+      // intermediate screen is unwanted UX. Reset state on the way out so
+      // any later visit to /labs/upload starts clean (no phantom complete
+      // state that re-triggers this redirect).
+      const targetId = completedDrawId;
+      reset();
+      navigate(`/labs/${targetId}`, { replace: true });
     }
-  }, [phase, completedDrawId, navigate, qc]);
+  }, [phase, completedDrawId, navigate, qc, reset]);
 
   const handleUpload = (files: File[]) => {
     logEvent('labupload_handle_called', {
@@ -102,13 +108,8 @@ export const LabUpload = () => {
           </div>
         )}
 
-        {phase === 'complete' && (
-          <div className="bg-clinical-white rounded-[10px] shadow-card border-t-[3px] border-[#D4A574] p-10 text-center">
-            <span className="material-symbols-outlined text-[#D4A574] text-5xl mb-4 block">check_circle</span>
-            <p className="text-authority text-2xl text-clinical-charcoal font-bold mb-2">Analysis complete.</p>
-            <p className="text-body text-clinical-stone">Redirecting to your results...</p>
-          </div>
-        )}
+        {/* phase === 'complete' is handled by the useEffect that navigates
+            immediately to /labs/:drawId — no intermediate yellow square */}
 
         {phase === 'reviewing' && extraction && (
           <ReviewTable values={extraction.values} drawDate={extraction.draw_date} labName={extraction.lab_name}
