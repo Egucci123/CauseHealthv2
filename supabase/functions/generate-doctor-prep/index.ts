@@ -81,23 +81,14 @@ CRITICAL RULES:
    - Hair loss + fatigue + ferritin <50 → functional iron deficiency → full iron panel.
    - 3+ Watch or out-of-range values clustering in one organ system → escalate that system.
 
-3. WHEN TO RECOMMEND TESTS (tests_to_request):
-   Default rule — only recommend a test when there's a SPECIFIC abnormal finding (out-of-range OR Watch-tier) that the test would investigate. Healthy values do not earn follow-up tests.
-   The blocklist (rule below) still applies — rare-disease screening only fires at threshold.
-   YOUNG ADULT EARLY DETECTION (under 30 — these are commonly missed for YEARS):
-   - Ferritin <30 even with normal hemoglobin → functional iron deficiency (causes fatigue, hair loss, brain fog LONG before anemia shows)
-   - Low HDL (<50 female, <40 male) in teens/20s → early metabolic syndrome, NOT "just genetics" — test insulin
-   - Elevated MCV (>92) without anemia → early B12 or folate deficiency, alcohol use, or liver disease
-   - Low MCV (<82) without anemia → iron deficiency or thalassemia trait — test iron panel + hemoglobin electrophoresis
-   - Elevated lymphocytes or monocytes even "within range" → chronic viral infection (EBV, CMV), autoimmune activation
-   - ALP elevated in a young adult who's done growing → liver or bone disease, NOT just "normal growth"
-   - Bilirubin 1.0-1.2 "high normal" + fatigue → Gilbert syndrome (benign but explains symptoms) or early hemolysis
-   - Protein/albumin ratio abnormal (elevated globulin >3.0) → chronic infection, autoimmune disease, or early multiple myeloma screening
-   - Calcium >10.0 repeatedly → primary hyperparathyroidism (missed for decades in young patients)
-   - Low CO2 (<23) + low chloride → chronic metabolic acidosis, renal tubular acidosis, or chronic diarrhea/malabsorption
-   - Uric acid >6 in young female or >7 in young male → gout risk, metabolic syndrome, kidney stone risk — lifestyle intervention NOW
-   - ANY unexplained weight gain + fatigue + normal TSH in young female → ALWAYS check free T3, free T4, TPO antibodies, fasting insulin, cortisol, and celiac panel
-   No "within normal limits" dismissals. Ever.
+3. WHEN TO RECOMMEND TESTS (tests_to_request) — STRICT TRIAGE RULE:
+   A test may ONLY appear in tests_to_request if it directly investigates ONE of:
+     (a) a symptom the patient actually reported, OR
+     (b) a known depletion / side-effect from a medication they're currently taking, OR
+     (c) an out-of-range OR Watch-tier marker on THIS lab draw.
+   If none of (a)/(b)/(c) applies, DO NOT include the test. No "while we're at it" screening. No "good to know" baseline tests. No proactive optimization tests unless the patient is in HEALTHY MODE.
+   For each test, the clinical_justification MUST cite the specific symptom, medication, or marker that triggered it (e.g., "Patient reports fatigue + hair loss + ferritin 28" not "comprehensive screening"). If you can't cite a trigger, drop the test.
+   Differential thinking: before adding a test, ask "if this comes back abnormal, does management change?" If no, drop it.
 4. AGE AND SEX CONTEXT: Always consider the patient's age and sex when evaluating findings. A value that is "normal" for a 50-year-old male may be concerning in an 18-year-old female. Apply age/sex-appropriate clinical reasoning.
 
 FEMALE HORMONE RULE: Do NOT interpret estradiol, progesterone, FSH, or LH as abnormal in premenopausal females unless extreme (FSH >40, estradiol <10 or >500, progesterone >30). These vary by cycle phase. A single blood draw cannot diagnose "estrogen dominance" without knowing cycle day. Note this limitation if discussing these values.
@@ -129,30 +120,14 @@ WRITING STYLE: Write like you're explaining to a smart friend, not a medical tex
 TESTS — TWO SEPARATE LISTS:
 
 1. tests_to_request (ESSENTIAL — what the doctor should definitely order at this visit):
-   - MAXIMUM 6 tests. Pick the most clinically important ones based on the patient's abnormal labs.
-   - ONE focused workup per row. Do NOT bundle across organ systems (bad: "CMP + Hep panel + ASMA + AMA". good: "Hepatitis viral panel" alone, "Autoimmune liver antibodies" only if separately warranted).
-   - A logical "test_name" combines tests of the SAME organ system (e.g., "Iron panel" can include serum iron + TIBC + ferritin + transferrin saturation because they're all iron-related).
-   - clinical_justification: ONE SENTENCE in plain English. Lead with what's abnormal and what you're ruling out.
-   - Each test gets the MOST SPECIFIC ICD-10 code for THAT test. No lazy reuse.
-   - Tier as urgent/high/moderate.
+   - MAXIMUM 5 tests. If fewer triggers exist, return fewer. An empty list is acceptable if nothing is wrong.
+   - ONE focused workup per row. Do NOT bundle across organ systems.
+   - A logical "test_name" combines tests of the SAME organ system (e.g., "Iron panel" = serum iron + TIBC + ferritin + transferrin sat).
+   - clinical_justification: ONE SENTENCE that NAMES the trigger ("Reports hair loss + fatigue; ferritin 28 [LOW]") and what you're ruling out. No vague "comprehensive workup" language.
+   - Each test gets the MOST SPECIFIC ICD-10 code. No lazy reuse.
+   - Tier as urgent/high/moderate based on the trigger severity, not on the test itself.
 
 PLACEMENT RULES (which list a test belongs in):
-
-   COMMON-BUT-MISSED CONDITIONS (CATCH THESE AGGRESSIVELY in tests_to_request — these are ROUTINELY missed by 12-min appointments and should be surfaced when ANY suggestive pattern is present):
-   - PCOS workup (premenopausal women) — total + free testosterone, DHEA-S, LH:FSH ratio, fasting insulin, SHBG, free androgen index. Trigger: irregular cycles, acne, hirsutism/excess hair, weight gain, hair thinning, infertility, or any insulin resistance markers in a woman of reproductive age.
-   - Hashimoto's / autoimmune thyroiditis — TPO antibodies + thyroglobulin antibodies. Trigger: TSH >2.5 OR <1.0, OR fatigue + weight changes + hair loss, OR family history of thyroid/autoimmune.
-   - Subclinical hypothyroidism — Free T3, Free T4, reverse T3. Trigger: TSH 2.5–4.5 (within "normal" but not optimal), cold intolerance, fatigue, weight gain, brain fog.
-   - Low testosterone in men — total T, free T, SHBG, estradiol, LH/FSH. Trigger: men with fatigue, weight gain, low libido, depression, or testosterone <500.
-   - Perimenopause workup (women 35–50) — FSH, estradiol, progesterone, AMH. Trigger: irregular cycles, hot flashes, mood changes, sleep disruption, weight gain.
-   - Adrenal/HPA-axis dysregulation — AM serum cortisol, DHEA-S, ACTH. Trigger: chronic stress + fatigue, salt cravings, blood sugar instability, anxiety. (NOT Cushing's screening — that's still gated.)
-   - Functional iron deficiency — full iron panel (serum iron, TIBC, ferritin, transferrin saturation). Trigger: hair loss, fatigue, restless legs, OR ferritin <50 even with normal hemoglobin. Especially in menstruating women.
-   - True B12 status — methylmalonic acid (MMA) + homocysteine. Trigger: fatigue, brain fog, neuropathy, depression, OR serum B12 <500 (low end of "normal").
-   - NAFLD workup — liver ultrasound + GGT. Trigger: any ALT >25, especially with high triglycerides or insulin resistance.
-   - Celiac screening — tTG-IgA + total IgA. Trigger: GI symptoms (bloating, gas, diarrhea, constipation), iron deficiency, low albumin, family history, OR autoimmune disease (UC, type 1 diabetes, Hashimoto's).
-   - SIBO — lactulose breath test. Trigger: persistent bloating, post-meal gas, IBS-like symptoms.
-   - Sleep apnea screening — STOP-BANG questionnaire + sleep study referral. Trigger: snoring, daytime fatigue, hypertension, weight, or any insulin resistance pattern.
-   - Endometriosis workup (women) — pelvic ultrasound + GYN referral. Trigger: pelvic pain, painful periods, heavy bleeding, infertility.
-   These conditions are COMMON (1–10% prevalence), highly treatable, and should be flagged on day 1 when any suggestive pattern exists. Do NOT gate them.
 
    ABSOLUTE BLOCKLIST — these tests CAN NEVER go in tests_to_request. They ALWAYS go in advanced_screening, UNLESS the patient hits the hard urgent threshold listed:
      - JAK2 V617F → tests_to_request ONLY when platelets >450 OR (RBC >6.0 AND Hct >54). Borderline-high RBC/Hct is NOT enough.
@@ -170,25 +145,8 @@ PLACEMENT RULES (which list a test belongs in):
    - Liver workup with elevated ALT/AST → ICD-10 should be R74.0 (abnormal liver function tests), NOT R19.00 (abdominal mass) for any liver-related test or imaging.
    - Insurance Note should mention specific common scenarios: "usually covered under abnormal LFTs," "may need prior auth for specialty panels," "out-of-pocket cost ~$X if not covered."
 
-2. advanced_screening (PRE-STAGED FOR 90-DAY UNLOCK — gated UI):
-   This list is HIDDEN from the user until 90 days have elapsed AND their retest shows continued abnormalities. Populate it like a backup playbook — what would the patient need to investigate IF lifestyle change doesn't fix the abnormal markers?
-   Populate 1-3 entries per patient based on which abnormal labs are MOST LIKELY to need deeper investigation if they don't improve:
-     - Borderline-upper-normal blood markers (RBC, Hct, platelets) → queue JAK2 + EPO with framing "If RBC/Hct stay elevated past 90 days, screen for myeloproliferative disorder."
-     - Persistent inflammation pattern (high CRP + ESR + UC) → queue ANA reflex + HLA-B27 with framing "If joint pain persists or new autoimmune symptoms appear at retest."
-     - GI symptoms + iron deficiency + autoimmune → queue celiac panel with "If GI symptoms persist after gut-healing protocol."
-     - Persistent hypercalcemia or globulin >3 → queue myeloma panel with "If calcium or globulin doesn't normalize."
-   ApoB, lipid NMR, advanced lipid testing → these are MAINSTREAM cardiology essentials, NOT rare-disease screening. They go in tests_to_request.
-   Each entry's why_short MUST frame as "If [specific marker] doesn't improve at the 90-day retest, [test] rules out [condition]."
-   Genuinely urgent right now → priority="urgent" so it bypasses the time gate. Otherwise priority="high" or "moderate" keeps it gated.
-   Maximum 3 entries.
-   - These tests are GATED in the UI until the patient's 90-day retest. They are shown ONLY if marked urgent (genuine red flags) OR if the user manually unlocks them.
-   - DO NOT spam this list. The lifestyle-first philosophy is: most abnormal labs improve with 90 days of clean diet, movement, sleep, and targeted supplementation. Rare-disease screening is the SECOND visit, not the first.
-   - INCLUDE here ONLY:
-     a) Tests with genuine red-flag urgency on THIS patient's labs (e.g., platelets >450 → JAK2; calcium >10.5 → PTH; persistent unexplained polycythemia → JAK2+EPO). Mark these priority="urgent" so they bypass the gate.
-     b) Reserved next-step tests if the same markers stay abnormal after the 90-day retest (e.g., celiac panel if GI symptoms persist; ANA reflex if multi-system inflammation persists; HLA-B27 if joint pain persists). Mark these priority="high" or "moderate" so they remain gated.
-   - Maximum 3 entries. Quality over quantity.
-   - Each entry's why_short MUST explain why this test is for AFTER the 90-day retest, not now (e.g., "If joint pain persists after 90 days, rule out spondyloarthropathy").
-   - DO NOT include speculative screening for conditions the patient has no markers for.
+2. advanced_screening — DEFAULT TO EMPTY ARRAY [].
+   Do NOT populate this from the prompt. The post-processor moves any blocklisted rare-disease tests here automatically. Your job is to NOT generate them in the first place. Return [] unless a specific marker on THIS draw hits a hard urgent threshold (platelets >450, calcium >10.5, prolactin >100, ferritin >300 + transferrin sat >45%, globulin >3.5 with anemia/bone pain). Even then, maximum 1 entry.
 
 ICD-10: Use most specific code. Corrections applied post-generation.
 
@@ -384,6 +342,30 @@ CRITICAL OUTPUT RULES (for the new card-stack UI):
         doc.discussion_points.push(`Red blood cells (${ctx.rbc}) and hematocrit (${ctx.hct}%) are at the top of normal. Could be hydration, sleep quality, or baseline. Ask your doctor for a repeat CBC in 3 months and screen for sleep apnea (STOP-BANG) if you snore or wake unrefreshed.`);
       }
     } catch (e) { console.error('[doctor-prep] post-filter error:', e); }
+
+    // ── Text-quality pass: collapse doubled words ("depletes depletes" → "depletes")
+    // and fix the recurring "ASH" → "AST" typo from the model. Cheap, deterministic.
+    try {
+      const cleanText = (s: any): any => {
+        if (typeof s !== 'string') return s;
+        return s
+          .replace(/\b(\w+)\s+\1\b/gi, '$1')           // doubled word
+          .replace(/\bASH\b/g, 'AST')                  // common transcription typo
+          .replace(/\s{2,}/g, ' ')
+          .trim();
+      };
+      const walk = (val: any): any => {
+        if (typeof val === 'string') return cleanText(val);
+        if (Array.isArray(val)) return val.map(walk);
+        if (val && typeof val === 'object') {
+          const out: any = {};
+          for (const k of Object.keys(val)) out[k] = walk(val[k]);
+          return out;
+        }
+        return val;
+      };
+      doc = walk(doc);
+    } catch (e) { console.error('[doctor-prep] text-clean error:', e); }
 
     // Validate required fields before saving — never save corrupt/partial documents
     if (!doc.chief_complaint && !doc.hpi && !doc.executive_summary) {

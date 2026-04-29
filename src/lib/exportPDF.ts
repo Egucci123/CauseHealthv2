@@ -487,10 +487,11 @@ export function exportDoctorPrepPDF(doc: DoctorPrepDocument, userName: string, p
     pdf.text(jLines, margin + 3, y); y += jLines.length * 3.5 + 5;
   });
 
-  // Comprehensive Health Screening — the clinical case for ordering
-  // a full workup. Frames the patient as deserving thorough evaluation,
-  // not as "asking for stuff." Each test has rationale + ICD-10 coverage.
-  if (panelGaps && panelGaps.length > 0) {
+  // Comprehensive Health Screening section removed by design — doctor prep
+  // now only requests tests linked to the patient's actual symptoms,
+  // medications, or out-of-range markers. Tiered "while we're at it"
+  // screening was generating denials and PCP pushback.
+  if (false && panelGaps && panelGaps.length > 0) {
     const tierMeta: Record<PanelGapPDF['category'], { label: string; subtitle: string }> = {
       essential: {
         label: 'Tier 1 — Foundational Workup',

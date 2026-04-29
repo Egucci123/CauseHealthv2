@@ -5,7 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { ClinicalSummary } from '../../components/doctorprep/ClinicalSummary';
 import { TestsToRequest } from '../../components/doctorprep/TestsToRequest';
 import { VisitCardStacks } from '../../components/doctorprep/VisitCardStacks';
-import { AdditionalTesting, type PanelGap } from '../../components/doctorprep/AdditionalTesting';
+import { type PanelGap } from '../../components/doctorprep/AdditionalTesting';
 import { computePanelGaps, computeProactiveScreenings } from '../../store/labUploadStore';
 import { useSymptoms } from '../../hooks/useSymptoms';
 import { isHealthyMode as computeIsHealthyMode } from '../../lib/healthMode';
@@ -256,7 +256,6 @@ export const DoctorPrep = () => {
           {activeTab === 'tests' && (
             <div className="space-y-4">
               <TestsToRequest tests={Array.isArray(doc.tests_to_request) ? doc.tests_to_request : []} advanced={Array.isArray(doc.advanced_screening) ? doc.advanced_screening : []} />
-              <AdditionalTesting gaps={panelGaps} />
             </div>
           )}
         </div>
