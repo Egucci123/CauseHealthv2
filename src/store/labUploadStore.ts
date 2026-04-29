@@ -193,22 +193,36 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
           return;
         }
 
-        // 1. Upload PDFs to storage
+        // 1. Upload PDFs to storage with per-file timeout + per-file progress.
+        // Without timeouts, one hung upload leaves the loop awaiting forever
+        // and the UI stuck at progress=0% even though earlier files succeeded.
         const storagePaths: string[] = [];
-        for (const file of files) {
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
           const fileName = `${userId}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
-          const { error } = await supabase.storage.from('lab-pdfs').upload(fileName, file, { cacheControl: '3600', upsert: false });
-          if (error) throw new Error(`Storage upload failed: ${error.message}`);
+          const filePct = Math.round(((i + 1) / files.length) * 18); // 0-18% during uploads
+          set({ statusMessage: `Uploading ${i + 1} of ${files.length}: ${file.name}`, progress: filePct });
+
+          const uploadResult = await Promise.race([
+            supabase.storage.from('lab-pdfs').upload(fileName, file, { cacheControl: '3600', upsert: false }),
+            new Promise<{ error: { message: string } }>((resolve) => setTimeout(() => resolve({ error: { message: `Upload timed out for ${file.name} (>30s)` } }), 30_000)),
+          ]);
+          if ((uploadResult as any).error) throw new Error(`Storage upload failed: ${(uploadResult as any).error.message}`);
           storagePaths.push(fileName);
         }
         set({ statusMessage: `${plural ? 'All files' : 'File'} received securely.`, progress: 20 });
 
-        // 2. Create lab_draws record
-        const { data: draw, error: drawErr } = await supabase.from('lab_draws').insert({
-          user_id: userId, raw_pdf_url: storagePaths[0], processing_status: 'processing',
-          draw_date: new Date().toISOString().split('T')[0],
-        }).select().single();
-        if (drawErr || !draw) throw new Error('Failed to create lab record');
+        // 2. Create lab_draws record (raced against 15s timeout)
+        const insertResult = await Promise.race([
+          supabase.from('lab_draws').insert({
+            user_id: userId, raw_pdf_url: storagePaths[0], processing_status: 'processing',
+            draw_date: new Date().toISOString().split('T')[0],
+          }).select().single(),
+          new Promise<{ data: null; error: { message: string } }>((resolve) => setTimeout(() => resolve({ data: null, error: { message: 'Database insert timed out (>15s)' } }), 15_000)),
+        ]);
+        if ((insertResult as any).error) throw new Error(`Failed to create lab record: ${(insertResult as any).error.message}`);
+        const draw = (insertResult as any).data;
+        if (!draw) throw new Error('Failed to create lab record (no row returned)');
         set({ drawId: draw.id });
 
         // 3. Try client-side text extraction first (PDFs only)

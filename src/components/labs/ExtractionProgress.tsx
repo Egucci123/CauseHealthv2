@@ -1,27 +1,31 @@
 // src/components/labs/ExtractionProgress.tsx
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-
-const PHASE_MESSAGES: Record<string, string[]> = {
-  uploading: ['Uploading to secure storage...', 'File received securely.'],
-  extracting: ['Reading your lab report...', 'Identifying test panels...', 'Extracting individual values...', 'Cross-referencing marker names...'],
-  analyzing: ['Comparing against optimal ranges...', 'Reviewing your medications...', 'Identifying patterns...', 'Connecting to your symptoms...', 'Generating your analysis...'],
-};
 
 interface ExtractionProgressProps { phase: string; message: string; progress: number; }
 
 export const ExtractionProgress = ({ phase, message, progress }: ExtractionProgressProps) => {
-  const [messageIndex, setMessageIndex] = useState(0);
-  const messages = PHASE_MESSAGES[phase] ?? [];
+  // Always show the actual `message` from the store. No more auto-rotation:
+  // when progress was stuck at 0% the rotating fake messages made it look
+  // like things were happening when they weren't.
+  const displayMessage = message || `${phase}...`;
 
+  // Watchdog: if progress hasn't moved in 30s, surface a "stuck" hint so the
+  // user can refresh and retry instead of waiting forever on a frozen UI.
+  const [stuck, setStuck] = useState(false);
+  const lastProgress = useRef(progress);
+  const lastChange = useRef(Date.now());
   useEffect(() => {
-    if (messages.length <= 1) return;
-    setMessageIndex(0);
-    const interval = setInterval(() => setMessageIndex(i => (i + 1) % messages.length), 2500);
-    return () => clearInterval(interval);
-  }, [phase, messages.length]);
-
-  const displayMessage = messages[messageIndex] ?? message;
+    if (progress !== lastProgress.current) {
+      lastProgress.current = progress;
+      lastChange.current = Date.now();
+      setStuck(false);
+    }
+    const id = setInterval(() => {
+      if (Date.now() - lastChange.current > 30_000) setStuck(true);
+    }, 5000);
+    return () => clearInterval(id);
+  }, [progress]);
 
   return (
     <div className="flex flex-col items-center py-12 px-6 text-center">
@@ -52,6 +56,18 @@ export const ExtractionProgress = ({ phase, message, progress }: ExtractionProgr
             transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.3, ease: 'easeInOut' }} />
         ))}
       </div>
+      {stuck && (
+        <div className="mt-6 max-w-sm bg-[#C94F4F]/10 border border-[#C94F4F]/30 rounded-[10px] p-4">
+          <p className="text-body text-clinical-charcoal text-sm font-semibold mb-1">This is taking longer than usual.</p>
+          <p className="text-body text-clinical-stone text-xs leading-relaxed mb-3">Network might be slow or something hung. Refresh the page and try again — your files were saved and you can resume.</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="text-precision text-[0.65rem] font-bold tracking-widest uppercase px-3 py-1.5 bg-[#C94F4F] text-white rounded-[6px] hover:bg-[#A03434] transition-colors"
+          >
+            Refresh & Retry
+          </button>
+        </div>
+      )}
     </div>
   );
 };
