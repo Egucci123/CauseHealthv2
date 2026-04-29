@@ -59,10 +59,33 @@
       href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
+    <!-- Material Symbols: display=block hides content until font loads (vs swap
+         which would briefly show raw ligature text like "auto_awesome" or "HEAL"). -->
     <link
-      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0"
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=block"
       rel="stylesheet"
     />
+    <!-- Belt-and-suspenders CSS so .material-symbols-outlined elements always
+         use the right font + ligature feature, even before the Google Fonts
+         CSS finishes loading. Google's stylesheet sets these properties too,
+         but inlining them here means the rules apply on the very first paint. -->
+    <style>
+      .material-symbols-outlined {
+        font-family: 'Material Symbols Outlined', sans-serif;
+        font-weight: normal;
+        font-style: normal;
+        line-height: 1;
+        letter-spacing: normal;
+        text-transform: none;
+        display: inline-block;
+        white-space: nowrap;
+        word-wrap: normal;
+        direction: ltr;
+        -webkit-font-feature-settings: 'liga';
+        -webkit-font-smoothing: antialiased;
+        font-feature-settings: 'liga';
+      }
+    </style>
 
     <!-- Structured data: SoftwareApplication -->
     <script type="application/ld+json">

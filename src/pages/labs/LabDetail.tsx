@@ -11,9 +11,10 @@ import { TrajectoryStrip } from '../../components/labs/TrajectoryStrip';
 import { detectCriticalFindings } from '../../lib/criticalFindings';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/authStore';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useSubscription } from '../../lib/subscription';
+import { triggerAnalysis } from '../../lib/analysisTrigger';
 
 const CATEGORY_ORDER = ['liver', 'cardiovascular', 'metabolic', 'kidney', 'thyroid', 'hormones', 'nutrients', 'cbc', 'inflammation', 'other'];
 const CATEGORY_LABELS: Record<string, string> = {
@@ -33,21 +34,11 @@ export const LabDetail = () => {
   const retryAnalysis = useMutation({
     mutationFn: async () => {
       if (!drawId || !user) throw new Error('Missing context');
-      await supabase.from('lab_draws').update({ processing_status: 'processing', analysis_result: null }).eq('id', drawId);
-      // Get a fresh JWT so the edge function can authenticate the user.
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
-      // Raw fetch with keepalive — survives navigation
-      fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-labs`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ drawId, userId: user.id }),
-        keepalive: true,
-      }).catch(console.warn);
+      // triggerAnalysis() handles: setting status to 'processing', refreshing
+      // auth, retrying on 401/network failure, returning ok=true even if
+      // request is still in-flight (server keeps running).
+      const result = await triggerAnalysis(drawId, user.id);
+      if (!result.ok) throw new Error(result.error ?? 'Analysis trigger failed');
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['lab-detail', drawId] });
@@ -56,7 +47,11 @@ export const LabDetail = () => {
   });
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['lab-detail', drawId], enabled: !!drawId && !!user,
+    queryKey: ['lab-detail', drawId, user?.id],
+    // Only gate on drawId — user is checked inside queryFn. Previously gating on
+    // both caused the query to never fire on SPA navigation when user was
+    // briefly null during auth re-init.
+    enabled: !!drawId,
     queryFn: async () => {
       if (!drawId || !user) return null;
       const [drawRes, valuesRes] = await Promise.all([
@@ -64,18 +59,27 @@ export const LabDetail = () => {
         supabase.from('lab_values').select('*').eq('draw_id', drawId).order('marker_category'),
       ]);
       if (drawRes.error || !drawRes.data) throw new Error('Draw not found');
-      // Panel gaps stored in notes field (computed client-side), analysis in analysis_result (from AI)
       let panelGaps: any[] = [];
       try { panelGaps = JSON.parse(drawRes.data.notes ?? '{}')?.panel_gaps ?? []; } catch {}
       return { draw: drawRes.data, values: valuesRes.data ?? [], analysis: drawRes.data.analysis_result, panelGaps };
     },
-    staleTime: 10 * 1000, refetchOnMount: 'always',
+    staleTime: 0,
+    refetchOnMount: 'always',
     // Poll while analysis is still processing
     refetchInterval: (query) => {
       const status = query.state.data?.draw?.processing_status;
       return status === 'processing' ? 5000 : false;
     },
   });
+
+  // Defensive invalidate: force a fresh fetch whenever drawId or user changes.
+  // Catches the SPA-nav case where useQuery doesn't auto-refire after enabled
+  // flips from false -> true. Without this the page hangs on skeleton.
+  useEffect(() => {
+    if (drawId && user) {
+      qc.invalidateQueries({ queryKey: ['lab-detail', drawId, user.id] });
+    }
+  }, [drawId, user, qc]);
 
   // ── Backup poll for in-flight analysis ──
   // MUST be placed before any early returns to keep hook order stable across
@@ -88,6 +92,41 @@ export const LabDetail = () => {
     }, 4000);
     return () => clearInterval(id);
   }, [data?.draw?.processing_status, data?.analysis, qc, drawId]);
+
+  // ── Auto-rescue: if draw is stuck in 'processing' for >60s with no result,
+  // automatically re-fire analyze-labs. The trigger may have failed silently
+  // during upload (network blip, stale token, etc.) so the page reconciles
+  // itself rather than relying on the user to click "Stuck — Retry".
+  // Caps at 2 auto-retries before showing the manual-retry UI.
+  const autoRescueAttempts = useRef(0);
+  const lastRescueDrawId = useRef<string | null>(null);
+  useEffect(() => {
+    if (!drawId || !user || !data?.draw) return;
+    // Reset counter when navigating to a different draw
+    if (lastRescueDrawId.current !== drawId) {
+      autoRescueAttempts.current = 0;
+      lastRescueDrawId.current = drawId;
+    }
+    const status = data.draw.processing_status;
+    if (status !== 'processing') return;
+    if (data.analysis) return;
+    if (autoRescueAttempts.current >= 2) return;
+
+    const created = data.draw.created_at ? new Date(data.draw.created_at).getTime() : Date.now();
+    const ageMs = Date.now() - created;
+    if (ageMs < 60_000) return; // give it 60s to land naturally first
+
+    autoRescueAttempts.current += 1;
+    console.log(`[LabDetail] auto-rescue attempt ${autoRescueAttempts.current} for stuck draw ${drawId}`);
+    triggerAnalysis(drawId, user.id).then((result) => {
+      if (result.ok) {
+        // Refetch in 8s to pick up the new analysis once it completes
+        setTimeout(() => qc.invalidateQueries({ queryKey: ['lab-detail', drawId] }), 8000);
+      } else {
+        console.warn('[LabDetail] auto-rescue failed:', result.error);
+      }
+    });
+  }, [drawId, user, data?.draw, data?.analysis, qc]);
 
   // Deterministic critical-findings detection — runs in code, never via AI.
   // Visible to free users too (safety > paywall).

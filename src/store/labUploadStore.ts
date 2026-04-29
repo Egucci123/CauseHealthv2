@@ -4,6 +4,7 @@ import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from './authStore';
 import { extractPDFText, looksLikeLabReport } from '../lib/pdfParser';
+import { triggerAnalysis } from '../lib/analysisTrigger';
 
 export type UploadPhase = 'idle' | 'uploading' | 'extracting' | 'reviewing' | 'analyzing' | 'complete' | 'error' | 'manual';
 
@@ -27,8 +28,14 @@ interface LabUploadStore {
   errorMessage: string | null;
   completedDrawId: string | null;
   isRunning: boolean;
+  /** Wall-clock timestamp of when isRunning was last set true. Used by
+   *  resetIfStale() to detect a hung run and clear it. */
+  runningSince: number | null;
 
   reset: () => void;
+  /** Auto-clear isRunning if it's been 'running' for too long without progress.
+   *  Called on /labs/upload mount so a stale state doesn't block new uploads. */
+  resetIfStale: () => void;
   startUpload: (files: File[], userId: string) => void;
   confirmAndAnalyze: (values: ExtractedValue[], overrides: { drawDate?: string; labName?: string }, userId: string) => void;
   updateExtraction: (values: ExtractedValue[]) => void;
@@ -45,11 +52,25 @@ function startProgress(set: (s: Partial<LabUploadStore>) => void, from: number, 
 }
 function stopProgress() { if (_progressInterval) { clearInterval(_progressInterval); _progressInterval = null; } }
 
+// How long an upload can be 'running' before we consider it stale and reset.
+// Real uploads finish in ~30s; if it's been 3 min and we're still 'running'
+// something hung in a way we'll never recover from in-place.
+const STALE_RUN_MS = 3 * 60 * 1000;
+
 export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
   phase: 'idle', progress: 0, statusMessage: '', drawId: null,
   extraction: null, errorMessage: null, completedDrawId: null, isRunning: false,
+  runningSince: null,
 
-  reset: () => set({ phase: 'idle', progress: 0, statusMessage: '', drawId: null, extraction: null, errorMessage: null, completedDrawId: null, isRunning: false }),
+  reset: () => set({ phase: 'idle', progress: 0, statusMessage: '', drawId: null, extraction: null, errorMessage: null, completedDrawId: null, isRunning: false, runningSince: null }),
+
+  resetIfStale: () => {
+    const { isRunning, runningSince } = get();
+    if (!isRunning) return;
+    if (runningSince && Date.now() - runningSince < STALE_RUN_MS) return;
+    console.warn('[LabUpload] resetting stale running state');
+    set({ phase: 'idle', progress: 0, statusMessage: '', drawId: null, extraction: null, errorMessage: null, completedDrawId: null, isRunning: false, runningSince: null });
+  },
 
   updateExtraction: (values) => set(s => ({ extraction: s.extraction ? { ...s.extraction, values } : null })),
 
@@ -111,6 +132,7 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
           ? `Welcome back — ${vals.length} values ready to review.`
           : 'Analysis complete.',
         isRunning: false,
+        runningSince: null,
       });
     } catch (e) {
       console.warn('[LabUpload] resumeFromDraw failed:', e);
@@ -118,8 +140,18 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
   },
 
   startUpload: (files, userId) => {
-    if (get().isRunning) return;
-    set({ isRunning: true });
+    // Self-heal: if a previous run got stuck and never reset, clear it.
+    get().resetIfStale();
+    if (get().isRunning) {
+      // Genuinely concurrent — show an error so user knows why click did nothing.
+      set({ errorMessage: 'Upload already running — please wait a moment.' });
+      return;
+    }
+    if (!files || files.length === 0) {
+      set({ phase: 'error', errorMessage: 'No files selected. Add a PDF or photo.' });
+      return;
+    }
+    set({ isRunning: true, runningSince: Date.now(), errorMessage: null });
 
     // Fire and forget — this promise runs independently of React
     (async () => {
@@ -129,8 +161,6 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
 
       try {
         // ── Free-tier cap: 1 lab upload per rolling 30 days ──
-        // Pro / comp users have no cap. Server-enforced — but we check client-side
-        // first so we never delete the user's files trying to upload over the cap.
         const profile = useAuthStore.getState().profile;
         const isPro = profile && (profile.subscriptionTier === 'pro' || profile.subscriptionTier === 'comp')
           && (profile.subscriptionStatus === 'active' || profile.subscriptionStatus === 'trialing');
@@ -139,21 +169,28 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
           const { count } = await supabase.from('lab_draws').select('id', { count: 'exact', head: true }).eq('user_id', userId).gte('created_at', thirtyDaysAgo);
           if ((count ?? 0) >= 1) {
             set({
-              phase: 'error', isRunning: false,
+              phase: 'error', isRunning: false, runningSince: null,
               errorMessage: 'Free plan includes 1 lab upload per month. Upgrade to Pro ($19/mo) for unlimited uploads, or redeem a code in Settings.',
             });
             return;
           }
         }
 
-        // 0. Ensure fresh auth session — critical for mobile where tokens go stale
+        // 0. Refresh auth session unconditionally. The #1 cause of silent
+        //    upload failure was a stale access_token rejected by storage.
         try {
-          const { data: { session: currentSession } } = await supabase.auth.getSession();
-          if (!currentSession) {
-            await supabase.auth.refreshSession();
-          }
+          await supabase.auth.refreshSession();
         } catch (authErr) {
-          console.error('[LabUpload] Auth refresh failed:', authErr);
+          console.warn('[LabUpload] Auth refresh failed (will use existing session):', authErr);
+        }
+        // Verify we have a session at all — without it storage uploads silently 401.
+        const { data: { session: verifySession } } = await supabase.auth.getSession();
+        if (!verifySession) {
+          set({
+            phase: 'error', isRunning: false, runningSince: null,
+            errorMessage: 'Your session has expired. Sign out and back in, then try again.',
+          });
+          return;
         }
 
         // 1. Upload PDFs to storage
@@ -198,7 +235,7 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
         set({ statusMessage: 'Identifying lab values...', progress: 55 });
 
         if (!textExtractionFailed && !anyLooksLikeLab) {
-          set({ phase: 'manual', statusMessage: `${plural ? "These files don't appear" : "This file doesn't appear"} to be standard lab reports. Please enter values manually.`, isRunning: false });
+          set({ phase: 'manual', statusMessage: `${plural ? "These files don't appear" : "This file doesn't appear"} to be standard lab reports. Please enter values manually.`, isRunning: false, runningSince: null });
           return;
         }
 
@@ -244,7 +281,7 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
           }
           if (allValues.length === 0 && pdfFiles.length === 0) {
             await supabase.from('lab_draws').delete().eq('id', draw.id);
-            set({ phase: 'error', errorMessage: `Could not read your photo. ${lastError ? `Error: ${lastError}` : 'Try a sharper, well-lit shot or upload a PDF.'}`, isRunning: false });
+            set({ phase: 'error', errorMessage: `Could not read your photo. ${lastError ? `Error: ${lastError}` : 'Try a sharper, well-lit shot or upload a PDF.'}`, isRunning: false, runningSince: null });
             return;
           }
         }
@@ -289,7 +326,7 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
           if (allValues.length === 0) {
             stopProgress();
             await supabase.from('lab_draws').delete().eq('id', draw.id);
-            set({ phase: 'error', errorMessage: `Could not extract lab values. ${lastError ? `Error: ${lastError}` : 'Try using manual entry.'}`, isRunning: false });
+            set({ phase: 'error', errorMessage: `Could not extract lab values. ${lastError ? `Error: ${lastError}` : 'Try using manual entry.'}`, isRunning: false, runningSince: null });
             return;
           }
         } else if (!textExtractionFailed && pdfFiles.length > 0) {
@@ -330,7 +367,7 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
         }
         if (!extraction.values?.length) {
           await supabase.from('lab_draws').delete().eq('id', draw.id);
-          set({ phase: 'manual', statusMessage: 'No valid lab values found. Please enter values manually.', isRunning: false });
+          set({ phase: 'manual', statusMessage: 'No valid lab values found. Please enter values manually.', isRunning: false, runningSince: null });
           return;
         }
         extraction.values = extraction.values.map(v => ({ ...v, id: crypto.randomUUID() }));
@@ -367,12 +404,12 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
         } catch (e) { console.warn('[LabUpload] Pre-review persist exception:', e); }
 
         stopProgress();
-        set({ extraction, phase: 'reviewing', statusMessage: `Found ${extraction.values.length} lab values${plural ? ` across ${fileCount} files` : ''}. Please review.`, progress: 90, isRunning: false });
+        set({ extraction, phase: 'reviewing', statusMessage: `Found ${extraction.values.length} lab values${plural ? ` across ${fileCount} files` : ''}. Please review.`, progress: 90, isRunning: false, runningSince: null });
       } catch (err) {
         stopProgress();
         const drawId = get().drawId;
         if (drawId) { try { await supabase.from('lab_draws').delete().eq('id', drawId); } catch {} }
-        set({ phase: 'error', errorMessage: String(err), isRunning: false });
+        set({ phase: 'error', errorMessage: String(err), isRunning: false, runningSince: null });
       }
     })();
   },
@@ -397,17 +434,14 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
         });
       });
 
-    // Fire-and-forget analysis trigger. Keepalive flag means this survives page
-    // navigation and tab close. Server runs to completion regardless of client.
-    const fireAnalysis = () => {
-      try {
-        fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-labs`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
-          body: JSON.stringify({ drawId, userId }),
-          keepalive: true,
-        }).catch(console.warn);
-      } catch (e) { console.warn('[LabUpload] analysis trigger threw:', e); }
+    // Reliable analysis trigger via shared helper — sends fresh JWT, retries
+    // on auth/network failure, returns ok=true even if the request is still
+    // in-flight at the 6s mark (the server-side function keeps running).
+    const fireAnalysis = async () => {
+      const result = await triggerAnalysis(drawId, userId);
+      if (!result.ok) {
+        console.warn('[LabUpload] analysis trigger failed after retries:', result.error);
+      }
     };
 
     (async () => {

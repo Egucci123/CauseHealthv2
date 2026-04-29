@@ -2,9 +2,25 @@
 import { useState, useEffect } from 'react';
 import { useProfile, useUpdateProfile } from '../../hooks/useProfile';
 import { useAuthStore } from '../../store/authStore';
-// supabase import removed — sign out now goes through authStore
 
-const GOALS = ['Weight Management', 'Energy Optimization', 'Autoimmune Support', 'Gut Health', 'Hormonal Balance', 'Cardiovascular Health', 'Cognitive Performance', 'Longevity', 'Athletic Recovery', 'Stress & Anxiety', 'Sleep Quality', 'Blood Sugar Control'];
+// Goals must match the canonical values from onboarding's Step6_Goals — those
+// snake_case keys are what generate-wellness-plan and generate-doctor-prep
+// expect. Previously this list used Title Case display labels which never
+// matched profile.primary_goals values, so chips always appeared unselected.
+const GOALS: { value: string; label: string }[] = [
+  { value: 'understand_labs', label: 'Understand my bloodwork' },
+  { value: 'energy',          label: 'Fix my energy' },
+  { value: 'off_medications', label: 'Reduce medications' },
+  { value: 'hair_regrowth',   label: 'Hair regrowth' },
+  { value: 'heart_health',    label: 'Heart health' },
+  { value: 'gut_health',      label: 'Gut health' },
+  { value: 'weight',          label: 'Lose weight' },
+  { value: 'hormones',        label: 'Balance hormones' },
+  { value: 'doctor_prep',     label: 'Doctor visit prep' },
+  { value: 'longevity',       label: 'Longevity' },
+  { value: 'autoimmune',      label: 'Autoimmune' },
+  { value: 'pain',            label: 'Reduce pain' },
+];
 
 export const ProfileSettings = () => {
   const { data: profile, isLoading } = useProfile();
@@ -43,7 +59,19 @@ export const ProfileSettings = () => {
       <div className="mb-6 border-b border-outline-variant/10 pb-6"><label className="text-precision text-[0.65rem] uppercase tracking-widest text-clinical-stone block mb-1.5">Date of Birth</label><input type="date" value={dob} onChange={e => setDob(e.target.value)} className="w-full bg-clinical-cream rounded-lg px-3 py-2.5 text-body text-sm text-clinical-charcoal focus:outline-none focus:ring-1 focus:ring-primary-container/30" /></div>
 
       <div className="mb-6"><label className="text-precision text-[0.65rem] uppercase tracking-widest text-clinical-stone block mb-3">Health Goals</label>
-        <div className="flex flex-wrap gap-2">{GOALS.map(g => <button key={g} onClick={() => toggleGoal(g)} className={`text-precision text-[0.65rem] uppercase tracking-wider px-3 py-1.5 transition-colors ${goals.includes(g) ? 'bg-primary-container text-white' : 'bg-clinical-cream text-clinical-stone hover:bg-[#E8E3DB]'}`} style={{ borderRadius: '2px' }}>{g}</button>)}</div>
+        <div className="flex flex-wrap gap-2">{GOALS.map(g => {
+          const selected = goals.includes(g.value);
+          return (
+            <button
+              key={g.value}
+              onClick={() => toggleGoal(g.value)}
+              className={`text-precision text-[0.65rem] uppercase tracking-wider px-3 py-1.5 transition-colors ${selected ? 'bg-primary-container text-white border border-primary-container' : 'bg-clinical-cream text-clinical-stone border border-transparent hover:bg-[#E8E3DB]'}`}
+              style={{ borderRadius: '2px' }}
+            >
+              {g.label}
+            </button>
+          );
+        })}</div>
       </div>
 
       <div className="flex items-center gap-3">

@@ -8,7 +8,7 @@ const NAV_ITEMS = [
   { label: 'Wellness Protocol', icon: 'favorite',      path: '/wellness' },
   { label: 'Medications',       icon: 'medication',    path: '/medications' },
   { label: 'Symptoms',          icon: 'monitor_heart', path: '/symptoms' },
-  { label: 'Clinical Prep',     icon: 'description',   path: '/doctor-prep' },
+  { label: 'Doctor Prep',       icon: 'description',   path: '/doctor-prep' },
   { label: 'Progress',          icon: 'trending_up',   path: '/progress' },
   { label: 'Glossary',          icon: 'menu_book',     path: '/glossary' },
   { label: 'Settings',          icon: 'settings',      path: '/settings' },

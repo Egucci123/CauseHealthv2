@@ -15,9 +15,15 @@ export const LabUpload = () => {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const user = useAuthStore(s => s.user);
-  const { phase, progress, statusMessage, drawId, extraction, errorMessage, completedDrawId, reset, startUpload, confirmAndAnalyze, resumeFromDraw } = useLabUploadStore();
+  const { phase, progress, statusMessage, drawId, extraction, errorMessage, completedDrawId, reset, startUpload, confirmAndAnalyze, resumeFromDraw, resetIfStale } = useLabUploadStore();
 
   const isActive = ['uploading', 'extracting', 'analyzing'].includes(phase);
+
+  // On mount: clear any stale 'running' state from a previous session that
+  // got hung. Without this the upload click silently no-ops.
+  useEffect(() => {
+    resetIfStale();
+  }, [resetIfStale]);
 
   // On mount, check for any in-flight draw and hydrate state from DB.
   // Fixes the "navigated away during review → came back to nothing" bug.

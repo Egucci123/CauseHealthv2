@@ -165,7 +165,7 @@ export function detectCriticalFindings(
   if (calcium && calcium.value > 11.5) {
     out.push({
       marker: calcium.marker_name ?? calcium.markerName ?? 'Calcium', value: calcium.value, unit: calcium.unit, severity: 'critical',
-      userMessage: 'Your calcium is significantly high — this needs urgent medical attention. See your doctor this week and bring your Clinical Prep.',
+      userMessage: 'Your calcium is significantly high — this needs urgent medical attention. See your doctor this week and bring your Doctor Prep.',
       doctorConcern: 'Hypercalcemia >11.5. Order ionized calcium, PTH, PTHrP, vitamin D 25-OH and 1,25, SPEP/UPEP/free light chains, urine calcium, TSH. Rule out primary hyperparathyroidism, malignancy (PTHrP-mediated), MGUS/myeloma, sarcoidosis, vitamin D toxicity, milk-alkali.',
       icd10: ['E83.52'],
     });
