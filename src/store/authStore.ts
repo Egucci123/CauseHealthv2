@@ -180,10 +180,35 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   },
 
   signOut: async () => {
-    await supabase.auth.signOut();
+    // Race the network call against a 2s timeout so a slow/dead connection
+    // can't trap the user logged in. Either way, blow away local state
+    // afterward — the server-side token is short-lived and harmless if it
+    // outlives the local session by a few seconds.
+    try {
+      await Promise.race([
+        supabase.auth.signOut(),
+        new Promise(resolve => setTimeout(resolve, 2000)),
+      ]);
+    } catch (e) {
+      console.warn('[auth] signOut network call failed:', e);
+    }
     get().clearAuth();
-    // Clear all other stores to prevent data leak between users
     useLabUploadStore.getState().reset();
+    // Nuke any lingering supabase session keys in localStorage. signOut()
+    // usually does this, but if it timed out or threw the keys can persist
+    // and the next page mount will rehydrate the dead session.
+    try {
+      for (const key of Object.keys(localStorage)) {
+        if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+          localStorage.removeItem(key);
+        }
+      }
+    } catch {}
+    // Hard-redirect to /login so the user sees an immediate response — no
+    // dependence on a route component re-rendering off the cleared state.
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login';
+    }
   },
 
   resetPassword: async (email) => {
