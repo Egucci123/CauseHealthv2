@@ -24,6 +24,13 @@ export const AuthCallback = () => {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
           await useAuthStore.getState().initialize();
+          // initialize() kicks fetchProfile fire-and-forget so the spinner
+          // doesn't block on slow profile reads. AuthCallback NEEDS the
+          // profile to know whether to route to /onboarding or /dashboard
+          // — so we explicitly await it here. Without this, returning users
+          // (profile.onboarding_completed === true) get routed to
+          // /onboarding because profile is still null when we check.
+          try { await useAuthStore.getState().fetchProfile(); } catch (e) { console.warn('[AuthCallback] fetchProfile failed:', e); }
           const profile = useAuthStore.getState().profile;
           navigate(profile?.onboardingCompleted ? '/dashboard' : '/onboarding', { replace: true });
           return;

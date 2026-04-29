@@ -156,6 +156,11 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       provider: 'google',
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
+        // ALWAYS show the Google account picker. Without this, Google
+        // silently auto-selects the most recently used account in the
+        // browser session — which surprises users who have multiple
+        // Google accounts. `prompt=select_account` forces the chooser.
+        queryParams: { prompt: 'select_account' },
       },
     });
     if (error) return { error: error.message };

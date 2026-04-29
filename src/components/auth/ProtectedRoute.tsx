@@ -57,8 +57,14 @@ export const ProtectedRoute = ({
 
 export const PublicOnlyRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isOnboarded, initialized } = useAuthStore();
+  const profile = useAuthStore(s => s.profile);
   if (!initialized) return <AuthLoading />;
   if (isAuthenticated) {
+    // Don't decide where to send the user until profile has loaded.
+    // Without this guard, isOnboarded reads from a null profile (false)
+    // and a returning user with onboarding_completed=true gets bounced
+    // to /onboarding instead of /dashboard.
+    if (!profile) return <AuthLoading />;
     return <Navigate to={isOnboarded ? '/dashboard' : '/onboarding'} replace />;
   }
 
