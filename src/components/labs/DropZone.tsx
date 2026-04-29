@@ -3,6 +3,7 @@ import { useCallback, useRef, useState } from 'react';
 import { useDropzone, type FileRejection } from 'react-dropzone';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '../ui/Button';
+import { logEvent } from '../../lib/clientLog';
 
 interface DropZoneProps { onFilesSelect: (files: File[]) => void; disabled?: boolean; }
 
@@ -21,6 +22,13 @@ export const DropZone = ({ onFilesSelect, disabled }: DropZoneProps) => {
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const onDrop = useCallback((acceptedFiles: File[], rejectedFiles: FileRejection[]) => {
+    logEvent('dropzone_drop', {
+      accepted_count: acceptedFiles.length,
+      rejected_count: rejectedFiles.length,
+      rejected_codes: rejectedFiles.map(r => r.errors[0]?.code),
+      file_names: acceptedFiles.map(f => f.name).slice(0, 10),
+      file_sizes: acceptedFiles.map(f => f.size),
+    });
     setError(null);
     if (rejectedFiles.length > 0) {
       const code = rejectedFiles[0].errors[0]?.code;
@@ -42,6 +50,11 @@ export const DropZone = ({ onFilesSelect, disabled }: DropZoneProps) => {
   const removeFile = (index: number) => setStagedFiles(prev => prev.filter((_, i) => i !== index));
 
   const handleUpload = () => {
+    logEvent('dropzone_upload_clicked', {
+      staged_count: stagedFiles.length,
+      disabled: !!disabled,
+      total_bytes: stagedFiles.reduce((s, f) => s + f.size, 0),
+    });
     if (stagedFiles.length > 0) { onFilesSelect(stagedFiles); setStagedFiles([]); }
   };
 

@@ -10,6 +10,7 @@ import { ReviewTable } from '../../components/labs/ReviewTable';
 import { ManualEntry } from '../../components/labs/ManualEntry';
 import { useLabUploadStore } from '../../store/labUploadStore';
 import { useAuthStore } from '../../store/authStore';
+import { logEvent } from '../../lib/clientLog';
 
 export const LabUpload = () => {
   const navigate = useNavigate();
@@ -19,15 +20,24 @@ export const LabUpload = () => {
 
   const isActive = ['uploading', 'extracting', 'analyzing'].includes(phase);
 
+  // Log every phase change so I can see the upload state machine in real time
+  useEffect(() => {
+    logEvent('labupload_phase', { phase, progress, statusMessage, drawId, completedDrawId });
+  }, [phase, progress, statusMessage, drawId, completedDrawId]);
+
   // On mount, check for any in-flight draw and hydrate state from DB.
   // Fixes the "navigated away during review → came back to nothing" bug.
   useEffect(() => {
     if (!user) return;
-    if (phase === 'idle') resumeFromDraw(user.id);
+    if (phase === 'idle') {
+      logEvent('labupload_resume_call', { userId: user.id });
+      resumeFromDraw(user.id);
+    }
   }, [user, phase, resumeFromDraw]);
 
   useEffect(() => {
     if (phase === 'complete' && completedDrawId) {
+      logEvent('labupload_redirect_to_detail', { completedDrawId });
       qc.invalidateQueries({ queryKey: ['labDraws'] });
       qc.invalidateQueries({ queryKey: ['latestLabDraw'] });
       qc.invalidateQueries({ queryKey: ['labValues'] });

@@ -14,6 +14,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useSubscription } from '../../lib/subscription';
+import { logEvent } from '../../lib/clientLog';
 
 const CATEGORY_ORDER = ['liver', 'cardiovascular', 'metabolic', 'kidney', 'thyroid', 'hormones', 'nutrients', 'cbc', 'inflammation', 'other'];
 const CATEGORY_LABELS: Record<string, string> = {
@@ -56,6 +57,12 @@ export const LabDetail = () => {
     },
   });
 
+  // Log LabDetail mount + drawId so I can trace 'wrong page on come-back' bugs
+  useEffect(() => {
+    logEvent('labdetail_mount', { drawId });
+    return () => { logEvent('labdetail_unmount', { drawId }); };
+  }, [drawId]);
+
   const { data, isLoading, isError } = useQuery({
     queryKey: ['lab-detail', drawId], enabled: !!drawId && !!user,
     queryFn: async () => {
@@ -64,10 +71,18 @@ export const LabDetail = () => {
         supabase.from('lab_draws').select('*').eq('id', drawId).eq('user_id', user.id).single(),
         supabase.from('lab_values').select('*').eq('draw_id', drawId).order('marker_category'),
       ]);
-      if (drawRes.error || !drawRes.data) throw new Error('Draw not found');
-      // Panel gaps stored in notes field (computed client-side), analysis in analysis_result (from AI)
+      if (drawRes.error || !drawRes.data) {
+        logEvent('labdetail_fetch_no_draw', { drawId, error: drawRes.error?.message });
+        throw new Error('Draw not found');
+      }
       let panelGaps: any[] = [];
       try { panelGaps = JSON.parse(drawRes.data.notes ?? '{}')?.panel_gaps ?? []; } catch {}
+      logEvent('labdetail_fetch_ok', {
+        drawId,
+        status: drawRes.data.processing_status,
+        has_analysis: !!drawRes.data.analysis_result,
+        values_count: valuesRes.data?.length ?? 0,
+      });
       return { draw: drawRes.data, values: valuesRes.data ?? [], analysis: drawRes.data.analysis_result, panelGaps };
     },
     staleTime: 0, refetchOnMount: 'always', refetchOnWindowFocus: true,
