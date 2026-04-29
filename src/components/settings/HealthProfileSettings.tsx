@@ -78,7 +78,7 @@ const MedicationsEditor = () => {
     setTimeout(() => setSaved(false), 2000);
   };
 
-  if (isLoading) return <div className="h-32 bg-[#E8E3DB] rounded-[10px] animate-pulse" />;
+  if (!savedMeds && isLoading) return <div className="h-32 bg-[#E8E3DB] rounded-[10px] animate-pulse" />;
 
   return (
     <div className="space-y-4">
@@ -201,7 +201,7 @@ const SymptomsEditor = () => {
     setTimeout(() => setSaved(false), 2000);
   };
 
-  if (isLoading) return <div className="h-32 bg-[#E8E3DB] rounded-[10px] animate-pulse" />;
+  if (!savedSymptoms && isLoading) return <div className="h-32 bg-[#E8E3DB] rounded-[10px] animate-pulse" />;
 
   return (
     <div className="space-y-4">
@@ -313,7 +313,7 @@ const ConditionsEditor = () => {
     setTimeout(() => setSaved(false), 2000);
   };
 
-  if (isLoading) return <div className="h-24 bg-[#E8E3DB] rounded-[10px] animate-pulse" />;
+  if (!savedConditions && isLoading) return <div className="h-24 bg-[#E8E3DB] rounded-[10px] animate-pulse" />;
 
   return (
     <div className="space-y-4">
@@ -401,7 +401,7 @@ const SupplementsEditor = () => {
     setTimeout(() => setSaved(false), 2000);
   };
 
-  if (isLoading) return <div className="h-32 bg-[#E8E3DB] rounded-[10px] animate-pulse" />;
+  if (!savedSupps && isLoading) return <div className="h-32 bg-[#E8E3DB] rounded-[10px] animate-pulse" />;
 
   return (
     <div className="space-y-4">

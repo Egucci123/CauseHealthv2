@@ -29,8 +29,9 @@ export const BiologicalAgeWidget = () => {
     ? computeBioAgeFromLabs(values, profile?.dateOfBirth, latestDraw.drawDate)
     : null;
 
-  // Loading state
-  if (loading) {
+  // Skeleton ONLY on true first load (no cached values yet). When we have
+  // cached values, render the result and let refetch happen silently.
+  if (!values && loading) {
     return (
       <div className="animate-pulse">
         <div className="h-3 bg-clinical-cream rounded-sm w-1/3 mb-4" />

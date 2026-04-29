@@ -27,7 +27,7 @@ export const ProfileSettings = () => {
     setSaved(true); setTimeout(() => setSaved(false), 3000);
   };
 
-  if (isLoading) return <div className="bg-clinical-white rounded-[10px] border-t-[3px] border-primary-container shadow-card p-6 animate-pulse">{[1,2,3].map(i => <div key={i} className="h-12 bg-[#E8E3DB] rounded mb-4" />)}</div>;
+  if (!profile && isLoading) return <div className="bg-clinical-white rounded-[10px] border-t-[3px] border-primary-container shadow-card p-6 animate-pulse">{[1,2,3].map(i => <div key={i} className="h-12 bg-[#E8E3DB] rounded mb-4" />)}</div>;
 
   return (
     <div className="bg-clinical-white rounded-[10px] border-t-[3px] border-primary-container shadow-card p-6">

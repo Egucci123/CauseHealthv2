@@ -13,7 +13,9 @@ export const LabsIndex = () => {
   const { data: latest, isLoading: latestLoading } = useLatestLabDraw();
   const { data: allDraws, isLoading: drawsLoading } = useLabDraws();
 
-  if (latestLoading || drawsLoading) {
+  // Skeleton only when neither query has any cached data (true first load).
+  // If we have either cached, navigate immediately based on what's cached.
+  if (!latest && !allDraws && (latestLoading || drawsLoading)) {
     return (
       <AppShell pageTitle="Lab Analytics">
         <div className="space-y-4">
