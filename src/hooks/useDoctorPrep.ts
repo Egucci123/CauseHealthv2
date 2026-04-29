@@ -81,9 +81,19 @@ export function useGenerateDoctorPrep() {
     lastGenerationTime = Date.now();
     setGenerating(true);
 
+    // Grab the user's JWT for the Authorization header. Without this, the
+    // edge function returns 401 and the button does nothing — same auth
+    // pattern as generate-wellness-plan and analyze-labs.
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
+
     activeGeneration = fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-doctor-prep`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${token}`,
+      },
       body: JSON.stringify({ userId }),
     }).then(async (res) => {
       const data = await res.json();
