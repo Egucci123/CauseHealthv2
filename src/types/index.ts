@@ -6,6 +6,24 @@ export type SubscriptionTier = 'free' | 'pro' | 'comp';
 export type SubscriptionStatus = 'inactive' | 'active' | 'past_due' | 'canceled' | 'trialing';
 export type Sex = 'male' | 'female' | 'other';
 
+export interface FamilyHistory {
+  heartDisease?: boolean;
+  diabetes?: boolean;
+  autoimmune?: boolean;
+  cancer?: boolean;
+  earlyDeath?: boolean;
+  highCholesterol?: boolean;
+}
+
+export interface LifestyleData {
+  primaryStressors?: string[];
+  stressManagement?: string[];
+  waterSource?: string;
+  cookingVessels?: string[];
+  moldHistory?: boolean;
+  smoker?: 'never' | 'former' | 'current';
+}
+
 export interface Profile {
   id:                   string;
   createdAt:            string;
@@ -22,6 +40,13 @@ export interface Profile {
   compCodeUsed:         string | null;
   onboardingCompleted:  boolean;
   primaryGoals:         string[] | null;
+  // Onboarding context (added 2026-04-29) — used by AI prompts for personalization
+  familyHistory:        FamilyHistory | null;
+  geneticTesting:       string | null;
+  lifestyle:            LifestyleData | null;
+  specificConcern:      string | null;
+  triedBefore:          string | null;
+  hearAboutUs:          string | null;
 }
 
 export interface AuthError {

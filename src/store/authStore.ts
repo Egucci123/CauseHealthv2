@@ -213,6 +213,12 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
           compCodeUsed:         data.comp_code_used ?? null,
           onboardingCompleted:  data.onboarding_completed,
           primaryGoals:         data.primary_goals,
+          familyHistory:        data.family_history ?? null,
+          geneticTesting:       data.genetic_testing ?? null,
+          lifestyle:            data.lifestyle ?? null,
+          specificConcern:      data.specific_concern ?? null,
+          triedBefore:          data.tried_before ?? null,
+          hearAboutUs:          data.hear_about_us ?? null,
         },
       });
     }

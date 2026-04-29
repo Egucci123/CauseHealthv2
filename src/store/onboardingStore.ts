@@ -224,6 +224,13 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
     }
     if (profile?.weightKg) updates.weightLbs = String(Math.round(profile.weightKg / 0.453592));
     if (profile?.primaryGoals && profile.primaryGoals.length > 0) updates.primaryGoals = profile.primaryGoals;
+    // Restore the rest of the onboarding context too
+    if (profile?.familyHistory) updates.familyHistory = profile.familyHistory as any;
+    if (profile?.geneticTesting) updates.geneticTesting = profile.geneticTesting as any;
+    if (profile?.lifestyle) updates.lifestyle = profile.lifestyle as any;
+    if (profile?.specificConcern) updates.specificConcern = profile.specificConcern;
+    if (profile?.triedBefore) updates.triedBefore = profile.triedBefore;
+    if (profile?.hearAboutUs) updates.hearAboutUs = profile.hearAboutUs;
 
     // Determine which step to resume at — only skip forward if later steps have data
     let resumeStep = 1;
@@ -390,6 +397,15 @@ async function autoSaveToDB() {
     if (heightCm) profileData.height_cm = heightCm;
     if (weightKg) profileData.weight_kg = weightKg;
     if (state.primaryGoals && state.primaryGoals.length > 0) profileData.primary_goals = state.primaryGoals;
+    // Newly-saved onboarding context (added 2026-04-29 — were collected but
+    // never persisted, breaking AI prompts that need family history / lifestyle).
+    const fh = state.familyHistory;
+    if (fh && Object.values(fh).some(Boolean)) profileData.family_history = fh;
+    if (state.geneticTesting) profileData.genetic_testing = state.geneticTesting;
+    if (state.lifestyle && Object.keys(state.lifestyle).length > 0) profileData.lifestyle = state.lifestyle;
+    if (state.specificConcern) profileData.specific_concern = state.specificConcern;
+    if (state.triedBefore) profileData.tried_before = state.triedBefore;
+    if (state.hearAboutUs) profileData.hear_about_us = state.hearAboutUs;
 
     if (Object.keys(profileData).length > 0) {
       const r = await withTimeout(
@@ -517,7 +533,13 @@ useOnboardingStore.subscribe((state, prevState) => {
     state.conditions.length !== prevState.conditions.length ||
     state.medications.length !== prevState.medications.length ||
     state.symptoms.length !== prevState.symptoms.length ||
-    state.supplements.length !== prevState.supplements.length;
+    state.supplements.length !== prevState.supplements.length ||
+    JSON.stringify(state.familyHistory) !== JSON.stringify(prevState.familyHistory) ||
+    state.geneticTesting !== prevState.geneticTesting ||
+    JSON.stringify(state.lifestyle) !== JSON.stringify(prevState.lifestyle) ||
+    state.specificConcern !== prevState.specificConcern ||
+    state.triedBefore !== prevState.triedBefore ||
+    state.hearAboutUs !== prevState.hearAboutUs;
   const stepChanged = state.currentStep !== prevState.currentStep;
 
   if (dataChanged || stepChanged) {
