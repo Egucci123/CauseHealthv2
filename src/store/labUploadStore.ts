@@ -304,14 +304,23 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
             return;
           }
         } else if (!textExtractionFailed && pdfFiles.length > 0) {
-          // Text extraction worked — send combined text in one call
+          // Text extraction worked — send combined text in one call.
+          // 90s ceiling on the invoke so cold-start hangs surface as a real
+          // error instead of leaving the UI sitting at 65% forever.
           set({ statusMessage: 'Analyzing lab values...', progress: 55 });
-          startProgress(set, 55, 85, 30000); // Animate 55→85% over ~30s (text path is faster)
+          startProgress(set, 55, 85, 30000);
           const maxChars = Math.min(fileCount * 12000, 24000);
 
-          const { data: textData, error: textErr } = await supabase.functions.invoke('extract-labs', {
+          const invokeP = supabase.functions.invoke('extract-labs', {
             body: { pdfText: combinedText.slice(0, maxChars) },
           });
+          const timeoutP = new Promise<{ data: null; error: { message: string } }>(
+            (resolve) => setTimeout(
+              () => resolve({ data: null, error: { message: 'Extraction timed out after 90s. The AI service may be cold-starting — try again in 30 seconds.' } }),
+              90_000
+            )
+          );
+          const { data: textData, error: textErr } = await Promise.race([invokeP, timeoutP]) as any;
           stopProgress();
           if (textErr) {
             let detail = textErr.message;
