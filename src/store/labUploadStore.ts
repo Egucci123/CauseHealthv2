@@ -364,32 +364,31 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
           }
         } else if (!textExtractionFailed && pdfFiles.length > 0) {
           // Text extraction worked — send combined text in one call.
-          // 90s ceiling on the invoke so cold-start hangs surface as a real
-          // error instead of leaving the UI sitting at 65% forever.
+          // RESTORED to the simple version from 85d3191 (which worked). The
+          // Promise.race timeout wrapper added in d874b4c was causing the hangs.
           set({ statusMessage: 'Analyzing lab values...', progress: 55 });
           startProgress(set, 55, 85, 30000);
           const maxChars = Math.min(fileCount * 12000, 24000);
 
-          const invokeP = supabase.functions.invoke('extract-labs', {
+          const extractStart = Date.now();
+          const { data: textData, error: textErr } = await supabase.functions.invoke('extract-labs', {
             body: { pdfText: combinedText.slice(0, maxChars) },
           });
-          const timeoutP = new Promise<{ data: null; error: { message: string } }>(
-            (resolve) => setTimeout(
-              () => resolve({ data: null, error: { message: 'Extraction timed out after 90s. The AI service may be cold-starting — try again in 30 seconds.' } }),
-              90_000
-            )
-          );
-          const { data: textData, error: textErr } = await Promise.race([invokeP, timeoutP]) as any;
+          logEvent('extract_labs_returned', {
+            duration_ms: Date.now() - extractStart,
+            has_values: Array.isArray((textData as any)?.values),
+            err: textErr?.message ?? null,
+          });
           stopProgress();
           if (textErr) {
             let detail = textErr.message;
             try { const ctx = (textErr as any).context; if (ctx instanceof Response) { const t = await ctx.json(); detail = t?.error || t?.detail || JSON.stringify(t); } } catch {}
             throw new Error(`Extraction failed: ${detail}`);
           }
-          if (Array.isArray(textData?.values)) allValues.push(...textData.values);
-          if (textData?.draw_date && !extractedDrawDate) extractedDrawDate = textData.draw_date;
-          if (textData?.lab_name && !extractedLabName) extractedLabName = textData.lab_name;
-          if (textData?.ordering_provider && !extractedProvider) extractedProvider = textData.ordering_provider;
+          if (Array.isArray((textData as any)?.values)) allValues.push(...(textData as any).values);
+          if ((textData as any)?.draw_date && !extractedDrawDate) extractedDrawDate = (textData as any).draw_date;
+          if ((textData as any)?.lab_name && !extractedLabName) extractedLabName = (textData as any).lab_name;
+          if ((textData as any)?.ordering_provider && !extractedProvider) extractedProvider = (textData as any).ordering_provider;
         }
 
         // Build extraction result from merged values
