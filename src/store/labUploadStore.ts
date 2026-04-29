@@ -156,11 +156,21 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
           }
         }
 
-        // 0. Ensure fresh auth session — critical for mobile where tokens go stale
+        // 0. Ensure fresh auth session — critical for mobile where tokens go stale.
+        // Log session state so we can tell from the console whether RLS will fail.
         try {
           const { data: { session: currentSession } } = await supabase.auth.getSession();
+          console.log('[LabUpload] Session before upload:', {
+            hasSession: !!currentSession,
+            userId: currentSession?.user?.id,
+            expectedUserId: userId,
+            tokenExpiresAt: currentSession?.expires_at,
+          });
           if (!currentSession) {
+            console.warn('[LabUpload] No session — attempting refresh');
             await supabase.auth.refreshSession();
+          } else if (currentSession.user.id !== userId) {
+            console.error('[LabUpload] Session userId MISMATCH with arg userId — RLS will fail');
           }
         } catch (authErr) {
           console.error('[LabUpload] Auth refresh failed:', authErr);
@@ -176,13 +186,25 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
           storagePaths.push(fileName);
         }
         set({ statusMessage: `${plural ? 'All files' : 'File'} received securely.`, progress: 20 });
+        console.log('[LabUpload] Storage upload complete, paths:', storagePaths);
 
-        // 2. Create lab_draws record
-        const { data: draw, error: drawErr } = await supabase.from('lab_draws').insert({
+        // 2. Create lab_draws record — 15s timeout so a hung insert surfaces
+        // a real error instead of leaving the UI frozen at 20%/0%.
+        console.log('[LabUpload] Inserting lab_draws row...');
+        const insertP = supabase.from('lab_draws').insert({
           user_id: userId, raw_pdf_url: storagePaths[0], processing_status: 'processing',
           draw_date: new Date().toISOString().split('T')[0],
         }).select().single();
-        if (drawErr || !draw) throw new Error('Failed to create lab record');
+        const insertTimeoutP = new Promise<{ data: null; error: { message: string } }>(
+          (resolve) => setTimeout(
+            () => resolve({ data: null, error: { message: 'Database insert timed out (15s). Check your connection and refresh.' } }),
+            15_000
+          )
+        );
+        const { data: draw, error: drawErr } = await Promise.race([insertP, insertTimeoutP]) as any;
+        console.log('[LabUpload] Insert result:', { draw, drawErr });
+        if (drawErr) throw new Error(`Failed to create lab record: ${drawErr.message}`);
+        if (!draw) throw new Error('Failed to create lab record (no row returned — RLS may have blocked the read after insert)');
         set({ drawId: draw.id });
 
         // 3. Try client-side text extraction first (PDFs only)
