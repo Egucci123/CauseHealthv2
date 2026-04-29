@@ -77,9 +77,21 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
         .eq('draw_id', draw.id);
 
       if (!vals || vals.length === 0) {
-        // No values saved → upload itself was interrupted before extraction finished.
-        // Cleanup the orphan draw so the user can start fresh.
-        await supabase.from('lab_draws').delete().eq('id', draw.id);
+        // No values yet — extraction was either still in flight when the user
+        // refreshed (Claude cold start can take 60-90s) or genuinely failed.
+        // DO NOT delete the orphan draw blindly — that nukes the user's work.
+        // Show a manual-entry option since automated extraction didn't finish.
+        // The PDFs are still in storage; user can also re-trigger extraction
+        // via a Retry button (added below in the UI).
+        logEvent('resume_orphan_draw_found', { draw_id: draw.id, age_minutes: Math.floor((Date.now() - new Date(draw.created_at).getTime()) / 60_000) });
+        set({
+          phase: 'manual',
+          drawId: draw.id,
+          extraction: null,
+          isRunning: false,
+          errorMessage: null,
+          statusMessage: 'Extraction was interrupted. You can enter values manually below — your uploaded files are still saved.',
+        });
         return;
       }
 
@@ -145,7 +157,7 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
     (async () => {
       const fileCount = files.length;
       const plural = fileCount > 1;
-      set({ phase: 'uploading', progress: 0, statusMessage: `[v623] Uploading ${fileCount} file${plural ? 's' : ''} to secure storage...`, errorMessage: null });
+      set({ phase: 'uploading', progress: 0, statusMessage: `Uploading ${fileCount} file${plural ? 's' : ''} to secure storage...`, errorMessage: null });
 
       try {
         // ── Free-tier cap: 1 lab upload per rolling 30 days ──
@@ -292,8 +304,12 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
             }
           }
           if (allValues.length === 0 && pdfFiles.length === 0) {
-            await supabase.from('lab_draws').delete().eq('id', draw.id);
-            set({ phase: 'error', errorMessage: `Could not read your photo. ${lastError ? `Error: ${lastError}` : 'Try a sharper, well-lit shot or upload a PDF.'}`, isRunning: false });
+            // Image extraction failed AND no PDFs to fall back on. Keep the
+            // draw + photos in storage so the user can retry or enter manually.
+            set({
+              phase: 'manual', drawId: draw.id, isRunning: false,
+              statusMessage: `Could not read your photo. ${lastError ? `Error: ${lastError}. ` : ''}Enter values manually below — your photo is saved.`,
+            });
             return;
           }
         }
@@ -337,8 +353,13 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
 
           if (allValues.length === 0) {
             stopProgress();
-            await supabase.from('lab_draws').delete().eq('id', draw.id);
-            set({ phase: 'error', errorMessage: `Could not extract lab values. ${lastError ? `Error: ${lastError}` : 'Try using manual entry.'}`, isRunning: false });
+            // PDF Claude extraction returned nothing after retries. Keep the
+            // draw + uploaded PDFs so the user can switch to manual entry
+            // without re-uploading the same files.
+            set({
+              phase: 'manual', drawId: draw.id, isRunning: false,
+              statusMessage: `Could not auto-extract values. ${lastError ? `Error: ${lastError}. ` : ''}Enter values manually below — your PDFs are saved.`,
+            });
             return;
           }
         } else if (!textExtractionFailed && pdfFiles.length > 0) {
@@ -387,8 +408,12 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
           });
         }
         if (!extraction.values?.length) {
-          await supabase.from('lab_draws').delete().eq('id', draw.id);
-          set({ phase: 'manual', statusMessage: 'No valid lab values found. Please enter values manually.', isRunning: false });
+          // Extracted but all values were invalid (zero/null/missing marker name).
+          // Keep the draw + PDFs so the user can recover via manual entry.
+          set({
+            phase: 'manual', drawId: draw.id, isRunning: false,
+            statusMessage: 'No valid lab values found. Please enter values manually — your PDFs are saved.',
+          });
           return;
         }
         extraction.values = extraction.values.map(v => ({ ...v, id: crypto.randomUUID() }));
@@ -434,8 +459,19 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
           stack: err?.stack?.slice(0, 1000) ?? null,
           had_draw: !!drawId,
         });
-        if (drawId) { try { await supabase.from('lab_draws').delete().eq('id', drawId); } catch {} }
-        set({ phase: 'error', errorMessage: String(err), isRunning: false });
+        // DO NOT delete the draw on extraction failure — the user's PDFs are
+        // already in storage and the lab_draws row has the right user_id +
+        // raw_pdf_url. They can switch to manual entry, retry extraction, or
+        // we can resume on next visit. Deleting was destroying their work.
+        if (drawId) {
+          set({
+            phase: 'manual', drawId, extraction: null, isRunning: false,
+            errorMessage: null,
+            statusMessage: `Extraction hit an error: ${String(err).slice(0, 120)}. Your files are saved — enter values manually below or refresh to retry.`,
+          });
+        } else {
+          set({ phase: 'error', errorMessage: String(err), isRunning: false });
+        }
       }
     })();
   },

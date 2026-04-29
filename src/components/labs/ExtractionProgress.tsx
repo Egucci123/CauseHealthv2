@@ -11,8 +11,13 @@ export const ExtractionProgress = ({ phase, message, progress }: ExtractionProgr
   // were happening. Now the message reflects the actual state.
   const displayMessage = message || `${phase}...`;
 
-  // Watchdog: if progress hasn't moved in 30s, surface a "stuck" hint so the
-  // user can refresh and retry instead of waiting forever on a frozen UI.
+  // Watchdog: if progress hasn't moved for a phase-appropriate duration,
+  // surface a "stuck" hint. Different phases legitimately take different
+  // times — extracting/analyzing involves a Claude API call that can run
+  // 30-90s, so we don't want to mislabel that as "stuck."
+  //   uploading -> 45s (storage uploads should be fast)
+  //   extracting / analyzing -> 120s (AI calls are slow)
+  const stuckThresholdMs = phase === 'uploading' ? 45_000 : 120_000;
   const [stuck, setStuck] = useState(false);
   const lastProgress = useRef(progress);
   const lastChange = useRef(Date.now());
@@ -23,10 +28,10 @@ export const ExtractionProgress = ({ phase, message, progress }: ExtractionProgr
       setStuck(false);
     }
     const id = setInterval(() => {
-      if (Date.now() - lastChange.current > 30_000) setStuck(true);
+      if (Date.now() - lastChange.current > stuckThresholdMs) setStuck(true);
     }, 5000);
     return () => clearInterval(id);
-  }, [progress]);
+  }, [progress, stuckThresholdMs]);
 
   return (
     <div className="flex flex-col items-center py-12 px-6 text-center">
