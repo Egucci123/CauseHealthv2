@@ -10,6 +10,7 @@ import { queryClient } from './lib/queryClient';
 import { logEvent, setLogUserId } from './lib/clientLog';
 import { supabase } from './lib/supabase';
 import { NewVersionBanner } from './components/layout/NewVersionBanner';
+import { DebugOverlay } from './components/layout/DebugOverlay';
 import './index.css';
 
 // ── Wire user id into telemetry as soon as auth resolves ──
@@ -97,6 +98,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <App />
         </AuthInitializer>
         <NewVersionBanner />
+        <DebugOverlay />
       </BrowserRouter>
       {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
     </QueryClientProvider>

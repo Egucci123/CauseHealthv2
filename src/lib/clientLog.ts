@@ -22,8 +22,20 @@ export function setLogUserId(userId: string | null) {
   logEvent('log_user_set', { userId });
 }
 
+// In-memory ring buffer of recent events — exposed to window so a debug
+// overlay (or just devtools) can read it without needing the DB.
+type LocalEvent = { t: string; event: string; payload?: any };
+const localEvents: LocalEvent[] = [];
+declare global { interface Window { __chEvents: LocalEvent[]; __chLast?: any } }
+if (typeof window !== 'undefined') window.__chEvents = localEvents;
+
 export function logEvent(event: string, payload?: Record<string, unknown>) {
   try {
+    // Always push to in-memory ring buffer (last 50) — even if DB insert fails
+    localEvents.push({ t: new Date().toISOString().slice(11, 23), event, payload });
+    if (localEvents.length > 50) localEvents.shift();
+    if (typeof window !== 'undefined') window.__chLast = { event, payload, at: Date.now() };
+
     const row = {
       user_id: cachedUserId,
       event,
@@ -32,10 +44,17 @@ export function logEvent(event: string, payload?: Record<string, unknown>) {
       url: typeof window !== 'undefined' ? window.location.pathname + window.location.search : null,
     };
     supabase.from('client_events').insert(row).then((res) => {
-      if (res.error && import.meta.env.DEV) console.warn('[clientLog] write failed:', res.error.message);
+      if (res.error) {
+        // Push the FAILURE itself to the ring buffer too so the overlay can show it
+        localEvents.push({ t: new Date().toISOString().slice(11, 23), event: 'log_write_failed', payload: { for: event, error: res.error.message } });
+        if (import.meta.env.DEV) console.warn('[clientLog] write failed:', res.error.message);
+      }
+    }, (err) => {
+      localEvents.push({ t: new Date().toISOString().slice(11, 23), event: 'log_write_threw', payload: { for: event, error: String(err).slice(0, 200) } });
     });
     if (import.meta.env.DEV) console.log(`[evt] ${event}`, payload ?? '');
   } catch (e) {
+    localEvents.push({ t: new Date().toISOString().slice(11, 23), event: 'log_threw', payload: { for: event, error: String(e).slice(0, 200) } });
     if (import.meta.env.DEV) console.warn('[clientLog] threw:', e);
   }
 }
