@@ -66,15 +66,11 @@ export const NewVersionBanner = () => {
     };
   }, [buildVersion]);
 
-  // Auto-reload after 60s if user doesn't click the button
-  useEffect(() => {
-    if (!newVersionAvailable) return;
-    const timer = setTimeout(() => {
-      logEvent('new_version_auto_reload', { current: buildVersion, latest: serverVersion });
-      hardReload();
-    }, AUTO_RELOAD_AFTER_MS);
-    return () => clearTimeout(timer);
-  }, [newVersionAvailable, buildVersion, serverVersion]);
+  // Auto-reload was kicking users back to /login (session race during hard
+  // reload) — disabled. User must click the button explicitly. The banner
+  // stays visible until they do.
+  // Reference for telemetry only:
+  void AUTO_RELOAD_AFTER_MS;
 
   if (!newVersionAvailable) return null;
 

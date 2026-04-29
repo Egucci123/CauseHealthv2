@@ -50,11 +50,29 @@ export const DropZone = ({ onFilesSelect, disabled }: DropZoneProps) => {
   const removeFile = (index: number) => setStagedFiles(prev => prev.filter((_, i) => i !== index));
 
   const handleUpload = () => {
-    logEvent('dropzone_upload_clicked', {
-      staged_count: stagedFiles.length,
-      disabled: !!disabled,
-      total_bytes: stagedFiles.reduce((s, f) => s + f.size, 0),
-    });
+    // Belt-and-suspenders: log via clientLog AND directly to console AND to
+    // a window-level marker so we have THREE ways to verify this fired.
+    try {
+      logEvent('dropzone_upload_clicked', {
+        staged_count: stagedFiles.length,
+        disabled: !!disabled,
+        total_bytes: stagedFiles.reduce((s, f) => s + f.size, 0),
+        file_names: stagedFiles.map(f => f.name).slice(0, 10),
+      });
+    } catch (e) {
+      // Fallback: write directly to client_events even if logEvent throws
+      try {
+        // @ts-ignore
+        if (window.__chEvents) window.__chEvents.push({
+          t: new Date().toISOString().slice(11, 23),
+          event: 'dropzone_upload_clicked_fallback',
+          payload: { staged_count: stagedFiles.length, error: String(e).slice(0, 100) },
+        });
+      } catch {}
+    }
+    // @ts-ignore — set window marker so I can poll it
+    (window as any).__lastUploadClick = { at: Date.now(), count: stagedFiles.length };
+    console.log('[DropZone] handleUpload called', { staged: stagedFiles.length, disabled });
     if (stagedFiles.length > 0) { onFilesSelect(stagedFiles); setStagedFiles([]); }
   };
 

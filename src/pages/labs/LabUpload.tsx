@@ -29,11 +29,24 @@ export const LabUpload = () => {
   // Fixes the "navigated away during review → came back to nothing" bug.
   useEffect(() => {
     if (!user) return;
+    // STALE STATE GUARD: zustand store state persists at module level. If
+    // the page mounts with an in-progress phase (uploading/extracting/
+    // analyzing) but isRunning is false, that's STALE state from a stuck
+    // attempt. The actual upload isn't running anymore. Reset to idle and
+    // let resumeFromDraw decide what to show based on DB state.
+    const { isRunning, phase: currentPhase } = useLabUploadStore.getState();
+    const inProgressPhase = ['uploading', 'extracting', 'analyzing'].includes(currentPhase);
+    if (inProgressPhase && !isRunning) {
+      logEvent('labupload_stale_state_reset', { stalePhase: currentPhase });
+      reset();
+      // After reset, useEffect will re-fire with phase='idle' and call resume
+      return;
+    }
     if (phase === 'idle') {
       logEvent('labupload_resume_call', { userId: user.id });
       resumeFromDraw(user.id);
     }
-  }, [user, phase, resumeFromDraw]);
+  }, [user, phase, resumeFromDraw, reset]);
 
   useEffect(() => {
     if (phase === 'complete' && completedDrawId) {
@@ -50,7 +63,15 @@ export const LabUpload = () => {
   }, [phase, completedDrawId, navigate, qc]);
 
   const handleUpload = (files: File[]) => {
-    if (!user) return;
+    logEvent('labupload_handle_called', {
+      file_count: files.length,
+      has_user: !!user,
+      user_id: user?.id ?? null,
+    });
+    if (!user) {
+      logEvent('labupload_handle_blocked_no_user', {});
+      return;
+    }
     startUpload(files, user.id);
   };
 
