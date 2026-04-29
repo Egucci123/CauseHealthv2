@@ -1,4 +1,4 @@
-const CACHE_NAME = 'causehealth-v2';
+const CACHE_NAME = 'causehealth-v5-safe-fallback';
 
 // Install — skip waiting to activate immediately
 self.addEventListener('install', (event) => {
@@ -23,37 +23,57 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch — NETWORK FIRST for everything
-// Vite already content-hashes JS/CSS filenames, so browser cache handles assets.
-// The service worker should never serve stale JS — that blocks deployed fixes.
+// Always-return-a-Response helper. caches.match() resolves to undefined on miss,
+// and passing undefined to respondWith() throws "Failed to convert value to
+// 'Response'", which crashes the page load. Friend's iPhone hit this on first
+// visit (empty cache + flaky cell network).
+async function safeNetworkFirst(request, navFallback) {
+  try {
+    const response = await fetch(request);
+    // Only cache certain types
+    if (response.ok && (request.mode === 'navigate' ||
+        request.destination === 'script' ||
+        request.destination === 'style' ||
+        request.destination === 'font')) {
+      try {
+        const cache = await caches.open(CACHE_NAME);
+        cache.put(request, response.clone());
+      } catch (_) { /* cache full / opaque — ignore */ }
+    }
+    return response;
+  } catch (_) {
+    // Network failed — try cache
+    const cached = await caches.match(request);
+    if (cached) return cached;
+    if (navFallback) {
+      const fallback = await caches.match(navFallback);
+      if (fallback) return fallback;
+    }
+    // Last resort — never return undefined to respondWith()
+    return new Response(
+      'Network error and no cached copy available. Refresh to retry.',
+      { status: 503, statusText: 'Service Unavailable',
+        headers: { 'Content-Type': 'text/plain' } }
+    );
+  }
+}
+
 self.addEventListener('fetch', (event) => {
   const { request } = event;
 
-  // Navigation requests — network first, fall back to cache
+  // Skip non-GET (POST/PUT can't be cached anyway, just let them passthrough)
+  if (request.method !== 'GET') return;
+
+  // Skip cross-origin requests entirely — Supabase, Anthropic, Stripe, etc.
+  // The SW shouldn't intercept third-party APIs. Letting them passthrough
+  // also fixes the missing-apikey errors on Supabase REST calls.
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin) return;
+
   if (request.mode === 'navigate') {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-          return response;
-        })
-        .catch(() => caches.match('/index.html'))
-    );
+    event.respondWith(safeNetworkFirst(request, '/index.html'));
     return;
   }
 
-  // Everything else — network first, cache fallback for offline
-  event.respondWith(
-    fetch(request)
-      .then((response) => {
-        // Only cache successful responses for offline fallback
-        if (response.ok && (request.destination === 'script' || request.destination === 'style' || request.destination === 'font')) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-        }
-        return response;
-      })
-      .catch(() => caches.match(request))
-  );
+  event.respondWith(safeNetworkFirst(request, null));
 });

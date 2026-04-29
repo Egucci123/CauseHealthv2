@@ -40,12 +40,16 @@ export function useLabDraws() {
     },
   });
 
-  // Realtime: invalidate the list any time the user's lab_draws change
-  // (status flip from processing -> complete is what we care about most).
+  // Realtime: invalidate the list any time the user's lab_draws change.
+  // Channel name MUST be unique per mount — supabase.channel('name') returns
+  // an existing instance if the name matches, and calling .on() on an already
+  // -subscribed channel throws "cannot add postgres_changes after subscribe()".
+  // React strict-mode double-effect was reusing the channel and crashing.
   useEffect(() => {
     if (!user?.id) return;
+    const uniqueId = `lab-draws-list-${user.id}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
     const channel = supabase
-      .channel(`lab-draws-list-${user.id}`)
+      .channel(uniqueId)
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'lab_draws', filter: `user_id=eq.${user.id}` },
         () => {

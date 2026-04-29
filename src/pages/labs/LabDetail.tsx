@@ -80,12 +80,13 @@ export const LabDetail = () => {
   });
 
   // ── Realtime subscription: flip the moment the row updates server-side ──
-  // No more waiting for the next poll cycle. If the channel can't connect,
-  // the 2s poll above is the fallback so UX still works.
+  // Unique channel name per mount — re-using a name returns an existing
+  // channel and calling .on() after .subscribe() throws on second mount.
   useEffect(() => {
     if (!drawId || !user) return;
+    const uniqueId = `lab-draw-${drawId}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
     const channel = supabase
-      .channel(`lab-draw-${drawId}`)
+      .channel(uniqueId)
       .on('postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'lab_draws', filter: `id=eq.${drawId}` },
         () => { qc.invalidateQueries({ queryKey: ['lab-detail', drawId] }); }
