@@ -25,11 +25,31 @@ supabase.auth.getSession().then(({ data: { session } }) => {
   }
 });
 
-// Logs every client-side navigation. Lives inside the Router so useLocation works.
+// Logs every client-side navigation AND snapshots what actually rendered
+// 600ms later — so I can detect "URL changed but the wrong page is showing".
 const RouteLogger = () => {
   const loc = useLocation();
   React.useEffect(() => {
     logEvent('route_change', { pathname: loc.pathname, search: loc.search });
+    // Snapshot DOM after React has rendered so we capture what the user sees
+    const timer = setTimeout(() => {
+      try {
+        const h1 = document.querySelector('h1')?.textContent?.trim().slice(0, 80) || null;
+        const h2 = document.querySelector('h2')?.textContent?.trim().slice(0, 80) || null;
+        const hasSkeleton = !!document.querySelector('[class*="skeleton" i], [class*="animate-pulse"]');
+        const visibleButtons = document.querySelectorAll('button:not([disabled]), a[href]').length;
+        const bodyText = (document.body?.innerText || '').slice(0, 300).replace(/\s+/g, ' ');
+        logEvent('page_snapshot', {
+          pathname: loc.pathname,
+          title: document.title?.slice(0, 80) ?? null,
+          h1, h2,
+          has_skeleton: hasSkeleton,
+          visible_buttons: visibleButtons,
+          body_preview: bodyText,
+        });
+      } catch {}
+    }, 600);
+    return () => clearTimeout(timer);
   }, [loc.pathname, loc.search]);
   return null;
 };

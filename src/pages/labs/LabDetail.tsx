@@ -94,6 +94,31 @@ export const LabDetail = () => {
     },
   });
 
+  // Log every render-state change — what's actually on screen for this drawId.
+  // Catches "URL says /labs/abc but the page is showing X" by capturing the
+  // intended view state. Combined with page_snapshot (DOM heading) from
+  // RouteLogger, I can compare intended vs rendered.
+  useEffect(() => {
+    if (isLoading) { logEvent('labdetail_render', { state: 'skeleton', drawId }); return; }
+    if (isError) { logEvent('labdetail_render', { state: 'error', drawId }); return; }
+    if (!data) { logEvent('labdetail_render', { state: 'no_data', drawId }); return; }
+    const status = data.draw.processing_status;
+    const renderState =
+      status === 'processing' ? 'processing_analyzing'
+      : status === 'failed' ? 'analysis_failed'
+      : !data.analysis ? 'complete_no_analysis'
+      : !isPro ? 'complete_locked'
+      : 'complete_unlocked';
+    logEvent('labdetail_render', {
+      state: renderState,
+      drawId,
+      processing_status: status,
+      has_analysis: !!data.analysis,
+      values_count: data.values.length,
+      is_pro: isPro,
+    });
+  }, [isLoading, isError, drawId, data, isPro]);
+
   // ── Realtime subscription: flip the moment the row updates server-side ──
   // Unique channel name per mount — re-using a name returns an existing
   // channel and calling .on() after .subscribe() throws on second mount.

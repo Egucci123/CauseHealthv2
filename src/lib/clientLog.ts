@@ -40,6 +40,14 @@ export function logEvent(event: string, payload?: Record<string, unknown>) {
   }
 }
 
+// ── Page render tracker — what did the user actually see? ───────────
+// Pages call this when their primary content state resolves so I can
+// distinguish "URL changed but page is blank/skeleton/error" from "URL
+// changed and rendered the right content."
+export function logPageRender(page: string, state: string, extra?: Record<string, unknown>) {
+  logEvent('page_render', { page, state, ...(extra ?? {}) });
+}
+
 // ── Global error capture ──────────────────────────────────────────────
 if (typeof window !== 'undefined') {
   window.addEventListener('error', (e) => {
