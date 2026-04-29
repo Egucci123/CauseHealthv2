@@ -272,26 +272,34 @@ CRITICAL OUTPUT RULES (for the new card-stack UI):
       const isYoung = ctx.age < 40;
       const blockedPatterns = buildRareDiseaseBlocklist(ctx);
 
-      const isBlocked = (t: any) => {
+      // Rare-disease tests NEVER appear as test cards anywhere — not in
+      // tests_to_request, not in advanced_screening. When the threshold IS
+      // met (rule.allow === true), the deterministic injector below adds a
+      // calm "concern to raise with doctor" line to discussion_points
+      // instead. When the threshold is NOT met, the test is dropped
+      // entirely. Either way: no test card.
+      const matchesRareDiseasePattern = (t: any) => {
         const name = `${t?.test_name ?? ''} ${t?.why_short ?? ''} ${t?.clinical_justification ?? ''}`;
-        return blockedPatterns.some(rule => rule.pattern.test(name) && !rule.allow);
+        return blockedPatterns.some(rule => rule.pattern.test(name));
       };
 
       if (Array.isArray(doc.tests_to_request)) {
-        const moved: any[] = [];
-        const kept = doc.tests_to_request.filter((t: any) => {
-          if (isBlocked(t)) {
-            console.log(`[doctor-prep] Moved blocked test "${t.test_name}" → advanced_screening`);
-            moved.push({ ...t, why_short: t.why_short || `Reserved for if your 90-day retest doesn't move ${(t.test_name || '').toLowerCase()}.` });
+        doc.tests_to_request = doc.tests_to_request.filter((t: any) => {
+          if (matchesRareDiseasePattern(t)) {
+            console.log(`[doctor-prep] Dropped rare-disease test "${t.test_name}" from tests_to_request`);
             return false;
           }
           return true;
         });
-        doc.tests_to_request = kept;
-        if (moved.length > 0) {
-          if (!Array.isArray(doc.advanced_screening)) doc.advanced_screening = [];
-          doc.advanced_screening = [...doc.advanced_screening, ...moved].slice(0, 5);
-        }
+      }
+      if (Array.isArray(doc.advanced_screening)) {
+        doc.advanced_screening = doc.advanced_screening.filter((t: any) => {
+          if (matchesRareDiseasePattern(t)) {
+            console.log(`[doctor-prep] Dropped rare-disease test "${t.test_name}" from advanced_screening`);
+            return false;
+          }
+          return true;
+        });
       }
 
       // ── Scrub blocked terms from PROSE fields ────────────────────────
@@ -363,6 +371,36 @@ CRITICAL OUTPUT RULES (for the new card-stack UI):
       }
       if (isYoung && (ctx.rbc ?? 0) > 5.5 && (ctx.rbc ?? 0) <= 5.7 && (ctx.hct ?? 0) > 49 && (ctx.hct ?? 0) <= 51) {
         doc.discussion_points.push(`Red blood cells (${ctx.rbc}) and hematocrit (${ctx.hct}%) are at the top of normal. Could be hydration, sleep quality, or baseline. Ask your doctor for a repeat CBC in 3 months and screen for sleep apnea (STOP-BANG) if you snore or wake unrefreshed.`);
+      }
+
+      // ── Rare-disease threshold injector ───────────────────────────────
+      // When markers actually hit the rare-disease threshold, surface it
+      // ONLY as a "concern to raise with your doctor" line — no test card,
+      // no executive summary entry, no scary clinical_note. Doctor decides
+      // the workup; we just flag the pattern. Calm tone, names the
+      // condition to rule out so the patient can repeat it at the visit.
+      const isMidAge = ctx.age < 50;
+      const jak2Triggered =
+        (ctx.platelets ?? 0) > 600 ||
+        (isYoung && (ctx.platelets ?? 0) > 450) ||
+        (isMidAge && (ctx.platelets ?? 0) > 500) ||
+        ((ctx.rbc ?? 0) > 6.0 && (ctx.hct ?? 0) > 54) ||
+        (isYoung && (ctx.rbc ?? 0) > 5.7 && (ctx.hct ?? 0) > 51) ||
+        ((ctx.hgb ?? 0) > 17 && (ctx.hct ?? 0) > 52);
+      if (jak2Triggered) {
+        doc.discussion_points.push(`Concern to raise with your doctor: platelets ${ctx.platelets ?? '—'}, hemoglobin ${ctx.hgb ?? '—'}, hematocrit ${ctx.hct ?? '—'}, RBC ${ctx.rbc ?? '—'}. This combination can sometimes point to a myeloproliferative process (essential thrombocythemia or polycythemia vera). Your doctor may want to repeat the CBC, check an EPO level, and consider a JAK2 V617F test to rule it out.`);
+      }
+      if ((ctx.globulin ?? 0) > 5 || ((ctx.globulin ?? 0) > 3.5 && isYoung) || (ctx.calcium ?? 0) > 11.5) {
+        doc.discussion_points.push(`Concern to raise with your doctor: globulin ${ctx.globulin ?? '—'} g/dL, calcium ${ctx.calcium ?? '—'} mg/dL. Persistently elevated globulin or calcium can occasionally signal a plasma-cell or parathyroid issue. Your doctor may want SPEP/UPEP/free light chains and a PTH level to rule it out.`);
+      }
+      if (((ctx.ferritin ?? 0) > 300 && (ctx.transferrinSat ?? 0) > 50) || (isYoung && (ctx.ferritin ?? 0) > 200 && (ctx.transferrinSat ?? 0) > 45)) {
+        doc.discussion_points.push(`Concern to raise with your doctor: ferritin ${ctx.ferritin ?? '—'} with transferrin saturation ${ctx.transferrinSat ?? '—'}%. Elevated iron stores with high saturation can suggest hereditary hemochromatosis. Your doctor may want HFE gene testing and a hepatology consult.`);
+      }
+      if ((ctx.prolactin ?? 0) > 100) {
+        doc.discussion_points.push(`Concern to raise with your doctor: prolactin ${ctx.prolactin} ng/mL. A level above 100 warrants a pituitary MRI to rule out a prolactinoma. Confirm the result with a repeat morning draw before imaging.`);
+      }
+      if ((ctx.ana ?? 0) > 0) {
+        doc.discussion_points.push(`Concern to raise with your doctor: positive ANA. This isn't a diagnosis on its own — your doctor may want an ANA reflex panel (anti-dsDNA, anti-Sm, anti-Ro/La, anti-Scl-70) plus a rheumatology consult if symptoms support it.`);
       }
     } catch (e) { console.error('[doctor-prep] post-filter error:', e); }
 
