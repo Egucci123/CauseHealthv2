@@ -34,24 +34,25 @@ export const LabDetail = () => {
     mutationFn: async () => {
       if (!drawId || !user) throw new Error('Missing context');
       await supabase.from('lab_draws').update({ processing_status: 'processing', analysis_result: null }).eq('id', drawId);
-      // Get a fresh JWT so the edge function can authenticate the user.
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
-      // Raw fetch with keepalive — survives navigation
-      fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-labs`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ drawId, userId: user.id }),
-        keepalive: true,
-      }).catch(console.warn);
+      // Use supabase.functions.invoke so the SDK auto-attaches the JWT and we
+      // get a real response (or a real error). Previous fire-and-forget pattern
+      // hid every error behind keepalive, which is why retry "spun and failed"
+      // with no diagnostic info. The function takes ~25-40s; we await fully.
+      const { data, error } = await supabase.functions.invoke('analyze-labs', {
+        body: { drawId, userId: user.id },
+      });
+      if (error) {
+        console.error('[LabDetail] analyze-labs error:', error);
+        throw new Error(error.message || 'Analysis failed — check console for details.');
+      }
+      return data;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['lab-detail', drawId] });
       qc.invalidateQueries({ queryKey: ['labDraws'] });
+    },
+    onError: (err: any) => {
+      console.error('[LabDetail] retry mutation failed:', err);
     },
   });
 
@@ -253,7 +254,9 @@ export const LabDetail = () => {
           <div className="flex-1">
             <p className="text-body text-clinical-charcoal font-semibold text-sm">Analysis failed</p>
             <p className="text-body text-clinical-stone text-xs mt-0.5">
-              The AI analysis timed out or encountered an error. Your lab values are saved — you can retry the analysis.
+              {retryAnalysis.error
+                ? `Error: ${(retryAnalysis.error as Error).message}`
+                : 'The AI analysis timed out or encountered an error. Your lab values are saved — you can retry the analysis.'}
             </p>
           </div>
           <Button variant="primary" size="sm" icon="refresh"
