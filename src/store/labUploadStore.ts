@@ -125,7 +125,7 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
     (async () => {
       const fileCount = files.length;
       const plural = fileCount > 1;
-      set({ phase: 'uploading', progress: 0, statusMessage: `Uploading ${fileCount} file${plural ? 's' : ''} to secure storage...`, errorMessage: null });
+      set({ phase: 'uploading', progress: 0, statusMessage: `[v623] Uploading ${fileCount} file${plural ? 's' : ''} to secure storage...`, errorMessage: null });
 
       try {
         // ── Free-tier cap: 1 lab upload per rolling 30 days ──
