@@ -68,15 +68,11 @@ export function useLabDraws() {
 
 export function useLatestLabDraw() {
   const user = useAuthStore(s => s.user);
-  return useQuery({
+  const qc = useQueryClient();
+  const query = useQuery({
     queryKey: ['latestLabDraw', user?.id], enabled: !!user?.id,
-    // 30s staleTime + refetchOnMount: false stops the sign-in flicker.
-    // Components mount multiple times during auth -> profile -> dashboard,
-    // and refetchOnMount:'always' was firing this query 3-4x each time.
     staleTime: 30 * 1000, refetchOnMount: false,
     queryFn: async () => {
-      // maybeSingle() returns null cleanly when no rows match — single()
-      // returns 406 which polluted the console for new users with no drafts.
       const { data, error } = await supabase
         .from('lab_draws').select('*')
         .eq('user_id', user!.id)
@@ -89,6 +85,25 @@ export function useLatestLabDraw() {
       return data ? mapDraw(data) : null;
     },
   });
+
+  // Realtime: invalidate the cached 'null' the moment any draw flips to
+  // complete, so the dashboard's "Latest Lab Results" card updates without
+  // a manual refresh. Unique channel name per mount to avoid the
+  // re-subscribe error in React strict mode.
+  useEffect(() => {
+    if (!user?.id) return;
+    const uniqueId = `latest-draw-${user.id}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+    const channel = supabase
+      .channel(uniqueId)
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'lab_draws', filter: `user_id=eq.${user.id}` },
+        () => { qc.invalidateQueries({ queryKey: ['latestLabDraw'] }); }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user?.id, qc]);
+
+  return query;
 }
 
 export function useLabValues(drawId: string | null | undefined) {
