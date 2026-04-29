@@ -57,11 +57,22 @@ const RouteLogger = () => {
 const AuthInitializer = ({ children }: { children: React.ReactNode }) => {
   const initialize  = useAuthStore(s => s.initialize);
   const initialized = useAuthStore(s => s.initialized);
-  const loading     = useAuthStore(s => s.loading);
+  // Only delay-show the loading screen — for typical fast loads (~50-300ms)
+  // the spinner never appears. Avoids the black/green flash on every login.
+  const [showSpinner, setShowSpinner] = React.useState(false);
 
   React.useEffect(() => { initialize(); }, [initialize]);
 
-  if (!initialized || loading) {
+  React.useEffect(() => {
+    if (initialized) return;
+    // If auth hasn't resolved within 250ms, THEN show the spinner.
+    // Most loads resolve faster — user never sees the loading state at all.
+    const timer = setTimeout(() => setShowSpinner(true), 250);
+    return () => clearTimeout(timer);
+  }, [initialized]);
+
+  if (!initialized) {
+    if (!showSpinner) return null;
     return (
       <div className="min-h-screen bg-[#131313] flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
