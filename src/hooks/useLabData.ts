@@ -29,7 +29,7 @@ export function useLabDraws() {
     queryKey: ['labDraws', user?.id], enabled: !!user?.id,
     // 10s staleTime keeps list responsive to upload completions but stops
     // the sign-in flicker from refetching on every component remount.
-    staleTime: 10 * 1000, refetchOnMount: false, refetchOnWindowFocus: true,
+    staleTime: 10 * 1000, refetchOnMount: true, refetchOnWindowFocus: true,
     queryFn: async () => {
       const { data, error } = await supabase.from('lab_draws').select('*').eq('user_id', user!.id).order('draw_date', { ascending: false }).limit(100);
       if (error) throw error;
@@ -71,7 +71,7 @@ export function useLatestLabDraw() {
   const qc = useQueryClient();
   const query = useQuery({
     queryKey: ['latestLabDraw', user?.id], enabled: !!user?.id,
-    staleTime: 30 * 1000, refetchOnMount: false,
+    staleTime: 30 * 1000, refetchOnMount: true,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('lab_draws').select('*')
