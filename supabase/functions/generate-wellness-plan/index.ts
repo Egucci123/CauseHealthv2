@@ -109,7 +109,7 @@ serve(async (req) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001', max_tokens: 10000,
+        model: 'claude-haiku-4-5-20251001', max_tokens: 16000,
         system: `You are CauseHealth AI. Return ONLY valid JSON.
 
 GLOBAL VOICE RULES (CRITICAL — these apply to EVERY string in the JSON):
@@ -409,11 +409,26 @@ CRITICAL OUTPUT RULES:
       plan = JSON.parse(rawText);
     } catch (parseErr) {
       console.error('[generate-wellness-plan] JSON parse failed', { stopReason, len: rawText.length, head: rawText.slice(0, 300), tail: rawText.slice(-300) });
-      // If max_tokens hit, the JSON is likely truncated. Surface that clearly.
+      // Truncation-salvage path (mirrors doctor-prep). If max_tokens hit, the
+      // JSON ran out mid-string. Trim the trailing partial property and
+      // close any open arrays / objects so we still ship a usable plan
+      // instead of failing the whole generation.
       if (stopReason === 'max_tokens') {
-        throw new Error('Plan response was truncated (output too large). Try regenerating.');
+        try {
+          let salvaged = rawText.replace(/,\s*$/, '').replace(/,\s*"[^"]*"?\s*:?\s*[^,}\]]*$/, '');
+          // Balance brackets
+          const openBraces = (salvaged.match(/\{/g) || []).length - (salvaged.match(/\}/g) || []).length;
+          const openBrackets = (salvaged.match(/\[/g) || []).length - (salvaged.match(/\]/g) || []).length;
+          for (let i = 0; i < openBrackets; i++) salvaged += ']';
+          for (let i = 0; i < openBraces; i++) salvaged += '}';
+          plan = JSON.parse(salvaged);
+          console.log('[generate-wellness-plan] Salvaged truncated JSON');
+        } catch {
+          throw new Error('Plan response was truncated and could not be salvaged. Try regenerating — usually succeeds on second attempt.');
+        }
+      } else {
+        throw new Error('Plan JSON parse failed: ' + String(parseErr));
       }
-      throw new Error('Plan JSON parse failed: ' + String(parseErr));
     }
 
     // ── Rare-disease prose scrubber (mirrors analyze-labs / doctor-prep) ──
