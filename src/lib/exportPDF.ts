@@ -255,45 +255,20 @@ export function exportPatientVisitGuidePDF(doc: DoctorPrepDocument, userName: st
     });
   }
 
-  // 2. Panel-gap tests with scripts
-  if (panelGaps.length) {
-    y += 3;
-    para('Plus these baseline tests every adult should have:', { bold: true, size: 9, color: [27, 67, 50], gap: 3 });
-    para(
-      "These won't be ordered automatically. You have to ask. Use the exact words below.",
-      { size: 8.5, color: [80, 80, 80], italic: true, gap: 4 }
-    );
-
-    const tierLabels: Record<PanelGapPDF['category'], string> = {
-      essential: 'Foundational (most doctors will order these)',
-      recommended: 'Comprehensive (you may need to insist)',
-      advanced: 'Advanced (most doctors will not volunteer these)',
-    };
-
-    (['essential', 'recommended', 'advanced'] as const).forEach(tier => {
-      const tierGaps = panelGaps.filter(g => g.category === tier);
-      if (!tierGaps.length) return;
-      checkPage(15);
-      pdf.setFontSize(9); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(19, 19, 19);
-      pdf.text(stripUnsupportedChars(tierLabels[tier]), margin, y); y += 5;
-
-      tierGaps.forEach(g => {
-        checkPage(20);
-        pdf.setFontSize(9); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(40, 40, 40);
-        pdf.text(stripUnsupportedChars(`- ${g.test_name}`), margin + 2, y); y += 4;
-        pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8.5); pdf.setTextColor(80, 80, 80);
-        const whyLines = pdf.splitTextToSize(stripUnsupportedChars(`Why: ${g.why_needed}.`), contentW - 8);
-        pdf.text(whyLines, margin + 6, y); y += whyLines.length * 3.5;
-        if (g.script) {
-          pdf.setFont('helvetica', 'italic'); pdf.setTextColor(19, 19, 19);
-          const scriptLines = pdf.splitTextToSize(stripUnsupportedChars(`Say: ${g.script}`), contentW - 8);
-          pdf.text(scriptLines, margin + 6, y); y += scriptLines.length * 3.5;
-        }
-        y += 3;
-      });
-      y += 2;
-    });
-  }
+  // 2. Panel-gap baseline section REMOVED.
+  //
+  // Previously rendered a hardcoded Tier 1/2/3 baseline list (Foundational /
+  // Comprehensive / Advanced) including AM Cortisol, DHEA-S, GI-MAP, Uric
+  // Acid for every patient regardless of triggers. This was the same
+  // 'Comprehensive Health Screening' block we removed from the on-screen
+  // doctor prep — the patient guide PDF was leaking it back in.
+  //
+  // The AI's tests_to_request (rendered above in section #1) is now the
+  // single source of truth, already filtered by the strict triage rule:
+  // a test only appears if tied to a symptom, medication depletion,
+  // out-of-range marker, or early-detection pattern. No 'while we're at
+  // it' tests get into either the on-screen view or the PDF anymore.
+  void panelGaps;
 
   // ── Other points to bring up ─────────────────────────────────────────
   if (doc.discussion_points?.length) {
