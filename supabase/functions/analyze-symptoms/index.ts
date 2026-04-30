@@ -2,6 +2,7 @@
 // Deploy: supabase functions deploy analyze-symptoms
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { buildRareDiseaseBlocklist, extractRareDiseaseContext } from '../_shared/rareDiseaseGate.ts';
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -131,7 +132,53 @@ Return ONLY valid JSON: { "headline": "one 12-word verdict in plain English", "s
     let rawText = (aiRes.content?.[0]?.text ?? '').replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     const lastBrace = rawText.lastIndexOf('}');
     if (lastBrace > 0) rawText = rawText.slice(0, lastBrace + 1);
-    const result = JSON.parse(rawText);
+    let result = JSON.parse(rawText);
+
+    // ── Rare-disease prose scrubber (mirrors analyze-labs / doctor-prep) ──
+    // Even with explicit prompt rules, the AI sometimes inserts JAK2 / SPEP /
+    // MTHFR / Cushing's / etc. into root-cause explanations or pattern text.
+    // Strip any sentence that names one when the patient's markers don't meet
+    // the gate threshold. Same source-of-truth as the labs/doctor-prep gates.
+    try {
+      const ctx = extractRareDiseaseContext(labValues, age);
+      const blocked = buildRareDiseaseBlocklist(ctx);
+      const STRUCTURAL_KEYS = new Set(['icd10', 'icd10_codes', 'symptom', 'condition', 'lab_marker']);
+      const stripSentences = (text: string): string => {
+        if (typeof text !== 'string' || !text) return text;
+        const sentences = text.split(/(?<=[.!?])\s+/);
+        const kept = sentences.filter(s => {
+          for (const rule of blocked) {
+            if (rule.allow) continue;
+            if (rule.pattern.test(s)) return false;
+          }
+          return true;
+        });
+        return kept.join(' ').trim();
+      };
+      const walk = (val: any, key?: string): any => {
+        if (typeof val === 'string') {
+          if (key && STRUCTURAL_KEYS.has(key)) return val;
+          return stripSentences(val);
+        }
+        if (Array.isArray(val)) return val.map(v => walk(v, key));
+        if (val && typeof val === 'object') {
+          const out: any = {};
+          for (const k of Object.keys(val)) out[k] = walk(val[k], k);
+          return out;
+        }
+        return val;
+      };
+      result = walk(result);
+      // Drop top-level entries that got fully erased so they don't render as empty cards
+      for (const k of ['symptom_connections', 'patterns', 'autoimmune_flags', 'priority_actions']) {
+        if (Array.isArray(result[k])) {
+          result[k] = result[k].filter((entry: any) =>
+            entry && Object.values(entry).some(v => typeof v === 'string' ? v.length > 0 : (Array.isArray(v) ? v.length > 0 : !!v))
+          );
+        }
+      }
+    } catch (e) { console.error('[analyze-symptoms] scrub error:', e); }
+
     await supabase.from('symptom_analyses').insert({ user_id: userId, analysis_data: result });
     return new Response(JSON.stringify(result), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (err) {

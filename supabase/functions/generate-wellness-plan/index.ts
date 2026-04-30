@@ -3,6 +3,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { isHealthyMode } from '../_shared/healthMode.ts';
 import { GOAL_LABELS, formatGoals } from '../_shared/goals.ts';
+import { buildRareDiseaseBlocklist, extractRareDiseaseContext } from '../_shared/rareDiseaseGate.ts';
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -270,6 +271,43 @@ CRITICAL OUTPUT RULES:
       throw new Error('Plan JSON parse failed: ' + String(parseErr));
     }
 
+    // ── Rare-disease prose scrubber (mirrors analyze-labs / doctor-prep) ──
+    // Strip any sentence naming JAK2 / SPEP / MTHFR / Cushing's / HLA-B27 /
+    // hereditary hemochromatosis genetics / pituitary MRI / etc. when the
+    // patient's markers don't meet the gate threshold. Keeps wellness plan
+    // text non-alarming on borderline values.
+    try {
+      const rdCtx = extractRareDiseaseContext(labValues, age);
+      const blocked = buildRareDiseaseBlocklist(rdCtx);
+      const STRUCTURAL_KEYS = new Set(['nutrient', 'form', 'icd10', 'medication', 'supplement', 'food', 'movement']);
+      const stripSentences = (text: string): string => {
+        if (typeof text !== 'string' || !text) return text;
+        const sentences = text.split(/(?<=[.!?])\s+/);
+        const kept = sentences.filter(s => {
+          for (const rule of blocked) {
+            if (rule.allow) continue;
+            if (rule.pattern.test(s)) return false;
+          }
+          return true;
+        });
+        return kept.join(' ').trim();
+      };
+      const walk = (val: any, key?: string): any => {
+        if (typeof val === 'string') {
+          if (key && STRUCTURAL_KEYS.has(key)) return val;
+          return stripSentences(val);
+        }
+        if (Array.isArray(val)) return val.map(v => walk(v, key));
+        if (val && typeof val === 'object') {
+          const out: any = {};
+          for (const k of Object.keys(val)) out[k] = walk(val[k], k);
+          return out;
+        }
+        return val;
+      };
+      plan = walk(plan);
+    } catch (e) { console.error('[wellness-plan] scrub error:', e); }
+
     // Tag plan mode for frontend display
     plan.plan_mode = isOptimizationMode ? 'optimization' : 'treatment';
 
@@ -386,7 +424,7 @@ CRITICAL OUTPUT RULES:
       const energyExtras: GoalStackEntry[] = [
         {
           matchInStack: /\b(b[\s-]?complex|methylated b)\b/i,
-          entry: { emoji: '⚡', nutrient: 'Methylated B-Complex', form: 'Capsule', dose: '1 capsule', timing: 'Breakfast', why_short: 'Energy production + methylation', why: 'B-vitamins (especially methylfolate, methylcobalamin) drive cellular energy and methylation. The methylated form bypasses MTHFR variation.', priority: 'optimize', sourced_from: 'optimization', evidence_note: 'Standard for energy + cognitive optimization protocols.' },
+          entry: { emoji: '⚡', nutrient: 'Methylated B-Complex', form: 'Capsule', dose: '1 capsule', timing: 'Breakfast', why_short: 'Energy production + methylation', why: 'B-vitamins (especially methylfolate, methylcobalamin) drive cellular energy and one-carbon metabolism. The methylated form is more bioavailable.', priority: 'optimize', sourced_from: 'optimization', evidence_note: 'Standard for energy + cognitive optimization protocols.' },
         },
       ];
       const performanceExtras: GoalStackEntry[] = [
