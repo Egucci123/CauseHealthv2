@@ -1,5 +1,5 @@
 // src/App.tsx
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 
 // Public pages
 import { Landing } from './pages/Landing';
@@ -36,8 +36,7 @@ import { WellnessPlanPage } from './pages/wellness/WellnessPlanPage';
 // Medications
 import { MedicationChecker } from './pages/medications/MedicationChecker';
 
-// Symptoms
-import { SymptomMapper } from './pages/symptoms/SymptomMapper';
+// Symptoms page consolidated into Wellness Plan (April 2026 product change).
 
 // Doctor Prep
 import { DoctorPrepPage } from './pages/doctorprep/DoctorPrep';
@@ -109,7 +108,8 @@ function App() {
       {/* Features */}
       <Route path="/wellness" element={<ProtectedRoute><WellnessPlanPage /></ProtectedRoute>} />
       <Route path="/medications" element={<ProtectedRoute><MedicationChecker /></ProtectedRoute>} />
-      <Route path="/symptoms" element={<ProtectedRoute><SymptomMapper /></ProtectedRoute>} />
+      {/* /symptoms route removed — symptoms now surface in the Wellness Plan with how-addressed details. */}
+      <Route path="/symptoms" element={<Navigate to="/wellness" replace />} />
       <Route path="/doctor-prep" element={<ProtectedRoute><DoctorPrepPage /></ProtectedRoute>} />
       <Route path="/chat" element={<ProtectedRoute><HealthChat /></ProtectedRoute>} />
       <Route path="/progress" element={<ProtectedRoute><ProgressTracking /></ProtectedRoute>} />

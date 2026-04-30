@@ -10,7 +10,9 @@ import { useLatestDoctorPrep, useGenerateDoctorPrep } from '../../hooks/useDocto
 import { useLatestLabDraw, useLatestLabValues } from '../../hooks/useLabData';
 import { detectCriticalFindings } from '../../lib/criticalFindings';
 import { useMemo } from 'react';
-import { useSymptomAnalysis } from '../../hooks/useSymptoms';
+// Symptom-analysis cards removed from doctor prep — symptoms now surface in
+// the Wellness Plan with how-addressed details. Doctor prep tests_to_request
+// already covers symptom-driven test recommendations via the triage rule.
 import { PaywallGate } from '../../components/paywall/PaywallGate';
 import { useAuthStore } from '../../store/authStore';
 import { exportDoctorPrepPDF, exportPatientVisitGuidePDF } from '../../lib/exportPDF';
@@ -29,7 +31,6 @@ export const DoctorPrep = () => {
   const { generate, generating } = useGenerateDoctorPrep();
   const { data: latestDraw } = useLatestLabDraw();
   const { data: latestValues } = useLatestLabValues();
-  const { data: symptomAnalysis } = useSymptomAnalysis();
 
   const ageNum = profile?.dateOfBirth
     ? Math.floor((Date.now() - new Date(profile.dateOfBirth).getTime()) / 31_557_600_000)
@@ -215,7 +216,7 @@ export const DoctorPrep = () => {
                   </div>
                 </div>
               )}
-              <VisitCardStacks doc={doc} symptomAnalysis={symptomAnalysis} />
+              <VisitCardStacks doc={doc} />
             </>
           )}
           {activeTab === 'summary' && <ClinicalSummary doc={doc} />}

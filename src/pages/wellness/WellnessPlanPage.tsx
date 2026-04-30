@@ -601,6 +601,39 @@ export const WellnessPlanPage = () => {
           {/* Transformation forecast — pure math, big motivation */}
           {forecasts.length > 0 && <TransformationForecast forecasts={forecasts} />}
 
+          {/* Symptoms addressed — every reported symptom + how this plan targets it.
+              Replaces the deleted Symptoms page; users see the through-line from
+              "I have joint pain" to "we added hs-CRP test, omega-3, and 30-min walks." */}
+          {Array.isArray(plan.symptoms_addressed) && plan.symptoms_addressed.length > 0 && (
+            <FolderSection
+              icon="monitor_heart"
+              title="Your symptoms — and how this plan addresses them"
+              count={plan.symptoms_addressed.length}
+              countLabel={plan.symptoms_addressed.length === 1 ? 'symptom' : 'symptoms'}
+              explanation="Every symptom you logged maps to a specific test added to your retest list, a supplement (only when a lab confirms the cause), and a lifestyle change. No guesswork — every entry traces back to evidence."
+              accentColor="#7B1FA2"
+              defaultOpen
+            >
+              <div className="space-y-3">
+                {plan.symptoms_addressed.map((s: any, i: number) => (
+                  <div key={i} className="bg-clinical-cream/40 rounded-[10px] p-4 border-l-2 border-[#7B1FA2]">
+                    <div className="flex items-start justify-between gap-3 mb-1.5">
+                      <p className="text-body text-clinical-charcoal text-sm font-semibold leading-snug">{s.symptom}</p>
+                      {typeof s.severity === 'number' && (
+                        <span className="text-precision text-[0.6rem] font-bold tracking-wider text-[#7B1FA2] bg-[#7B1FA2]/10 px-2 py-0.5 rounded flex-shrink-0">
+                          {s.severity}/10
+                        </span>
+                      )}
+                    </div>
+                    {s.how_addressed && (
+                      <p className="text-body text-clinical-stone text-xs leading-relaxed">{s.how_addressed}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </FolderSection>
+          )}
+
           {/* Two-folder test plan: re-measure existing baselines + new tests to ask for */}
           {Array.isArray(plan.retest_timeline) && plan.retest_timeline.length > 0 && (() => {
             const isNewTest = (r: any) => {
