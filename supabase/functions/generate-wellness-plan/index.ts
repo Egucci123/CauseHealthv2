@@ -136,11 +136,27 @@ HARD RULES — FOLLOW EXACTLY:
    - "disease_mechanism": user has a CONFIRMED diagnosed condition where the supplement has strong evidence as adjunct therapy (UC → curcumin / omega-3 / S. boulardii; Hashimoto's → selenium IF TPO+ confirmed; T2D → berberine; PCOS → inositol IF diagnosis confirmed; TRT → DHEA only if labs warrant). The diagnosis IS the evidence; no lab finding required.
    - "optimization": OFF BY DEFAULT. Only allowed if user's PRIMARY goal is "longevity" AND no out-of-range markers, no symptoms, no medication depletions to address. Even then, max 1-2 entries (omega-3 if dietary intake is low, vitamin D if sub-optimal but in standard range). NOT a longevity stack. NEVER NAD+ / NMN / Resveratrol / Spermidine / methylene blue / speculative anti-aging compounds.
 
-   "medication_depletion" is NOT a supplement trigger — it's a TEST trigger. If a user is on a drug with known depletion effect (metformin→B12, mesalamine→folate, statin→CoQ10, PPI→Mg+B12, SSRI→Na, oral contraceptives→B6/folate/B12, levothyroxine→Fe interaction), DO NOT auto-add the supplement. Instead:
-     a) Add the relevant TEST to retest_timeline (B12 + MMA + homocysteine for metformin/PPI; folate for mesalamine; etc.)
-     b) Note the depletion in medication_notes with a "test first, then supplement IF confirmed low" framing
-     c) Only add the supplement to supplement_stack ONCE the lab confirms deficiency on a future draw — at which point sourced_from becomes "lab_finding".
-   The single exception is when the relevant lab IS already on this draw AND shows deficiency — then sourced_from = "lab_finding" with the medication noted as the likely cause in why.
+   "medication_depletion" — TEST FIRST as the default, with narrow exceptions for empirical supplementation. The pattern:
+
+   DEFAULT (test first, supplement when lab confirms):
+     For most drug→nutrient depletions where the lab test is cheap, standard, and PCP-orderable, recommend the TEST in retest_timeline. Examples:
+       - Metformin → B12 + MMA + homocysteine (don't auto-add B12 supplement)
+       - Mesalamine → serum folate + RBC folate (don't auto-add folate)
+       - PPI → Mg + B12 (don't auto-add Mg or B12)
+       - SSRI → Na (BMP — already standard)
+       - Levothyroxine → no auto-test, just note Fe interaction
+     a) Add the relevant TEST to retest_timeline
+     b) Note the depletion in medication_notes with "test first, then supplement IF confirmed low" framing
+     c) Once a future lab confirms deficiency, sourced_from becomes "lab_finding".
+
+   EMPIRICAL SUPPLEMENTATION ALLOWED (sourced_from = "medication_depletion") when ALL THREE of these are true:
+     1. The depletion is near-universal in patients on the drug (well-documented in mainstream pharmacology)
+     2. The lab test is impractical, expensive, or not insurance-covered (so test-first creates a real barrier)
+     3. The patient has symptoms consistent with the depletion (or the supplement is essentially harmless prophylaxis)
+   The canonical example: STATIN → CoQ10 (ubiquinol). CoQ10 testing is rare and rarely covered; statin-induced CoQ10 depletion is documented in nearly every treated patient; CoQ10 supplementation is safe and inexpensive. If user is on any statin (atorvastatin, rosuvastatin, simvastatin, pravastatin, lovastatin, pitavastatin, fluvastatin, ezetimibe+statin combo), ADD CoQ10 (200 mg ubiquinol daily) to supplement_stack with sourced_from = "medication_depletion".
+   Other narrow exceptions: long-term metformin (>5 years) + B12 supplementation; long-term PPI (>2 years) + magnesium glycinate.
+
+   IF the relevant lab IS on this draw AND shows deficiency, sourced_from becomes "lab_finding" with the medication named as the likely cause in why (no double-counting).
 
    STRICT RANK 1..N: rank 1 = most important for the user's TOP GOALS, then by clinical severity. No gaps, no duplicates.
    Speculative/untested conditions → put the test in retest_timeline, not a supplement.
@@ -162,8 +178,8 @@ HARD RULES — FOLLOW EXACTLY:
 6. FEMALE HORMONE RULE: Do NOT flag estradiol, progesterone, FSH, or LH as abnormal in premenopausal females unless extreme (FSH >40, estradiol <10 or >500, progesterone >30). These vary by cycle phase and a single draw means nothing without knowing cycle day. Never build a supplement protocol around "estrogen dominance" from one blood draw.
 7. Supplements must be safe and not interact with patient's medications.
 8. RETEST TIMELINE — cadence branches by MODE, but the TRIAGE RULE IS THE SAME:
-   TREATMENT mode (something needs fixing): comprehensive retest at week 12. retest_at: '12 weeks'.
-   OPTIMIZATION mode (mostly healthy): retest cadence is 6 MONTHS. retest_at: '6 months'.
+   TREATMENT mode (something needs fixing): COMPREHENSIVE retest at week 12 — this is the protocol close-out, the moment of truth. Include ALL currently-abnormal markers, all tests triggered by symptoms (per the symptom-test map), all medication-depletion tests (B12+MMA for metformin, folate for mesalamine, etc.), AND any standard-of-care baseline gaps. Patients with multi-system issues (UC + dyslipidemia + insulin resistance + low T) should have 8-10 entries — not 5. retest_at: '12 weeks'. This list will be hard-capped at 12 server-side, so prioritize but don't undershoot.
+   OPTIMIZATION mode (mostly healthy): retest cadence is 6 MONTHS, list is shorter (3-5 entries: Watch markers + missing baselines for age/sex). retest_at: '6 months'.
 
    UNIVERSAL TRIAGE RULE (applies to EVERY entry, healthy or sick patient). A marker may ONLY appear in retest_timeline if it directly tracks ONE of:
      (a) a symptom the patient actually reported (the test investigates the cause)
@@ -443,22 +459,28 @@ CRITICAL OUTPUT RULES:
     // Normalize supplement_stack: cap at 7, sort by rank, renumber 1..N.
     // Many users take only top 2-3 — rank ordering must be reliable.
     if (plan.supplement_stack && Array.isArray(plan.supplement_stack)) {
-      // Drop any supplements sourced from medication_depletion. The
-      // user-stated rule: medications trigger TESTS, not supplements.
-      // Supplements only get added when an actual lab value confirms
-      // deficiency (sourced_from = lab_finding). Backstop in case the AI
-      // ignores the prompt and slips a medication_depletion entry through.
+      // Filter supplements with sourced_from = medication_depletion. Default
+      // rule is test-first (medications trigger tests, not blind supplementation),
+      // but a narrow allow-list permits empirical supplementation where the
+      // depletion is universal AND testing is impractical AND the supplement
+      // is safe + inexpensive. Currently allowed: CoQ10/ubiquinol (statin
+      // patients), B12 (long-term metformin), magnesium glycinate (long-term
+      // PPI). Anything else gets dropped.
+      const empiricalAllowed = /coq10|ubiquinol|coenzyme\s*q10|^b[\s-]?12|cobalamin|magnesium\s+glycinate/i;
       const beforeFilterCount = plan.supplement_stack.length;
       plan.supplement_stack = plan.supplement_stack.filter((s: any) => {
         const src = (s?.sourced_from ?? '').toLowerCase();
-        if (src === 'medication_depletion' || src === 'medication-depletion') {
-          console.log(`[wellness-plan] Dropped medication_depletion supplement "${s.nutrient}" — should have been a test recommendation instead`);
-          return false;
+        if (src !== 'medication_depletion' && src !== 'medication-depletion') return true;
+        const nutrient = String(s?.nutrient ?? '').trim();
+        if (empiricalAllowed.test(nutrient)) {
+          // Allowed empirical supplementation — keep
+          return true;
         }
-        return true;
+        console.log(`[wellness-plan] Dropped medication_depletion supplement "${nutrient}" — not on empirical-allowed list, should be a test recommendation instead`);
+        return false;
       });
       if (beforeFilterCount !== plan.supplement_stack.length) {
-        console.log(`[wellness-plan] supplement_stack filtered ${beforeFilterCount} -> ${plan.supplement_stack.length} (medication_depletion entries dropped)`);
+        console.log(`[wellness-plan] supplement_stack filtered ${beforeFilterCount} -> ${plan.supplement_stack.length}`);
       }
 
       const priorityRank = (p: string) => p === 'critical' ? 0 : p === 'high' ? 1 : p === 'moderate' ? 2 : 3;
@@ -487,14 +509,14 @@ CRITICAL OUTPUT RULES:
     if (!plan.action_plan) plan.action_plan = { phase_1: { name: '', focus: '', actions: [] }, phase_2: { name: '', focus: '', actions: [] }, phase_3: { name: '', focus: '', actions: [] } };
     if (!Array.isArray(plan.retest_timeline)) plan.retest_timeline = [];
     if (!Array.isArray(plan.symptoms_addressed)) plan.symptoms_addressed = [];
-    // Hard cap on retest_timeline — even if the AI ignores the prompt's 5-7
-    // soft limit, never ship a plan with >7 retest entries. The 10-test
-    // longevity wishlist on healthy patients (cortisol, zinc, free T,
-    // homocysteine, full thyroid antibodies, etc. for an asymptomatic 28yo)
-    // is exactly the noise we promised to suppress.
-    if (plan.retest_timeline.length > 7) {
-      console.log(`[wellness-plan] capping retest_timeline ${plan.retest_timeline.length} -> 7`);
-      plan.retest_timeline = plan.retest_timeline.slice(0, 7);
+    // Hard cap on retest_timeline. Treatment-mode patients with multi-system
+    // issues legitimately need 8-10 entries for the 12-week close-out;
+    // optimization mode is shorter (3-5). 12 is the absolute ceiling that
+    // stops longevity-wishlist regressions without strangling legitimate
+    // comprehensive retest panels.
+    if (plan.retest_timeline.length > 12) {
+      console.log(`[wellness-plan] capping retest_timeline ${plan.retest_timeline.length} -> 12`);
+      plan.retest_timeline = plan.retest_timeline.slice(0, 12);
     }
     if (!plan.generated_at) plan.generated_at = new Date().toISOString();
 
