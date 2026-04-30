@@ -262,7 +262,18 @@ PATIENT: ${age ? `${age}yo` : 'age unknown'} ${profile?.sex ?? ''}
 USER'S PRIMARY GOAL (the structural anchor for the plan — branch around this per rule 10): ${userGoals[0] ? (GOAL_LABELS[userGoals[0]] ?? userGoals[0]) : 'understand bloodwork'}
 USER'S OTHER GOALS (secondary): ${goalsStr}
 MODE: ${isOptimizationMode ? 'optimization' : 'treatment'}
-${isOptimizationMode ? 'OPTIMIZATION CONTEXT: Patient labs are mostly healthy. Frame the plan around longevity optimization, not disease treatment. Phase names should be: "Build Foundation (Months 1-2)", "Optimize (Months 3-4)", "Sustain & Track (Months 5-6)". Retest cadence is 6 months, not 12 weeks — set retest_at on every retest_timeline entry to "6 months". Lifestyle interventions focus on longevity science: zone 2 cardio, resistance training, sleep optimization, cold/heat exposure, stress resilience, metabolic health, and proactive screening.' : ''}
+${isOptimizationMode ? `OPTIMIZATION CONTEXT: Patient labs are mostly healthy. Frame the plan around longevity optimization, not disease treatment. Phase names: "Build Foundation (Months 1-2)", "Optimize (Months 3-4)", "Sustain & Track (Months 5-6)". Retest cadence is 6 months, set retest_at: "6 months". Lifestyle interventions focus on longevity science: zone 2 cardio, resistance training, sleep optimization, cold/heat exposure, stress resilience, metabolic health.
+
+CRITICAL — optimization mode does NOT relax the strict triage rule. For healthy patients with limited tested markers, retest_timeline should fill STANDARD-OF-CARE BASELINE GAPS — tests the doctor SHOULD have ordered for someone this age/sex but didn't:
+  ALL adults (18+): lipid panel, A1c (every 3yr from 35), TSH at least once, vitamin D at least once, ferritin (esp menstruating women), hs-CRP once for CV risk, B12 once.
+  35+: add ApoB and Lp(a) once-in-lifetime.
+  45+: add coronary calcium score once.
+  50+: add DEXA (women), colorectal screening discussion.
+  Women any age: iron panel if menstruating + symptoms.
+  Men 35+: total T + SHBG + estradiol once at baseline.
+
+The algorithm: look at what's in the draw → compare to the age/sex baseline → recommend the MISSING ones, cap at 5.
+DO NOT add cortisol, zinc, free testosterone, homocysteine, full thyroid antibodies, MMA, etc. UNLESS the patient has a specific symptom or marker that triggers it. Those are NOT standard-of-care baselines for an asymptomatic young adult.` : ''}
 DIAGNOSED CONDITIONS (GROUND TRUTH — never substitute these with related conditions; never call UC 'Crohn's' or vice versa; never infer a different diagnosis from medications): ${condStr}
 MEDICATIONS: ${medsStr}
 CURRENT SUPPLEMENTS (already taking — do NOT re-recommend; account for lab interactions and avoid stacking duplicates): ${suppsStr}
@@ -293,7 +304,7 @@ If user is on a supplement that explains an "abnormal" lab (e.g., creatine→cre
 ALL LAB VALUES:
 ${allLabsStr.slice(0, 4000)}
 
-NUTRIENTS NOT TESTED (${isOptimizationMode ? 'recommend testing these for a complete optimization baseline' : 'do NOT recommend supplements for these'} — mention in ${isOptimizationMode ? 'retest_timeline' : 'disclaimer only'}):
+NUTRIENTS NOT TESTED (do NOT recommend supplements for these — mention in disclaimer only. Do NOT add them to retest_timeline as a 'baseline gap'. The strict triage rule still applies in optimization mode — a missing test only earns a retest_timeline entry if the patient has a symptom, medication depletion, or out-of-range marker that the test would investigate. Healthy patients with no triggers get a SHORT retest list focused on actual labs to track, not a longevity wishlist.):
 ${notTestedStr}
 
 Return JSON: {"generated_at":"${new Date().toISOString()}","headline":"one 12-word verdict in plain English (e.g. 'Your iron is low — fix it and the fatigue lifts')","summary":"3 short sentences max — what's wrong, what we'll fix, how long it takes","today_actions":[{"emoji":"","action":"one verb-led sentence the user does TODAY (e.g. 'Eat a 3-egg breakfast')","why":"one short sentence","category":"eat|move|take|sleep|stress"}],"supplement_stack":[{"rank":1,"emoji":"💊","nutrient":"","form":"","dose":"","timing":"","why_short":"6-10 word reason in plain English","why":"1 sentence linking to a lab or symptom","priority":"critical|high|moderate","sourced_from":"lab_finding|disease_mechanism","evidence_note":""}],"meals":[{"emoji":"🥗","name":"meal name","when":"breakfast|lunch|dinner|snack","phase":1,"ingredients":["short list"],"why":"1 sentence — favor 'why now / why this swap' framing for phase 1, 'why this lab' for phase 3"}],"workouts":[{"emoji":"🏃","day":"Mon|Tue|Wed|Thu|Fri|Sat|Sun","title":"e.g. 'Zone 2 walk'","duration_min":30,"description":"1 sentence","why":"1 sentence — which goal/lab this serves"}],"lifestyle_interventions":{"diet":[{"emoji":"🥗","intervention":"","rationale":"","priority":""}],"sleep":[{"emoji":"😴","intervention":"","rationale":"","priority":""}],"exercise":[{"emoji":"💪","intervention":"","rationale":"","priority":""}],"stress":[{"emoji":"🧘","intervention":"","rationale":"","priority":""}]},"action_plan":{"phase_1":{"name":"Stabilize (Weeks 1-4)","focus":"","actions":[]},"phase_2":{"name":"Optimize (Weeks 5-8)","focus":"","actions":[]},"phase_3":{"name":"Maintain (Weeks 9-12)","focus":"","actions":[]}},"retest_timeline":[{"marker":"","retest_at":"","why":""}],"medication_notes":[{"medication":"","organ_impact":"","depletions":"","monitoring":"","alternative":""}],"disclaimer":"Educational only. Talk to your doctor before changing anything."}
@@ -400,6 +411,15 @@ CRITICAL OUTPUT RULES:
     if (!plan.lifestyle_interventions) plan.lifestyle_interventions = { diet: [], sleep: [], exercise: [], stress: [] };
     if (!plan.action_plan) plan.action_plan = { phase_1: { name: '', focus: '', actions: [] }, phase_2: { name: '', focus: '', actions: [] }, phase_3: { name: '', focus: '', actions: [] } };
     if (!Array.isArray(plan.retest_timeline)) plan.retest_timeline = [];
+    // Hard cap on retest_timeline — even if the AI ignores the prompt's 5-7
+    // soft limit, never ship a plan with >7 retest entries. The 10-test
+    // longevity wishlist on healthy patients (cortisol, zinc, free T,
+    // homocysteine, full thyroid antibodies, etc. for an asymptomatic 28yo)
+    // is exactly the noise we promised to suppress.
+    if (plan.retest_timeline.length > 7) {
+      console.log(`[wellness-plan] capping retest_timeline ${plan.retest_timeline.length} -> 7`);
+      plan.retest_timeline = plan.retest_timeline.slice(0, 7);
+    }
     if (!plan.generated_at) plan.generated_at = new Date().toISOString();
 
     // ── Deterministic medication-depletion injector ──────────────────────

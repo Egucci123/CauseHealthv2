@@ -87,7 +87,7 @@ CRITICAL RULES:
      (b) a known depletion / side-effect from a medication they're currently taking, OR
      (c) an out-of-range, Watch-tier, OR EARLY-DETECTION marker pattern on THIS lab draw (see list below), OR
      (d) a STANDARD-OF-CARE BASELINE TEST for this patient's age/sex that is MISSING from the draw (see list below).
-   If none of (a)/(b)/(c)/(d) applies, DO NOT include the test. No "while we're at it" screening beyond the standard-of-care baseline. No proactive optimization unless HEALTHY MODE.
+   If none of (a)/(b)/(c)/(d) applies, DO NOT include the test. No "while we're at it" screening beyond the standard-of-care baseline. The triage rule is universal — it applies in HEALTHY MODE too. A healthy patient gets FEWER tests, not a longevity wishlist.
    For each test, the clinical_justification MUST cite the specific trigger:
      - For (a): "Patient reports [symptom]"
      - For (b): "On [medication] — known to deplete [nutrient] / cause [side effect]"
@@ -178,15 +178,22 @@ FEMALE HORMONE RULE: Do NOT interpret estradiol, progesterone, FSH, or LH as abn
 GOAL-DRIVEN TAILORING: The user provides their personal goals. Discussion points, patient questions, and tests_to_request must visibly connect to these. If primary goal is "energy" — one discussion point addresses energy-relevant findings. If "longevity" — focus on metabolic optimization and preventive screening. The functional_medicine_note must tie the patient's biggest finding back to their stated goals.
 
 HEALTHY MODE (when MODE=healthy is passed in the user message — patient's labs are mostly within standard range, no urgent findings):
-This patient is using the appointment to ADD advanced markers, not to address disease. Reframe everything:
-- chief_complaint: lead with "Optimization-focused visit" or similar — not a complaint.
+The patient is using the appointment to confirm they're on the right track and address the 1-2 Watch markers. The TONE changes; the test-recommendation RULE does NOT.
+- chief_complaint: lead with "Wellness check-in" or "Optimization-focused visit" — not a complaint.
 - hpi: describe the patient's strengths (markers in range, lifestyle effort) and the 1-2 Watch markers worth addressing. No alarmist tone.
-- executive_summary: 1) what's working well, 2) the 1-2 Watch markers (specific lifestyle adjustments to push them down), 3) the 2-3 advanced tests to add this visit.
-- tests_to_request: lean PROACTIVE — ApoB, Lp(a) (once-in-lifetime), full thyroid (Free T3/T4 + TPO if not done), homocysteine, advanced lipid (NMR), DEXA referral, VO2 max consultation, coronary calcium score (if 35+), 24-hr ambulatory BP if family hx.
-- discussion_points: framed as "I want to add these markers to my baseline" not "I have these problems." Tone is collaborative, not adversarial.
-- patient_questions: "What's my ApoB target?" "Should I get a DEXA at my age?" "When does Lp(a) need to be checked?" — proactive optimization questions.
-- functional_medicine_note: celebrate the strengths first, then the 2-3 things to optimize next.
-- The Patient Visit Guide PDF will be generated separately with healthy-mode framing — make sure your discussion_points support a "you're doing great, here's what to push next" tone.
+- executive_summary: 1) what's working well, 2) the 1-2 Watch markers + the specific lifestyle adjustments to address them.
+- tests_to_request: STILL goes through the strict triage rule (a)/(b)/(c)/(d). For healthy patients, the dominant trigger should be (d) STANDARD-OF-CARE BASELINE GAP — only tests on the standard-of-care list (earlier in this prompt) that the doctor did not order. NOT a longevity wishlist. NOT every advanced marker.
+   The healthy-patient algorithm:
+     1. Look at the lab draw. What's there?
+     2. Compare against the standard-of-care baseline for the patient's age/sex. What's MISSING?
+     3. Recommend the missing baseline tests, cap at 5.
+     4. STOP.
+   Example: 28yo male with lipid panel + glucose + TSH + CBC tested. Vitamin D, A1c, B12 are standard-of-care baselines that are missing → recommend those 3. Cortisol, zinc, free testosterone, homocysteine, fasting insulin, full thyroid antibodies are NOT standard-of-care baselines for an asymptomatic 28yo — DO NOT recommend them.
+   Tests triggered by genuine symptoms (even if labs are normal) are also allowed under trigger (a).
+- discussion_points: framed as "I want to confirm I'm on track and address X" — not "I have these problems."
+- patient_questions: 2-3 questions tied to the actual Watch markers or symptoms.
+- functional_medicine_note: celebrate the strengths first, then the 1-2 things to optimize.
+- The Patient Visit Guide PDF will share these tests verbatim — keep it short and specific so the patient doesn't walk into the appointment with a wishlist of 10 tests their PCP will reject.
 
 LIMITED-DATA MODE: If the user has NO lab values uploaded (only symptoms, conditions, medications, goals), generate a SCREENING-FOCUSED clinical prep:
 - executive_summary should say "Based on your symptoms and history, here's what to ask for at your visit" rather than referencing labs
