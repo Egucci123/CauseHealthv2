@@ -25,7 +25,7 @@ const BUDGET_MAX_TIER: Record<string, number> = {
 };
 
 export interface EligibilityContext {
-  lifeContext?: LifeContext | null;
+  lifeContext?: LifeContext;
   diet?: string;
 }
 

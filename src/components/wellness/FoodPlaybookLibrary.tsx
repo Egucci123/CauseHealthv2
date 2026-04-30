@@ -56,7 +56,7 @@ export const FoodPlaybookLibrary = ({ open, onClose }: Props) => {
 
   const allEligible = useMemo(() => {
     return getEligibleMeals({
-      lifeContext: profile?.lifeContext ?? null,
+      lifeContext: profile?.lifeContext ?? undefined,
       diet: (profile?.lifestyle as any)?.dietType ?? 'standard',
     });
   }, [profile?.lifeContext, profile?.lifestyle]);
