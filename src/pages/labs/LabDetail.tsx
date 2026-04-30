@@ -37,7 +37,14 @@ export const LabDetail = () => {
   // back to "Re-run Analysis" / "Analysis failed" while the analysis is
   // still in flight. Tracking the moment of click locally lets us hold
   // the "Running…" / "Analyzing your bloodwork" UI for the full window.
+  //
+  // Lock release logic: hold for at LEAST 5s to cover the React Query
+  // refetch lag (where the cache still says 'complete' from pre-retry
+  // state). After 5s, release as soon as the cache shows a freshly
+  // completed analysis AND a re-issued one (status='complete' AND
+  // analysis present). Hard ceiling of 60s as a safety net.
   const [retriedAt, setRetriedAt] = useState<number | null>(null);
+  const sawProcessingRef = useRef(false);
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     if (!retriedAt) return;
@@ -45,10 +52,25 @@ export const LabDetail = () => {
     return () => clearInterval(t);
   }, [retriedAt]);
   const status = data?.draw?.processing_status;
-  const retryLocked =
-    !!retriedAt &&
-    now - retriedAt < 60_000 &&
-    !(status === 'complete' && now - retriedAt > 2_000);
+  // Track whether we've seen status='processing' come through the cache
+  // since the retry. Once we have, the DB has actually caught up — we can
+  // safely use status='complete' as the "release lock" signal.
+  useEffect(() => {
+    if (retriedAt && status === 'processing') sawProcessingRef.current = true;
+  }, [retriedAt, status]);
+  // Reset the flag whenever a new retry starts so a previous retry's
+  // "saw processing" doesn't carry over.
+  useEffect(() => { if (retriedAt) sawProcessingRef.current = false; }, [retriedAt]);
+
+  const retryLocked = (() => {
+    if (!retriedAt) return false;
+    const elapsed = now - retriedAt;
+    if (elapsed >= 60_000) return false;                          // hard safety ceiling
+    if (elapsed < 5_000) return true;                             // grace window for refetch lag
+    // Past 5s: release only after we've seen the full processing → complete arc.
+    if (sawProcessingRef.current && status === 'complete' && data?.analysis) return false;
+    return true;
+  })();
 
   const retryAnalysis = useMutation({
     mutationFn: async () => {
