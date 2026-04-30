@@ -8,6 +8,7 @@ import { Button } from '../../components/ui/Button';
 import { FolderSection } from '../../components/ui/FolderSection';
 import { LifestyleInterventions } from '../../components/wellness/LifestyleInterventions';
 import { ActionPlan } from '../../components/wellness/ActionPlan';
+import { FoodPlaybookLibrary } from '../../components/wellness/FoodPlaybookLibrary';
 import { TransformationForecast } from '../../components/wellness/TransformationForecast';
 import { useWellnessPlan, useGenerateWellnessPlan } from '../../hooks/useWellnessPlan';
 import { useLatestLabDraw, useLatestLabValues } from '../../hooks/useLabData';
@@ -290,6 +291,7 @@ function buildShoppingList(meals: any[]): string[] {
 const EatTab = ({ plan }: { plan: any }) => {
   const meals = plan.meals ?? [];
   const [showList, setShowList] = useState(false);
+  const [showLibrary, setShowLibrary] = useState(false);
   if (meals.length === 0) {
     return <p className="text-body text-clinical-stone text-sm">Regenerate your plan to get your weekly food list.</p>;
   }
@@ -305,14 +307,25 @@ const EatTab = ({ plan }: { plan: any }) => {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <p className="text-body text-clinical-stone text-sm">Real meals + real chain orders + lunchbox hacks for real life. Pick what works this week — start anywhere.</p>
-        <button
-          onClick={() => setShowList(!showList)}
-          className="inline-flex items-center gap-1.5 text-precision text-[0.65rem] font-bold tracking-widest uppercase px-3 py-2 bg-gradient-to-br from-[#1B423A] to-[#0F2A24] hover:from-[#244F46] hover:to-[#163730] text-[#D4A574] rounded-[8px] transition-all"
-        >
-          <span className="material-symbols-outlined text-[14px]">shopping_basket</span>
-          {showList ? 'Hide List' : `Shopping List (${shoppingList.length})`}
-        </button>
+        <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={() => setShowLibrary(true)}
+            className="inline-flex items-center gap-1.5 text-precision text-[0.65rem] font-bold tracking-widest uppercase px-3 py-2 bg-[#D4A574] hover:bg-[#B8915F] text-clinical-charcoal rounded-[8px] transition-colors"
+          >
+            <span className="material-symbols-outlined text-[14px]">library_books</span>
+            Browse Full Library
+          </button>
+          <button
+            onClick={() => setShowList(!showList)}
+            className="inline-flex items-center gap-1.5 text-precision text-[0.65rem] font-bold tracking-widest uppercase px-3 py-2 bg-gradient-to-br from-[#1B423A] to-[#0F2A24] hover:from-[#244F46] hover:to-[#163730] text-[#D4A574] rounded-[8px] transition-all"
+          >
+            <span className="material-symbols-outlined text-[14px]">shopping_basket</span>
+            {showList ? 'Hide List' : `Shopping List (${shoppingList.length})`}
+          </button>
+        </div>
       </div>
+
+      <FoodPlaybookLibrary open={showLibrary} onClose={() => setShowLibrary(false)} />
 
       {showList && (
         <div className="bg-clinical-white rounded-[10px] shadow-card border-t-[3px] border-[#1B423A] p-5">
