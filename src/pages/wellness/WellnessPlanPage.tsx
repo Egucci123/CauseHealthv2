@@ -679,18 +679,20 @@ export const WellnessPlanPage = () => {
               The split into 'retest' vs 'new tests' was a UX experiment that
               tested poorly: users had to mentally merge two lists. Now ONE
               comprehensive list of every test to ask for at the 12-week visit. */}
-          {Array.isArray(plan.retest_timeline) && plan.retest_timeline.length > 0 && (
+          {(() => {
+            const validRetests = (plan.retest_timeline ?? []).filter((r: any) => typeof r?.marker === 'string' && r.marker.trim().length > 0);
+            return validRetests.length > 0 && (
             <FolderSection
               icon="science"
               title="Tests to ask for at your 12-week visit"
-              count={plan.retest_timeline.length}
-              countLabel={plan.retest_timeline.length === 1 ? 'test' : 'tests'}
+              count={validRetests.length}
+              countLabel={validRetests.length === 1 ? 'test' : 'tests'}
               explanation="Every test the doctor should run at your follow-up. Some re-measure values from this draw to track progress; others fill in gaps from symptoms or medication side effects. All are PCP-orderable and insurance-covered. Hand the doctor this list."
               accentColor="#1B423A"
               defaultOpen
             >
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {plan.retest_timeline.map((r: any, i: number) => (
+                {validRetests.map((r: any, i: number) => (
                   <div key={i} className="flex items-start gap-2 p-3 bg-clinical-cream/40 rounded-[8px]">
                     <span className="material-symbols-outlined text-[16px] flex-shrink-0 mt-0.5 text-[#1B423A]">science</span>
                     <div className="flex-1 min-w-0">
@@ -701,7 +703,8 @@ export const WellnessPlanPage = () => {
                 ))}
               </div>
             </FolderSection>
-          )}
+            );
+          })()}
 
           {/* Symptoms addressed — moved to bottom (with the other deep-dive
               dropdowns) per founder direction. Stays folded closed by default. */}

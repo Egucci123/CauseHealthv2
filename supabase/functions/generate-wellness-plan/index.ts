@@ -499,21 +499,47 @@ HARD RULES — FOLLOW EXACTLY:
     Most users start with poor diets — fast food, refined carbs, low protein, low vegetables. Jumping to "wild salmon + roasted asparagus + bone broth + grass-fed butter" feels alien and adherence collapses by week 2. Build the meals[] array as a PROGRESSION across phases:
     Most users start with poor diets — fast food, refined carbs, low protein, low vegetables. Jumping to "wild salmon + roasted asparagus + bone broth + grass-fed butter" feels alien and adherence collapses by week 2. The "perfect" meal that doesn't get eaten beats every metric of zero. Build the meals[] array as a PROGRESSION across phases:
 
-    PHASE 1 (Weeks 1-4) — SWAPS, NOT REPLACEMENTS. Tag these meals with when including ":phase1" suffix is fine in the name. The user is not learning to cook from scratch in week 1.
-      - "Upgrade your current meal" framing. Egg McMuffin → make the egg+cheese sandwich at home with whole-grain English muffin. Subway → Chipotle bowl with double protein. Cereal breakfast → Greek yogurt + berries + handful of nuts.
-      - Ingredients should be groceries-store basic: chicken breast, eggs, ground beef, frozen vegetables, brown rice, oatmeal, peanut butter, bananas, apples, plain Greek yogurt, basic seasonings (salt, pepper, garlic, olive oil).
-      - NO bone broth. NO grass-fed butter. NO ghee. NO wild Atlantic salmon. NO sea moss. NO microgreens. NO tahini-drizzled anything. These belong in Phase 3 if at all.
-      - 2-3 meals max. Each one should take <10 min to make and be googleable on TikTok.
+    THINK LIKE A NUTRITIONIST + HEALTH-INFLUENCER WHO ACTUALLY UNDERSTANDS A BUSY ADULT (this is the bar — not a textbook nutritionist).
+    Forbidden defaults: Greek yogurt + berries + almonds, "egg + whole grain toast", "grilled chicken + rice + steamed broccoli", "salmon + sweet potato + broccoli", "kale salad with chicken", "ground turkey chili". These are the 7 boring meals that show up in every generic plan. If your meals look like this list, you failed the assignment.
+    Good meals are SPECIFIC, SURPRISING, and they leverage SHORTCUTS most people don't know. Examples of the bar:
+      - "Costco rotisserie chicken + microwave bag of jasmine rice + bagged Caesar kit (skip the croutons)" — 90 seconds, 50g protein, $7.
+      - "Cottage cheese + everything bagel seasoning + sliced cucumber" — 28g protein, no cooking, viral on TikTok for a reason.
+      - "Protein iced coffee" — Premier Protein shake (vanilla) blended with cold brew + ice = 30g protein breakfast in 60 seconds. Replaces the Starbucks venti latte (560 cal, 0g protein).
+      - "Sleepy girl mocktail" — 1/2 cup tart cherry juice + magnesium glycinate powder + sparkling water at 9 PM. For mid-night waking.
+      - "Trader Joe's pre-cooked grilled chicken strips + frozen riced cauliflower + jarred pesto" — 5 min, full meal.
+      - "Aldi protein pasta (chickpea) + frozen meatballs + jar of marinara" — 25g protein per serving, 12 min. Half the carbs of regular pasta.
+      - "Wendy's grilled chicken sandwich, no bun, on the side salad" — fast food, 30g protein, 10g carbs.
+      - "Egg McMuffin no muffin (just sausage, egg, cheese)" — 17g protein, 7g carbs. McDonald's app saves $2.
+      - "Costco frozen salmon burger + brioche bun + sliced avocado" — 4 minutes in air fryer.
+      - "Frozen mango + Greek yogurt blender = ice cream" — for the 9 PM craving without spiking blood sugar.
+      - "Dunkin' iced coffee with 2 espresso shots + splash of unsweetened almond milk + sugar-free vanilla" — under 20 cal, replaces the 320-cal vanilla latte.
+      - "Truck stop protein box: hard-boiled eggs (2-pack) + string cheese + apple + jerky" — 30g protein, $6, drivers do this.
+      - "Olive Garden Lasagna Fritta or chicken alfredo: order chicken parmesan instead, scoop the breading off" — 45g protein, half the calories.
+      - "Buffalo Wild Wings: traditional wings (not boneless) + side salad + ranch" — boneless are battered = double the carbs.
+      - "Chipotle order hack: bowl, double chicken, light rice, fajita veggies, salsa, guac (yes, get guac)" — 65g protein, 700 cal.
 
-    PHASE 2 (Weeks 5-8) — INTRODUCE ONE NEW THING. Salmon is OK now (Costco frozen filets). Roasted vegetables OK. Quinoa OK. The patient has 4 weeks of routine; they can level up.
-      - 2-3 meals. Slightly more ingredients (5-7 items vs phase 1's 3-5).
-      - Still budget-grocery-store. Whole Foods is fine but not required.
+    PHASE 1 (Weeks 1-4) — REORDER, NOT REINVENT. The user is not making salads from scratch. They're at McDonald's tomorrow. Help them.
+      - 3 meals: 1 fast-food order hack (Chipotle/Chick-fil-A/Wendy's/etc — match user's eatOutPlaces if known), 1 grocery-shortcut meal (rotisserie chicken / pre-cooked / frozen / blender), 1 portable snack pack (protein box, jerky combo, cottage cheese cup).
+      - Each meal under 5 minutes prep. Real chain orders. Real grocery store SKUs (Costco/Trader Joe's/Aldi/Walmart specifics — name the actual product where helpful).
+      - Forbidden: "make X at home" recipes that require >5 ingredients or >10 min. Forbidden: assuming the user has time/skill to cook.
 
-    PHASE 3 (Weeks 9-12) — OPTIMAL. Salmon power bowls, kale-avocado salads, the meals you'd actually post on Instagram. Patient has built habits and tolerance.
-      - 2-3 meals. Full-on clean.
+    PHASE 2 (Weeks 5-8) — STOCK THE FREEZER + LEVEL UP ORDERS. Adherence built; introduce one cooking moment.
+      - 2-3 meals: 1 simple sheet-pan or one-pot meal (10-15 min, max 6 ingredients), 1 chain-restaurant upgrade (specific dish at specific restaurant), 1 "viral hack" meal (cottage cheese ice cream, protein iced coffee, sleepy girl mocktail, etc.).
+      - Specific brand/SKU mentions are encouraged (Aunt Millie's protein bread, Cabot cheese, Premier Protein, Banza chickpea pasta, Halo Top, Daily Harvest, etc.).
 
-    Each meal entry MUST include a "phase" field: 1, 2, or 3. Phase 1 meals come FIRST in the array. Total meals: 6-9 across all three phases.
-    The why field should hint at the "why now" not the "why ever" — e.g. for phase 1 "Easiest swap from your current eggs+toast" beats "Choline supports liver repair pathways."
+    PHASE 3 (Weeks 9-12) — REAL MEAL CONFIDENCE. Real recipes, but still working-class.
+      - 2-3 meals: actual cookable recipes 15-25 min, 6-10 ingredients. Influencer-level (looks good, photographs well, lab-targeted).
+      - Costco/Aldi/Walmart sourced still preferred. Whole Foods is fine but never required.
+
+    LABEL CONSTRAINTS APPLY ACROSS ALL PHASES:
+      - Honor diet preference (vegan / keto / vegetarian / etc.) — never suggest something that breaks it.
+      - Honor weeklyFoodBudget — under_50 means no salmon, no grass-fed; 50_100 means 1-2 fish meals/week max.
+      - Honor cookingTimeAvailable — under_15 means NO cooking past phase 2.
+      - Honor typicalLunch — if fast_food, MUST give chain-specific orders for the chains in eatOutPlaces.
+      - Honor work_type/schedule — drivers/shift workers need cooler-friendly + gas-station-rescue options.
+
+    Each meal entry MUST include a "phase" field: 1, 2, or 3. Phase 1 meals come FIRST in the array. Total meals: 7-9 across all three phases.
+    The why field is the SECRET — what makes this meal smart for THIS user. Reference their specific lab or symptom or barrier. Example: "Cottage cheese has 2x the protein of yogurt, and your liver enzyme (ALT 97) needs casein protein for repair. Eat this instead of the morning bagel." Beats "Protein supports liver."
 
 12. LIMITED-DATA MODE: If the user has NO lab values uploaded (only symptoms, conditions, medications, goals), still generate a useful plan based on:
     - Diagnosed conditions and known mechanisms
@@ -1044,6 +1070,17 @@ CRITICAL OUTPUT RULES:
       }
 
       // Re-cap after all injectors
+      // Drop empty / malformed entries before any capping. The AI sometimes
+      // emits a placeholder object {marker:"", why:""} that rendered as a
+      // blank card (icon + no text) in the UI.
+      const beforeFilter = plan.retest_timeline.length;
+      plan.retest_timeline = plan.retest_timeline.filter((r: any) => {
+        const marker = String(r?.marker ?? '').trim();
+        return marker.length > 0;
+      });
+      if (beforeFilter !== plan.retest_timeline.length) {
+        console.log(`[wellness-plan] dropped ${beforeFilter - plan.retest_timeline.length} empty retest entries`);
+      }
       if (plan.retest_timeline.length > 20) {
         console.log(`[wellness-plan] post-injector cap: ${plan.retest_timeline.length} -> 20`);
         plan.retest_timeline = plan.retest_timeline.slice(0, 20);
