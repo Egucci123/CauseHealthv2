@@ -439,14 +439,18 @@ CRITICAL OUTPUT RULES (for the new card-stack UI):
       // no executive summary entry, no scary clinical_note. Doctor decides
       // the workup; we just flag the pattern. Calm tone, names the
       // condition to rule out so the patient can repeat it at the visit.
+      // JAK2 / MPN injector — must use the SAME thresholds as buildRareDiseaseBlocklist
+      // (single source of truth in _shared/rareDiseaseGate.ts). Previously had a
+      // stale inline copy with the old 'isYoung && rbc>5.7 && hct>51' soft path
+      // that fired on borderline values like RBC 5.96 / Hct 51.4 in a 29yo with
+      // normal platelets — exactly the false positive Evan saw on his prep.
       const isMidAge = ctx.age < 50;
       const jak2Triggered =
         (ctx.platelets ?? 0) > 600 ||
         (isYoung && (ctx.platelets ?? 0) > 450) ||
         (isMidAge && (ctx.platelets ?? 0) > 500) ||
         ((ctx.rbc ?? 0) > 6.0 && (ctx.hct ?? 0) > 54) ||
-        (isYoung && (ctx.rbc ?? 0) > 5.7 && (ctx.hct ?? 0) > 51) ||
-        ((ctx.hgb ?? 0) > 17 && (ctx.hct ?? 0) > 52);
+        ((ctx.hgb ?? 0) > 17.5 && (ctx.hct ?? 0) > 53);
       if (jak2Triggered) {
         doc.discussion_points.push(`Concern to raise with your doctor: platelets ${ctx.platelets ?? '—'}, hemoglobin ${ctx.hgb ?? '—'}, hematocrit ${ctx.hct ?? '—'}, RBC ${ctx.rbc ?? '—'}. This combination can sometimes point to a myeloproliferative process (essential thrombocythemia or polycythemia vera). Your doctor may want to repeat the CBC, check an EPO level, and consider a JAK2 V617F test to rule it out.`);
       }

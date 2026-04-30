@@ -452,7 +452,18 @@ export function exportDoctorPrepPDF(doc: DoctorPrepDocument, userName: string, p
   addSectionHeader('Current Medications');
   doc.medications.forEach(med => {
     checkPage(8);
-    const line = stripUnsupportedChars(`- ${med.name}${med.dose ? ` - ${med.dose}` : ''}${med.notable_depletion ? ` (depletes ${med.notable_depletion})` : ''}`);
+    // Strip leading verb forms from the AI's depletion field so the rendered
+    // template doesn't double up. Handles three common patterns:
+    //   "Depletes CoQ10" -> "CoQ10"  (avoid "depletes Depletes")
+    //   "Mesalamine can deplete folate" -> "folate"  (avoid restating the med name)
+    //   "May deplete B12" -> "B12"
+    const cleanDepletion = (med.notable_depletion ?? '')
+      // First, strip "[medication name] can/may deplete" if present
+      .replace(new RegExp(`^\\s*${med.name.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}\\s+(can|may)\\s+deplete[sd]?\\s*[:.\\-]?\\s*`, 'i'), '')
+      // Then strip plain leading "Depletes/Deplete/Deplete:/Depleted/may deplete"
+      .replace(/^\s*(may\s+)?deplete[sd]?\s*[:.\-]?\s*/i, '')
+      .trim();
+    const line = stripUnsupportedChars(`- ${med.name}${med.dose ? ` - ${med.dose}` : ''}${cleanDepletion ? ` (depletes ${cleanDepletion})` : ''}`);
     pdf.setFontSize(8); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(26, 26, 26);
     const lines = pdf.splitTextToSize(line, contentW);
     pdf.text(lines, margin, y); y += lines.length * 3.5 + 1;

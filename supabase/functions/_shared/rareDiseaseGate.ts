@@ -80,9 +80,15 @@ export function extractRareDiseaseContext(
   labValues: Array<{ marker_name?: string; value: number | string }>,
   age: number | null | undefined,
 ): RareDiseaseContext {
-  const findVal = (patterns: string[]): number | null => {
+  // Pattern matcher with EXCLUDE list — needed because "Hemoglobin A1c"
+  // contains the word "hemoglobin" but is a glucose marker, not a CBC
+  // marker. Without excludes the gate's hgb value gets the A1c (5.5) which
+  // tanks every threshold and produces nonsense like "hemoglobin 5.5"
+  // in the discussion-points concern line.
+  const findVal = (patterns: string[], excludes: string[] = []): number | null => {
     for (const v of labValues) {
       const n = (v.marker_name ?? '').toLowerCase();
+      if (excludes.some(e => n.includes(e))) continue;
       if (patterns.some(p => n.includes(p))) {
         const num = Number(v.value);
         if (!Number.isNaN(num)) return num;
@@ -94,8 +100,8 @@ export function extractRareDiseaseContext(
     age: age ?? 99,
     platelets: findVal(['platelet']),
     rbc: findVal(['rbc', 'red blood cell']),
-    hct: findVal(['hematocrit', 'hct']),
-    hgb: findVal(['hemoglobin', 'hgb']),
+    hct: findVal(['hematocrit', 'hct'], ['a1c']),
+    hgb: findVal(['hemoglobin', 'hgb'], ['a1c']),                 // exclude HbA1c
     ana: findVal(['ana ', 'anti-nuclear']),
     globulin: findVal(['globulin']),
     calcium: findVal(['calcium']),
