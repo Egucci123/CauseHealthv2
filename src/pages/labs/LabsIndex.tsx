@@ -33,9 +33,15 @@ export const LabsIndex = () => {
   // Have an analyzed draw → jump to its detail page
   if (latest) return <Navigate to={`/labs/${latest.id}`} replace />;
 
-  // Have at least one draw but none complete → send to history so they can
-  // retry / wait on the in-flight analysis
-  if (allDraws && allDraws.length > 0) return <Navigate to="/labs/history" replace />;
+  // Have at least one draw but none complete (still analyzing OR last
+  // analysis failed) → still land on the most recent draw's DETAIL page
+  // so the user sees their values immediately. The detail page itself
+  // shows the analyzing/failed banner with proper retry UX. Don't dump
+  // them on the history list — that hides the values they uploaded and
+  // forces an extra click to see anything.
+  if (allDraws && allDraws.length > 0) {
+    return <Navigate to={`/labs/${allDraws[0].id}`} replace />;
+  }
 
   // No draws yet — empty state with upload prompt
   return (

@@ -31,9 +31,29 @@ export const LabDetail = () => {
   const qc = useQueryClient();
   const { isPro } = useSubscription();
 
+  // Local lock for the retry window. The mutation's DB update is fast
+  // (~300ms) but analyze-labs runs ~30s in the background. Without this,
+  // mutation.isPending flips back to false in 300ms and the UI flickers
+  // back to "Re-run Analysis" / "Analysis failed" while the analysis is
+  // still in flight. Tracking the moment of click locally lets us hold
+  // the "Running…" / "Analyzing your bloodwork" UI for the full window.
+  const [retriedAt, setRetriedAt] = useState<number | null>(null);
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    if (!retriedAt) return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [retriedAt]);
+  const status = data?.draw?.processing_status;
+  const retryLocked =
+    !!retriedAt &&
+    now - retriedAt < 60_000 &&
+    !(status === 'complete' && now - retriedAt > 2_000);
+
   const retryAnalysis = useMutation({
     mutationFn: async () => {
       if (!drawId || !user) throw new Error('Missing context');
+      setRetriedAt(Date.now());
       await supabase.from('lab_draws').update({ processing_status: 'processing', analysis_result: null }).eq('id', drawId);
       // Get fresh JWT and fire the function. We DON'T await the full response —
       // the function takes ~30s and blocking the UI on it is bad UX. Realtime
@@ -267,7 +287,7 @@ export const LabDetail = () => {
               const updatedAt = draw.updated_at ?? draw.created_at;
               const ageMs = updatedAt ? Date.now() - new Date(updatedAt).getTime() : 0;
               const stuck = draw.processing_status === 'processing' && ageMs > 90_000;
-              const isRunning = retryAnalysis.isPending || (draw.processing_status === 'processing' && !stuck);
+              const isRunning = retryLocked || retryAnalysis.isPending || (draw.processing_status === 'processing' && !stuck);
               return (
                 <button
                   onClick={() => retryAnalysis.mutate()}
@@ -324,7 +344,7 @@ export const LabDetail = () => {
       {/* Status banner — shown PROMINENTLY above counts so user always knows
           if analysis is in flight or failed. Self-polling via useEffect for
           extra reliability if React Query's refetchInterval isn't triggering. */}
-      {draw.processing_status === 'processing' && !analysis && (
+      {(retryLocked || (draw.processing_status === 'processing' && !analysis)) && (
         <div className="bg-gradient-to-r from-[#1B423A] to-[#2D6A4F] rounded-[14px] p-5 flex items-center gap-4 shadow-card">
           <div className="relative w-10 h-10 flex-shrink-0">
             <div className="absolute inset-0 rounded-full border-2 border-white/20" />
@@ -339,7 +359,10 @@ export const LabDetail = () => {
         </div>
       )}
 
-      {draw.processing_status === 'failed' && (
+      {/* Hide the failed banner during the retry-lock window — otherwise the
+          user sees "Analysis failed" + Retry button while a retry is in
+          flight, which is exactly the confusion that keeps reopening this bug. */}
+      {!retryLocked && draw.processing_status === 'failed' && (
         <div className="rounded-[10px] p-6 flex items-center gap-4 bg-[#C94F4F]/10 border border-[#C94F4F]/30">
           <span className="material-symbols-outlined text-[24px] flex-shrink-0 text-[#C94F4F]">error</span>
           <div className="flex-1">
