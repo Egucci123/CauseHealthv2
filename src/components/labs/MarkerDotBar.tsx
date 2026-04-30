@@ -19,33 +19,31 @@ const colorForFlag = (flag?: string | null) => {
   return '#9CA3AF';
 };
 
-// Build a 5-zone bar: |urgent-low | monitor-low | optimal | monitor-high | urgent-high|
-// Use standard ranges to extend the axis when present.
-export const MarkerDotBar = ({ value, optimalLow, optimalHigh, standardLow, standardHigh, flag }: Props) => {
+// Build a 3-zone bar: | low | in-range | high |
+// Uses STANDARD ranges only — the functional-medicine "optimal" band is no
+// longer rendered. Values inside standard show green; outside, red.
+export const MarkerDotBar = ({ value, standardLow, standardHigh, flag }: Props) => {
   const layout = useMemo(() => {
-    if (optimalLow == null || optimalHigh == null) return null;
+    if (standardLow == null || standardHigh == null) return null;
 
-    const sLow = standardLow ?? optimalLow * 0.7;
-    const sHigh = standardHigh ?? optimalHigh * 1.3;
     // Pad axis so dot has room when values are extreme
-    const min = Math.min(sLow, value, optimalLow) * 0.95;
-    const max = Math.max(sHigh, value, optimalHigh) * 1.05;
-    const span = max - min || 1;
+    const span = standardHigh - standardLow;
+    const min = Math.min(standardLow - span * 0.5, value) * 0.95;
+    const max = Math.max(standardHigh + span * 0.5, value) * 1.05;
+    const range = max - min || 1;
 
-    const pct = (v: number) => Math.max(0, Math.min(100, ((v - min) / span) * 100));
+    const pct = (v: number) => Math.max(0, Math.min(100, ((v - min) / range) * 100));
 
-    const dotPct = pct(value);
-    const sLowPct = pct(sLow);
-    const oLowPct = pct(optimalLow);
-    const oHighPct = pct(optimalHigh);
-    const sHighPct = pct(sHigh);
-
-    return { dotPct, sLowPct, oLowPct, oHighPct, sHighPct };
-  }, [value, optimalLow, optimalHigh, standardLow, standardHigh]);
+    return {
+      dotPct: pct(value),
+      sLowPct: pct(standardLow),
+      sHighPct: pct(standardHigh),
+    };
+  }, [value, standardLow, standardHigh]);
 
   if (!layout) {
     return (
-      <div className="text-precision text-[0.6rem] text-clinical-stone">No optimal range</div>
+      <div className="text-precision text-[0.6rem] text-clinical-stone">No reference range</div>
     );
   }
 
@@ -54,15 +52,11 @@ export const MarkerDotBar = ({ value, optimalLow, optimalHigh, standardLow, stan
   return (
     <div className="w-full">
       <div className="relative h-3 rounded-full overflow-hidden bg-clinical-cream">
-        {/* Standard-low zone (red) */}
+        {/* Below standard (red) */}
         <div className="absolute top-0 bottom-0 bg-[#C94F4F]/80" style={{ left: 0, width: `${layout.sLowPct}%` }} />
-        {/* Monitor-low zone (amber) */}
-        <div className="absolute top-0 bottom-0 bg-[#E8922A]/80" style={{ left: `${layout.sLowPct}%`, width: `${Math.max(0, layout.oLowPct - layout.sLowPct)}%` }} />
-        {/* Optimal zone (green) */}
-        <div className="absolute top-0 bottom-0 bg-[#2A9D8F]/80" style={{ left: `${layout.oLowPct}%`, width: `${Math.max(0, layout.oHighPct - layout.oLowPct)}%` }} />
-        {/* Monitor-high zone (amber) */}
-        <div className="absolute top-0 bottom-0 bg-[#E8922A]/80" style={{ left: `${layout.oHighPct}%`, width: `${Math.max(0, layout.sHighPct - layout.oHighPct)}%` }} />
-        {/* Standard-high zone (red) */}
+        {/* Within standard (green) */}
+        <div className="absolute top-0 bottom-0 bg-[#2A9D8F]/80" style={{ left: `${layout.sLowPct}%`, width: `${Math.max(0, layout.sHighPct - layout.sLowPct)}%` }} />
+        {/* Above standard (red) */}
         <div className="absolute top-0 bottom-0 bg-[#C94F4F]/80" style={{ left: `${layout.sHighPct}%`, width: `${Math.max(0, 100 - layout.sHighPct)}%` }} />
         {/* Dot */}
         <div
