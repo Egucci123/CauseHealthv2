@@ -693,9 +693,20 @@ CRITICAL OUTPUT RULES:
           pattern.test(`${t?.marker ?? ''} ${t?.why ?? ''}`)
         );
 
-      const conditionsLower = (condStr ?? '').toLowerCase();
+      // Universal condition signal — explicit diagnoses + medication-implied
+      // conditions. Some users skip Step 2 (Diagnoses) but list their meds;
+      // mesalamine, metformin, levothyroxine, etc. are prescription-locked
+      // so their presence universally implies the diagnosis.
+      const medsLowerCond = (medsStr ?? '').toLowerCase();
+      const inferredCond: string[] = [];
+      if (/\b(mesalamine|sulfasalazine|asacol|pentasa|lialda|apriso|delzicol|infliximab|remicade|adalimumab|humira|ustekinumab|stelara|vedolizumab|entyvio|tofacitinib|xeljanz|ozanimod|zeposia|risankizumab|skyrizi)\b/i.test(medsLowerCond)) inferredCond.push('inflammatory bowel disease');
+      if (/\b(metformin|glucophage|jardiance|empagliflozin|ozempic|semaglutide|trulicity|dulaglutide|januvia|sitagliptin)\b/i.test(medsLowerCond)) inferredCond.push('type 2 diabetes');
+      if (/\b(levothyroxine|synthroid|levoxyl|liothyronine|cytomel|armour\s*thyroid|nature\s*throid)\b/i.test(medsLowerCond)) inferredCond.push('hypothyroidism');
+      if (/\b(methotrexate|hydroxychloroquine|plaquenil|leflunomide|abatacept|orencia|rituximab|tocilizumab|actemra)\b/i.test(medsLowerCond) && !inferredCond.includes('inflammatory bowel disease')) inferredCond.push('autoimmune disease');
+      const conditionsLower = ((condStr ?? '') + ' ' + inferredCond.join(' ')).toLowerCase();
       const symptomsLower = (sympStr ?? '').toLowerCase();
       const labsLower = (allLabsStr ?? '').toLowerCase();
+      if (inferredCond.length > 0) console.log(`[wellness-plan retest-injector] Implied conditions from meds: ${inferredCond.join(', ')}`);
 
       const hasUC = /\b(ulcerative colitis|crohn|ibd|inflammatory bowel)\b/.test(conditionsLower);
       const hasAutoimmune = hasUC || /\b(hashimoto|graves|lupus|sle|ra|rheumatoid|psoriasis|ms|multiple sclerosis|celiac|t1d|type 1 diabetes)\b/.test(conditionsLower);
@@ -979,7 +990,27 @@ CRITICAL OUTPUT RULES:
       // → selenium; T2D → berberine; PCOS → inositol; etc.). Each entry
       // includes practical_note timing + interaction guidance.
       type DiseaseRule = { conditionRegex: RegExp; matchInStack: RegExp; entry: any };
-      const conditionsLowerForInjector = (condStr ?? '').toLowerCase();
+      // Build a universal condition signal that combines explicit diagnoses
+      // with medication-implied conditions. Some users skip Step 2 (Diagnoses)
+      // during onboarding but list their meds. Medications like mesalamine,
+      // metformin, and levothyroxine are prescription-locked to specific
+      // conditions, so their presence universally implies the diagnosis.
+      const medsLowerForInjector = (medsStr ?? '').toLowerCase();
+      const impliedConditions: string[] = [];
+      if (/\b(mesalamine|sulfasalazine|asacol|pentasa|lialda|apriso|delzicol|asacol\s*hd|infliximab|remicade|adalimumab|humira|ustekinumab|stelara|vedolizumab|entyvio|tofacitinib|xeljanz|ozanimod|zeposia|risankizumab|skyrizi)\b/i.test(medsLowerForInjector)) {
+        impliedConditions.push('inflammatory bowel disease');
+      }
+      if (/\b(metformin|glucophage|jardiance|empagliflozin|ozempic|semaglutide|trulicity|dulaglutide|januvia|sitagliptin)\b/i.test(medsLowerForInjector)) {
+        impliedConditions.push('type 2 diabetes');
+      }
+      if (/\b(levothyroxine|synthroid|levoxyl|liothyronine|cytomel|armour\s*thyroid|nature\s*throid)\b/i.test(medsLowerForInjector)) {
+        impliedConditions.push('hypothyroidism');
+      }
+      if (/\b(methotrexate|hydroxychloroquine|plaquenil|sulfasalazine|leflunomide|tofacitinib|abatacept|orencia|rituximab|tocilizumab|actemra)\b/i.test(medsLowerForInjector) && !impliedConditions.includes('inflammatory bowel disease')) {
+        impliedConditions.push('autoimmune disease');
+      }
+      const conditionsLowerForInjector = ((condStr ?? '') + ' ' + impliedConditions.join(' ')).toLowerCase();
+      if (impliedConditions.length > 0) console.log(`[wellness-plan] Implied conditions from meds: ${impliedConditions.join(', ')}`);
       const diseaseMechanismRules: DiseaseRule[] = [
         // ── IBD: gut-barrier repair triad ──────────────────────────────
         {

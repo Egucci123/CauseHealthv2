@@ -605,9 +605,19 @@ CRITICAL OUTPUT RULES (for the new card-stack UI):
           pattern.test(`${t?.test_name ?? ''} ${t?.why_short ?? ''}`)
         );
 
-      const conditionsLower = condStr.toLowerCase();
+      // Universal condition signal: explicit + medication-implied. Same logic
+      // as generate-wellness-plan — keeps test recommendations consistent
+      // when the user listed meds but skipped Step 2 (Diagnoses).
+      const medsLowerCond = (medsStr ?? '').toLowerCase();
+      const inferredCond: string[] = [];
+      if (/\b(mesalamine|sulfasalazine|asacol|pentasa|lialda|apriso|delzicol|infliximab|remicade|adalimumab|humira|ustekinumab|stelara|vedolizumab|entyvio|tofacitinib|xeljanz|ozanimod|zeposia|risankizumab|skyrizi)\b/i.test(medsLowerCond)) inferredCond.push('inflammatory bowel disease');
+      if (/\b(metformin|glucophage|jardiance|empagliflozin|ozempic|semaglutide|trulicity|dulaglutide|januvia|sitagliptin)\b/i.test(medsLowerCond)) inferredCond.push('type 2 diabetes');
+      if (/\b(levothyroxine|synthroid|levoxyl|liothyronine|cytomel|armour\s*thyroid|nature\s*throid)\b/i.test(medsLowerCond)) inferredCond.push('hypothyroidism');
+      if (/\b(methotrexate|hydroxychloroquine|plaquenil|leflunomide|abatacept|orencia|rituximab|tocilizumab|actemra)\b/i.test(medsLowerCond) && !inferredCond.includes('inflammatory bowel disease')) inferredCond.push('autoimmune disease');
+      const conditionsLower = (condStr.toLowerCase() + ' ' + inferredCond.join(' ')).toLowerCase();
       const symptomsLower = sympStr.toLowerCase();
       const labsLower = allLabsStr.toLowerCase();
+      if (inferredCond.length > 0) console.log(`[doctor-prep] Implied conditions from meds: ${inferredCond.join(', ')}`);
 
       const hasUC = /\b(ulcerative colitis|crohn|ibd|inflammatory bowel)\b/.test(conditionsLower);
       const hasAutoimmune = hasUC || /\b(hashimoto|graves|lupus|sle|ra|rheumatoid|psoriasis|ms|multiple sclerosis|celiac|t1d|type 1 diabetes)\b/.test(conditionsLower);
