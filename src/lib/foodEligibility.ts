@@ -37,7 +37,7 @@ export function getEligibleMeals(ctx: EligibilityContext): MealEntry[] {
   const lc = ctx.lifeContext ?? {};
   const cookingMax = lc.cookingTimeAvailable ? COOKING_TIME_MAX[lc.cookingTimeAvailable] ?? 999 : 999;
   const budgetMaxTier = lc.weeklyFoodBudget ? BUDGET_MAX_TIER[lc.weeklyFoodBudget] ?? 3 : 3;
-  const userChains = (lc.eatOutPlaces ?? []).map(c => c.toLowerCase().trim());
+  const userChains: string[] = (lc.eatOutPlaces ?? []).map((c: string) => c.toLowerCase().trim());
   const hasKids = lc.kidsAtHome != null && lc.kidsAtHome !== '0';
   const userDiet = (ctx.diet ?? 'standard').toLowerCase();
   const workType = lc.workType ?? '';
@@ -54,7 +54,7 @@ export function getEligibleMeals(ctx: EligibilityContext): MealEntry[] {
     if (c.maxPrepMinutes && m.prepMinutes > c.maxPrepMinutes) return false;
     if (c.minBudgetTier && budgetMaxTier < c.minBudgetTier) return false;
     if (c.requiresChain && c.requiresChain.length > 0) {
-      const ok = c.requiresChain.some(chain => userChains.some(uc => uc.includes(chain.toLowerCase())));
+      const ok = c.requiresChain.some((chain: string) => userChains.some((uc: string) => uc.includes(chain.toLowerCase())));
       if (!ok) return false;
     }
     if (c.diet && c.diet.length > 0 && !c.diet.includes(userDiet)) return false;
