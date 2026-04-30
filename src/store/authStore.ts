@@ -283,6 +283,13 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     if (data.weightKg            !== undefined) dbData.weight_kg            = data.weightKg;
     if (data.onboardingCompleted !== undefined) dbData.onboarding_completed = data.onboardingCompleted;
     if (data.primaryGoals        !== undefined) dbData.primary_goals        = data.primaryGoals;
+    if (data.lifestyle           !== undefined) dbData.lifestyle             = data.lifestyle;
+    if (data.lifeContext         !== undefined) dbData.life_context          = data.lifeContext;
+    if (data.familyHistory       !== undefined) dbData.family_history        = data.familyHistory;
+    if (data.geneticTesting      !== undefined) dbData.genetic_testing       = data.geneticTesting;
+    if (data.specificConcern     !== undefined) dbData.specific_concern      = data.specificConcern;
+    if (data.triedBefore         !== undefined) dbData.tried_before          = data.triedBefore;
+    if (data.hearAboutUs         !== undefined) dbData.hear_about_us         = data.hearAboutUs;
 
     const { error } = await supabase
       .from('profiles')

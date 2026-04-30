@@ -675,11 +675,36 @@ export const WellnessPlanPage = () => {
           {/* Transformation forecast — pure math, big motivation */}
           {forecasts.length > 0 && <TransformationForecast forecasts={forecasts} />}
 
-          {/* Symptoms addressed — every reported symptom + how this plan targets it.
-              Folded closed by default per founder direction (12+ symptoms × 30-word
-              entries was overwhelming). User taps to expand when they want to see
-              how each symptom is being handled. The plan body (forecast, tests,
-              meals, supplements) leads. */}
+          {/* Single unified test list — re-measures + new tests in one folder.
+              The split into 'retest' vs 'new tests' was a UX experiment that
+              tested poorly: users had to mentally merge two lists. Now ONE
+              comprehensive list of every test to ask for at the 12-week visit. */}
+          {Array.isArray(plan.retest_timeline) && plan.retest_timeline.length > 0 && (
+            <FolderSection
+              icon="science"
+              title="Tests to ask for at your 12-week visit"
+              count={plan.retest_timeline.length}
+              countLabel={plan.retest_timeline.length === 1 ? 'test' : 'tests'}
+              explanation="Every test the doctor should run at your follow-up. Some re-measure values from this draw to track progress; others fill in gaps from symptoms or medication side effects. All are PCP-orderable and insurance-covered. Hand the doctor this list."
+              accentColor="#1B423A"
+              defaultOpen
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {plan.retest_timeline.map((r: any, i: number) => (
+                  <div key={i} className="flex items-start gap-2 p-3 bg-clinical-cream/40 rounded-[8px]">
+                    <span className="material-symbols-outlined text-[16px] flex-shrink-0 mt-0.5 text-[#1B423A]">science</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-body text-clinical-charcoal text-sm font-semibold leading-tight">{r.marker}</p>
+                      {r.why && <p className="text-precision text-[0.6rem] text-clinical-stone mt-1 leading-snug">{r.why}</p>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </FolderSection>
+          )}
+
+          {/* Symptoms addressed — moved to bottom (with the other deep-dive
+              dropdowns) per founder direction. Stays folded closed by default. */}
           {Array.isArray(plan.symptoms_addressed) && plan.symptoms_addressed.length > 0 && (
             <FolderSection
               icon="monitor_heart"
@@ -703,34 +728,6 @@ export const WellnessPlanPage = () => {
                     {s.how_addressed && (
                       <p className="text-body text-clinical-stone text-xs leading-relaxed">{s.how_addressed}</p>
                     )}
-                  </div>
-                ))}
-              </div>
-            </FolderSection>
-          )}
-
-          {/* Single unified test list — re-measures + new tests in one folder.
-              The split into 'retest' vs 'new tests' was a UX experiment that
-              tested poorly: users had to mentally merge two lists. Now ONE
-              comprehensive list of every test to ask for at the 12-week visit. */}
-          {Array.isArray(plan.retest_timeline) && plan.retest_timeline.length > 0 && (
-            <FolderSection
-              icon="science"
-              title="Tests to ask for at your 12-week visit"
-              count={plan.retest_timeline.length}
-              countLabel={plan.retest_timeline.length === 1 ? 'test' : 'tests'}
-              explanation="Every test the doctor should run at your follow-up. Some re-measure values from this draw to track progress; others fill in gaps from symptoms or medication side effects. All are PCP-orderable and insurance-covered. Hand the doctor this list."
-              accentColor="#1B423A"
-              defaultOpen
-            >
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {plan.retest_timeline.map((r: any, i: number) => (
-                  <div key={i} className="flex items-start gap-2 p-3 bg-clinical-cream/40 rounded-[8px]">
-                    <span className="material-symbols-outlined text-[16px] flex-shrink-0 mt-0.5 text-[#1B423A]">science</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-body text-clinical-charcoal text-sm font-semibold leading-tight">{r.marker}</p>
-                      {r.why && <p className="text-precision text-[0.6rem] text-clinical-stone mt-1 leading-snug">{r.why}</p>}
-                    </div>
                   </div>
                 ))}
               </div>

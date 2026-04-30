@@ -155,7 +155,40 @@ GLOBAL VOICE RULES (CRITICAL — these apply to EVERY string in the JSON):
     medication_notes fields: ≤20 words each.
 - NO LISTING dosages in why fields (they're already in the dose field).
 - NO PERCENTAGE IMPROVEMENTS ("expect 50% improvement by week 4" — cut it. Patients don't read mechanisms.)
-- NO JARGON. "Bad cholesterol" not "LDL". "Inflammation marker" not "hs-CRP". "Iron stores" not "ferritin level". "Stress hormone" not "cortisol". "Liver enzyme" not "ALT". "Blood sugar" not "glucose".
+- NO JARGON ANYWHERE. Every test description, supplement why, lifestyle intervention, action item, summary, headline — all 6th-grade. Forbidden words and their plain-English replacements:
+    "LDL" → "bad cholesterol"
+    "HDL" → "good cholesterol"
+    "ApoB" → "cholesterol particle count" (or "advanced cholesterol marker" if needed)
+    "Lp(a)" → "genetic cholesterol marker"
+    "ALT", "AST", "GGT" → "liver enzyme"
+    "hs-CRP", "CRP" → "inflammation marker"
+    "HbA1c", "A1c" → "3-month blood sugar average"
+    "glucose" → "blood sugar"
+    "ferritin" → "iron stores"
+    "TIBC", "transferrin saturation" → "how well your body holds iron"
+    "MMA", "homocysteine" → "vitamin B markers"
+    "TPO antibodies" → "thyroid antibodies"
+    "TSH", "free T3", "free T4" → "thyroid hormone"
+    "CK", "creatine kinase" → "muscle enzyme"
+    "cortisol" → "stress hormone"
+    "polycythemia", "compensatory erythropoiesis" → "high red blood cell count"
+    "hepatic steatosis", "NAFLD", "MAFLD" → "fatty liver"
+    "hepatotoxicity", "drug-induced liver injury" → "liver stress from medication"
+    "myopathy" → "muscle damage"
+    "hyperuricemia" → "high uric acid"
+    "ileal disease", "malabsorption" → "trouble absorbing nutrients"
+    "endoscopy" → "scope"
+    "macrocytic", "microcytic" → just say "low iron" or "low B12" depending on cause
+    "calprotectin" → "gut inflammation marker"
+    "tTG-IgA", "celiac serology" → "celiac test"
+    "LH", "FSH", "SHBG" → "hormone marker" or just describe what it tells you
+    "borderline", "subclinical", "constellation" → "early sign" or "starting to drift"
+    "non-invasive" → "no needles" or just drop it (assume the patient knows what an ultrasound is)
+    "differential", "differentiate" → "tell apart" or "rule out"
+    "CV risk", "cardiovascular risk" → "heart risk"
+    "atherogenic" → "plaque-forming"
+    "STOP-BANG" → "sleep questionnaire"
+    Use proper marker name in PARENTHESES only when the user might see it on a lab printout — e.g. "your liver enzyme (ALT) is 97". Never lead with the abbreviation. The first word of the sentence is the plain-English term.
 - LEAD WITH A VERB when it's an action ("Eat...", "Walk...", "Take...", "Skip..."). LEAD WITH THE FINDING when it's a why ("Vitamin D 24 — too low.").
 - If a sentence doesn't pull its weight, CUT IT. Don't pad. Don't hedge. Don't qualify.
 - Every actionable item gets an "emoji" field — a single emoji that captures the action (🥗 food, 💪 strength, 🏃 cardio, 😴 sleep, 🧘 stress, 💊 supplement, 🧪 test, 🩺 doctor, 💧 hydration, ☀️ sun, 🥩 protein, 🐟 omega-3, 🥬 leafy greens, 🍓 antioxidants, 🚶 walk, 🏋️ lift, 🧠 brain, ❤️ heart, 🫁 lungs, 🦴 bone).
@@ -682,6 +715,63 @@ CRITICAL OUTPUT RULES:
       };
       plan = walkInf(plan);
     } catch (e) { console.error('[wellness-plan] inference-scrub error:', e); }
+
+    // ── Jargon scrubber (locked-in rule: 6th-grade everywhere) ──────────
+    // Backstop for the AI dropping into clinical-speak even when the prompt
+    // forbids it. Replaces medical terms with plain English. Universal —
+    // applies to every string in the JSON. Skips structural keys (nutrient
+    // names, ICD-10 codes) where the proper name is required.
+    try {
+      // Order matters: longer/more-specific patterns first.
+      const JARGON_MAP: [RegExp, string][] = [
+        [/\bcompensatory erythropoiesis\b/gi, 'high red blood cell count'],
+        [/\bpolycythemia(?:\s+pattern)?\b/gi, 'high red blood cell count'],
+        [/\bhepatic steatosis\b/gi, 'fatty liver'],
+        [/\bNAFLD\b/g, 'fatty liver'],
+        [/\bMAFLD\b/g, 'fatty liver'],
+        [/\bhepatotoxicity\b/gi, 'liver stress from medication'],
+        [/\bdrug-induced liver injury\b/gi, 'liver stress from medication'],
+        [/\bileal disease\b/gi, 'trouble absorbing nutrients'],
+        [/\bmalabsorption\b/gi, 'trouble absorbing nutrients'],
+        [/\bhyperuricemia\b/gi, 'high uric acid'],
+        [/\bmyopathy\b/gi, 'muscle damage'],
+        [/\bcalprotectin\b/gi, 'gut inflammation marker'],
+        [/\bcardiovascular risk\b/gi, 'heart risk'],
+        [/\bCV risk\b/g, 'heart risk'],
+        [/\batherogenic\b/gi, 'plaque-forming'],
+        [/\bSTOP-BANG questionnaire\b/gi, 'sleep questionnaire'],
+        [/\bSTOP-BANG\b/g, 'sleep questionnaire'],
+        [/\bsubclinical\b/gi, 'early-stage'],
+        [/\bconstellation (of symptoms|screams)\b/gi, 'pattern of'],
+        [/\bnon-invasive\b/gi, 'no needles'],
+        [/\bmacrocytic anemia\b/gi, 'low B12'],
+        [/\bmicrocytic anemia\b/gi, 'low iron'],
+        // Marker abbreviations only when STANDALONE (preserve "ALT 97" style)
+        [/\bhs-?CRP\b/g, 'inflammation marker'],
+        [/\bC-reactive protein\b/gi, 'inflammation marker'],
+      ];
+      const STRUCTURAL_KEYS_J = new Set(['nutrient', 'form', 'icd10', 'medication', 'supplement', 'food', 'movement', 'category', 'priority', 'sourced_from', 'when', 'marker', 'test_name']);
+      const dropJargon = (text: string): string => {
+        if (typeof text !== 'string' || !text) return text;
+        let out = text;
+        for (const [re, repl] of JARGON_MAP) out = out.replace(re, repl);
+        return out;
+      };
+      const walkJ = (val: any, key?: string): any => {
+        if (typeof val === 'string') {
+          if (key && STRUCTURAL_KEYS_J.has(key)) return val;
+          return dropJargon(val);
+        }
+        if (Array.isArray(val)) return val.map(v => walkJ(v, key));
+        if (val && typeof val === 'object') {
+          const out: any = {};
+          for (const k of Object.keys(val)) out[k] = walkJ(val[k], k);
+          return out;
+        }
+        return val;
+      };
+      plan = walkJ(plan);
+    } catch (e) { console.error('[wellness-plan] jargon-scrub error:', e); }
 
     // Tag plan mode for frontend display
     plan.plan_mode = isOptimizationMode ? 'optimization' : 'treatment';
