@@ -32,6 +32,26 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
+    // ── CONCURRENCY GUARD ──────────────────────────────────────────────
+    // If two callers fire at once (retry + auto-trigger before client guard,
+    // or a retry while a previous call is still in flight), the second one
+    // would race the first on lab_draws/priority_alerts writes and crash with
+    // HTTP 500. Check current state first: if the draw is already 'complete'
+    // with an analysis, it's a duplicate call — return success idempotently.
+    const { data: currentDraw } = await supabase
+      .from('lab_draws')
+      .select('processing_status, analysis_result, updated_at')
+      .eq('id', drawId)
+      .single();
+    if (currentDraw?.processing_status === 'complete' && currentDraw?.analysis_result) {
+      // Only consider it a duplicate if completion happened in the last 60s.
+      // Otherwise this might be a legitimate re-run on an old draw.
+      const updatedAt = currentDraw.updated_at ? new Date(currentDraw.updated_at).getTime() : 0;
+      if (Date.now() - updatedAt < 60_000) {
+        return new Response(JSON.stringify({ ...currentDraw.analysis_result, _idempotent: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+    }
+
     const [{ data: labValues }, { data: profile }, { data: meds }, { data: symptoms }, { data: conditionsData }] = await Promise.all([
       supabase.from('lab_values').select('*').eq('draw_id', drawId),
       supabase.from('profiles').select('*').eq('id', userId).single(),

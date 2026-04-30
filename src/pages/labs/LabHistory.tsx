@@ -1,5 +1,5 @@
 // src/pages/labs/LabHistory.tsx
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
@@ -13,6 +13,13 @@ import { useLabUploadStore } from '../../store/labUploadStore';
 export const LabHistory = () => {
   const navigate = useNavigate();
   const { data: draws} = useLabDraws();
+  // If the user only has one draw, the "list" is just that single card.
+  // Skip the list view entirely and send them straight to the detail page.
+  // They can still get back to /labs/history via "All Uploads" once they
+  // have multiple draws (where the list is actually useful).
+  if (draws && draws.length === 1) {
+    return <Navigate to={`/labs/${draws[0].id}`} replace />;
+  }
   const userId = useAuthStore(s => s.user?.id);
   const uploadPhase = useLabUploadStore(s => s.phase);
   const uploadMessage = useLabUploadStore(s => s.statusMessage);

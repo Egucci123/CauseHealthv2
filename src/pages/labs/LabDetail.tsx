@@ -31,46 +31,64 @@ export const LabDetail = () => {
   const qc = useQueryClient();
   const { isPro } = useSubscription();
 
-  // Local lock for the retry window. The mutation's DB update is fast
-  // (~300ms) but analyze-labs runs ~30s in the background. Without this,
-  // mutation.isPending flips back to false in 300ms and the UI flickers
-  // back to "Re-run Analysis" / "Analysis failed" while the analysis is
-  // still in flight. Tracking the moment of click locally lets us hold
-  // the "Running…" / "Analyzing your bloodwork" UI for the full window.
+  // ── Retry-lock state machine ──────────────────────────────────────────
+  // Single source of truth for "is the user mid-retry right now?"
   //
-  // Lock release logic: hold for at LEAST 5s to cover the React Query
-  // refetch lag (where the cache still says 'complete' from pre-retry
-  // state). After 5s, release as soon as the cache shows a freshly
-  // completed analysis AND a re-issued one (status='complete' AND
-  // analysis present). Hard ceiling of 60s as a safety net.
+  // Why this exists: the mutation's DB update completes in ~300ms but the
+  // analyze-labs edge function runs ~30s in the background. Without a lock
+  // the UI flickers immediately back to "Re-run Analysis" / "Analysis failed"
+  // while analysis is still in flight. We hold the visual "Analyzing…"
+  // state for the full window, then release as soon as we observe a fresh
+  // completed analysis in the cache.
+  //
+  // Release condition: status === 'complete' AND data.analysis !== null
+  // AND the cache was updated AFTER the retry click. The third clause is
+  // critical — without it, the lock releases instantly because the cache
+  // still has the OLD complete state from before the retry.
   const [retriedAt, setRetriedAt] = useState<number | null>(null);
-  const sawProcessingRef = useRef(false);
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     if (!retriedAt) return;
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, [retriedAt]);
+
+  // dataUpdatedAt comes from React Query — it's the timestamp of the last
+  // successful fetch. We use this to know whether the current cache reflects
+  // server state observed AFTER the retry was kicked off.
+  const queryState = qc.getQueryState(['lab-detail', drawId]);
+  const dataUpdatedAt = queryState?.dataUpdatedAt ?? 0;
   const status = data?.draw?.processing_status;
-  // Track whether we've seen status='processing' come through the cache
-  // since the retry. Once we have, the DB has actually caught up — we can
-  // safely use status='complete' as the "release lock" signal.
-  useEffect(() => {
-    if (retriedAt && status === 'processing') sawProcessingRef.current = true;
-  }, [retriedAt, status]);
-  // Reset the flag whenever a new retry starts so a previous retry's
-  // "saw processing" doesn't carry over.
-  useEffect(() => { if (retriedAt) sawProcessingRef.current = false; }, [retriedAt]);
 
   const retryLocked = (() => {
     if (!retriedAt) return false;
     const elapsed = now - retriedAt;
-    if (elapsed >= 60_000) return false;                          // hard safety ceiling
-    if (elapsed < 5_000) return true;                             // grace window for refetch lag
-    // Past 5s: release only after we've seen the full processing → complete arc.
-    if (sawProcessingRef.current && status === 'complete' && data?.analysis) return false;
+    if (elapsed >= 60_000) return false;                                // hard safety ceiling
+    // Release ONLY when we've observed a fresh complete state AFTER the retry.
+    if (
+      dataUpdatedAt > retriedAt &&
+      status === 'complete' &&
+      data?.analysis
+    ) {
+      return false;
+    }
     return true;
   })();
+
+  // ── Active polling during retry-lock ──────────────────────────────────
+  // The query's refetchInterval only fires while cache shows 'processing'.
+  // But during the brief window after retry click and before the first
+  // refetch returns, the cache STILL shows the pre-retry 'complete' status,
+  // so the interval doesn't kick in. Result: page sits stale forever in
+  // some scenarios. Force a manual refetch every 3s while locked so we
+  // catch the analyze-labs completion no matter what.
+  useEffect(() => {
+    if (!retryLocked) return;
+    const t = setInterval(() => {
+      qc.invalidateQueries({ queryKey: ['lab-detail', drawId] });
+    }, 3000);
+    return () => clearInterval(t);
+  }, [retryLocked, qc, drawId]);
 
   const retryAnalysis = useMutation({
     mutationFn: async () => {
