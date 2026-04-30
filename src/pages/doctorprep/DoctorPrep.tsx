@@ -5,8 +5,6 @@ import { Button } from '../../components/ui/Button';
 import { ClinicalSummary } from '../../components/doctorprep/ClinicalSummary';
 import { TestsToRequest } from '../../components/doctorprep/TestsToRequest';
 import { VisitCardStacks } from '../../components/doctorprep/VisitCardStacks';
-import { type PanelGap } from '../../components/doctorprep/AdditionalTesting';
-import { computePanelGaps, computeProactiveScreenings } from '../../store/labUploadStore';
 import { useSymptoms } from '../../hooks/useSymptoms';
 import { isHealthyMode as computeIsHealthyMode } from '../../lib/healthMode';
 import { useLatestDoctorPrep, useGenerateDoctorPrep } from '../../hooks/useDoctorPrep';
@@ -46,41 +44,11 @@ export const DoctorPrep = () => {
   // Healthy-mode detection — uses _shared/healthMode logic (mirrored client-side).
   const isHealthyMode = useMemo(() => computeIsHealthyMode(latestValues as any), [latestValues]);
 
-  // Compute panel gaps fresh from latest lab values + proactive screenings
-  // for healthy / longevity-focused users. Don't trust cached notes.panel_gaps.
-  const panelGaps: PanelGap[] = useMemo(() => {
-    const baseGaps: PanelGap[] = (() => {
-      if (!latestValues || latestValues.length === 0) return [];
-      const tested = new Set<string>(
-        latestValues.map((v: any) => (v.markerName ?? v.marker_name ?? '').toLowerCase()).filter(Boolean)
-      );
-      return computePanelGaps(tested) as PanelGap[];
-    })();
-
-    // Detect GI symptoms for the gut-microbiome trigger
-    const giKeywords = ['bloat', 'gas', 'diarrhea', 'constipation', 'reflux', 'heartburn', 'ibs', 'cramp', 'nausea', 'stool'];
-    const hasGiSymptoms = (symptoms ?? []).some((s: any) =>
-      giKeywords.some(k => (s.symptom ?? '').toLowerCase().includes(k))
-    );
-
-    const proactive = computeProactiveScreenings({
-      age: ageNum,
-      sex: profile?.sex ?? null,
-      primaryGoal: profile?.primaryGoals?.[0] ?? null,
-      isHealthyMode,
-      hasGiSymptoms,
-    }) as PanelGap[];
-
-    // Dedupe by test name — proactive screenings should never collide with
-    // panel gaps (different test types) but be safe.
-    const seen = new Set<string>();
-    return [...baseGaps, ...proactive].filter(g => {
-      const key = g.test_name.toLowerCase();
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-  }, [latestValues, ageNum, profile?.sex, profile?.primaryGoals, isHealthyMode, symptoms]);
+  // Panel-gap (Tier 1/2/3 baseline) computation removed entirely. Test
+  // recommendations now come exclusively from the AI's tests_to_request
+  // array, which is filtered by the strict triage rule (symptom OR med
+  // depletion OR out-of-range marker OR early-detection pattern). No
+  // hardcoded "every adult should have these" lists.
 
   const docCreatedAt = (doc as any)?._createdAt ? new Date((doc as any)._createdAt) : null;
   const drawCreatedAt = latestDraw?.createdAt ? new Date(latestDraw.createdAt) : null;
@@ -93,11 +61,11 @@ export const DoctorPrep = () => {
   const patientName = `${profile?.firstName ?? ''} ${profile?.lastName ?? ''}`.trim() || 'Patient';
   const handleExport = () => {
     if (!doc) return;
-    exportDoctorPrepPDF(doc, patientName, panelGaps);
+    exportDoctorPrepPDF(doc, patientName);
   };
   const handleExportPatientGuide = () => {
     if (!doc) return;
-    exportPatientVisitGuidePDF(doc, patientName, panelGaps, isHealthyMode);
+    exportPatientVisitGuidePDF(doc, patientName, isHealthyMode);
   };
 
   return (

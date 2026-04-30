@@ -95,13 +95,8 @@ export function exportWellnessPlanPDF(plan: WellnessPlanData, userName: string) 
   doc.save(`CauseHealth-WellnessPlan-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
 }
 
-interface PanelGapPDF {
-  test_name: string;
-  category: 'essential' | 'recommended' | 'advanced';
-  why_needed: string;
-  script?: string;
-  icd10?: { code: string; description: string }[];
-}
+// PanelGapPDF removed — was used for the deleted Tier 1/2/3 section.
+// Test recommendations come exclusively from doc.tests_to_request now.
 
 // jsPDF's standard fonts don't support emoji or many unicode symbols —
 // they render as garbled bytes ("Ø=Ý4") that often eat adjacent text.
@@ -132,7 +127,7 @@ const stripUnsupportedChars = (s: string): string => {
 // for the patient: plain-English explanations, scripts, and what-to-do
 // if the doctor pushes back. The patient brings the doctor PDF for the
 // doctor and reads this one in the waiting room.
-export function exportPatientVisitGuidePDF(doc: DoctorPrepDocument, userName: string, panelGaps: PanelGapPDF[] = [], isHealthyMode: boolean = false) {
+export function exportPatientVisitGuidePDF(doc: DoctorPrepDocument, userName: string, isHealthyMode: boolean = false) {
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageW = pdf.internal.pageSize.getWidth();
   const pageH = pdf.internal.pageSize.getHeight();
@@ -255,20 +250,9 @@ export function exportPatientVisitGuidePDF(doc: DoctorPrepDocument, userName: st
     });
   }
 
-  // 2. Panel-gap baseline section REMOVED.
-  //
-  // Previously rendered a hardcoded Tier 1/2/3 baseline list (Foundational /
-  // Comprehensive / Advanced) including AM Cortisol, DHEA-S, GI-MAP, Uric
-  // Acid for every patient regardless of triggers. This was the same
-  // 'Comprehensive Health Screening' block we removed from the on-screen
-  // doctor prep — the patient guide PDF was leaking it back in.
-  //
-  // The AI's tests_to_request (rendered above in section #1) is now the
-  // single source of truth, already filtered by the strict triage rule:
-  // a test only appears if tied to a symptom, medication depletion,
-  // out-of-range marker, or early-detection pattern. No 'while we're at
-  // it' tests get into either the on-screen view or the PDF anymore.
-  void panelGaps;
+  // Panel-gap baseline section permanently removed. The AI's tests_to_request
+  // (rendered above) is the single source of truth, already filtered by the
+  // strict triage rule.
 
   // ── Other points to bring up ─────────────────────────────────────────
   if (doc.discussion_points?.length) {
@@ -376,7 +360,7 @@ export function exportPatientVisitGuidePDF(doc: DoctorPrepDocument, userName: st
 }
 
 // Doctor Prep PDF
-export function exportDoctorPrepPDF(doc: DoctorPrepDocument, userName: string, panelGaps: PanelGapPDF[] = []) {
+export function exportDoctorPrepPDF(doc: DoctorPrepDocument, userName: string) {
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageW = pdf.internal.pageSize.getWidth();
   const pageH = pdf.internal.pageSize.getHeight();
@@ -473,63 +457,11 @@ export function exportDoctorPrepPDF(doc: DoctorPrepDocument, userName: string, p
     pdf.text(jLines, margin + 3, y); y += jLines.length * 3.5 + 5;
   });
 
-  // Comprehensive Health Screening section removed by design — doctor prep
-  // now only requests tests linked to the patient's actual symptoms,
-  // medications, or out-of-range markers. Tiered "while we're at it"
-  // screening was generating denials and PCP pushback.
-  if (false && panelGaps && panelGaps.length > 0) {
-    const tierMeta: Record<PanelGapPDF['category'], { label: string; subtitle: string }> = {
-      essential: {
-        label: 'Tier 1 — Foundational Workup',
-        subtitle: 'Standard-of-care annual labs that catch endocrine, metabolic, and hematologic dysfunction before it progresses to disease.',
-      },
-      recommended: {
-        label: 'Tier 2 — Comprehensive Metabolic & Inflammatory Workup',
-        subtitle: 'Identifies insulin resistance, micronutrient deficiency, subclinical inflammation, and early thyroid dysfunction missed by basic panels. Catches root causes 5–10 years before standard markers shift.',
-      },
-      advanced: {
-        label: 'Tier 3 — Advanced Cardiovascular & Endocrine Risk Stratification',
-        subtitle: 'Cardiovascular particle analysis, genetic risk markers, adrenal and gonadal function. Identifies high-risk patients who appear "normal" on conventional labs.',
-      },
-    };
-    addSectionHeader('Comprehensive Health Screening — Recommended for This Patient');
-    pdf.setFontSize(8); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(26, 26, 26);
-    const intro = 'CLINICAL CASE FOR COMPREHENSIVE TESTING: Standard annual labs miss early dysfunction. The following tiered workup is designed to surface metabolic, hormonal, inflammatory, and cardiovascular risks that are clinically actionable but not detected by routine panels. Each test below includes ICD-10 codes that justify insurance coverage. Ordering this workup gives a complete baseline and identifies issues 5–10 years before they manifest as disease.';
-    const introLines = pdf.splitTextToSize(intro, contentW);
-    pdf.text(introLines, margin, y); y += introLines.length * 3.8 + 5;
-
-    (['essential', 'recommended', 'advanced'] as const).forEach(tier => {
-      const tierGaps = panelGaps.filter(g => g.category === tier);
-      if (!tierGaps.length) return;
-      checkPage(15);
-      pdf.setFontSize(9); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(27, 67, 50);
-      pdf.text(`${tierMeta[tier].label} (${tierGaps.length})`, margin, y); y += 4;
-      pdf.setFontSize(7); pdf.setFont('helvetica', 'italic'); pdf.setTextColor(107, 107, 107);
-      const subLines = pdf.splitTextToSize(tierMeta[tier].subtitle, contentW);
-      pdf.text(subLines, margin, y); y += subLines.length * 3 + 3;
-
-      tierGaps.forEach((g, i) => {
-        checkPage(28);
-        pdf.setFontSize(9); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(26, 26, 26);
-        pdf.text(`${i + 1}. ${g.test_name}`, margin, y); y += 4.5;
-        pdf.setFontSize(7.5); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(60, 60, 60);
-        const whyLines = pdf.splitTextToSize(`Clinical indication: ${g.why_needed}.`, contentW - 3);
-        pdf.text(whyLines, margin + 3, y); y += whyLines.length * 3.5 + 1;
-        if (g.icd10 && g.icd10.length) {
-          pdf.setFont('helvetica', 'bold'); pdf.setTextColor(27, 67, 50);
-          pdf.text('ICD-10 (covered):', margin + 3, y); y += 3.5;
-          pdf.setFont('helvetica', 'normal');
-          g.icd10.forEach(c => {
-            const codeLine = `  ${c.code} — ${c.description}`;
-            const codeLines = pdf.splitTextToSize(codeLine, contentW - 6);
-            pdf.text(codeLines, margin + 3, y); y += codeLines.length * 3.5;
-          });
-        }
-        y += 4;
-      });
-      y += 2;
-    });
-  }
+  // Comprehensive Health Screening / Tier 1-2-3 block permanently removed.
+  // Test recommendations come exclusively from doc.tests_to_request, which
+  // is filtered by the strict triage rule (symptom OR med depletion OR
+  // out-of-range marker OR early-detection pattern). No more hardcoded
+  // baseline-for-everyone lists in any PDF or page.
 
   // Discussion Points
   addSectionHeader('Points to Raise');

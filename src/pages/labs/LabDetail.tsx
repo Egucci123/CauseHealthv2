@@ -87,15 +87,13 @@ export const LabDetail = () => {
         logEvent('labdetail_fetch_no_draw', { drawId, error: drawRes.error?.message });
         throw new Error('Draw not found');
       }
-      let panelGaps: any[] = [];
-      try { panelGaps = JSON.parse(drawRes.data.notes ?? '{}')?.panel_gaps ?? []; } catch {}
       logEvent('labdetail_fetch_ok', {
         drawId,
         status: drawRes.data.processing_status,
         has_analysis: !!drawRes.data.analysis_result,
         values_count: valuesRes.data?.length ?? 0,
       });
-      return { draw: drawRes.data, values: valuesRes.data ?? [], analysis: drawRes.data.analysis_result, panelGaps };
+      return { draw: drawRes.data, values: valuesRes.data ?? [], analysis: drawRes.data.analysis_result };
     },
     staleTime: 0, refetchOnMount: 'always', refetchOnWindowFocus: true,
     // Poll fast (2s) while processing — analysis transitions happen mid-poll

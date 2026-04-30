@@ -558,10 +558,9 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
           })(),
         ]);
 
-        // Compute + persist panel gaps in the background — never blocks UI
-        const testedMarkers = new Set(values.map(v => v.marker_name.toLowerCase()));
-        const panelGaps = computePanelGaps(testedMarkers);
-        Promise.resolve(supabase.from('lab_draws').update({ notes: JSON.stringify({ panel_gaps: panelGaps }) }).eq('id', drawId)).catch(console.warn);
+        // Panel-gap (Tier 1/2/3 baseline) computation removed. Test
+        // recommendations now come exclusively from the AI's tests_to_request
+        // array, filtered by the strict triage rule. No hardcoded baseline.
 
         // Mark complete BEFORE firing analysis — UX never sees a hang
         set({ phase: 'complete', completedDrawId: drawId, statusMessage: 'Saved. Analysis running.', progress: 100 });

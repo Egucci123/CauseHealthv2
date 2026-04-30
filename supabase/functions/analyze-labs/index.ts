@@ -209,8 +209,9 @@ CRITICAL RULES:
       }
     }
 
-    // Ensure panel_gaps array exists
-    if (!Array.isArray(analysis.panel_gaps)) analysis.panel_gaps = [];
+    // panel_gaps removed — Tier 1/2/3 baseline lists were retired in favor
+    // of the AI's tests_to_request array filtered by the strict triage rule.
+    delete analysis.panel_gaps;
 
     // ── HARD POST-FILTER: scrub rare-disease screening from missing_tests when ──
     // ── the user's labs don't hit the urgent threshold. Belt-and-suspenders for ──
