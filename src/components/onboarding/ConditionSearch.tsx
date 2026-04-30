@@ -5,7 +5,7 @@
 // `onAdd` + `onRemove` and the component handles search/UI only.
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { COMMON_CONDITIONS, CONDITIONS } from '../../data/conditions';
+import { COMMON_CONDITIONS, CONDITIONS, searchConditions, type Condition } from '../../data/conditions';
 import { searchConditionsAPI, type ConditionSearchResult } from '../../lib/medicalSearch';
 
 export interface PickedCondition { id?: string; name: string; icd10?: string }
@@ -18,23 +18,37 @@ interface Props {
 
 export const ConditionSearch = ({ conditions, onAdd, onRemove }: Props) => {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<ConditionSearchResult[]>([]);
+  const [localResults, setLocalResults] = useState<Condition[]>([]);
+  const [apiResults, setApiResults] = useState<ConditionSearchResult[]>([]);
   const [open, setOpen] = useState(false);
   const [searching, setSearching] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
-    if (query.length < 2) { setResults([]); setOpen(false); return; }
+    if (query.length < 2) { setLocalResults([]); setApiResults([]); setOpen(false); return; }
+    // Curated list first — clean, deduplicated, one entry per condition
+    setLocalResults(searchConditions(query));
+    setOpen(true);
+    // Fallback API for things not in our curated list
     setSearching(true);
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
-      const apiResults = await searchConditionsAPI(query);
-      setResults(apiResults);
-      setOpen(true);
+      const apis = await searchConditionsAPI(query);
+      setApiResults(apis);
       setSearching(false);
     }, 300);
     return () => clearTimeout(debounceRef.current);
   }, [query]);
+
+  // Filter API results to drop ICD-10 variants of conditions already covered
+  // by the curated list (e.g. "K51.813 Ulcerative colitis with fistula" when
+  // the curated K51.90 "Ulcerative Colitis" is already shown). Match by the
+  // first 3 chars of the ICD-10 prefix (the disease family).
+  const localPrefixes = new Set(localResults.map(c => (c.icd10 ?? '').slice(0, 3)).filter(Boolean));
+  const filteredAPI = apiResults.filter(r => {
+    const prefix = (r.icd10 ?? '').slice(0, 3);
+    return prefix && !localPrefixes.has(prefix);
+  });
 
   const handleSelect = (name: string, icd10?: string) => {
     onAdd({ name, icd10 }); setQuery(''); setOpen(false);
@@ -90,7 +104,7 @@ export const ConditionSearch = ({ conditions, onAdd, onRemove }: Props) => {
           {open && (
             <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
               className="absolute top-full left-0 right-0 z-20 bg-clinical-white border border-outline-variant/20 shadow-card-md mt-1 max-h-64 overflow-y-auto" style={{ borderRadius: '4px' }}>
-              {results.length === 0 && !searching && (
+              {localResults.length === 0 && filteredAPI.length === 0 && !searching && (
                 <button onClick={handleCustom} className="w-full text-left px-4 py-3 hover:bg-clinical-cream transition-colors flex items-center gap-3">
                   <span className="material-symbols-outlined text-primary-container text-[16px]">add</span>
                   <div>
@@ -99,10 +113,27 @@ export const ConditionSearch = ({ conditions, onAdd, onRemove }: Props) => {
                   </div>
                 </button>
               )}
-              {results.map(cond => {
+              {/* Curated matches first — clean canonical names */}
+              {localResults.map(cond => {
                 const added = isAdded(cond.name);
                 return (
-                  <button key={`${cond.icd10}-${cond.name}`} onClick={() => handleSelect(cond.name, cond.icd10)} disabled={added}
+                  <button key={`local-${cond.icd10 ?? cond.name}`} onClick={() => handleSelect(cond.name, cond.icd10)} disabled={added}
+                    className={`w-full text-left px-4 py-3 border-b border-outline-variant/5 last:border-0 hover:bg-clinical-cream transition-colors ${added ? 'opacity-40' : ''}`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-body text-clinical-charcoal text-sm">{cond.name}</p>
+                        <p className="text-precision text-[0.6rem] text-clinical-stone tracking-wide">{cond.category}{cond.icd10 ? ` · ${cond.icd10}` : ''}</p>
+                      </div>
+                      {added && <span className="text-precision text-[0.55rem] text-primary-container font-bold tracking-wider">ADDED</span>}
+                    </div>
+                  </button>
+                );
+              })}
+              {/* API fallback — only conditions NOT covered by the curated list */}
+              {filteredAPI.map(cond => {
+                const added = isAdded(cond.name);
+                return (
+                  <button key={`api-${cond.icd10}-${cond.name}`} onClick={() => handleSelect(cond.name, cond.icd10)} disabled={added}
                     className={`w-full text-left px-4 py-3 border-b border-outline-variant/5 last:border-0 hover:bg-clinical-cream transition-colors ${added ? 'opacity-40' : ''}`}>
                     <p className="text-body text-clinical-charcoal text-sm">{cond.name}</p>
                     <p className="text-precision text-[0.6rem] text-clinical-stone tracking-wide">{cond.icd10}</p>
