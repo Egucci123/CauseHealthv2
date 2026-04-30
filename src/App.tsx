@@ -72,8 +72,21 @@ const PageStub = ({ title }: { title: string }) => (
   </AppShell>
 );
 
+// Visible chip rendered above the app on staging/preview deploys so testers
+// can never confuse staging with prod. Driven by VITE_APP_ENV=staging.
+const StagingBanner = () => {
+  if (import.meta.env.VITE_APP_ENV !== 'staging') return null;
+  return (
+    <div style={{position:'fixed',top:0,left:0,right:0,zIndex:9999,background:'#D4A574',color:'#131313',textAlign:'center',padding:'4px 8px',fontSize:'11px',fontWeight:700,letterSpacing:'0.15em',textTransform:'uppercase'}}>
+      Staging Environment — Test Data Only
+    </div>
+  );
+};
+
 function App() {
   return (
+    <>
+    <StagingBanner />
     <Routes>
       {/* Public */}
       <Route path="/" element={<Landing />} />
@@ -130,6 +143,7 @@ function App() {
         </div>
       } />
     </Routes>
+    </>
   );
 }
 

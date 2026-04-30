@@ -11,6 +11,9 @@ node_modules
 dist
 dist-ssr
 *.local
+.env
+.env.staging
+.env.production
 
 # Generated at build time by scripts/write-version.js
 public/version.json
