@@ -211,8 +211,29 @@ HARD RULES — FOLLOW EXACTLY:
     If no clear cause exists yet, frame as: "tests added to find the cause" — never leave a symptom unaddressed.
 6. FEMALE HORMONE RULE: Do NOT flag estradiol, progesterone, FSH, or LH as abnormal in premenopausal females unless extreme (FSH >40, estradiol <10 or >500, progesterone >30). These vary by cycle phase and a single draw means nothing without knowing cycle day. Never build a supplement protocol around "estrogen dominance" from one blood draw.
 7. Supplements must be safe and not interact with patient's medications.
-8. RETEST TIMELINE — cadence branches by MODE, but the TRIAGE RULE IS THE SAME:
-   TREATMENT mode (something needs fixing): COMPREHENSIVE retest at week 12 — this is the protocol close-out, the moment of truth. Include ALL currently-abnormal markers, all tests triggered by symptoms (per the symptom-test map), all medication-depletion tests (B12+MMA for metformin, folate for mesalamine, etc.), AND any standard-of-care baseline gaps. Patients with multi-system issues (UC + dyslipidemia + insulin resistance + low T) should have 10-14 entries — be COMPREHENSIVE, the patient is asking their doctor for ONE complete panel. retest_at: '12 weeks'. Hard-capped at 14 server-side. DO NOT undershoot — a multi-system patient with 5 retest entries is worse than 14, because they'll have to come back for another round.
+8. RETEST TIMELINE — TWO MANDATORY CHECKS for EVERY patient (healthy or sick, any condition):
+   CHECK 1 — WHAT THE LABS MISSED: For this patient's age and sex, compare what's in the lab values list against the standard-of-care baseline. Every test the doctor SHOULD have ordered for someone this age but didn't = goes in retest_timeline (trigger d).
+   CHECK 2 — WHAT THE SYMPTOMS NEED: For every symptom the user logged, look up the symptom→test map. Every reported symptom MUST have its corresponding tests appear (trigger a) — even if labs look fine. Symptoms always need workup.
+   These two checks run BEFORE the cap. The cap is a ceiling, not a target.
+
+   CADENCE branches by MODE:
+   TREATMENT mode (something needs fixing — any out-of-range marker, any chronic diagnosed condition like UC/Crohn's/Hashimoto's/Graves/T2D/RA/lupus/PCOS/CKD/HTN/CHF/etc., or multi-system pattern): COMPREHENSIVE retest at week 12 — this is the protocol close-out. Include ALL currently-abnormal markers, ALL tests triggered by symptoms, ALL medication-depletion tests, AND any standard-of-care baseline gaps. Multi-system patients should have 14-20 entries — be COMPREHENSIVE. retest_at: '12 weeks'. Hard-capped at 20. DO NOT undershoot.
+   OPTIMIZATION mode (no out-of-range markers, no chronic conditions, no symptoms): cadence is 6 MONTHS, list is 4-7 entries (standard-of-care baseline gaps for age/sex). UP TO 10 if symptoms are present that warrant workup. retest_at: '6 months'.
+
+   CONDITION-SPECIFIC TESTS (apply UNIVERSALLY for any matching diagnosed condition — these go in retest_timeline alongside lipid/CMP/etc., not as a separate group):
+     - Any IBD (UC, Crohn's, indeterminate colitis) → Fecal Calprotectin (disease activity), Celiac Serology (tTG-IgA + Total IgA — high comorbidity), Iron Panel (malabsorption), Vitamin D + B12 + Folate workups (malabsorption + medication depletion).
+     - Hashimoto's / autoimmune thyroid → TSH + Free T3 + Free T4 (track replacement adequacy), TPO Ab + Tg Ab if not done (confirm + baseline).
+     - Graves / hyperthyroid → TSH + Free T3 + Free T4 + TSI Ab.
+     - Type 2 diabetes / prediabetes → HbA1c, Fasting Insulin + HOMA-IR, Lipid Panel, UACR (urine albumin/creatinine for early kidney impact), eGFR.
+     - PCOS → Total + Free T, DHEA-S, LH:FSH, SHBG, Fasting Insulin + HOMA-IR.
+     - Hypertension → BMP/CMP, UACR, Lipid Panel, A1c (rule out metabolic syndrome).
+     - CKD / kidney disease → Cystatin C + eGFR, UACR, BMP, PTH, Vitamin D, iron panel.
+     - Heart failure / CAD → Lipid Panel + ApoB, hs-CRP, NT-proBNP if heart failure suspected, A1c.
+     - Lupus / RA / SLE → ESR + hs-CRP, ANA reflex (only if positive ANA), CBC, CMP, UACR (lupus nephritis screen).
+     - Osteoporosis / osteopenia → Calcium, Vitamin D, PTH, DEXA referral if 50+ or on long-term steroids.
+     - Mood disorders / depression / anxiety → TSH, Vitamin D, B12 + MMA, hs-CRP.
+     - Chronic fatigue → CBC, ferritin, B12 + MMA, Vitamin D, TSH, A1c, AM cortisol if HPA signs.
+   These layer ON TOP of the standard panels (CMP/CBC/Lipid/A1c/Vitamin D), they don't replace them.
 
    CONSOLIDATE INTO STANDARD PANELS — this is critical. Doctors order panels, not individual markers. Never list ALT, AST, bilirubin, glucose as four separate entries — they are ALL part of the CMP. Never list TG, LDL, total cholesterol, HDL as four entries — they are ALL the Lipid Panel. The retest list should reflect what the doctor will actually order.
    STANDARD PANEL GROUPINGS (use exactly these names; combine markers into ONE entry per panel):
@@ -691,16 +712,103 @@ CRITICAL OUTPUT RULES:
         console.log(`[wellness-plan] Injected iron panel — ${trigger} missed by AI`);
       }
 
-      if (plan.retest_timeline.length > 14) plan.retest_timeline = plan.retest_timeline.slice(0, 14);
+      // ── Universal condition-specific injectors ────────────────────────
+      // Apply to ANY chronic condition, not just UC. Each fires when the
+      // matching diagnosis is in the conditions list. Standard-of-care
+      // tests for that condition that the AI sometimes drops.
+      const hasIBD = /\b(ulcerative colitis|crohn|ibd|inflammatory bowel|indeterminate colitis)\b/.test(conditionsLower);
+      const hasHashimotos = /\b(hashimoto|autoimmune thyroid|chronic thyroiditis)\b/.test(conditionsLower);
+      const hasGraves = /\b(graves|hyperthyroid)\b/.test(conditionsLower);
+      const hasT2D = /\b(type 2 diabet|t2d|t2dm|diabetes mellitus type 2|prediabet)\b/.test(conditionsLower);
+      const hasPCOS = /\b(pcos|polycystic ovar)\b/.test(conditionsLower);
+      const hasHTN = /\b(hypertension|htn|high blood pressure)\b/.test(conditionsLower);
+      const hasCKD = /\b(ckd|chronic kidney|kidney disease|renal disease)\b/.test(conditionsLower);
+      const hasCAD = /\b(cad|coronary|heart failure|chf|heart disease|atherosclerosis)\b/.test(conditionsLower);
+      const hasLupus = /\b(lupus|sle|systemic lupus)\b/.test(conditionsLower);
+      const hasRA = /\b(\bra\b|rheumatoid|psoriatic arthritis)\b/.test(conditionsLower);
+      const hasOsteo = /\b(osteoporosis|osteopenia)\b/.test(conditionsLower);
+
+      if (hasIBD && !has(/calprotectin/i)) {
+        plan.retest_timeline.push({
+          marker: 'Fecal Calprotectin',
+          retest_at: '12 weeks',
+          why: '(c) IBD disease-activity marker. Standard care for any UC/Crohn\'s patient — gastros order this every 3-6 months. Universally covered.',
+        });
+      }
+      if (hasIBD && !has(/celiac|tissue transglutaminase|tTG/i)) {
+        plan.retest_timeline.push({
+          marker: 'Celiac Serology (tTG-IgA + Total IgA)',
+          retest_at: '12 weeks',
+          why: '(d) IBD patients have ~3x higher celiac risk. Standard rule-out at baseline. Covered with K90.0.',
+        });
+      }
+      if ((hasHashimotos || hasGraves) && !has(/free t[34]|tsh|thyroid panel/i)) {
+        plan.retest_timeline.push({
+          marker: 'Thyroid Panel (TSH + Free T3 + Free T4)',
+          retest_at: '12 weeks',
+          why: '(c) Diagnosed thyroid disease — track replacement adequacy or hyperthyroid control. Standard quarterly for any thyroid condition.',
+        });
+      }
+      if (hasT2D && !has(/uacr|albumin\/creatinine|microalbumin/i)) {
+        plan.retest_timeline.push({
+          marker: 'Urine Albumin/Creatinine Ratio (UACR)',
+          retest_at: '12 weeks',
+          why: '(d) Diabetes/prediabetes — early kidney impact marker. ADA recommends annually; catches kidney damage before serum creatinine moves.',
+        });
+      }
+      if (hasPCOS && !has(/dhea-s|dhea sulfate/i)) {
+        plan.retest_timeline.push({
+          marker: 'PCOS Hormone Panel (Total T + Free T + DHEA-S + LH:FSH + SHBG + Fasting Insulin)',
+          retest_at: '12 weeks',
+          why: '(c) Diagnosed PCOS — track androgen + insulin sensitivity response to protocol. Standard quarterly monitoring.',
+        });
+      }
+      if ((hasHTN || hasT2D || hasCAD) && !has(/uacr|microalbumin/i) && !hasT2D) {
+        plan.retest_timeline.push({
+          marker: 'Urine Albumin/Creatinine Ratio (UACR)',
+          retest_at: '12 weeks',
+          why: '(d) Hypertension or CV disease — early kidney impact screening. Standard annual care.',
+        });
+      }
+      if (hasCKD && !has(/cystatin/i)) {
+        plan.retest_timeline.push({
+          marker: 'Cystatin C + eGFR',
+          retest_at: '12 weeks',
+          why: '(c) Diagnosed CKD — Cystatin C is more sensitive than creatinine for kidney function tracking, especially in muscular patients.',
+        });
+      }
+      if ((hasLupus || hasRA) && !has(/esr/i)) {
+        plan.retest_timeline.push({
+          marker: 'ESR (Sedimentation Rate)',
+          retest_at: '12 weeks',
+          why: '(c) Diagnosed lupus/RA — ESR + hs-CRP together track autoimmune disease activity. Standard quarterly.',
+        });
+      }
+      if (hasOsteo && !has(/\bpth\b|parathyroid/i)) {
+        plan.retest_timeline.push({
+          marker: 'PTH (Parathyroid Hormone) + Ionized Calcium',
+          retest_at: '12 weeks',
+          why: '(c) Diagnosed osteoporosis/osteopenia — rule out hyperparathyroidism as bone-loss cause. Standard workup.',
+        });
+      }
+
+      // Re-cap after universal condition injectors
+      if (plan.retest_timeline.length > 20) {
+        console.log(`[wellness-plan] post-condition-injector cap: ${plan.retest_timeline.length} -> 20`);
+        plan.retest_timeline = plan.retest_timeline.slice(0, 20);
+      }
     } catch (e) { console.error('[wellness-plan] retest-injector error:', e); }
-    // Hard cap on retest_timeline. Treatment-mode patients with multi-system
-    // issues legitimately need 8-10 entries for the 12-week close-out;
-    // optimization mode is shorter (3-5). 12 is the absolute ceiling that
-    // stops longevity-wishlist regressions without strangling legitimate
-    // comprehensive retest panels.
-    if (plan.retest_timeline.length > 14) {
-      console.log(`[wellness-plan] capping retest_timeline ${plan.retest_timeline.length} -> 14`);
-      plan.retest_timeline = plan.retest_timeline.slice(0, 14);
+    // Differential cap by mode:
+    //   Treatment mode (any out-of-range, chronic condition, multi-system) → 20
+    //   Optimization mode (mostly healthy) → 10
+    // Higher ceiling for treatment lets UC/IBD/Hashimoto's/CKD/etc. patients
+    // get the full standard-of-care comprehensive panel. Lower ceiling for
+    // healthy patients prevents longevity wishlist drift.
+    const isOptMode = plan.plan_mode === 'optimization' || isOptimizationMode;
+    const retestCap = isOptMode ? 10 : 20;
+    if (plan.retest_timeline.length > retestCap) {
+      console.log(`[wellness-plan] capping retest_timeline ${plan.retest_timeline.length} -> ${retestCap} (${isOptMode ? 'optimization' : 'treatment'} mode)`);
+      plan.retest_timeline = plan.retest_timeline.slice(0, retestCap);
     }
     if (!plan.generated_at) plan.generated_at = new Date().toISOString();
 

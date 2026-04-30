@@ -705,8 +705,55 @@ CRITICAL OUTPUT RULES (for the new card-stack UI):
         console.log(`[doctor-prep] Injected iron panel — ${trigger} missed by AI`);
       }
 
-      // Cap at 14 if injection pushed over
-      if (doc.tests_to_request.length > 14) doc.tests_to_request = doc.tests_to_request.slice(0, 14);
+      // ── Universal condition-aware injectors (any chronic dx) ─────────
+      const hasIBD = /\b(ulcerative colitis|crohn|ibd|inflammatory bowel|indeterminate colitis)\b/.test(conditionsLower);
+      const hasHashimotos = /\b(hashimoto|autoimmune thyroid|chronic thyroiditis)\b/.test(conditionsLower);
+      const hasGraves = /\b(graves|hyperthyroid)\b/.test(conditionsLower);
+      const hasT2D = /\b(type 2 diabet|t2d|t2dm|diabetes mellitus type 2|prediabet)\b/.test(conditionsLower);
+      const hasPCOS = /\b(pcos|polycystic ovar)\b/.test(conditionsLower);
+      const hasHTN = /\b(hypertension|htn|high blood pressure)\b/.test(conditionsLower);
+      const hasCKD = /\b(ckd|chronic kidney|kidney disease|renal disease)\b/.test(conditionsLower);
+      const hasCAD = /\b(cad|coronary|heart failure|chf|heart disease|atherosclerosis)\b/.test(conditionsLower);
+      const hasLupus = /\b(lupus|sle|systemic lupus)\b/.test(conditionsLower);
+      const hasRA = /\b(\bra\b|rheumatoid|psoriatic arthritis)\b/.test(conditionsLower);
+      const hasOsteo = /\b(osteoporosis|osteopenia)\b/.test(conditionsLower);
+
+      const inject = (entry: any, name: string) => {
+        if (!has(new RegExp(name.split('(')[0].trim().replace(/\s+/g, '\\s*'), 'i'))) {
+          doc.tests_to_request.push(entry);
+        }
+      };
+
+      if (hasIBD) {
+        inject({ emoji: '🩹', test_name: 'Fecal Calprotectin', why_short: 'IBD disease activity tracker', clinical_justification: '(c) IBD diagnosed — calprotectin is the standard disease-activity marker. Gastros order every 3-6 months for UC/Crohn\'s.', icd10_primary: 'K51.90', icd10_description: 'Ulcerative colitis, unspecified', priority: 'high', insurance_note: 'Universally covered with IBD diagnosis.' }, 'calprotectin');
+        inject({ emoji: '🌾', test_name: 'Celiac Serology (tTG-IgA + Total IgA)', why_short: 'Rule out celiac (3x risk in IBD)', clinical_justification: '(d) IBD patients have 3x celiac prevalence. Standard rule-out at baseline.', icd10_primary: 'K90.0', icd10_description: 'Celiac disease', priority: 'moderate', insurance_note: 'Covered with IBD or hair loss + iron deficiency.' }, 'celiac');
+      }
+      if (hasHashimotos || hasGraves) {
+        inject({ emoji: '🦋', test_name: 'Thyroid Panel (TSH + Free T3 + Free T4)', why_short: 'Track thyroid replacement / activity', clinical_justification: '(c) Diagnosed thyroid disease — quarterly TSH + Free T3/T4 standard.', icd10_primary: hasHashimotos ? 'E06.3' : 'E05.90', icd10_description: hasHashimotos ? 'Autoimmune thyroiditis' : 'Thyrotoxicosis, unspecified', priority: 'high', insurance_note: 'Universally covered with thyroid dx.' }, 'thyroid panel|free t[34]');
+      }
+      if (hasT2D || hasHTN || hasCAD) {
+        inject({ emoji: '🫘', test_name: 'Urine Albumin/Creatinine Ratio (UACR)', why_short: 'Early kidney impact screen', clinical_justification: `(d) Diagnosed ${hasT2D ? 'diabetes' : hasHTN ? 'hypertension' : 'CV disease'} — early kidney damage marker. ADA/AHA recommend annually.`, icd10_primary: 'R80.9', icd10_description: 'Proteinuria, unspecified', priority: 'moderate', insurance_note: 'Covered with diabetes or hypertension.' }, 'uacr|albumin/creatinine|microalbumin');
+      }
+      if (hasPCOS) {
+        inject({ emoji: '🌸', test_name: 'PCOS Hormone Panel (Total T + Free T + DHEA-S + LH:FSH + SHBG + Fasting Insulin)', why_short: 'Track PCOS hormone + insulin response', clinical_justification: '(c) Diagnosed PCOS — quarterly androgen + insulin tracking is standard.', icd10_primary: 'E28.2', icd10_description: 'Polycystic ovarian syndrome', priority: 'high', insurance_note: 'Covered with PCOS dx.' }, 'pcos hormone|dhea-s');
+      }
+      if (hasCKD) {
+        inject({ emoji: '🫘', test_name: 'Cystatin C + eGFR', why_short: 'More sensitive kidney tracker', clinical_justification: '(c) Diagnosed CKD — Cystatin C is more accurate than creatinine, especially for muscular patients.', icd10_primary: 'N18.9', icd10_description: 'Chronic kidney disease, unspecified', priority: 'high', insurance_note: 'Covered with CKD dx.' }, 'cystatin');
+      }
+      if (hasLupus || hasRA) {
+        inject({ emoji: '🔥', test_name: 'ESR (Sedimentation Rate)', why_short: 'Autoimmune activity tracker', clinical_justification: '(c) Diagnosed lupus/RA — ESR + hs-CRP together track autoimmune flares.', icd10_primary: hasLupus ? 'M32.9' : 'M06.9', icd10_description: hasLupus ? 'Lupus, unspecified' : 'Rheumatoid arthritis, unspecified', priority: 'moderate', insurance_note: 'Universally covered with autoimmune dx.' }, 'esr|sedimentation');
+      }
+      if (hasOsteo) {
+        inject({ emoji: '🦴', test_name: 'PTH (Parathyroid Hormone) + Ionized Calcium', why_short: 'Rule out hyperparathyroidism', clinical_justification: '(c) Diagnosed osteoporosis — PTH rules out hyperparathyroid bone loss.', icd10_primary: 'M81.0', icd10_description: 'Age-related osteoporosis', priority: 'moderate', insurance_note: 'Covered with osteoporosis dx.' }, 'pth|parathyroid');
+      }
+
+      // Differential cap by mode
+      const isOptMode = isHealthy;
+      const testCap = isOptMode ? 10 : 20;
+      if (doc.tests_to_request.length > testCap) {
+        console.log(`[doctor-prep] capping tests_to_request ${doc.tests_to_request.length} -> ${testCap} (${isOptMode ? 'optimization' : 'treatment'} mode)`);
+        doc.tests_to_request = doc.tests_to_request.slice(0, testCap);
+      }
     } catch (e) { console.error('[doctor-prep] test-injector error:', e); }
     if (!Array.isArray(doc.advanced_screening)) doc.advanced_screening = [];
     if (!Array.isArray(doc.medications)) doc.medications = [];
