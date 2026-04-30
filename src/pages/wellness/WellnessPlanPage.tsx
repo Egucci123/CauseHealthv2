@@ -608,17 +608,18 @@ export const WellnessPlanPage = () => {
           {forecasts.length > 0 && <TransformationForecast forecasts={forecasts} />}
 
           {/* Symptoms addressed — every reported symptom + how this plan targets it.
-              Replaces the deleted Symptoms page; users see the through-line from
-              "I have joint pain" to "we added hs-CRP test, omega-3, and 30-min walks." */}
+              Folded closed by default per founder direction (12+ symptoms × 30-word
+              entries was overwhelming). User taps to expand when they want to see
+              how each symptom is being handled. The plan body (forecast, tests,
+              meals, supplements) leads. */}
           {Array.isArray(plan.symptoms_addressed) && plan.symptoms_addressed.length > 0 && (
             <FolderSection
               icon="monitor_heart"
               title="Your symptoms — and how this plan addresses them"
               count={plan.symptoms_addressed.length}
               countLabel={plan.symptoms_addressed.length === 1 ? 'symptom' : 'symptoms'}
-              explanation="Every symptom you logged maps to a specific test added to your retest list, a supplement (only when a lab confirms the cause), and a lifestyle change. No guesswork — every entry traces back to evidence."
+              explanation="Every symptom you logged maps to a specific test, a supplement (when a lab confirms the cause), and a lifestyle change. Tap to expand."
               accentColor="#7B1FA2"
-              defaultOpen
             >
               <div className="space-y-3">
                 {plan.symptoms_addressed.map((s: any, i: number) => (

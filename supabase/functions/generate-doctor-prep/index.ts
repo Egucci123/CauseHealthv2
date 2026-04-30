@@ -18,13 +18,16 @@ serve(async (req) => {
     if (!userId) return new Response(JSON.stringify({ error: 'userId required' }), { status: 400, headers: corsHeaders });
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-    const [profileRes, medsRes, symptomsRes, conditionsRes, suppsRes, latestDrawRes] = await Promise.all([
+    const [profileRes, medsRes, symptomsRes, conditionsRes, suppsRes, latestDrawRes, latestPlanRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', userId).single(),
       supabase.from('medications').select('*').eq('user_id', userId).eq('is_active', true),
       supabase.from('symptoms').select('*').eq('user_id', userId).order('severity', { ascending: false }),
       supabase.from('conditions').select('*').eq('user_id', userId).eq('is_active', true),
       supabase.from('user_supplements').select('name, dose, duration_category, reason').eq('user_id', userId).eq('is_active', true),
       supabase.from('lab_draws').select('id, draw_date, lab_name').eq('user_id', userId).order('draw_date', { ascending: false }).limit(1).maybeSingle(),
+      // Pull latest wellness plan — its retest_timeline becomes our single
+      // source of truth for tests_to_request when present + recent.
+      supabase.from('wellness_plans').select('plan_data, created_at, draw_id').eq('user_id', userId).eq('generation_status', 'complete').order('created_at', { ascending: false }).limit(1).maybeSingle(),
     ]);
 
     const profile = profileRes.data; const meds = medsRes.data ?? []; const symptoms = symptomsRes.data ?? [];
@@ -771,6 +774,35 @@ CRITICAL OUTPUT RULES (for the new card-stack UI):
           insurance_note: u.insuranceNote,
         });
         console.log(`[doctor-prep] Universal-injected: ${u.name}`);
+      }
+
+      // ── WELLNESS PLAN AS SOURCE OF TRUTH ─────────────────────────────
+      // If a recent wellness plan exists for this draw, OVERRIDE
+      // tests_to_request with its retest_timeline. Doctor prep and wellness
+      // plan now show the EXACT same test list, period. The AI-generated
+      // tests_to_request and the deterministic injectors run as fallback for
+      // cases where no wellness plan exists yet.
+      const latestPlan = latestPlanRes?.data;
+      const planRetest = (latestPlan?.plan_data as any)?.retest_timeline;
+      const planDrawMatches = !!latestPlan && (!latestPlan.draw_id || latestPlan.draw_id === latestDraw?.id);
+      const planFresh = !!latestPlan?.created_at && (Date.now() - new Date(latestPlan.created_at).getTime()) < 14 * 24 * 60 * 60 * 1000; // 14 days
+      if (Array.isArray(planRetest) && planRetest.length > 0 && planDrawMatches && planFresh) {
+        // Map wellness plan retest_timeline format → doctor prep tests_to_request format.
+        // Newer wellness plans store the rich fields (icd10, priority, insurance_note);
+        // older entries only have { marker, retest_at, why } — fall back gracefully.
+        doc.tests_to_request = planRetest.map((t: any) => ({
+          emoji: t.emoji ?? '🧪',
+          test_name: t.marker ?? '',
+          why_short: t.why_short ?? (t.why ? t.why.slice(0, 60) : ''),
+          clinical_justification: t.why ?? '',
+          icd10_primary: t.icd10 ?? t.icd10_primary ?? '',
+          icd10_description: t.icd10_description ?? '',
+          priority: t.priority ?? 'moderate',
+          insurance_note: t.insurance_note ?? 'Discuss with doctor; covered with documented finding.',
+        }));
+        console.log(`[doctor-prep] Sourced tests_to_request from wellness plan (${doc.tests_to_request.length} tests)`);
+      } else {
+        console.log(`[doctor-prep] No recent wellness plan — using AI-generated + injected tests_to_request (${doc.tests_to_request.length} tests)`);
       }
 
       // Differential cap by mode

@@ -806,7 +806,20 @@ CRITICAL OUTPUT RULES:
         // Skip if this test (or close variant) is already in the list
         const nameRegex = new RegExp(u.name.split('(')[0].trim().split(/\s+/)[0], 'i');
         if (plan.retest_timeline.some((t: any) => nameRegex.test(t?.marker ?? ''))) continue;
-        plan.retest_timeline.push({ marker: u.name, retest_at: '12 weeks', why: u.whyLong });
+        // Push the FULL injected-test structure so doctor-prep can read this
+        // verbatim and use it as its tests_to_request without going through
+        // its own AI call. Wellness plan is the single source of truth for tests.
+        plan.retest_timeline.push({
+          marker: u.name,
+          retest_at: '12 weeks',
+          why: u.whyLong,
+          why_short: u.whyShort,
+          icd10: u.icd10,
+          icd10_description: u.icd10Description,
+          priority: u.priority,
+          insurance_note: u.insuranceNote,
+          emoji: '🧪',
+        });
         console.log(`[wellness-plan] Universal-injected: ${u.name}`);
       }
 
