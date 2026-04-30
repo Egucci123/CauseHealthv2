@@ -1,0 +1,227 @@
+// supabase/functions/_shared/foodPlaybook.ts
+//
+// CauseHealth's Food Playbook — curated library of brand-specific, hack-style
+// meals across 12 playbooks. The edge function filters this library by user
+// life_context (work, kids, cooking time, budget, eat-out chains, lunch/breakfast/dinner
+// patterns) + lab targets (high TG, high ALT, low ferritin, etc.) and sends the
+// top ~30 candidates to the AI. The AI picks 12-18 final meals and writes the
+// lab-specific "why" text per user.
+//
+// Universal rule (locked in): no condition-specific hardcoding. Every meal works
+// for any patient with the matching life_context. The AI's "why" is what ties
+// each meal to the user's specific labs/symptoms.
+//
+// Adding new entries: keep names brand-specific, ingredients terse, targets[]
+// describing what labs/symptoms the meal HELPS (the AI will use these to score
+// matches). Constraints describe who SHOULDN'T see this meal.
+
+export type Playbook =
+  | 'convenience_store'
+  | 'fast_food'
+  | 'protein_bar_shake'
+  | 'crock_pot'
+  | 'sheet_pan'
+  | 'frozen_aisle'
+  | 'frozen_breakfast'
+  | 'low_cal_drink'
+  | 'mom_friendly'
+  | 'viral_hack'
+  | 'lunchbox_thermos'
+  | 'simple_home_cook';
+
+export type MealSlot = 'breakfast' | 'lunch' | 'dinner' | 'snack';
+export type Phase = 1 | 2 | 3;
+export type CostTier = 1 | 2 | 3; // 1 = cheap (<$5), 2 = mid ($5-12), 3 = higher ($12+)
+
+// Lab/symptom targets a meal helps. AI ranks by how many user-specific
+// targets the meal hits. Keywords are matched against user's lab flags
+// + symptoms by the selector.
+export type Target =
+  | 'high_tg' | 'high_ldl' | 'high_apob' | 'high_chol' | 'low_hdl'
+  | 'high_alt' | 'high_ast' | 'liver_stress'
+  | 'high_glucose' | 'high_a1c' | 'insulin_resistance'
+  | 'low_ferritin' | 'low_iron' | 'hair_loss'
+  | 'low_b12' | 'low_folate' | 'brain_fog'
+  | 'low_vitamin_d' | 'low_test'
+  | 'gut_inflammation' | 'ibd_friendly' | 'low_fodmap'
+  | 'high_protein' | 'low_carb' | 'high_fiber' | 'omega3'
+  | 'sleep_support' | 'cortisol_calm' | 'energy_steady'
+  | 'weight_loss' | 'muscle_gain' | 'satiety'
+  | 'anti_inflammatory';
+
+export interface MealConstraint {
+  workType?: string[];           // restrict to these work_types
+  excludeWorkType?: string[];    // exclude these work_types
+  hasKids?: boolean;             // only show if user has kids
+  noKids?: boolean;              // only show if no kids
+  maxPrepMinutes?: number;       // user's cookingTimeAvailable must allow this
+  minBudgetTier?: CostTier;      // user's budget must be at least this tier
+  requiresChain?: string[];      // user must list at least one of these chains
+  diet?: string[];               // works for these diets (vegan/keto/etc)
+  excludeDiet?: string[];        // doesn't work for these diets
+}
+
+export interface MealEntry {
+  id: string;                    // stable ID (slug-style)
+  name: string;                  // brand-specific name (mandatory)
+  emoji: string;
+  playbook: Playbook;
+  when: MealSlot;
+  phase: Phase;                  // 1=Start Here, 2=Level Up, 3=Optimal
+  ingredients: string[];         // short, brand-specific
+  prepMinutes: number;
+  cost: CostTier;
+  protein_g?: number;            // approximate protein per serving
+  targets: Target[];             // what labs/symptoms this helps
+  constraint?: MealConstraint;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LIBRARY — 100+ entries, organized by playbook
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const FOOD_PLAYBOOK: MealEntry[] = [
+  // ── CONVENIENCE STORE GRABS ─────────────────────────────────────────────
+  { id: 'wawa-egg-white-wrap', name: 'Wawa egg white wrap (chicken + spinach + cheese + corn salsa)', emoji: '🌯', playbook: 'convenience_store', when: 'breakfast', phase: 1, ingredients: ['Wawa egg white wrap', 'grilled chicken', 'spinach', 'cheese', 'corn salsa', 'black coffee'], prepMinutes: 0, cost: 2, protein_g: 30, targets: ['high_protein', 'low_folate', 'energy_steady'], constraint: { requiresChain: ['Wawa'] } },
+  { id: 'wawa-turkey-hoagie', name: 'Wawa turkey hoagie short (mayo + mustard, regular cheese, kettle chips on side)', emoji: '🥖', playbook: 'convenience_store', when: 'lunch', phase: 1, ingredients: ['Wawa turkey hoagie short', 'mayo', 'mustard', 'cheese', 'lettuce', 'tomato', 'kettle chips'], prepMinutes: 0, cost: 2, protein_g: 25, targets: ['high_protein', 'satiety'], constraint: { requiresChain: ['Wawa'] } },
+  { id: 'wawa-tuna-hoagie', name: 'Wawa tuna hoagie on wheat short', emoji: '🐟', playbook: 'convenience_store', when: 'lunch', phase: 1, ingredients: ['Wawa tuna hoagie short', 'wheat roll', 'lettuce', 'tomato', 'pickles'], prepMinutes: 0, cost: 2, protein_g: 22, targets: ['high_protein', 'omega3', 'high_tg'], constraint: { requiresChain: ['Wawa'], excludeDiet: ['vegan', 'vegetarian'] } },
+  { id: 'wawa-breakfast-quesadilla', name: 'Wawa breakfast quesadilla (chicken + cheese + egg)', emoji: '🫓', playbook: 'convenience_store', when: 'breakfast', phase: 1, ingredients: ['Wawa breakfast quesadilla', 'chicken', 'cheese', 'egg', 'salsa'], prepMinutes: 0, cost: 2, protein_g: 28, targets: ['high_protein', 'energy_steady'], constraint: { requiresChain: ['Wawa'] } },
+  { id: '7eleven-big-bite-combo', name: '7-Eleven Big Bite combo: chicken Caesar wrap + Premier Protein shake', emoji: '🌯', playbook: 'convenience_store', when: 'lunch', phase: 1, ingredients: ['7-Eleven chicken Caesar wrap', 'Premier Protein shake'], prepMinutes: 0, cost: 2, protein_g: 45, targets: ['high_protein', 'satiety'], constraint: { requiresChain: ['7-Eleven'] } },
+  { id: '7eleven-cheese-cracker-combo', name: '7-Eleven Cheese & Crackers + 2× hard-boiled egg pack + apple', emoji: '🧀', playbook: 'convenience_store', when: 'snack', phase: 1, ingredients: ['cheese & crackers', '2× hard-boiled eggs', 'apple'], prepMinutes: 0, cost: 1, protein_g: 22, targets: ['high_protein', 'satiety'], constraint: { requiresChain: ['7-Eleven'] } },
+  { id: 'sheetz-mto-flatbread', name: 'Sheetz MTO turkey flatbread (double meat, regular dressing, lettuce + tomato)', emoji: '🌯', playbook: 'convenience_store', when: 'lunch', phase: 1, ingredients: ['Sheetz turkey flatbread', 'double meat', 'lettuce', 'tomato', 'cheese', 'dressing'], prepMinutes: 0, cost: 2, protein_g: 35, targets: ['high_protein'], constraint: { requiresChain: ['Sheetz'] } },
+  { id: 'sheetz-greek-salad', name: 'Sheetz Made-To-Order Greek salad with grilled chicken', emoji: '🥗', playbook: 'convenience_store', when: 'lunch', phase: 1, ingredients: ['Sheetz Greek salad', 'grilled chicken', 'feta', 'olives', 'tomato', 'cucumber', 'olive oil dressing'], prepMinutes: 0, cost: 2, protein_g: 35, targets: ['high_protein', 'low_carb', 'anti_inflammatory'], constraint: { requiresChain: ['Sheetz'] } },
+  { id: 'truck-stop-protein-combo', name: 'Truck-stop protein box: 2-pack hard-boiled eggs + string cheese + apple + jerky stick', emoji: '🥚', playbook: 'convenience_store', when: 'lunch', phase: 1, ingredients: ['2× hard-boiled eggs', 'string cheese', 'apple', 'jerky stick'], prepMinutes: 0, cost: 1, protein_g: 35, targets: ['high_protein', 'satiety'], constraint: { workType: ['driver', 'shift', 'labor'] } },
+  { id: 'cumberland-farmhouse-sandwich', name: 'Cumberland Farms farmhouse breakfast sandwich + black coffee', emoji: '🥐', playbook: 'convenience_store', when: 'breakfast', phase: 1, ingredients: ['Cumberland Farms breakfast sandwich', 'black coffee'], prepMinutes: 0, cost: 1, protein_g: 18, targets: ['high_protein'], constraint: { requiresChain: ['Cumberland'] } },
+  { id: 'gas-station-rescue', name: 'Gas-station rescue: granola bar + hard-boiled egg + cheese stick', emoji: '🥚', playbook: 'convenience_store', when: 'breakfast', phase: 1, ingredients: ['granola bar', 'hard-boiled egg', 'cheese stick'], prepMinutes: 0, cost: 1, protein_g: 25, targets: ['high_protein', 'satiety'] },
+  { id: 'pilot-loves-rotisserie', name: 'Pilot/Love\'s truck stop: hot-case rotisserie chicken + bag of nuts + banana', emoji: '🍗', playbook: 'convenience_store', when: 'lunch', phase: 1, ingredients: ['rotisserie chicken (hot case)', 'mixed nuts', 'banana'], prepMinutes: 0, cost: 2, protein_g: 40, targets: ['high_protein', 'satiety'], constraint: { workType: ['driver', 'shift'] } },
+
+  // ── FAST-FOOD SMART ORDERS ──────────────────────────────────────────────
+  { id: 'cfa-2x-grilled', name: '2× Chick-fil-A grilled chicken sandwiches + side salad', emoji: '🥪', playbook: 'fast_food', when: 'lunch', phase: 1, ingredients: ['2× Chick-fil-A grilled chicken sandwich', 'side salad', 'lite vinaigrette'], prepMinutes: 0, cost: 2, protein_g: 60, targets: ['high_protein', 'satiety', 'high_tg'], constraint: { requiresChain: ['Chick-fil-A'] } },
+  { id: 'cfa-grilled-nuggets', name: 'Chick-fil-A grilled nuggets (12-pc) + side salad + diet lemonade', emoji: '🍗', playbook: 'fast_food', when: 'lunch', phase: 1, ingredients: ['Chick-fil-A grilled nuggets 12pc', 'side salad', 'diet lemonade'], prepMinutes: 0, cost: 2, protein_g: 38, targets: ['high_protein', 'low_carb'], constraint: { requiresChain: ['Chick-fil-A'] } },
+  { id: 'wendys-grilled-baked', name: 'Wendy\'s grilled chicken sandwich + baked potato + side salad', emoji: '🍔', playbook: 'fast_food', when: 'lunch', phase: 1, ingredients: ['Wendy\'s grilled chicken sandwich', 'baked potato', 'side salad'], prepMinutes: 0, cost: 2, protein_g: 35, targets: ['high_protein', 'satiety'], constraint: { requiresChain: ['Wendy\'s'] } },
+  { id: 'wendys-apple-pecan', name: 'Wendy\'s Apple Pecan Chicken Salad (full size)', emoji: '🥗', playbook: 'fast_food', when: 'lunch', phase: 1, ingredients: ['Wendy\'s apple pecan chicken salad', 'pomegranate vinaigrette'], prepMinutes: 0, cost: 2, protein_g: 35, targets: ['high_protein', 'omega3'], constraint: { requiresChain: ['Wendy\'s'] } },
+  { id: 'mcd-2x-egg-mcmuffin', name: 'McDonald\'s: 2× Egg McMuffin + black coffee', emoji: '🥚', playbook: 'fast_food', when: 'breakfast', phase: 1, ingredients: ['2× Egg McMuffin', 'black coffee'], prepMinutes: 0, cost: 2, protein_g: 36, targets: ['high_protein', 'satiety'], constraint: { requiresChain: ["McDonald's"] } },
+  { id: 'mcd-mcnuggets-salad', name: 'McDonald\'s 4-pc Chicken McNuggets + side salad + apple slices', emoji: '🍗', playbook: 'fast_food', when: 'lunch', phase: 1, ingredients: ['McDonald\'s 4pc McNuggets', 'side salad', 'apple slices'], prepMinutes: 0, cost: 1, protein_g: 16, targets: ['high_protein'], constraint: { requiresChain: ["McDonald's"] } },
+  { id: 'subway-rotisserie-flatbread', name: 'Subway rotisserie chicken on flatbread (double meat, all veggies)', emoji: '🥖', playbook: 'fast_food', when: 'lunch', phase: 1, ingredients: ['Subway rotisserie chicken', 'flatbread', 'double meat', 'lettuce', 'tomato', 'spinach', 'olives', 'oil + vinegar'], prepMinutes: 0, cost: 2, protein_g: 40, targets: ['high_protein', 'high_fiber'], constraint: { requiresChain: ['Subway'] } },
+  { id: 'subway-protein-bowl', name: 'Subway Protein Bowl (no bread, double meat, full veggies, dressing)', emoji: '🥗', playbook: 'fast_food', when: 'lunch', phase: 1, ingredients: ['Subway protein bowl', 'double meat', 'all veggies', 'dressing'], prepMinutes: 0, cost: 2, protein_g: 45, targets: ['high_protein', 'low_carb'], constraint: { requiresChain: ['Subway'] } },
+  { id: 'dunkin-2x-wakeup-wrap', name: 'Dunkin: 2× wake-up wraps + black coffee', emoji: '🌯', playbook: 'fast_food', when: 'breakfast', phase: 1, ingredients: ['2× Dunkin wake-up wrap', 'black coffee'], prepMinutes: 0, cost: 2, protein_g: 24, targets: ['high_protein'], constraint: { requiresChain: ['Dunkin'] } },
+  { id: 'dunkin-bacon-egg-flatbread', name: 'Dunkin bacon + egg + cheese on multigrain flatbread + cold brew', emoji: '🥪', playbook: 'fast_food', when: 'breakfast', phase: 1, ingredients: ['Dunkin bacon egg cheese flatbread', 'multigrain', 'cold brew'], prepMinutes: 0, cost: 2, protein_g: 18, targets: ['high_protein'], constraint: { requiresChain: ['Dunkin'] } },
+  { id: 'panera-power-chicken-hummus', name: 'Panera Power Chicken Hummus Bowl', emoji: '🥗', playbook: 'fast_food', when: 'lunch', phase: 1, ingredients: ['Panera power chicken hummus bowl', 'chicken', 'hummus', 'tomato', 'cucumber'], prepMinutes: 0, cost: 2, protein_g: 35, targets: ['high_protein', 'high_fiber', 'satiety'], constraint: { requiresChain: ['Panera'] } },
+  { id: 'panera-turkey-avocado', name: 'Panera Turkey Avocado BLT on whole grain (half order)', emoji: '🥪', playbook: 'fast_food', when: 'lunch', phase: 1, ingredients: ['Panera turkey avocado BLT half', 'whole grain bread'], prepMinutes: 0, cost: 2, protein_g: 25, targets: ['high_protein'], constraint: { requiresChain: ['Panera'] } },
+  { id: 'taco-bell-soft-tacos-supreme', name: 'Taco Bell: 2× Soft Taco Supreme (steak) + side of black beans', emoji: '🌮', playbook: 'fast_food', when: 'lunch', phase: 1, ingredients: ['2× Taco Bell soft taco supreme steak', 'side black beans'], prepMinutes: 0, cost: 1, protein_g: 28, targets: ['high_protein'], constraint: { requiresChain: ['Taco Bell'] } },
+  { id: 'taco-bell-power-bowl', name: 'Taco Bell Power Menu Chicken Bowl', emoji: '🌯', playbook: 'fast_food', when: 'lunch', phase: 1, ingredients: ['Taco Bell power menu chicken bowl', 'rice', 'black beans', 'lettuce', 'avocado ranch'], prepMinutes: 0, cost: 1, protein_g: 26, targets: ['high_protein', 'satiety'], constraint: { requiresChain: ['Taco Bell'] } },
+  { id: 'bk-grilled-chicken', name: 'Burger King grilled chicken sandwich + side salad', emoji: '🍔', playbook: 'fast_food', when: 'lunch', phase: 1, ingredients: ['BK grilled chicken sandwich', 'side salad'], prepMinutes: 0, cost: 2, protein_g: 32, targets: ['high_protein'], constraint: { requiresChain: ['Burger King'] } },
+  { id: 'chipotle-double-chicken-bowl', name: 'Chipotle bowl: double chicken, brown rice, fajita veggies, salsa, guac', emoji: '🍚', playbook: 'fast_food', when: 'lunch', phase: 1, ingredients: ['Chipotle bowl', 'double chicken', 'brown rice', 'fajita peppers + onions', 'salsa', 'guac'], prepMinutes: 0, cost: 2, protein_g: 65, targets: ['high_protein', 'high_fiber', 'satiety', 'high_tg'], constraint: { requiresChain: ['Chipotle'] } },
+  { id: 'five-guys-little-burger', name: 'Five Guys little hamburger + small fries (split with someone)', emoji: '🍔', playbook: 'fast_food', when: 'lunch', phase: 2, ingredients: ['Five Guys little hamburger', 'small fries (split)'], prepMinutes: 0, cost: 2, protein_g: 22, targets: ['satiety'], constraint: { requiresChain: ['Five Guys'] } },
+  { id: 'starbucks-protein-box', name: 'Starbucks protein box + iced black coffee', emoji: '🥚', playbook: 'fast_food', when: 'breakfast', phase: 1, ingredients: ['Starbucks protein box', 'iced black coffee'], prepMinutes: 0, cost: 2, protein_g: 23, targets: ['high_protein'], constraint: { requiresChain: ['Starbucks'] } },
+  { id: 'cracker-barrel-grilled-chicken', name: 'Cracker Barrel grilled chicken + green beans + side salad', emoji: '🍗', playbook: 'fast_food', when: 'dinner', phase: 1, ingredients: ['Cracker Barrel grilled chicken', 'green beans', 'side salad'], prepMinutes: 0, cost: 2, protein_g: 40, targets: ['high_protein', 'low_carb'], constraint: { requiresChain: ['Cracker Barrel'] } },
+  { id: 'olive-garden-chicken-parm', name: 'Olive Garden grilled chicken parmesan (eat the chicken, not the breading)', emoji: '🍝', playbook: 'fast_food', when: 'dinner', phase: 2, ingredients: ['Olive Garden grilled chicken parmesan', 'side salad', 'eat half the pasta'], prepMinutes: 0, cost: 3, protein_g: 45, targets: ['high_protein'], constraint: { requiresChain: ['Olive Garden'] } },
+
+  // ── PROTEIN BARS + SHAKES ───────────────────────────────────────────────
+  { id: 'kirkland-protein-bar', name: 'Costco Kirkland protein bar + apple', emoji: '🍫', playbook: 'protein_bar_shake', when: 'snack', phase: 1, ingredients: ['Kirkland protein bar', 'apple'], prepMinutes: 0, cost: 1, protein_g: 32, targets: ['high_protein', 'satiety'] },
+  { id: 'premier-shake-vanilla', name: 'Premier Protein shake (vanilla) + handful of almonds', emoji: '🥛', playbook: 'protein_bar_shake', when: 'breakfast', phase: 1, ingredients: ['Premier Protein shake vanilla', 'almonds'], prepMinutes: 0, cost: 1, protein_g: 38, targets: ['high_protein', 'satiety'] },
+  { id: 'quest-bar-apple', name: 'Quest bar (any flavor) + apple', emoji: '🍎', playbook: 'protein_bar_shake', when: 'breakfast', phase: 1, ingredients: ['Quest bar', 'apple'], prepMinutes: 0, cost: 1, protein_g: 22, targets: ['high_protein', 'satiety'] },
+  { id: 'built-bar', name: 'Built Bar + black coffee (lower calorie viral pick)', emoji: '🍫', playbook: 'protein_bar_shake', when: 'snack', phase: 1, ingredients: ['Built Bar', 'black coffee'], prepMinutes: 0, cost: 1, protein_g: 17, targets: ['high_protein', 'weight_loss'] },
+  { id: 'barebells-bar', name: 'Barebells protein bar (no chalky aftertaste)', emoji: '🍫', playbook: 'protein_bar_shake', when: 'snack', phase: 1, ingredients: ['Barebells protein bar'], prepMinutes: 0, cost: 1, protein_g: 20, targets: ['high_protein'] },
+  { id: 'fairlife-shake', name: 'Fairlife Core Power protein milk + Quest bar', emoji: '🥛', playbook: 'protein_bar_shake', when: 'snack', phase: 1, ingredients: ['Fairlife Core Power', 'Quest bar'], prepMinutes: 0, cost: 2, protein_g: 48, targets: ['high_protein', 'muscle_gain'] },
+  { id: 'desperate-stack', name: 'Desperate-day stack: Quest bar + Premier shake', emoji: '⚡', playbook: 'protein_bar_shake', when: 'lunch', phase: 1, ingredients: ['Quest bar', 'Premier Protein shake'], prepMinutes: 0, cost: 2, protein_g: 52, targets: ['high_protein', 'satiety'] },
+  { id: 'owyn-shake', name: 'OWYN dairy-free shake (allergen-friendly)', emoji: '🥛', playbook: 'protein_bar_shake', when: 'snack', phase: 1, ingredients: ['OWYN shake'], prepMinutes: 0, cost: 1, protein_g: 20, targets: ['high_protein'], constraint: { diet: ['vegan', 'plant_based'] } },
+  { id: 'ratio-yogurt-cup', name: 'Ratio yogurt cup + handful of berries', emoji: '🍓', playbook: 'protein_bar_shake', when: 'breakfast', phase: 1, ingredients: ['Ratio yogurt cup', 'fresh berries'], prepMinutes: 0, cost: 1, protein_g: 17, targets: ['high_protein'] },
+  { id: 'two-good-yogurt', name: 'Two Good 80-cal yogurt + Kirkland protein bar', emoji: '🥄', playbook: 'protein_bar_shake', when: 'breakfast', phase: 1, ingredients: ['Two Good yogurt', 'Kirkland protein bar'], prepMinutes: 0, cost: 1, protein_g: 42, targets: ['high_protein', 'weight_loss'] },
+
+  // ── CROCK POT / INSTANT POT ─────────────────────────────────────────────
+  { id: 'crock-pulled-chicken', name: 'Crock pot pulled chicken (4 breasts + jar of salsa, 6hr low)', emoji: '🍲', playbook: 'crock_pot', when: 'dinner', phase: 1, ingredients: ['4 chicken breasts', 'jar of salsa', 'crock pot'], prepMinutes: 5, cost: 2, protein_g: 35, targets: ['high_protein', 'satiety'], constraint: { maxPrepMinutes: 15 } },
+  { id: 'crock-chili', name: 'Crock pot chili (1lb beef + 2 cans tomatoes + 2 cans beans + chili powder)', emoji: '🌶️', playbook: 'crock_pot', when: 'dinner', phase: 1, ingredients: ['1 lb ground beef', '2 cans diced tomatoes', '2 cans kidney beans', 'chili powder', 'cumin', 'crock pot'], prepMinutes: 10, cost: 1, protein_g: 30, targets: ['high_protein', 'high_fiber', 'satiety'], constraint: { maxPrepMinutes: 15 } },
+  { id: 'crock-italian-sausage-soup', name: 'Crock pot Italian sausage soup (sausage + frozen mirepoix + chicken broth + cannellini beans + frozen kale)', emoji: '🍲', playbook: 'crock_pot', when: 'dinner', phase: 1, ingredients: ['Italian sausage', 'frozen mirepoix', 'chicken broth', 'cannellini beans', 'frozen kale', 'crock pot'], prepMinutes: 10, cost: 2, protein_g: 28, targets: ['high_protein', 'high_fiber', 'anti_inflammatory'], constraint: { maxPrepMinutes: 15 } },
+  { id: 'crock-honey-garlic-thighs', name: 'Crock pot honey-garlic chicken thighs (10 thighs + soy + honey + garlic + ginger)', emoji: '🍗', playbook: 'crock_pot', when: 'dinner', phase: 1, ingredients: ['10 chicken thighs', 'soy sauce', 'honey', 'garlic', 'ginger', 'crock pot'], prepMinutes: 10, cost: 2, protein_g: 32, targets: ['high_protein', 'satiety', 'low_test'], constraint: { maxPrepMinutes: 15 } },
+  { id: 'instant-pot-whole-chicken', name: 'Instant Pot whole chicken (40 min start to finish, $5)', emoji: '🍗', playbook: 'crock_pot', when: 'dinner', phase: 2, ingredients: ['whole chicken', 'salt', 'pepper', 'garlic powder', 'Instant Pot'], prepMinutes: 5, cost: 1, protein_g: 40, targets: ['high_protein', 'satiety'] },
+  { id: 'crock-beef-broccoli', name: 'Crock pot beef + broccoli (chuck + soy + brown sugar + frozen broccoli)', emoji: '🥦', playbook: 'crock_pot', when: 'dinner', phase: 1, ingredients: ['chuck roast', 'soy sauce', 'brown sugar', 'frozen broccoli', 'crock pot'], prepMinutes: 10, cost: 2, protein_g: 35, targets: ['high_protein', 'low_carb'], constraint: { maxPrepMinutes: 15 } },
+  { id: 'crock-turkey-breast', name: 'Crock pot turkey breast (Sunday roast → 4 days of sandwich filling)', emoji: '🦃', playbook: 'crock_pot', when: 'dinner', phase: 2, ingredients: ['turkey breast', 'olive oil', 'rosemary', 'salt', 'crock pot'], prepMinutes: 10, cost: 2, protein_g: 40, targets: ['high_protein', 'satiety'] },
+  { id: 'crock-pulled-pork', name: 'Crock pot pulled pork (pork shoulder + bottle of BBQ, 8hr low)', emoji: '🍖', playbook: 'crock_pot', when: 'dinner', phase: 1, ingredients: ['pork shoulder', 'bottle BBQ sauce', 'crock pot'], prepMinutes: 5, cost: 2, protein_g: 30, targets: ['high_protein', 'satiety'], constraint: { hasKids: true } },
+  { id: 'crock-bolognese-banza', name: 'Crock pot bolognese over Banza pasta (sauce + ground beef + Italian seasoning)', emoji: '🍝', playbook: 'crock_pot', when: 'dinner', phase: 2, ingredients: ['ground beef', 'jar marinara', 'Italian seasoning', 'Banza chickpea pasta', 'crock pot'], prepMinutes: 10, cost: 2, protein_g: 40, targets: ['high_protein', 'high_fiber'], constraint: { hasKids: true, maxPrepMinutes: 15 } },
+
+  // ── SHEET-PAN / ONE-PAN ─────────────────────────────────────────────────
+  { id: 'sheet-chicken-thighs-sweet-potato', name: 'Sheet-pan chicken thighs + sweet potato cubes + frozen peppers (425°F, 25min)', emoji: '🥘', playbook: 'sheet_pan', when: 'dinner', phase: 2, ingredients: ['chicken thighs', 'sweet potato cubes', 'frozen pepper-onion mix', 'olive oil', 'salt', 'sheet pan'], prepMinutes: 5, cost: 2, protein_g: 35, targets: ['high_protein', 'high_fiber', 'satiety'] },
+  { id: 'sheet-sausage-peppers', name: 'Sheet-pan sausage + frozen pre-sliced peppers + onions (one tray, 20min)', emoji: '🌶️', playbook: 'sheet_pan', when: 'dinner', phase: 1, ingredients: ['Italian sausage links', 'frozen pepper-onion mix', 'olive oil', 'sheet pan'], prepMinutes: 5, cost: 2, protein_g: 28, targets: ['high_protein', 'low_carb'] },
+  { id: 'skillet-egg-roll-bowl', name: 'One-skillet egg roll in a bowl (ground turkey + bagged coleslaw + soy + ginger, 12 min)', emoji: '🥡', playbook: 'sheet_pan', when: 'dinner', phase: 1, ingredients: ['ground turkey', 'bagged coleslaw', 'soy sauce', 'ginger', 'sesame oil', 'skillet'], prepMinutes: 12, cost: 2, protein_g: 32, targets: ['high_protein', 'low_carb'], constraint: { maxPrepMinutes: 15 } },
+  { id: 'skillet-ground-beef-rice', name: 'One-pan ground beef + Minute Rice + frozen broccoli (15 min)', emoji: '🥩', playbook: 'sheet_pan', when: 'dinner', phase: 1, ingredients: ['ground beef', 'Minute Rice', 'frozen broccoli', 'soy sauce', 'skillet'], prepMinutes: 15, cost: 1, protein_g: 35, targets: ['high_protein'], constraint: { maxPrepMinutes: 15 } },
+  { id: 'skillet-chicken-fajitas', name: 'One-skillet chicken fajitas (sliced chicken + frozen pepper-onion mix + taco seasoning, 12 min)', emoji: '🌯', playbook: 'sheet_pan', when: 'dinner', phase: 1, ingredients: ['sliced chicken breast', 'frozen pepper-onion mix', 'taco seasoning', 'tortillas (optional)', 'skillet'], prepMinutes: 12, cost: 2, protein_g: 38, targets: ['high_protein', 'satiety'], constraint: { maxPrepMinutes: 15 } },
+  { id: 'sheet-kielbasa-brussels', name: 'Sheet-pan kielbasa + Brussels sprouts + frozen sweet potato fries (425°F, 25min)', emoji: '🥘', playbook: 'sheet_pan', when: 'dinner', phase: 2, ingredients: ['kielbasa', 'Brussels sprouts', 'frozen sweet potato fries', 'olive oil', 'sheet pan'], prepMinutes: 10, cost: 2, protein_g: 25, targets: ['high_protein', 'high_fiber'] },
+  { id: 'sheet-salmon-asparagus-tomato', name: 'Sheet-pan salmon + asparagus + cherry tomatoes (15 min, 400°F)', emoji: '🐟', playbook: 'sheet_pan', when: 'dinner', phase: 2, ingredients: ['salmon fillet', 'asparagus', 'cherry tomatoes', 'olive oil', 'lemon', 'sheet pan'], prepMinutes: 15, cost: 2, protein_g: 35, targets: ['high_protein', 'omega3', 'high_tg'], constraint: { excludeDiet: ['vegan', 'vegetarian'] } },
+
+  // ── FROZEN AISLE WINS ───────────────────────────────────────────────────
+  { id: 'costco-salmon-burger', name: 'Costco frozen salmon burger on brioche bun + sliced avocado (4 min air-fryer)', emoji: '🐟', playbook: 'frozen_aisle', when: 'dinner', phase: 1, ingredients: ['Costco frozen salmon burger', 'brioche bun', 'sliced avocado', 'air fryer'], prepMinutes: 5, cost: 2, protein_g: 30, targets: ['high_protein', 'omega3', 'high_tg'], constraint: { excludeDiet: ['vegan', 'vegetarian'] } },
+  { id: 'tj-grilled-chicken-strips', name: 'Trader Joe\'s frozen grilled chicken strips + bagged Caesar kit (60-sec microwave)', emoji: '🥗', playbook: 'frozen_aisle', when: 'lunch', phase: 1, ingredients: ['TJ\'s frozen grilled chicken strips', 'bagged Caesar kit'], prepMinutes: 3, cost: 2, protein_g: 35, targets: ['high_protein', 'low_carb'] },
+  { id: 'tj-orange-chicken-broccoli', name: 'Trader Joe\'s frozen orange chicken + frozen broccoli', emoji: '🥡', playbook: 'frozen_aisle', when: 'dinner', phase: 1, ingredients: ['TJ\'s frozen orange chicken', 'frozen broccoli'], prepMinutes: 10, cost: 2, protein_g: 25, targets: ['high_protein'] },
+  { id: 'tj-cauli-pesto-shrimp', name: 'Trader Joe\'s frozen riced cauliflower + jarred pesto + frozen shrimp', emoji: '🍤', playbook: 'frozen_aisle', when: 'dinner', phase: 1, ingredients: ['TJ\'s frozen riced cauliflower', 'jarred pesto', 'frozen shrimp'], prepMinutes: 10, cost: 2, protein_g: 28, targets: ['high_protein', 'low_carb', 'omega3'] },
+  { id: 'aldi-protein-pizza', name: 'Aldi Mama Cozzi protein crust pizza (frozen, 15 min)', emoji: '🍕', playbook: 'frozen_aisle', when: 'dinner', phase: 1, ingredients: ['Aldi Mama Cozzi protein pizza'], prepMinutes: 15, cost: 1, protein_g: 30, targets: ['high_protein', 'satiety'], constraint: { hasKids: true } },
+  { id: 'banza-marinara-meatballs', name: 'Banza chickpea pasta + Rao\'s marinara + frozen meatballs', emoji: '🍝', playbook: 'frozen_aisle', when: 'dinner', phase: 1, ingredients: ['Banza chickpea pasta', 'Rao\'s marinara', 'frozen meatballs'], prepMinutes: 15, cost: 2, protein_g: 40, targets: ['high_protein', 'high_fiber'], constraint: { hasKids: true } },
+  { id: 'costco-meatballs-marinara', name: 'Costco frozen meatballs + Rao\'s marinara over Banza pasta', emoji: '🥘', playbook: 'frozen_aisle', when: 'dinner', phase: 1, ingredients: ['Costco frozen meatballs', 'Rao\'s marinara', 'Banza pasta'], prepMinutes: 15, cost: 2, protein_g: 38, targets: ['high_protein'] },
+  { id: 'costco-korean-bbq-bowl', name: 'Costco frozen Korean BBQ beef bowl (microwave 4 min)', emoji: '🍚', playbook: 'frozen_aisle', when: 'dinner', phase: 1, ingredients: ['Costco Korean BBQ beef bowl'], prepMinutes: 5, cost: 2, protein_g: 28, targets: ['high_protein'] },
+  { id: 'birds-eye-veggie-bag', name: 'Birds Eye Steamfresh veggie bag + leftover protein (3 min microwave)', emoji: '🥦', playbook: 'frozen_aisle', when: 'dinner', phase: 1, ingredients: ['Birds Eye Steamfresh veggie bag', 'leftover protein'], prepMinutes: 5, cost: 1, protein_g: 25, targets: ['high_fiber', 'satiety'] },
+  { id: 'aunt-millie-frozen-toast-stack', name: 'Frozen Aunt Millie\'s protein bread + Boar\'s Head turkey + cheese (toaster)', emoji: '🥪', playbook: 'frozen_aisle', when: 'lunch', phase: 1, ingredients: ['Aunt Millie\'s protein bread (frozen)', 'Boar\'s Head turkey', 'cheese'], prepMinutes: 5, cost: 2, protein_g: 28, targets: ['high_protein'] },
+
+  // ── FROZEN BREAKFAST SANDWICHES ─────────────────────────────────────────
+  { id: 'jimmy-dean-delights', name: 'Jimmy Dean Delights turkey sausage frozen sandwich + Premier shake', emoji: '🥪', playbook: 'frozen_breakfast', when: 'breakfast', phase: 1, ingredients: ['Jimmy Dean Delights turkey sausage sandwich', 'Premier Protein shake'], prepMinutes: 2, cost: 2, protein_g: 47, targets: ['high_protein', 'energy_steady'] },
+  { id: 'make-ahead-egg-muffin-tin', name: 'Make-ahead egg muffin tin (Sunday batch: 12 eggs + spinach + ham + cheese)', emoji: '🧁', playbook: 'frozen_breakfast', when: 'breakfast', phase: 2, ingredients: ['12 eggs', 'spinach', 'diced ham', 'cheese', 'muffin tin'], prepMinutes: 30, cost: 1, protein_g: 18, targets: ['high_protein', 'low_folate'], constraint: { maxPrepMinutes: 60 } },
+  { id: 'eggwich-sandwich', name: 'Eggwich frozen sandwiches (egg-white buns with cheese filling)', emoji: '🥚', playbook: 'frozen_breakfast', when: 'breakfast', phase: 1, ingredients: ['Eggwich frozen sandwich'], prepMinutes: 2, cost: 1, protein_g: 14, targets: ['high_protein', 'low_carb'] },
+  { id: 'tattooed-chef-burrito', name: 'Tattooed Chef frozen breakfast burrito + black coffee', emoji: '🌯', playbook: 'frozen_breakfast', when: 'breakfast', phase: 1, ingredients: ['Tattooed Chef frozen breakfast burrito', 'black coffee'], prepMinutes: 3, cost: 2, protein_g: 18, targets: ['high_protein'] },
+  { id: 'kirkland-frozen-breakfast-bowl', name: 'Costco Kirkland frozen breakfast bowl', emoji: '🍳', playbook: 'frozen_breakfast', when: 'breakfast', phase: 1, ingredients: ['Kirkland frozen breakfast bowl'], prepMinutes: 4, cost: 1, protein_g: 22, targets: ['high_protein'] },
+  { id: 'kodiak-waffles-pb-banana', name: 'Frozen Kodiak protein waffles + peanut butter + banana', emoji: '🧇', playbook: 'frozen_breakfast', when: 'breakfast', phase: 1, ingredients: ['Kodiak frozen waffles', 'peanut butter', 'banana'], prepMinutes: 4, cost: 2, protein_g: 20, targets: ['high_protein', 'energy_steady'] },
+
+  // ── LOW-CAL DRINKS ──────────────────────────────────────────────────────
+  { id: 'protein-iced-coffee', name: 'Premier Protein iced coffee (shake + cold brew + ice in shaker)', emoji: '☕', playbook: 'low_cal_drink', when: 'breakfast', phase: 1, ingredients: ['Premier Protein shake', 'cold brew coffee', 'ice'], prepMinutes: 2, cost: 1, protein_g: 30, targets: ['high_protein', 'energy_steady'] },
+  { id: 'collagen-coffee', name: 'Black coffee + scoop of unflavored collagen + cinnamon', emoji: '☕', playbook: 'low_cal_drink', when: 'breakfast', phase: 1, ingredients: ['black coffee', 'unflavored collagen', 'cinnamon'], prepMinutes: 1, cost: 1, protein_g: 10, targets: ['high_protein'] },
+  { id: 'lmnt-sparkling', name: 'Sparkling water + LMNT or Liquid IV zero stick', emoji: '💧', playbook: 'low_cal_drink', when: 'snack', phase: 1, ingredients: ['sparkling water', 'LMNT or Liquid IV zero stick'], prepMinutes: 1, cost: 1, targets: ['energy_steady'] },
+  { id: 'acv-shot-pre-meal', name: 'Apple cider vinegar shot pre-meal (Bragg\'s, 1 tbsp in water + ice)', emoji: '🥤', playbook: 'low_cal_drink', when: 'snack', phase: 1, ingredients: ['Bragg\'s ACV', 'water', 'ice'], prepMinutes: 1, cost: 1, targets: ['high_glucose', 'insulin_resistance'] },
+  { id: 'sleepy-girl-mocktail', name: 'Sleepy girl mocktail (tart cherry juice + magnesium glycinate powder + sparkling water)', emoji: '🍒', playbook: 'low_cal_drink', when: 'snack', phase: 1, ingredients: ['tart cherry juice', 'magnesium glycinate powder', 'sparkling water'], prepMinutes: 2, cost: 1, targets: ['sleep_support', 'cortisol_calm'] },
+  { id: 'olipop-soda', name: 'Olipop or Poppi prebiotic soda (replaces Coke)', emoji: '🥤', playbook: 'low_cal_drink', when: 'snack', phase: 1, ingredients: ['Olipop or Poppi prebiotic soda'], prepMinutes: 0, cost: 1, targets: ['gut_inflammation', 'high_fiber'] },
+  { id: 'fairlife-post-workout', name: 'Fairlife Core Power post-workout shake', emoji: '🥛', playbook: 'low_cal_drink', when: 'snack', phase: 1, ingredients: ['Fairlife Core Power'], prepMinutes: 0, cost: 1, protein_g: 26, targets: ['muscle_gain', 'high_protein'] },
+  { id: 'iced-matcha-almond', name: 'Iced matcha (Trader Joe\'s matcha + almond milk + ice)', emoji: '🍵', playbook: 'low_cal_drink', when: 'breakfast', phase: 1, ingredients: ['TJ\'s matcha powder', 'unsweetened almond milk', 'ice'], prepMinutes: 2, cost: 1, targets: ['cortisol_calm', 'anti_inflammatory'] },
+  { id: 'athletic-greens', name: 'Athletic Greens or Bloom Greens + cold water', emoji: '🥬', playbook: 'low_cal_drink', when: 'breakfast', phase: 1, ingredients: ['Athletic Greens or Bloom Greens powder', 'cold water'], prepMinutes: 1, cost: 2, targets: ['anti_inflammatory', 'high_fiber'] },
+
+  // ── MOM / PARENT FRIENDLY ───────────────────────────────────────────────
+  { id: 'banza-marinara-meatballs-family', name: 'Banza chickpea pasta + Rao\'s marinara + Costco meatballs (family meal)', emoji: '🍝', playbook: 'mom_friendly', when: 'dinner', phase: 1, ingredients: ['Banza chickpea pasta', 'Rao\'s marinara', 'Costco frozen meatballs'], prepMinutes: 15, cost: 2, protein_g: 38, targets: ['high_protein', 'high_fiber'], constraint: { hasKids: true } },
+  { id: 'rotisserie-stouffer-split', name: 'Costco rotisserie chicken + Stouffer\'s mac (kid eats mac, adult eats chicken + Caesar)', emoji: '🍗', playbook: 'mom_friendly', when: 'dinner', phase: 1, ingredients: ['Costco rotisserie chicken', 'Stouffer\'s mac & cheese', 'bagged Caesar kit'], prepMinutes: 10, cost: 2, protein_g: 40, targets: ['high_protein'], constraint: { hasKids: true } },
+  { id: 'sheet-pan-flatbread-pizza', name: 'Sheet-pan pizza on Aunt Millie\'s flatbread (kid customizes toppings)', emoji: '🍕', playbook: 'mom_friendly', when: 'dinner', phase: 1, ingredients: ['Aunt Millie\'s flatbread', 'pizza sauce', 'cheese', 'toppings of choice'], prepMinutes: 15, cost: 2, protein_g: 22, targets: ['satiety'], constraint: { hasKids: true } },
+  { id: 'crock-pulled-chicken-tacos', name: 'Crock pot pulled chicken tacos (kid uses tortillas, adult bowls it over greens)', emoji: '🌮', playbook: 'mom_friendly', when: 'dinner', phase: 1, ingredients: ['crock pot pulled chicken', 'tortillas', 'salsa', 'greens (for adult bowl)', 'cheese'], prepMinutes: 10, cost: 2, protein_g: 30, targets: ['high_protein'], constraint: { hasKids: true } },
+  { id: 'rotisserie-quesadilla-mission', name: 'Costco rotisserie quesadilla on Mission carb-balance tortilla', emoji: '🫓', playbook: 'mom_friendly', when: 'dinner', phase: 1, ingredients: ['Costco rotisserie chicken', 'Mission carb balance tortilla', 'cheese'], prepMinutes: 10, cost: 1, protein_g: 32, targets: ['high_protein', 'low_carb'], constraint: { hasKids: true } },
+  { id: 'build-your-own-bowls-night', name: 'Build-your-own bowls (rice + Costco rotisserie + frozen peppers + salsa + cheese)', emoji: '🍚', playbook: 'mom_friendly', when: 'dinner', phase: 1, ingredients: ['rice', 'Costco rotisserie chicken', 'frozen peppers', 'salsa', 'cheese'], prepMinutes: 15, cost: 2, protein_g: 35, targets: ['high_protein'], constraint: { hasKids: true } },
+  { id: 'banza-vodka-broccoli', name: 'Banza pasta + Rao\'s vodka sauce + frozen broccoli (15 min)', emoji: '🍝', playbook: 'mom_friendly', when: 'dinner', phase: 1, ingredients: ['Banza chickpea pasta', 'Rao\'s vodka sauce', 'frozen broccoli'], prepMinutes: 15, cost: 2, protein_g: 28, targets: ['high_protein', 'high_fiber'], constraint: { hasKids: true, maxPrepMinutes: 30 } },
+
+  // ── VIRAL TIKTOK HACKS ──────────────────────────────────────────────────
+  { id: 'cottage-cheese-ice-cream', name: 'Cottage cheese "ice cream" (cottage cheese + PB + sugar-free chocolate, blended)', emoji: '🍦', playbook: 'viral_hack', when: 'snack', phase: 1, ingredients: ['cottage cheese', 'peanut butter', 'sugar-free chocolate syrup', 'NutriBullet'], prepMinutes: 5, cost: 1, protein_g: 28, targets: ['high_protein', 'weight_loss', 'satiety'] },
+  { id: 'greek-yogurt-bark', name: 'Greek yogurt bark (yogurt + honey + berries, frozen flat, broken into shards)', emoji: '🍓', playbook: 'viral_hack', when: 'snack', phase: 1, ingredients: ['Greek yogurt', 'honey', 'berries', 'parchment paper'], prepMinutes: 10, cost: 1, protein_g: 18, targets: ['high_protein', 'satiety'] },
+  { id: 'frozen-banana-bites', name: 'Chocolate-covered frozen banana bites (banana coins + dark chocolate)', emoji: '🍫', playbook: 'viral_hack', when: 'snack', phase: 1, ingredients: ['banana', 'dark chocolate', 'freezer'], prepMinutes: 10, cost: 1, targets: ['weight_loss', 'satiety'] },
+  { id: 'chia-pudding-overnight', name: 'Chia pudding overnight (chia + almond milk + scoop protein powder)', emoji: '🥣', playbook: 'viral_hack', when: 'breakfast', phase: 1, ingredients: ['chia seeds', 'almond milk', 'protein powder'], prepMinutes: 5, cost: 1, protein_g: 22, targets: ['high_protein', 'high_fiber', 'omega3'] },
+  { id: 'cottage-cheese-cucumber', name: 'Cottage cheese + everything bagel seasoning + sliced cucumber', emoji: '🥒', playbook: 'viral_hack', when: 'snack', phase: 1, ingredients: ['cottage cheese', 'everything bagel seasoning', 'cucumber slices'], prepMinutes: 3, cost: 1, protein_g: 28, targets: ['high_protein', 'low_carb'] },
+  { id: 'dense-bean-salad', name: 'Dense bean salad (canned beans + chopped veg + lemon + olive oil, fridges 5 days)', emoji: '🫘', playbook: 'viral_hack', when: 'lunch', phase: 1, ingredients: ['canned beans (chickpea + black)', 'cucumber', 'tomato', 'red onion', 'lemon', 'olive oil'], prepMinutes: 15, cost: 1, protein_g: 18, targets: ['high_fiber', 'high_protein', 'anti_inflammatory'] },
+  { id: 'cottage-cheese-chips', name: 'Cottage cheese chips (microwave-bake at 350°F = high-protein chip)', emoji: '🥨', playbook: 'viral_hack', when: 'snack', phase: 2, ingredients: ['cottage cheese', 'parchment'], prepMinutes: 15, cost: 1, protein_g: 25, targets: ['high_protein', 'low_carb'] },
+  { id: 'whipped-cottage-cheese', name: 'Whipped cottage cheese spread on Aunt Millie\'s toast + everything bagel seasoning', emoji: '🥯', playbook: 'viral_hack', when: 'breakfast', phase: 1, ingredients: ['cottage cheese (food-processed)', 'Aunt Millie\'s toast', 'everything bagel seasoning'], prepMinutes: 5, cost: 1, protein_g: 24, targets: ['high_protein'] },
+  { id: 'rotisserie-chicken-salad', name: 'Costco rotisserie chicken salad (shred + Greek yogurt + grapes + celery)', emoji: '🥗', playbook: 'viral_hack', when: 'lunch', phase: 1, ingredients: ['Costco rotisserie chicken (shredded)', 'Greek yogurt', 'grapes', 'celery'], prepMinutes: 10, cost: 2, protein_g: 35, targets: ['high_protein', 'satiety'] },
+
+  // ── LUNCHBOX / THERMOS ──────────────────────────────────────────────────
+  { id: 'thermos-leftover-chili', name: 'Thermos chili (8-hour hot hold, leftover crock pot chili)', emoji: '🌶️', playbook: 'lunchbox_thermos', when: 'lunch', phase: 1, ingredients: ['leftover crock pot chili', 'thermos'], prepMinutes: 2, cost: 1, protein_g: 30, targets: ['high_protein', 'satiety'], constraint: { workType: ['driver', 'shift', 'labor', 'service'] } },
+  { id: 'pyrex-cooler-box', name: 'Pyrex cooler box (pre-cooked chicken + Minute Rice cup + cucumber + ranch)', emoji: '🍱', playbook: 'lunchbox_thermos', when: 'lunch', phase: 1, ingredients: ['pre-cooked chicken', 'Minute Rice cup', 'cucumber slices', 'ranch packet', 'Pyrex'], prepMinutes: 5, cost: 2, protein_g: 35, targets: ['high_protein'], constraint: { workType: ['driver', 'shift', 'labor', 'service'] } },
+  { id: 'dashboard-protein-combo', name: 'Dashboard combo: turkey jerky + Premier Protein + apple + string cheese', emoji: '🚛', playbook: 'lunchbox_thermos', when: 'lunch', phase: 1, ingredients: ['turkey jerky', 'Premier Protein shake', 'apple', 'string cheese'], prepMinutes: 0, cost: 2, protein_g: 45, targets: ['high_protein', 'satiety'], constraint: { workType: ['driver'] } },
+  { id: 'construction-lunchbox', name: 'Construction lunchbox: 4 hard-boiled eggs + 2 string cheese + apple + Quest bar', emoji: '🔨', playbook: 'lunchbox_thermos', when: 'lunch', phase: 1, ingredients: ['4× hard-boiled eggs', '2× string cheese', 'apple', 'Quest bar'], prepMinutes: 0, cost: 1, protein_g: 45, targets: ['high_protein', 'satiety'], constraint: { workType: ['labor', 'service'] } },
+  { id: 'thermos-lentil-soup', name: 'Driver thermos: lentil soup OR Instant Pot beef stew (hot 8 hrs)', emoji: '🍲', playbook: 'lunchbox_thermos', when: 'lunch', phase: 2, ingredients: ['lentil soup or beef stew (leftover)', 'thermos'], prepMinutes: 2, cost: 1, protein_g: 25, targets: ['high_fiber', 'high_protein'], constraint: { workType: ['driver', 'shift'] } },
+  { id: 'cold-cooler-steak-rice', name: 'Cold cooler combo: leftover steak + microwave rice + cherry tomatoes + ranch', emoji: '🥩', playbook: 'lunchbox_thermos', when: 'lunch', phase: 2, ingredients: ['leftover steak', 'microwave rice', 'cherry tomatoes', 'ranch'], prepMinutes: 5, cost: 2, protein_g: 35, targets: ['high_protein'], constraint: { workType: ['driver', 'shift', 'labor'] } },
+  { id: 'trucker-special-eggs-cheese', name: 'Trucker special: 2× hard-boiled eggs + 2× Babybel + Premier shake + bag of almonds', emoji: '🥚', playbook: 'lunchbox_thermos', when: 'lunch', phase: 1, ingredients: ['2× hard-boiled eggs', '2× Babybel cheese', 'Premier Protein shake', 'almonds'], prepMinutes: 0, cost: 2, protein_g: 50, targets: ['high_protein', 'satiety'], constraint: { workType: ['driver'] } },
+  { id: 'shift-overnight-roast-beef', name: 'Shift-worker overnight box: cold roast beef + spinach wrap + cheese cubes + apple', emoji: '🌙', playbook: 'lunchbox_thermos', when: 'lunch', phase: 1, ingredients: ['cold roast beef', 'spinach wrap', 'cheese cubes', 'apple'], prepMinutes: 5, cost: 2, protein_g: 38, targets: ['high_protein'], constraint: { workType: ['shift'] } },
+
+  // ── SIMPLE HOME COOK (Phase 3) ──────────────────────────────────────────
+  { id: 'home-salmon-power-bowl', name: 'Salmon power bowl (Costco frozen filet + brown rice + bagged kale slaw + avocado + sriracha + sesame oil)', emoji: '🐟', playbook: 'simple_home_cook', when: 'dinner', phase: 3, ingredients: ['Costco frozen salmon filet', 'brown rice', 'bagged kale slaw', 'avocado', 'sriracha', 'sesame oil'], prepMinutes: 20, cost: 2, protein_g: 42, targets: ['high_protein', 'omega3', 'high_tg'], constraint: { excludeDiet: ['vegan', 'vegetarian'] } },
+  { id: 'home-chicken-thighs-brussels', name: 'Chicken thighs + roasted Brussels sprouts + brown rice + lemon', emoji: '🍗', playbook: 'simple_home_cook', when: 'dinner', phase: 3, ingredients: ['chicken thighs', 'Brussels sprouts', 'brown rice', 'lemon', 'olive oil'], prepMinutes: 25, cost: 2, protein_g: 40, targets: ['high_protein', 'high_fiber'] },
+  { id: 'home-steak-fajitas', name: 'Steak fajita night (sliced flank + frozen pepper-onion mix + tortillas)', emoji: '🌯', playbook: 'simple_home_cook', when: 'dinner', phase: 3, ingredients: ['flank steak', 'frozen pepper-onion mix', 'tortillas', 'lime', 'cilantro'], prepMinutes: 20, cost: 2, protein_g: 40, targets: ['high_protein', 'low_test'] },
+  { id: 'home-greek-bowl', name: 'Greek bowl: ground turkey + cucumber + tomato + tzatziki + brown rice + feta', emoji: '🥙', playbook: 'simple_home_cook', when: 'dinner', phase: 3, ingredients: ['ground turkey', 'cucumber', 'tomato', 'tzatziki', 'brown rice', 'feta'], prepMinutes: 20, cost: 2, protein_g: 38, targets: ['high_protein', 'high_fiber'] },
+  { id: 'home-chicken-parm-banza', name: 'Chicken parmesan night (pounded chicken + jar marinara + Banza pasta + mozzarella)', emoji: '🍝', playbook: 'simple_home_cook', when: 'dinner', phase: 3, ingredients: ['pounded chicken breast', 'jar marinara', 'Banza pasta', 'mozzarella'], prepMinutes: 25, cost: 2, protein_g: 50, targets: ['high_protein'] },
+  { id: 'home-beef-stew-dutch', name: 'Beef stew (chuck + onion + carrot + potato + canned tomatoes, Dutch oven 2 hrs)', emoji: '🍲', playbook: 'simple_home_cook', when: 'dinner', phase: 3, ingredients: ['chuck roast', 'onion', 'carrot', 'potato', 'canned tomatoes', 'Dutch oven'], prepMinutes: 20, cost: 2, protein_g: 35, targets: ['high_protein', 'high_fiber'] },
+  { id: 'home-korean-bbq-bowl', name: 'Korean BBQ bowl (ground beef + soy + brown sugar + rice + frozen broccoli + kimchi)', emoji: '🍚', playbook: 'simple_home_cook', when: 'dinner', phase: 3, ingredients: ['ground beef', 'soy sauce', 'brown sugar', 'rice', 'frozen broccoli', 'kimchi'], prepMinutes: 20, cost: 2, protein_g: 38, targets: ['high_protein', 'gut_inflammation'] },
+];
+
+// Quick stats for sanity
+export const PLAYBOOK_COUNT = FOOD_PLAYBOOK.reduce((acc, m) => {
+  acc[m.playbook] = (acc[m.playbook] ?? 0) + 1;
+  return acc;
+}, {} as Record<Playbook, number>);

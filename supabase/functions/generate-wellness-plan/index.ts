@@ -5,6 +5,7 @@ import { isHealthyMode } from '../_shared/healthMode.ts';
 import { GOAL_LABELS, formatGoals } from '../_shared/goals.ts';
 import { buildRareDiseaseBlocklist, extractRareDiseaseContext } from '../_shared/rareDiseaseGate.ts';
 import { buildUniversalTestInjections } from '../_shared/testInjectors.ts';
+import { selectMealCandidates, inferLabTargets } from '../_shared/foodSelector.ts';
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -116,6 +117,33 @@ serve(async (req) => {
       `LAST_PHYSICAL: ${lastPhys}`,
       `DIET: ${dietType}`,
     ].join(' · ');
+
+    // ── Food Playbook candidate selection ─────────────────────────────────
+    // Pull top ~30 brand-specific meals from the curated library that match
+    // this user's life_context + lab targets. AI picks 12-18 finalists from
+    // these candidates and writes the lab-specific "why" per user. The
+    // library ensures every output meal has a real brand/chain/SKU mention
+    // and matches the user's actual eating patterns.
+    const labTargets = inferLabTargets(labValues, symptoms);
+    const mealCandidates = selectMealCandidates({
+      workType: workType !== 'unknown' ? workType : undefined,
+      hasKids: kids !== 'unknown' && kids !== '0',
+      cookingTimeAvailable: cookTime !== 'unknown' ? cookTime : undefined,
+      weeklyFoodBudget: foodBudget !== 'unknown' ? foodBudget : undefined,
+      eatOutPlaces: Array.isArray(lifeCtx.eatOutPlaces) ? lifeCtx.eatOutPlaces : [],
+      breakfastPatterns: breakfastArr,
+      lunchPatterns: lunchArr,
+      dinnerPatterns: dinnerArr,
+      diet: dietType,
+      labTargets,
+    }, 30);
+    console.log(`[wellness-plan] inferred lab targets: ${labTargets.join(', ')}`);
+    console.log(`[wellness-plan] selected ${mealCandidates.length} meal candidates from playbook`);
+    const mealCandidatesStr = mealCandidates.length > 0
+      ? mealCandidates.map(m =>
+          `- [${m.playbook}|${m.when}|phase${m.phase}|${m.prepMinutes}min] ${m.emoji} ${m.name} | ingredients: ${m.ingredients.slice(0, 5).join(', ')}${m.protein_g ? ` | ~${m.protein_g}g protein` : ''}`
+        ).join('\n')
+      : '(no candidates — fall back to your library knowledge using the playbook rules below)';
 
     // Send ALL lab values, tagged with status from the new range model
     // (healthy/watch/low/high/critical_*) so the AI knows what to act on.
@@ -762,6 +790,11 @@ MEDICATIONS: ${medsStr}
 CURRENT SUPPLEMENTS (already taking — do NOT re-recommend; account for lab interactions and avoid stacking duplicates): ${suppsStr}
 SYMPTOMS (for context only — do NOT supplement based on symptoms alone): ${sympStr}
 LIFESTYLE_CONTEXT (drives meals + workout realism — see hard rule 11 below): ${lifestyleStr}
+
+INFERRED_LAB_TARGETS (the meals + supplements should hit these): ${labTargets.join(', ') || 'none flagged'}
+
+MEAL_CANDIDATES — pre-filtered from CauseHealth's curated Food Playbook based on this user's life_context + labs. **Pick 12-18 finalists from THIS list** for the meals[] output. Use these candidate names verbatim in meals[].name, copy their playbook + phase + when fields, but write a personalized "why" sentence that links each meal to THIS user's specific lab values or symptoms (use plain English: 'liver enzyme' not 'ALT', '3-month blood sugar' not 'A1c'). Aim for breadth — span as many of the user's selected meal patterns as possible. If a candidate doesn't fit, skip it; you may invent supplemental meals only when candidates don't cover a slot, but every invented meal must follow the same brand-specific + playbook-tagged rules and will be subject to the same scrubbing rules. Candidates:
+${mealCandidatesStr}
 
 SUPPLEMENT-LAB INTERACTION KNOWLEDGE (use when interpreting labs and building stack):
 - Biotin (>1mg/day): falsely alters TSH/T3/T4/Troponin/Vit D — pause 72hr before retest.
