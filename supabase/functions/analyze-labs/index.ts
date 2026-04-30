@@ -128,15 +128,33 @@ CRITICAL RULES:
    - Hair loss + fatigue + ferritin <50 = functional iron deficiency → full iron panel.
    - 3+ Watch-tier or out-of-range values clustering in one system → escalate that system in patterns.
 
-3. WHEN TO RECOMMEND FOLLOW-UP TESTS (missing_tests array) — STRICT TRIAGE RULE:
+CAUSEHEALTH IS NOT A LONGEVITY OR FUNCTIONAL-MEDICINE APP. We are a clinical-translation tool. Tests we recommend must be:
+  - Standard, insurance-covered, primary-care-orderable diagnostics
+  - Tied to either an out-of-range marker, a reported symptom, a medication depletion, or a standard-of-care baseline the doctor missed for the patient's age/sex
+We do NOT recommend GI-MAP, hair tissue mineral, organic acids, food sensitivity, micronutrient panels, NMR lipid (unless lipids abnormal), VO2 max, DEXA <50, comprehensive thyroid antibodies in asymptomatic patients, or advanced cardiology <35.
+
+3. WHEN TO RECOMMEND FOLLOW-UP TESTS (missing_tests array) — UNIVERSAL TRIAGE RULE:
    A test may ONLY appear in missing_tests if it directly investigates ONE of:
-     (a) a symptom the patient actually reported, OR
-     (b) a known depletion / side-effect from a medication they're currently taking, OR
-     (c) an out-of-range OR Watch-tier marker on THIS lab draw, OR
-     (d) an early-detection marker pattern matching this patient (see common-but-missed list below).
-   If none of (a)-(d) applies, DO NOT include the test. No "while we're at it" tests. No "good to confirm" tests. No "you don't have a baseline" tests — those belong in Clinical Prep's standard-of-care baseline check, not here.
-   For each test, why_needed MUST cite the specific trigger ("Reports fatigue + ferritin 28" or "On atorvastatin + ALT 97" or "ALT 97 + triglycerides 327"). If you can't cite a trigger, drop the test.
-   Differential thinking: ask "if this comes back abnormal, does management change?" If no, drop it.
+     (a) a symptom the patient actually reported
+     (b) a known depletion / side-effect from a current medication
+     (c) an out-of-range OR Watch-tier marker on THIS draw
+     (d) a STANDARD-OF-CARE BASELINE TEST for the patient's age/sex that is MISSING from the draw
+     (e) an early-detection marker pattern matching this patient (Hashimoto's, PCOS, NAFLD, etc.)
+
+   If none of (a)-(e) applies, DO NOT include the test. No "while we're at it". No longevity wishlists. No "good to confirm".
+
+   STANDARD-OF-CARE BASELINE BY AGE/SEX (trigger (d) — only if MISSING from draw):
+     ALL adults (18+): lipid panel, A1c (35+ every 3yr), TSH once, vitamin D once, ferritin (menstruating women), hs-CRP once, B12 once.
+     35+: ApoB and Lp(a) once-in-lifetime.
+     45+: coronary calcium once.
+     50+: DEXA (women), colorectal screening.
+     Women any age: iron panel if menstruating + symptoms.
+     Men 35+: total T + SHBG + estradiol once.
+
+   NOT standard-of-care baseline (only via triggers (a)/(b)/(c)/(e), never (d)): Cortisol, DHEA-S, Zinc, Free Testosterone, Homocysteine, MMA, Free T3, Free T4, Reverse T3, TPO/Tg antibodies, NMR lipid, GI-MAP, food sensitivity panels, organic acids, hair tissue mineral analysis.
+
+   For each test, why_needed MUST name the trigger letter and the specific finding ("(a) Reports fatigue + (c) ferritin 28" or "(d) Standard baseline for 28yo — vitamin D not in this draw"). If you can't cite a letter, drop it.
+   Differential thinking: if the result wouldn't change management, drop the test.
    Maximum 5 tests per analysis.
 
 4. AGE / SEX context: apply age- and sex-appropriate reasoning. For premenopausal females, do NOT flag estradiol, progesterone, FSH, or LH as abnormal unless extreme (FSH >40, estradiol <10 or >500, progesterone >30) — these vary by cycle phase.
@@ -245,6 +263,12 @@ CRITICAL RULES:
       };
 
       analysis.missing_tests = filterTests(analysis.missing_tests);
+      // Hard cap — even if AI ignores the prompt's max-5, never ship more
+      // than 6 to avoid the 10-test longevity-wishlist regression.
+      if (Array.isArray(analysis.missing_tests) && analysis.missing_tests.length > 6) {
+        console.log(`[analyze-labs] capping missing_tests ${analysis.missing_tests.length} -> 6`);
+        analysis.missing_tests = analysis.missing_tests.slice(0, 6);
+      }
       // Filter the human-readable summary too — strip sentences that mention JAK2/etc when not allowed
       if (typeof analysis.summary === 'string') {
         for (const rule of blockedPatterns) {

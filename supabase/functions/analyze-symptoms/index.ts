@@ -59,16 +59,25 @@ VOICE RULES (CRITICAL — every string in the JSON):
 - Every pattern + autoimmune flag gets an "emoji" field as visual anchor.
 - Add a "body_systems" array to each pattern (subset of: brain, heart, gut, hormones, energy, immune, blood, liver, kidney, joints, skin) so we can highlight a body diagram.
 
+CAUSEHEALTH IS NOT A LONGEVITY OR FUNCTIONAL-MEDICINE APP. We are a clinical-translation tool. Tests we suggest must be:
+  - Standard, insurance-covered, primary-care-orderable diagnostics
+  - Tied to either a reported symptom, a medication depletion, an out-of-range marker, or a standard-of-care baseline the doctor missed for this patient's age/sex
+We do NOT recommend GI-MAP, hair tissue mineral, organic acids, food sensitivity, micronutrient panels, NMR lipid (unless lipids abnormal), VO2 max, DEXA <50, comprehensive thyroid antibodies in asymptomatic patients, or advanced cardiology <35.
+
 CRITICAL RULES:
 1. SEX-SPECIFIC RANGES: Use sex-appropriate reference ranges. NEVER use male testosterone ranges (e.g., 300-1000 ng/dL) for a female patient. For females: testosterone 15-70 ng/dL, free T 0.5-5.0 pg/mL, estradiol varies by cycle.
 2. FEMALE HORMONES: Do NOT call estradiol, progesterone, FSH, or LH abnormal in premenopausal females unless extreme (FSH >40, estradiol <10 or >500, progesterone >30). These vary dramatically by cycle phase.
 3. PRIORITY ACTIONS: Maximum 4 actions total — the highest-leverage next steps. Do NOT generate 8-10 actions. Pick the most important.
-4. TESTS — STRICT TRIAGE RULE: A test may ONLY appear in suggested_tests if it directly investigates ONE of:
-   (a) a symptom the patient actually reported, OR
-   (b) a known depletion / side-effect from a medication they're currently taking, OR
-   (c) an out-of-range / Watch-tier marker on this lab draw, OR
-   (d) an early-detection marker pattern matching this patient.
-   No "while we're at it" tests, no "good to confirm" tests. If you can't cite a trigger, drop it. One focused workup per entry — same organ system only. Do NOT bundle. Maximum 4 tests per pattern.
+4. TESTS — UNIVERSAL TRIAGE RULE. A test may ONLY appear in suggested_tests if it directly investigates ONE of:
+   (a) a symptom the patient actually reported
+   (b) a known depletion / side-effect from a current medication
+   (c) an out-of-range / Watch-tier marker on this lab draw
+   (d) a STANDARD-OF-CARE BASELINE TEST for the patient's age/sex that is MISSING from the draw
+   (e) an early-detection marker pattern matching this patient
+
+   NOT standard-of-care baseline (only via (a)/(b)/(c)/(e), never (d)): Cortisol, DHEA-S, Zinc, Free Testosterone, Homocysteine, MMA, Free T3, Free T4, Reverse T3, TPO/Tg antibodies, NMR lipid, GI-MAP, food sensitivity panels, organic acids, hair tissue mineral analysis.
+
+   No "while we're at it" tests, no longevity wishlists. If you can't cite a trigger letter, drop it. One focused workup per entry — same organ system only. Do NOT bundle. Maximum 4 tests per pattern.
 5. WRITING STYLE: Plain English. Instead of "HPA-axis dysregulation" say "your stress hormones are elevated." Instead of "hepatocellular dysfunction" say "your liver is working harder than it should." Each "explanation" and "likely_mechanism" should be 1-2 sentences max — not paragraphs.
 6. DO NOT speculate about conditions the patient has no evidence for. Only flag autoimmune conditions with supporting symptoms AND lab clues.
 7. Frame as educational. Always recommend discussing with a healthcare provider.
@@ -183,6 +192,30 @@ Return ONLY valid JSON: { "headline": "one 12-word verdict in plain English", "s
         }
       }
     } catch (e) { console.error('[analyze-symptoms] scrub error:', e); }
+
+    // Hard cap on suggested_tests across all patterns — backstop against
+    // longevity-wishlist regressions. Tests beyond the cap are dropped from
+    // the LATEST patterns first, preserving the most-clinically-relevant ones.
+    if (Array.isArray(result.patterns)) {
+      let total = 0;
+      for (const p of result.patterns) {
+        if (Array.isArray(p?.suggested_tests)) {
+          if (p.suggested_tests.length > 4) p.suggested_tests = p.suggested_tests.slice(0, 4);
+          total += p.suggested_tests.length;
+        }
+      }
+      if (total > 8) {
+        console.log(`[analyze-symptoms] capping suggested_tests across patterns: total ${total} -> 8`);
+        // Trim from the end of the patterns array
+        let remaining = 8;
+        for (const p of result.patterns) {
+          if (!Array.isArray(p?.suggested_tests)) continue;
+          if (remaining >= p.suggested_tests.length) { remaining -= p.suggested_tests.length; continue; }
+          p.suggested_tests = p.suggested_tests.slice(0, Math.max(0, remaining));
+          remaining = 0;
+        }
+      }
+    }
 
     await supabase.from('symptom_analyses').insert({ user_id: userId, analysis_data: result });
     return new Response(JSON.stringify(result), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
