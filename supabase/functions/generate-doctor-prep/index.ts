@@ -248,7 +248,20 @@ TESTS — TWO SEPARATE LISTS:
    - MAXIMUM 14 tests for treatment-mode patients with multi-system issues; 5-7 for healthy patients. Be COMPREHENSIVE for sick patients — 5-test panels on someone with UC + dyslipidemia + low T + insulin resistance leave the patient back at the doctor in 6 weeks for round two. If fewer triggers exist, return fewer.
    - When the draw is BARE-BONES (under ~30 markers, no ApoB/Lp(a)/A1c/vitamin D/ferritin/TSH/B12), prioritize trigger (d) baseline gaps so the patient walks out of the next visit with a complete workup.
    - ONE focused workup per row. Do NOT bundle across organ systems.
-   - A logical "test_name" combines tests of the SAME organ system (e.g., "Iron panel" = serum iron + TIBC + ferritin + transferrin sat; "Lipid panel" = total chol + LDL + HDL + triglycerides).
+   - CONSOLIDATE into STANDARD PANELS. Doctors order panels, not individual markers. ALT, AST, bilirubin, glucose, calcium are ALL part of the CMP — never list them as separate entries. Same for lipid panel and CBC. Use these standard panel names:
+       - "Comprehensive Metabolic Panel (CMP)" → covers ALT, AST, ALP, Bilirubin (total + direct), Albumin, Total Protein, Glucose, BUN, Creatinine, eGFR, Sodium, Potassium, Chloride, CO2, Calcium
+       - "Lipid Panel" → Total Cholesterol, LDL, HDL, Triglycerides, VLDL, non-HDL
+       - "Complete Blood Count (CBC) with Differential" → WBC, RBC, Hemoglobin, Hematocrit, MCV, MCH, MCHC, RDW, Platelets, Neutrophils, Lymphocytes, Monocytes, Eosinophils, Basophils
+       - "Iron Panel" → Serum Iron, TIBC, Ferritin, Transferrin Saturation, UIBC
+       - "Vitamin B12 Workup" → Serum B12, MMA, Homocysteine
+       - "Folate Workup" → Serum Folate, RBC Folate
+       - "Testosterone Panel (Male)" → Total T, Free T, SHBG, Estradiol; add LH/FSH only if low T confirmed
+       - "PCOS Panel (Female)" → Total T, Free T, DHEA-S, LH:FSH, SHBG, Fasting Insulin
+       - "Thyroid Panel" → TSH, Free T3, Free T4 (only when triggered)
+       - "Hashimoto's Antibodies" → TPO Ab, Thyroglobulin Ab (only when triggered)
+       - "Insulin Resistance Workup" → Fasting Insulin, HOMA-IR
+       - Single-test entries: HbA1c, Vitamin D 25-OH, hs-CRP, ApoB, Lp(a), GGT, Uric Acid, PTH, Ionized Calcium
+   The patient should walk out with ~10-14 lab orders covering 30-50 individual values, not 30 separate entries the doctor has to mentally group.
    - clinical_justification: ONE SENTENCE that NAMES the trigger letter and the specific finding. Examples:
        "(c) Triglycerides 327 critical-high — re-measure to confirm response to omega-3 + diet."
        "(a) Reports fatigue + hair loss + (c) ferritin not on draw — full iron panel rules out functional iron deficiency."
