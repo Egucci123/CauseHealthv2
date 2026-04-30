@@ -1178,6 +1178,36 @@ CRITICAL OUTPUT RULES:
       }
     } catch (e) { console.error('[wellness-plan] meal-scrub error:', e); }
 
+    // ── Meal padder (deterministic, locked-in rule) ────────────────────
+    // The AI keeps undershooting the 21-meal target. If we end up below 21,
+    // pad from the unused candidates automatically — they were already
+    // pre-filtered by the selector for this user's life_context. Padded
+    // meals get a generic "why" tying them to inferred lab targets, the
+    // user can swap them out via the Browse Full Library modal anyway.
+    try {
+      const TARGET_MIN = 21;
+      if (Array.isArray(plan.meals) && plan.meals.length < TARGET_MIN && Array.isArray(mealCandidates)) {
+        const usedIds = new Set(plan.meals.map((m: any) => String(m.name).trim().toLowerCase()));
+        const unused = mealCandidates.filter(c => !usedIds.has(c.name.trim().toLowerCase()));
+        const need = TARGET_MIN - plan.meals.length;
+        const padded = unused.slice(0, need).map(c => ({
+          emoji: c.emoji,
+          name: c.name,
+          when: c.when,
+          phase: c.phase,
+          playbook: c.playbook,
+          ingredients: c.ingredients,
+          why: c.targets.length > 0
+            ? `Quick win matched to your life — ${c.protein_g ? c.protein_g + 'g protein, ' : ''}${c.prepMinutes === 0 ? 'no prep' : c.prepMinutes + ' min'}.`
+            : `Easy add — ${c.prepMinutes === 0 ? 'no prep needed' : c.prepMinutes + ' min total'}.`,
+        }));
+        if (padded.length > 0) {
+          plan.meals.push(...padded);
+          console.log(`[wellness-plan] meal padder: AI returned ${plan.meals.length - padded.length}, padded to ${plan.meals.length}`);
+        }
+      }
+    } catch (e) { console.error('[wellness-plan] meal-padder error:', e); }
+
     if (!Array.isArray(plan.workouts)) plan.workouts = [];
     if (!plan.headline) plan.headline = '';
     if (!plan.lifestyle_interventions) plan.lifestyle_interventions = { diet: [], sleep: [], exercise: [], stress: [] };

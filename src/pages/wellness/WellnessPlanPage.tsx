@@ -292,6 +292,74 @@ const EatTab = ({ plan }: { plan: any }) => {
   const meals = plan.meals ?? [];
   const [showList, setShowList] = useState(false);
   const [showLibrary, setShowLibrary] = useState(false);
+
+  // Export the AI-curated plan meals to a PDF directly. Different from the
+  // "Browse Full Library" PDF — this one's just the user's curated week.
+  const exportPlanPDF = async () => {
+    const { default: jsPDF } = await import('jspdf');
+    const doc = new jsPDF({ unit: 'pt', format: 'letter' });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 40;
+    let y = margin;
+    const ensureSpace = (need: number) => {
+      if (y + need > doc.internal.pageSize.getHeight() - margin) {
+        doc.addPage();
+        y = margin;
+      }
+    };
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(20);
+    doc.setTextColor(27, 66, 58);
+    doc.text('Your CauseHealth Food Plan', margin, y);
+    y += 24;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`${meals.length} meals matched to your labs and life — ${new Date().toLocaleDateString()}`, margin, y);
+    y += 24;
+
+    const order = ['breakfast', 'lunch', 'dinner', 'snack'];
+    const sortedForPDF = [...meals].sort((a, b) => order.indexOf(a.when) - order.indexOf(b.when));
+    let lastWhen = '';
+    for (const m of sortedForPDF) {
+      if (m.when !== lastWhen) {
+        ensureSpace(28);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(13);
+        doc.setTextColor(27, 66, 58);
+        doc.text(String(m.when || 'meal').toUpperCase(), margin, y);
+        y += 16;
+        lastWhen = m.when;
+      }
+      ensureSpace(60);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.setTextColor(40);
+      const nameLines = doc.splitTextToSize(`• ${m.name || ''}`, pageWidth - margin * 2);
+      for (const line of nameLines) { doc.text(line, margin, y); y += 12; }
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(120);
+      const ing = doc.splitTextToSize((m.ingredients || []).join(' · '), pageWidth - margin * 2 - 12);
+      for (const line of ing) { doc.text(line, margin + 12, y); y += 10; }
+      if (m.why) {
+        doc.setTextColor(90);
+        const whyLines = doc.splitTextToSize(`Why: ${m.why}`, pageWidth - margin * 2 - 12);
+        for (const line of whyLines) { doc.text(line, margin + 12, y); y += 10; }
+      }
+      y += 8;
+    }
+    const totalPages = doc.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      doc.setTextColor(150);
+      doc.text(`Page ${i} of ${totalPages} · CauseHealth Food Plan`, margin, doc.internal.pageSize.getHeight() - 24);
+    }
+    doc.save('causehealth-food-plan.pdf');
+  };
+
   if (meals.length === 0) {
     return <p className="text-body text-clinical-stone text-sm">Regenerate your plan to get your weekly food list.</p>;
   }
@@ -308,6 +376,13 @@ const EatTab = ({ plan }: { plan: any }) => {
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <p className="text-body text-clinical-stone text-sm">Real meals + real chain orders + lunchbox hacks for real life. Pick what works this week — start anywhere.</p>
         <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={exportPlanPDF}
+            className="inline-flex items-center gap-1.5 text-precision text-[0.65rem] font-bold tracking-widest uppercase px-3 py-2 bg-clinical-white border border-[#1B423A]/30 hover:border-[#1B423A] text-[#1B423A] rounded-[8px] transition-all"
+          >
+            <span className="material-symbols-outlined text-[14px]">picture_as_pdf</span>
+            Export PDF
+          </button>
           <button
             onClick={() => setShowLibrary(true)}
             className="inline-flex items-center gap-1.5 text-precision text-[0.65rem] font-bold tracking-widest uppercase px-3 py-2 bg-[#D4A574] hover:bg-[#B8915F] text-clinical-charcoal rounded-[8px] transition-colors"
