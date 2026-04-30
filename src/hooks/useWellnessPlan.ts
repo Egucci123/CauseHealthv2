@@ -13,6 +13,12 @@ export interface SupplementItem {
   // and absorption tips. Required on every supplement (prompt rule). Renders as
   // a tip box under each card alongside the why field.
   practical_note?: string;
+  // Category for grouping in the UI. Maps to one of five sections so the user
+  // sees the stack organized by purpose (sleep, gut, etc.) instead of one flat list.
+  category?: 'sleep_stress' | 'gut_healing' | 'inflammation_cardio' | 'nutrient_repletion' | 'condition_therapy';
+  // 1-2 alternative options the user can pick instead — same purpose, different
+  // form/source/price/brand. Lets the user choose what fits budget/preference.
+  alternatives?: { name: string; form?: string; note?: string }[];
 }
 
 export interface TodayAction {

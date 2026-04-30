@@ -444,20 +444,66 @@ const amazonSearchUrl = (s: any) => {
   return `https://www.amazon.com/s?k=${encodeURIComponent(q)}`;
 };
 
+const CATEGORY_META: Record<string, { label: string; sub: string; icon: string; color: string }> = {
+  sleep_stress: { label: 'Sleep & Stress', sub: 'Calming, sleep onset, cortisol management', icon: 'bedtime', color: '#7B1FA2' },
+  gut_healing: { label: 'Gut Healing', sub: 'Mucosal repair, microbiome, digestive support', icon: 'restaurant', color: '#2A9D8F' },
+  inflammation_cardio: { label: 'Inflammation & Cardio', sub: 'Lower inflammation, support heart + lipids', icon: 'favorite', color: '#C94F4F' },
+  nutrient_repletion: { label: 'Nutrient Repletion', sub: 'Fixing measurable deficiencies', icon: 'science', color: '#1B423A' },
+  condition_therapy: { label: 'Condition-Specific', sub: 'Disease-mechanism therapy with strong evidence', icon: 'medication', color: '#D4A574' },
+};
+const CATEGORY_ORDER_SUPPS = ['nutrient_repletion', 'gut_healing', 'inflammation_cardio', 'condition_therapy', 'sleep_stress'];
+
 const TakeTab = ({ plan }: { plan: any }) => {
   const supps = [...(plan.supplement_stack ?? [])].sort((a: any, b: any) => (a.rank ?? 99) - (b.rank ?? 99));
   if (supps.length === 0) {
     return <p className="text-body text-clinical-stone text-sm">No supplements recommended. Your plan focuses on food and movement.</p>;
   }
+
+  // Group by category if entries have one. Fall back to flat ranked list for legacy plans.
+  const hasCategories = supps.some((s: any) => !!s.category);
+  const groups: { key: string; items: any[] }[] = hasCategories
+    ? CATEGORY_ORDER_SUPPS
+        .map(key => ({ key, items: supps.filter((s: any) => s.category === key) }))
+        .filter(g => g.items.length > 0)
+        .concat(
+          supps.some((s: any) => !s.category)
+            ? [{ key: '_uncategorized', items: supps.filter((s: any) => !s.category) }]
+            : []
+        )
+    : [{ key: '_all', items: supps }];
+
+  const renderCard = (s: any, i: number) => {
+    const priorityColor = s.priority === 'critical' ? '#C94F4F' : s.priority === 'high' ? '#E8922A' : s.priority === 'optimize' ? '#2A9D8F' : '#D4A574';
+    return (
+      <div key={i} className="bg-clinical-white rounded-[10px] shadow-card overflow-hidden" style={{ borderTop: `3px solid ${priorityColor}` }}>{/* tslint:disable-line */}</div>
+    );
+  };
+  void renderCard; // silence unused — actual card render is inline below
+
   return (
     <div className="space-y-4">
       <div className="bg-[#D4A574]/10 border border-[#D4A574]/30 rounded-[10px] p-4 flex items-start gap-3">
         <span className="material-symbols-outlined text-[#B8915F] text-[20px] flex-shrink-0 mt-0.5">tips_and_updates</span>
         <p className="text-body text-clinical-charcoal text-sm leading-relaxed">
-          Ranked 1 to {supps.length} by what matters most for your goals. If you can only take a few, start with <strong>#1</strong>. Tap the cart icon to find each one on Amazon.
+          Grouped by what each supplement does. Each card shows the primary recommendation; tap "Other options" for equivalent alternatives you can pick instead based on form, budget, or preference.
         </p>
       </div>
-      {supps.map((s: any, i: number) => {
+
+      {groups.map(({ key, items }) => {
+        const meta = CATEGORY_META[key];
+        return (
+          <div key={key} className="space-y-3">
+            {meta && (
+              <div className="flex items-center gap-3 pt-2">
+                <span className="material-symbols-outlined text-[18px]" style={{ color: meta.color }}>{meta.icon}</span>
+                <div className="flex-1">
+                  <p className="text-precision text-[0.7rem] font-bold tracking-widest uppercase text-clinical-charcoal">{meta.label}</p>
+                  <p className="text-precision text-[0.6rem] text-clinical-stone">{meta.sub}</p>
+                </div>
+                <span className="text-precision text-[0.55rem] text-clinical-stone tracking-widest">{items.length}</span>
+              </div>
+            )}
+            {items.map((s: any, i: number) => {
         const priorityColor = s.priority === 'critical' ? '#C94F4F' : s.priority === 'high' ? '#E8922A' : s.priority === 'optimize' ? '#2A9D8F' : '#D4A574';
         return (
           <div key={i} className="bg-clinical-white rounded-[10px] shadow-card overflow-hidden" style={{ borderTop: `3px solid ${priorityColor}` }}>
@@ -507,7 +553,29 @@ const TakeTab = ({ plan }: { plan: any }) => {
                   <p className="text-body text-clinical-charcoal text-xs leading-relaxed">{s.practical_note}</p>
                 </div>
               )}
+              {Array.isArray(s.alternatives) && s.alternatives.length > 0 && (
+                <details className="mt-3 group">
+                  <summary className="cursor-pointer flex items-center gap-1.5 text-precision text-[0.6rem] font-bold tracking-widest uppercase text-clinical-stone hover:text-clinical-charcoal transition-colors list-none">
+                    <span className="material-symbols-outlined text-[14px] transition-transform group-open:rotate-90">chevron_right</span>
+                    Other options ({s.alternatives.length})
+                  </summary>
+                  <div className="mt-2 space-y-2">
+                    {s.alternatives.map((alt: any, ai: number) => (
+                      <div key={ai} className="bg-clinical-cream/40 rounded-md px-3 py-2">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className="text-body text-clinical-charcoal text-xs font-semibold">{alt.name}</span>
+                          {alt.form && <span className="text-precision text-[0.55rem] text-clinical-stone tracking-wide">· {alt.form}</span>}
+                        </div>
+                        {alt.note && <p className="text-body text-clinical-stone text-xs leading-snug">{alt.note}</p>}
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              )}
             </div>
+          </div>
+        );
+            })}
           </div>
         );
       })}
