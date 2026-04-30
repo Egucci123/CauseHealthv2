@@ -109,7 +109,9 @@ serve(async (req) => {
 GLOBAL VOICE RULES (CRITICAL — every string in JSON):
 - 6th-grade reading level. No medical word without a 3-word definition right after.
 - 1 sentence per field. Lead with the headline, not the wind-up.
-- "Inflammation marker" not "hs-CRP". "Iron stores" not "ferritin". "Stress hormone" not "cortisol".
+- Inside HEADLINE, EXPLANATION, and WHAT_TO_DO fields use lay terms ("bad cholesterol", "iron stores", "stress hormone").
+- BUT the "marker" field MUST be the EXACT marker name as it appears in the lab values list above (e.g. "LDL Cholesterol Calc", "RBC", "AST (SGOT)", "25-Hydroxy Vitamin D"). Copy it verbatim. The UI matches priority_findings to lab cards by this name — if you paraphrase ("bad cholesterol" or "red blood cells") the analysis won't appear under the correct marker card and the user will see lab values without explanations.
+- EVERY out-of-range marker in the labs MUST have its own priority_finding entry with the exact marker name. Do not skip any.
 - Every priority_finding gets an "emoji" field (single emoji visual anchor).
 - Every priority_finding gets a "headline" max 10 words, plain English.
 

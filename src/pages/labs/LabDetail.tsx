@@ -304,8 +304,56 @@ export const LabDetail = () => {
   const monitorCount = values.filter((v: any) => isWatch(v.optimal_flag)).length;
   const optimalCount = values.filter((v: any) => isHealthy(v.optimal_flag)).length;
 
-  const findAnalysis = (markerName: string) =>
-    analysis?.priority_findings?.find((f: any) => f.marker.toLowerCase().includes(markerName.toLowerCase()) || markerName.toLowerCase().includes(f.marker.toLowerCase())) ?? null;
+  // Match a lab card to its priority_finding. The AI is supposed to use the
+  // EXACT marker name in finding.marker, but older analyses (and the model's
+  // occasional drift) paraphrase ("bad cholesterol" instead of "LDL"). This
+  // synonym table maps lab marker names to the lay-term phrases the AI tends
+  // to use, so historical analyses still pair to the right card.
+  const SYNONYMS: Record<string, string[]> = {
+    'ldl': ['bad cholesterol', 'low density', 'ldl-c'],
+    'hdl': ['good cholesterol', 'high density', 'hdl-c'],
+    'vldl': ['very low density', 'vldl cholesterol'],
+    'cholesterol, total': ['total cholesterol'],
+    'rbc': ['red blood cell', 'red cell count'],
+    'wbc': ['white blood cell', 'white cell count'],
+    'hgb': ['hemoglobin'],
+    'hemoglobin': ['hgb'],
+    'hct': ['hematocrit'],
+    'hematocrit': ['hct'],
+    'plt': ['platelet'],
+    'ast': ['sgot', 'liver enzyme ast'],
+    'alt': ['sgpt', 'liver enzyme alt'],
+    'tsh': ['thyroid stimulating hormone'],
+    'a1c': ['hemoglobin a1c', 'hba1c', 'glycated hemoglobin'],
+    'b12': ['cobalamin', 'vitamin b12'],
+    '25-hydroxy vitamin d': ['25-oh vitamin d', 'vitamin d', 'calcidiol'],
+    'cortisol': ['stress hormone'],
+    'ferritin': ['iron stores'],
+    'hs-crp': ['inflammation marker', 'high sensitivity crp', 'c-reactive protein'],
+  };
+  const buildSynonymBag = (s: string): string[] => {
+    const lc = s.toLowerCase();
+    const bag = [lc];
+    for (const [key, syns] of Object.entries(SYNONYMS)) {
+      if (lc.includes(key)) bag.push(...syns);
+      if (syns.some(syn => lc.includes(syn))) bag.push(key);
+    }
+    return bag;
+  };
+  const findAnalysis = (markerName: string) => {
+    if (!analysis?.priority_findings?.length) return null;
+    const markerBag = buildSynonymBag(markerName);
+    return analysis.priority_findings.find((f: any) => {
+      const findingName = (f?.marker ?? '').toLowerCase();
+      if (!findingName) return false;
+      // Exact / substring match either direction (original behavior)
+      if (findingName.includes(markerName.toLowerCase())) return true;
+      if (markerName.toLowerCase().includes(findingName)) return true;
+      // Synonym match — every term in either bag tested both ways
+      const findingBag = buildSynonymBag(findingName);
+      return markerBag.some(m => findingBag.some(f2 => m.includes(f2) || f2.includes(m)));
+    }) ?? null;
+  };
 
   const getDisplayValues = () => {
     if (activeTab === 'urgent') return values.filter((v: any) => isOutOfRange(v.optimal_flag));
