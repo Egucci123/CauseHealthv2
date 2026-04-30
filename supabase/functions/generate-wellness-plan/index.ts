@@ -61,6 +61,23 @@ serve(async (req) => {
     const condStr = conditions.map((c: any) => c.name).join(', ') || 'None reported';
     const suppsStr = supps.map((s: any) => `${s.name}${s.dose ? ` (${s.dose})` : ''}`).join(', ') || 'None';
 
+    // ── Lifestyle context for meal/workout tailoring ──
+    // Reads optional fields from profile.lifestyle (added via onboarding when
+    // captured). Missing fields are shown as 'unknown' so the AI defaults to
+    // 'busy adult, limited cooking time, fast-food-friendly upgrades' which is
+    // the safest assumption for the median user.
+    const lifestyle = (profile?.lifestyle ?? {}) as Record<string, any>;
+    const workType = lifestyle.work_type ?? lifestyle.workType ?? 'unknown';      // blue_collar | desk | wfh | shift | retired | unemployed | unknown
+    const hasKids  = lifestyle.has_kids ?? lifestyle.hasKids ?? 'unknown';        // true | false | unknown
+    const cookTime = lifestyle.cooking_time ?? lifestyle.cookingTime ?? 'unknown'; // none | <15 | 15-30 | 30-60 | 60+ | unknown
+    const dietType = lifestyle.dietType ?? lifestyle.diet_type ?? 'standard';     // standard | vegetarian | vegan | keto | paleo | mediterranean | gluten_free
+    const lifestyleStr = [
+      `WORK_TYPE: ${workType}`,
+      `HAS_KIDS: ${hasKids}`,
+      `COOKING_TIME_PER_DAY: ${cookTime}`,
+      `DIET: ${dietType}`,
+    ].join(' · ');
+
     // Send ALL lab values, tagged with status from the new range model
     // (healthy/watch/low/high/critical_*) so the AI knows what to act on.
     const allLabsStr = labValues.map((v: any) => {
@@ -198,7 +215,41 @@ HARD RULES — FOLLOW EXACTLY:
     - Lifestyle: anti-inflammatory diet, omega-3, magnesium, sleep, stress, weight if relevant.
 
     For EVERY goal: the summary MUST open with how the plan ties to the user's primary goal. The user should feel the plan was built around them.
-11. LIMITED-DATA MODE: If the user has NO lab values uploaded (only symptoms, conditions, medications, goals), still generate a useful plan based on:
+
+11. MEALS — REALISTIC PROGRESSION + LIFESTYLE-TAILORED (CRITICAL — adherence beats perfection):
+
+    LIFESTYLE BRANCHING (read LIFESTYLE_CONTEXT in the user message):
+      - WORK_TYPE = blue_collar / shift / construction / driver / nurse / etc. → on the move all day, packed lunches, fast food on shift, no kitchen access. Phase 1 meals: gas-station-friendly upgrades (gas station: turkey jerky + apple + water; fast food: Chick-fil-A grilled chicken sandwich no bun + fruit cup; truck stop: hard-boiled eggs + banana). Phase 2: cooler meals — pre-cooked chicken + rice in a Pyrex, fruit, hard cheese. Phase 3: meal-prep Sundays. NO recipes that need a kitchen at lunch.
+      - WORK_TYPE = wfh → has a kitchen at lunch. Phase 1 can include 5-min stovetop meals. Phase 2 introduces 15-min cooks. Phase 3 full recipes.
+      - WORK_TYPE = desk / office → packed lunch from home OR cafeteria/quick-serve. Phase 1: build-your-own from a bag (rotisserie chicken + pre-washed greens + olive oil). Phase 2: simple meal prep. Phase 3: full meals.
+      - WORK_TYPE = shift / nurse / overnight → rotating sleep, irregular meal timing. Phase 1 focuses on portable + protein-dense. Avoid "eat breakfast at 7am" framing.
+      - HAS_KIDS = true → cooking time is fragmented. NO recipes that require >2 burners or constant attention. Sheet-pan, slow-cooker, instant-pot only after Phase 1. Phase 1 meals must be kid-edible too (the parent isn't cooking two meals).
+      - COOKING_TIME = none / <15 → Phase 1 is grocery-store assembly only (no cooking). Phase 2: 5-15 min stovetop. Phase 3: 30 min max.
+      - COOKING_TIME = 60+ → can include real recipes from Phase 1.
+      - DIET = vegetarian / vegan / keto / etc. → all meals MUST honor the diet. No salmon for vegan. No oatmeal for keto. NEVER suggest a meal that breaks the user's stated diet.
+      - WORK_TYPE = unknown → assume blue_collar/busy default (most realistic for the median user). Don't ask, just keep it grocery-store-basic.
+
+    PROGRESSION ACROSS PHASES (regardless of work type):
+    Most users start with poor diets — fast food, refined carbs, low protein, low vegetables. Jumping to "wild salmon + roasted asparagus + bone broth + grass-fed butter" feels alien and adherence collapses by week 2. Build the meals[] array as a PROGRESSION across phases:
+    Most users start with poor diets — fast food, refined carbs, low protein, low vegetables. Jumping to "wild salmon + roasted asparagus + bone broth + grass-fed butter" feels alien and adherence collapses by week 2. The "perfect" meal that doesn't get eaten beats every metric of zero. Build the meals[] array as a PROGRESSION across phases:
+
+    PHASE 1 (Weeks 1-4) — SWAPS, NOT REPLACEMENTS. Tag these meals with when including ":phase1" suffix is fine in the name. The user is not learning to cook from scratch in week 1.
+      - "Upgrade your current meal" framing. Egg McMuffin → make the egg+cheese sandwich at home with whole-grain English muffin. Subway → Chipotle bowl with double protein. Cereal breakfast → Greek yogurt + berries + handful of nuts.
+      - Ingredients should be groceries-store basic: chicken breast, eggs, ground beef, frozen vegetables, brown rice, oatmeal, peanut butter, bananas, apples, plain Greek yogurt, basic seasonings (salt, pepper, garlic, olive oil).
+      - NO bone broth. NO grass-fed butter. NO ghee. NO wild Atlantic salmon. NO sea moss. NO microgreens. NO tahini-drizzled anything. These belong in Phase 3 if at all.
+      - 2-3 meals max. Each one should take <10 min to make and be googleable on TikTok.
+
+    PHASE 2 (Weeks 5-8) — INTRODUCE ONE NEW THING. Salmon is OK now (Costco frozen filets). Roasted vegetables OK. Quinoa OK. The patient has 4 weeks of routine; they can level up.
+      - 2-3 meals. Slightly more ingredients (5-7 items vs phase 1's 3-5).
+      - Still budget-grocery-store. Whole Foods is fine but not required.
+
+    PHASE 3 (Weeks 9-12) — OPTIMAL. Salmon power bowls, kale-avocado salads, the meals you'd actually post on Instagram. Patient has built habits and tolerance.
+      - 2-3 meals. Full-on clean.
+
+    Each meal entry MUST include a "phase" field: 1, 2, or 3. Phase 1 meals come FIRST in the array. Total meals: 6-9 across all three phases.
+    The why field should hint at the "why now" not the "why ever" — e.g. for phase 1 "Easiest swap from your current eggs+toast" beats "Choline supports liver repair pathways."
+
+12. LIMITED-DATA MODE: If the user has NO lab values uploaded (only symptoms, conditions, medications, goals), still generate a useful plan based on:
     - Diagnosed conditions and known mechanisms
     - Medication-related nutrient depletions (lab-confirmed by virtue of the prescription)
     - User goals (longevity supplements, etc.)
@@ -216,6 +267,7 @@ DIAGNOSED CONDITIONS (GROUND TRUTH — never substitute these with related condi
 MEDICATIONS: ${medsStr}
 CURRENT SUPPLEMENTS (already taking — do NOT re-recommend; account for lab interactions and avoid stacking duplicates): ${suppsStr}
 SYMPTOMS (for context only — do NOT supplement based on symptoms alone): ${sympStr}
+LIFESTYLE_CONTEXT (drives meals + workout realism — see hard rule 11 below): ${lifestyleStr}
 
 SUPPLEMENT-LAB INTERACTION KNOWLEDGE (use when interpreting labs and building stack):
 - Biotin (>1mg/day): falsely alters TSH/T3/T4/Troponin/Vit D — pause 72hr before retest.
@@ -244,7 +296,7 @@ ${allLabsStr.slice(0, 4000)}
 NUTRIENTS NOT TESTED (${isOptimizationMode ? 'recommend testing these for a complete optimization baseline' : 'do NOT recommend supplements for these'} — mention in ${isOptimizationMode ? 'retest_timeline' : 'disclaimer only'}):
 ${notTestedStr}
 
-Return JSON: {"generated_at":"${new Date().toISOString()}","headline":"one 12-word verdict in plain English (e.g. 'Your iron is low — fix it and the fatigue lifts')","summary":"3 short sentences max — what's wrong, what we'll fix, how long it takes","today_actions":[{"emoji":"","action":"one verb-led sentence the user does TODAY (e.g. 'Eat a 3-egg breakfast')","why":"one short sentence","category":"eat|move|take|sleep|stress"}],"supplement_stack":[{"rank":1,"emoji":"💊","nutrient":"","form":"","dose":"","timing":"","why_short":"6-10 word reason in plain English","why":"1 sentence linking to a lab or symptom","priority":"critical|high|moderate","sourced_from":"lab_finding|disease_mechanism","evidence_note":""}],"meals":[{"emoji":"🥗","name":"meal name (e.g. 'Salmon power bowl')","when":"breakfast|lunch|dinner|snack","ingredients":["short list, 4-6 items"],"why":"1 sentence — which lab/goal this targets"}],"workouts":[{"emoji":"🏃","day":"Mon|Tue|Wed|Thu|Fri|Sat|Sun","title":"e.g. 'Zone 2 walk'","duration_min":30,"description":"1 sentence","why":"1 sentence — which goal/lab this serves"}],"lifestyle_interventions":{"diet":[{"emoji":"🥗","intervention":"","rationale":"","priority":""}],"sleep":[{"emoji":"😴","intervention":"","rationale":"","priority":""}],"exercise":[{"emoji":"💪","intervention":"","rationale":"","priority":""}],"stress":[{"emoji":"🧘","intervention":"","rationale":"","priority":""}]},"action_plan":{"phase_1":{"name":"Stabilize (Weeks 1-4)","focus":"","actions":[]},"phase_2":{"name":"Optimize (Weeks 5-8)","focus":"","actions":[]},"phase_3":{"name":"Maintain (Weeks 9-12)","focus":"","actions":[]}},"retest_timeline":[{"marker":"","retest_at":"","why":""}],"medication_notes":[{"medication":"","organ_impact":"","depletions":"","monitoring":"","alternative":""}],"disclaimer":"Educational only. Talk to your doctor before changing anything."}
+Return JSON: {"generated_at":"${new Date().toISOString()}","headline":"one 12-word verdict in plain English (e.g. 'Your iron is low — fix it and the fatigue lifts')","summary":"3 short sentences max — what's wrong, what we'll fix, how long it takes","today_actions":[{"emoji":"","action":"one verb-led sentence the user does TODAY (e.g. 'Eat a 3-egg breakfast')","why":"one short sentence","category":"eat|move|take|sleep|stress"}],"supplement_stack":[{"rank":1,"emoji":"💊","nutrient":"","form":"","dose":"","timing":"","why_short":"6-10 word reason in plain English","why":"1 sentence linking to a lab or symptom","priority":"critical|high|moderate","sourced_from":"lab_finding|disease_mechanism","evidence_note":""}],"meals":[{"emoji":"🥗","name":"meal name","when":"breakfast|lunch|dinner|snack","phase":1,"ingredients":["short list"],"why":"1 sentence — favor 'why now / why this swap' framing for phase 1, 'why this lab' for phase 3"}],"workouts":[{"emoji":"🏃","day":"Mon|Tue|Wed|Thu|Fri|Sat|Sun","title":"e.g. 'Zone 2 walk'","duration_min":30,"description":"1 sentence","why":"1 sentence — which goal/lab this serves"}],"lifestyle_interventions":{"diet":[{"emoji":"🥗","intervention":"","rationale":"","priority":""}],"sleep":[{"emoji":"😴","intervention":"","rationale":"","priority":""}],"exercise":[{"emoji":"💪","intervention":"","rationale":"","priority":""}],"stress":[{"emoji":"🧘","intervention":"","rationale":"","priority":""}]},"action_plan":{"phase_1":{"name":"Stabilize (Weeks 1-4)","focus":"","actions":[]},"phase_2":{"name":"Optimize (Weeks 5-8)","focus":"","actions":[]},"phase_3":{"name":"Maintain (Weeks 9-12)","focus":"","actions":[]}},"retest_timeline":[{"marker":"","retest_at":"","why":""}],"medication_notes":[{"medication":"","organ_impact":"","depletions":"","monitoring":"","alternative":""}],"disclaimer":"Educational only. Talk to your doctor before changing anything."}
 
 CRITICAL OUTPUT RULES:
 - today_actions: EXACTLY 3 items — the most important things this user can do TODAY. Mix categories (one eat, one move, one take is ideal).

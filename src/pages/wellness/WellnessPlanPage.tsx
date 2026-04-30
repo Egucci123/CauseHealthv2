@@ -343,23 +343,68 @@ const EatTab = ({ plan }: { plan: any }) => {
         </div>
       )}
 
-      {sorted.map((m: any, i: number) => (
-        <div key={i} className="bg-clinical-white border border-outline-variant/15 rounded-[10px] p-4">
-          <div className="flex items-start gap-3">
-            <span className="text-3xl flex-shrink-0">{m.emoji || '🍽️'}</span>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between gap-2 mb-1">
-                <p className="text-body text-clinical-charcoal font-semibold">{m.name}</p>
-                <span className="text-precision text-[0.55rem] font-bold tracking-widest uppercase text-primary-container">{m.when}</span>
+      {/* Render meals grouped by phase so the user sees the progression: easy
+          swaps first (weeks 1-4), level up (5-8), optimal (9-12). */}
+      {(() => {
+        const PHASE_META: Record<number, { label: string; sub: string; color: string }> = {
+          1: { label: 'Weeks 1–4 · Start Here', sub: 'Easy swaps using groceries you already buy', color: '#2A9D8F' },
+          2: { label: 'Weeks 5–8 · Level Up', sub: 'Add one new thing — you have the routine now', color: '#D4A574' },
+          3: { label: 'Weeks 9–12 · Optimal', sub: 'Full clean meals — habits are built', color: '#1B4332' },
+        };
+        const phaseOrder = [1, 2, 3];
+        const phaseGroups = phaseOrder.map(p => ({
+          phase: p,
+          meals: sorted.filter((m: any) => (m.phase ?? 1) === p),
+        })).filter(g => g.meals.length > 0);
+        // If no phase tags present (legacy plans), render flat list
+        if (phaseGroups.length === 0 || (phaseGroups.length === 1 && phaseGroups[0].phase === 1 && !sorted.some((m: any) => m.phase != null))) {
+          return sorted.map((m: any, i: number) => (
+            <div key={i} className="bg-clinical-white border border-outline-variant/15 rounded-[10px] p-4">
+              <div className="flex items-start gap-3">
+                <span className="text-3xl flex-shrink-0">{m.emoji || '🍽️'}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <p className="text-body text-clinical-charcoal font-semibold">{m.name}</p>
+                    <span className="text-precision text-[0.55rem] font-bold tracking-widest uppercase text-primary-container">{m.when}</span>
+                  </div>
+                  {m.ingredients?.length > 0 && <p className="text-body text-clinical-stone text-sm">{m.ingredients.join(' · ')}</p>}
+                  {m.why && <p className="text-precision text-[0.65rem] text-clinical-stone mt-2 italic">{m.why}</p>}
+                </div>
               </div>
-              {m.ingredients?.length > 0 && (
-                <p className="text-body text-clinical-stone text-sm">{m.ingredients.join(' · ')}</p>
-              )}
-              {m.why && <p className="text-precision text-[0.65rem] text-clinical-stone mt-2 italic">{m.why}</p>}
             </div>
-          </div>
-        </div>
-      ))}
+          ));
+        }
+        return phaseGroups.map(g => {
+          const meta = PHASE_META[g.phase];
+          return (
+            <div key={g.phase} className="space-y-3">
+              <div className="flex items-center gap-3 pt-2">
+                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: meta.color }} />
+                <div className="flex-1">
+                  <p className="text-precision text-[0.65rem] font-bold tracking-widest uppercase text-clinical-charcoal">{meta.label}</p>
+                  <p className="text-precision text-[0.6rem] text-clinical-stone">{meta.sub}</p>
+                </div>
+                <span className="text-precision text-[0.55rem] text-clinical-stone tracking-widest">{g.meals.length}</span>
+              </div>
+              {g.meals.map((m: any, i: number) => (
+                <div key={i} className="bg-clinical-white border-l-2 rounded-[10px] p-4" style={{ borderLeftColor: meta.color }}>
+                  <div className="flex items-start gap-3">
+                    <span className="text-3xl flex-shrink-0">{m.emoji || '🍽️'}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <p className="text-body text-clinical-charcoal font-semibold">{m.name}</p>
+                        <span className="text-precision text-[0.55rem] font-bold tracking-widest uppercase text-primary-container">{m.when}</span>
+                      </div>
+                      {m.ingredients?.length > 0 && <p className="text-body text-clinical-stone text-sm">{m.ingredients.join(' · ')}</p>}
+                      {m.why && <p className="text-precision text-[0.65rem] text-clinical-stone mt-2 italic">{m.why}</p>}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          );
+        });
+      })()}
     </div>
   );
 };
