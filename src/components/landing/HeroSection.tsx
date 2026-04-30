@@ -155,7 +155,7 @@ export const HeroSection = () => (
           <div className="inline-flex items-center gap-2 mb-6">
             <div className="w-4 h-px bg-primary-container" />
             <span className="text-precision text-[0.68rem] text-primary-container tracking-widest uppercase font-bold">
-              Clinical Health Intelligence
+              Built for normal people
             </span>
           </div>
 
@@ -164,18 +164,17 @@ export const HeroSection = () => (
             <span className="text-5xl md:text-6xl block">12 minutes.</span>
           </h1>
           <h2 className="text-authority text-4xl md:text-5xl font-bold text-primary-container leading-tight mb-8">
-            We have everything<br />they miss.
+            You deserve<br />answers.
           </h2>
 
           <p className="text-body text-clinical-stone text-lg leading-relaxed mb-4 max-w-lg">
-            Upload a <strong className="text-clinical-charcoal">PDF or photo</strong> of your labs.
-            Get a doctor-grade summary in 30 seconds — root causes, optimal-range
-            interpretation, and a clinical prep document with ICD-10 codes.
+            Upload your bloodwork. Get a list of tests your doctor <strong className="text-clinical-charcoal">should have ordered</strong> for
+            someone your age — with the ICD-10 codes that get them covered by insurance. Walk
+            into your next appointment with a list they can&rsquo;t reject.
           </p>
           <p className="text-body text-clinical-stone text-base leading-relaxed mb-10 max-w-lg">
-            We find what 12-minute appointments miss. Medication depletions,
-            multi-marker patterns, autoimmune cascade risk, the connections that
-            explain how you actually feel.
+            Built for nurses, truckers, parents, shift workers — the patients doctors rush
+            through. <strong className="text-clinical-charcoal">$7.67 a month.</strong> Less than your morning coffee.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 mb-8">
