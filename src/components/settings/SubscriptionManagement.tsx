@@ -25,8 +25,46 @@ export const SubscriptionManagement = () => {
 
   useEffect(() => {
     const result = searchParams.get('subscription');
-    if (result === 'success') { setTimeout(() => { qc.invalidateQueries({ queryKey: ['profile', user?.id] }); setSearchParams({}); }, 2000); }
-    else if (result === 'canceled') setSearchParams({});
+    if (result === 'success') {
+      // ── OPTIMISTIC PRO UNLOCK ──
+      // Stripe redirects back the moment payment confirms in the browser,
+      // but the server-side webhook (which actually flips the DB) can lag
+      // by 1–10s. Without optimistic state, the user lands on this page
+      // still showing "Free Plan" and has to refresh — exactly the bug
+      // Evan hit. We KNOW the user just paid (they came back with
+      // ?subscription=success from a Stripe-hosted checkout), so flip the
+      // zustand profile to Pro right now. Pro features unlock instantly.
+      const auth = useAuthStore.getState();
+      if (auth.profile) {
+        useAuthStore.setState({
+          profile: {
+            ...auth.profile,
+            subscriptionTier: 'pro',
+            subscriptionStatus: 'active',
+          },
+        });
+      }
+      // Background-confirm with the server. The webhook MAY have already
+      // fired — fetch immediately, then retry a couple times to catch the
+      // real values (Stripe customer ID, period end, etc.) once the
+      // webhook lands. Each fetchProfile pushes the truth back into
+      // zustand, so any field we got wrong above gets corrected.
+      const fetchWithRetry = async () => {
+        const delays = [0, 2000, 5000, 10000];
+        for (const d of delays) {
+          if (d > 0) await new Promise(r => setTimeout(r, d));
+          try { await useAuthStore.getState().fetchProfile(); } catch {}
+          // Stop early once the server confirms an active paid sub.
+          const p = useAuthStore.getState().profile;
+          if (p?.subscriptionTier === 'pro' && p?.subscriptionStatus === 'active') break;
+        }
+        qc.invalidateQueries({ queryKey: ['profile', user?.id] });
+      };
+      fetchWithRetry();
+      setSearchParams({});
+    } else if (result === 'canceled') {
+      setSearchParams({});
+    }
   }, [searchParams, qc, user?.id, setSearchParams]);
 
   const statusInfo = STATUS_LABELS[status] ?? STATUS_LABELS.free;

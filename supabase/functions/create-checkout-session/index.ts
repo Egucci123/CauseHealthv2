@@ -43,8 +43,8 @@ serve(async (req) => {
       // gets dropped somewhere in the Stripe pipeline.
       client_reference_id: user.id,
       line_items: [{ price: Deno.env.get('STRIPE_PRICE_ID')!, quantity: 1 }],
-      success_url: `${APP_URL}/settings?subscription=success`,
-      cancel_url: `${APP_URL}/settings?subscription=canceled`,
+      success_url: `${APP_URL}/settings?tab=subscription&subscription=success`,
+      cancel_url: `${APP_URL}/settings?tab=subscription&subscription=canceled`,
       subscription_data: { metadata: { supabase_user_id: user.id } },
       metadata: { supabase_user_id: user.id },
       allow_promotion_codes: true,
