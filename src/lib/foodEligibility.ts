@@ -8,7 +8,11 @@
 // Universal: no condition-specific logic. Pure constraint matching.
 
 import { FOOD_PLAYBOOK, type MealEntry } from '../data/foodPlaybook';
-import type { LifeContext } from '../store/onboardingStore';
+
+// Loose shape — accepts both the strict `LifeContext` from onboardingStore
+// AND the looser one from types/index.ts (Profile field). Keeps eligibility
+// filter agnostic to which type comes in (Profile vs onboarding store).
+type AnyLifeContext = Record<string, any>;
 
 const COOKING_TIME_MAX: Record<string, number> = {
   under_15: 15,
@@ -25,7 +29,7 @@ const BUDGET_MAX_TIER: Record<string, number> = {
 };
 
 export interface EligibilityContext {
-  lifeContext?: LifeContext;
+  lifeContext?: AnyLifeContext;
   diet?: string;
 }
 
