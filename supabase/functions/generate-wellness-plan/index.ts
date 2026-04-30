@@ -178,7 +178,24 @@ HARD RULES — FOLLOW EXACTLY:
 6. FEMALE HORMONE RULE: Do NOT flag estradiol, progesterone, FSH, or LH as abnormal in premenopausal females unless extreme (FSH >40, estradiol <10 or >500, progesterone >30). These vary by cycle phase and a single draw means nothing without knowing cycle day. Never build a supplement protocol around "estrogen dominance" from one blood draw.
 7. Supplements must be safe and not interact with patient's medications.
 8. RETEST TIMELINE — cadence branches by MODE, but the TRIAGE RULE IS THE SAME:
-   TREATMENT mode (something needs fixing): COMPREHENSIVE retest at week 12 — this is the protocol close-out, the moment of truth. Include ALL currently-abnormal markers, all tests triggered by symptoms (per the symptom-test map), all medication-depletion tests (B12+MMA for metformin, folate for mesalamine, etc.), AND any standard-of-care baseline gaps. Patients with multi-system issues (UC + dyslipidemia + insulin resistance + low T) should have 8-10 entries — not 5. retest_at: '12 weeks'. This list will be hard-capped at 12 server-side, so prioritize but don't undershoot.
+   TREATMENT mode (something needs fixing): COMPREHENSIVE retest at week 12 — this is the protocol close-out, the moment of truth. Include ALL currently-abnormal markers, all tests triggered by symptoms (per the symptom-test map), all medication-depletion tests (B12+MMA for metformin, folate for mesalamine, etc.), AND any standard-of-care baseline gaps. Patients with multi-system issues (UC + dyslipidemia + insulin resistance + low T) should have 10-14 entries — be COMPREHENSIVE, the patient is asking their doctor for ONE complete panel. retest_at: '12 weeks'. Hard-capped at 14 server-side. DO NOT undershoot — a multi-system patient with 5 retest entries is worse than 14, because they'll have to come back for another round.
+
+   For a patient like UC + dyslipidemia + low-normal T + insulin resistance + low vitamin D, the panel should look like:
+     1. Lipid panel (TG, LDL, HDL, total chol) — re-measure
+     2. CMP (ALT, AST, bilirubin, glucose, calcium, electrolytes) — re-measure
+     3. HbA1c — re-measure
+     4. Vitamin D 25-OH — re-measure
+     5. Total + Free T + SHBG + estradiol — symptoms + men any age baseline
+     6. Iron panel (serum iron, TIBC, ferritin, transferrin sat) — hair loss + UC
+     7. Folate (serum + RBC) — mesalamine depletion
+     8. B12 + MMA + Homocysteine — mesalamine + symptoms confirmation
+     9. CBC — re-measure (Hct/RBC tracking)
+     10. hs-CRP — UC inflammation + CV risk
+     11. Fasting Insulin + HOMA-IR — insulin resistance confirmation
+     12. ApoB — modern CV risk (especially with uncontrolled LDL on statin)
+     13. Lp(a) — once-in-lifetime CV risk
+     14. Liver Ultrasound + GGT — NAFLD workup
+   That's 14 entries, every one tied to a trigger letter, every one PCP-orderable + insurance-covered. THIS is the bar.
    OPTIMIZATION mode (mostly healthy): retest cadence is 6 MONTHS, list is shorter (3-5 entries: Watch markers + missing baselines for age/sex). retest_at: '6 months'.
 
    UNIVERSAL TRIAGE RULE (applies to EVERY entry, healthy or sick patient). A marker may ONLY appear in retest_timeline if it directly tracks ONE of:
@@ -529,9 +546,9 @@ CRITICAL OUTPUT RULES:
     // optimization mode is shorter (3-5). 12 is the absolute ceiling that
     // stops longevity-wishlist regressions without strangling legitimate
     // comprehensive retest panels.
-    if (plan.retest_timeline.length > 12) {
-      console.log(`[wellness-plan] capping retest_timeline ${plan.retest_timeline.length} -> 12`);
-      plan.retest_timeline = plan.retest_timeline.slice(0, 12);
+    if (plan.retest_timeline.length > 14) {
+      console.log(`[wellness-plan] capping retest_timeline ${plan.retest_timeline.length} -> 14`);
+      plan.retest_timeline = plan.retest_timeline.slice(0, 14);
     }
     if (!plan.generated_at) plan.generated_at = new Date().toISOString();
 
