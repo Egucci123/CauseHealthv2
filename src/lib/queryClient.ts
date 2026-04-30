@@ -40,7 +40,12 @@ if (typeof document !== 'undefined') {
       lastHiddenAt = Date.now();
     } else if (document.visibilityState === 'visible') {
       const awayMs = Date.now() - lastHiddenAt;
-      if (lastHiddenAt > 0 && awayMs > 5000) {
+      // Lowered from 5s to 2s. Users frequently switch tabs for a few
+      // seconds while waiting on long-running operations (lab analysis,
+      // wellness plan gen). With a 5s threshold, a 4-second tab switch
+      // left the UI stuck on stale 'processing' state. 2s catches the
+      // common pattern without firing on every momentary blink.
+      if (lastHiddenAt > 0 && awayMs > 2000) {
         queryClient.invalidateQueries();
       }
     }
