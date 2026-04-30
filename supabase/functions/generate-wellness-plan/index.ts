@@ -176,6 +176,24 @@ HARD RULES — FOLLOW EXACTLY:
 
    Tests EXPLICITLY NOT on the standard-of-care baseline (only include via triggers (a)/(b)/(c)/(e), never via (d)): Cortisol, AM Cortisol, DHEA-S, Zinc, Free Testosterone, SHBG, Homocysteine, MMA, Free T3, Free T4, Reverse T3, TPO antibodies, thyroglobulin antibodies, NMR lipid, GI-MAP, comprehensive stool, food sensitivity panels, organic acids, hair tissue mineral analysis, micronutrient panels.
 
+   SYMPTOM → STANDARD-OF-CARE TEST MAPPING (trigger (a) — for each symptom the user reported, add the relevant baseline test if missing from this draw):
+     Fatigue → CBC, ferritin, iron panel, B12+MMA, vitamin D, TSH, A1c, AM cortisol (if HPA-axis signs); men add total T+SHBG.
+     Joint pain → hs-CRP, vitamin D, uric acid (RF/anti-CCP only if >6wk inflammatory pattern).
+     Can't lose weight → fasting insulin+HOMA-IR, A1c, TSH (Free T3/T4 if borderline), AM cortisol, total T (men).
+     Hair loss → ferritin+iron panel, vitamin D, TSH+TPO; for women add free T+DHEA-S if androgen pattern.
+     Brain fog → B12+MMA, vitamin D, TSH, ferritin, A1c.
+     Low mood / depression → vitamin D, B12, TSH, AM cortisol; men add total T.
+     Sleep issues → vitamin D, ferritin (RLS), AM cortisol, A1c, TSH.
+     GI (bloating, gas, alt-stool) → CMP, albumin, tTG-IgA+total IgA (celiac).
+     Acne → women: total+free T, DHEA-S, fasting insulin (PCOS); men: liver panel + insulin.
+     Cold/heat intolerance → TSH, free T3, free T4, ferritin.
+     Frequent urination/thirst → fasting glucose, A1c, BMP.
+     Palpitations → TSH, CMP, CBC.
+     Restless legs → ferritin (target >75), iron panel, B12.
+     Recurrent infections → vitamin D, CBC w/ differential, total IgA+IgG.
+     Poor recovery / can't build muscle → men: total T+SHBG+estradiol; vitamin D, ferritin.
+   ONE focused workup per symptom — don't bundle. NEVER add functional-medicine extras (organic acids, GI-MAP, etc.).
+
    For each retest_timeline entry, the why field MUST cite the specific trigger and which letter ("(c) ALT 97 → tracking NAFLD reversal" or "(d) Standard baseline for 28yo male — vitamin D not in this draw"). If you can't cite a trigger letter, drop the test.
 
    Differential thinking: ask "if this comes back the same/different, does management change?" If no, drop it.

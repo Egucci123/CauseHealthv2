@@ -131,6 +131,24 @@ Test recommendations are standard, insurance-covered, primary-care-orderable dia
 
    When trigger (d) fires, frame the clinical_justification as: "Standard baseline for [age]yo [sex] — not present in this draw. Common gap that USPSTF / AHA / ADA recommends for routine evaluation." Tone: matter-of-fact, not alarmist.
 
+   SYMPTOM → STANDARD-OF-CARE TEST MAPPING (trigger (a) — when patient reports a symptom AND the relevant test is missing or worth investigating, add it. These are PCP-orderable, insurance-covered tests. ONE focused workup per symptom; don't bundle every test for every symptom):
+     - Fatigue / low energy → CBC, ferritin + iron panel, B12 + MMA, vitamin D, TSH, A1c, AM cortisol (if other HPA-axis signs); for men also total T + SHBG.
+     - Joint pain / stiffness → hs-CRP, vitamin D, uric acid; ESR + RF + anti-CCP only if persistent inflammatory pattern (>6 weeks, morning stiffness >1hr).
+     - Can't lose weight / metabolic slowdown → fasting insulin + HOMA-IR, A1c, TSH (free T3/T4 if borderline), AM cortisol, total T (men).
+     - Hair loss / thinning → ferritin + iron panel, vitamin D, TSH + TPO if other Hashimoto's features; for women add free T + DHEA-S if androgen pattern.
+     - Brain fog / cognitive issues → B12 + MMA, vitamin D, TSH, ferritin, A1c.
+     - Low mood / depression → vitamin D, B12, TSH, AM cortisol if other stress symptoms; for men add total T.
+     - Sleep issues / waking unrefreshed → vitamin D, ferritin (RLS), AM cortisol, A1c (insulin variability disrupts sleep), TSH.
+     - GI symptoms (bloating, gas, alt-stool, reflux) → CMP, albumin, tTG-IgA + total IgA (celiac), H. pylori if epigastric pain.
+     - Acne / hormonal skin → for women: total + free T, DHEA-S, fasting insulin (PCOS workup); for men: liver panel + insulin (NAFLD-acne link).
+     - Cold or heat intolerance → TSH, free T3, free T4, ferritin (low ferritin worsens cold intolerance).
+     - Frequent urination / excessive thirst → fasting glucose, A1c, basic metabolic panel.
+     - Heart palpitations / racing heart → TSH (hyperthyroid screen), CMP (electrolytes including Mg if measured), CBC.
+     - Restless legs / leg pain at night → ferritin (target >75 for RLS), iron panel, B12.
+     - Recurrent infections → vitamin D, CBC with differential, total IgA + IgG.
+     - Difficulty building muscle / poor recovery → for men: total T + SHBG + estradiol; vitamin D, ferritin.
+   These mappings reflect PCP standard of care. Do NOT add functional-medicine extras (organic acids, hair tissue mineral, food sensitivity, GI-MAP) regardless of symptom. The blocklist earlier in this prompt is hard.
+
    EARLY-DETECTION MARKER PATTERNS (these count as trigger (c) — values "within range" but clinically meaningful, especially in young or symptomatic patients. Catch these aggressively. Always cite the specific value in clinical_justification):
    - Ferritin <50 even with normal hemoglobin → functional iron deficiency. Order full iron panel (serum iron, TIBC, ferritin, transferrin sat). Trigger any time ferritin <50, ESPECIALLY with fatigue / hair loss / restless legs / menstruating female.
    - Serum B12 <500 (low end of "normal") with fatigue, brain fog, neuropathy, or depression → MMA + homocysteine to confirm tissue B12 status.

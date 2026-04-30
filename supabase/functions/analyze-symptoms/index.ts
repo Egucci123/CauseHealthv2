@@ -77,6 +77,23 @@ CRITICAL RULES:
 
    NOT standard-of-care baseline (only via (a)/(b)/(c)/(e), never (d)): Cortisol, DHEA-S, Zinc, Free Testosterone, Homocysteine, MMA, Free T3, Free T4, Reverse T3, TPO/Tg antibodies, NMR lipid, GI-MAP, food sensitivity panels, organic acids, hair tissue mineral analysis.
 
+   SYMPTOM → STANDARD-OF-CARE TEST MAPPING (trigger (a) for the listed symptoms — add the relevant baseline test if missing):
+     Fatigue → CBC, ferritin, iron panel, B12+MMA, vitamin D, TSH, A1c, AM cortisol if HPA signs; men add total T+SHBG.
+     Joint pain → hs-CRP, vitamin D, uric acid (RF/anti-CCP only if >6wk inflammatory).
+     Can't lose weight → fasting insulin+HOMA-IR, A1c, TSH, AM cortisol, total T (men).
+     Hair loss → ferritin+iron panel, vitamin D, TSH+TPO.
+     Brain fog → B12+MMA, vitamin D, TSH, ferritin.
+     Low mood → vitamin D, B12, TSH, AM cortisol; men add total T.
+     Sleep issues → vitamin D, ferritin, AM cortisol, A1c, TSH.
+     GI symptoms → CMP, albumin, tTG-IgA+total IgA.
+     Acne → women: PCOS panel; men: liver panel + insulin.
+     Cold/heat intolerance → TSH, free T3, free T4, ferritin.
+     Palpitations → TSH, CMP, CBC.
+     Restless legs → ferritin >75, iron panel, B12.
+     Recurrent infections → vitamin D, CBC w/ differential, total IgA+IgG.
+     Poor recovery → men: total T+SHBG; vitamin D, ferritin.
+   ONE focused workup per symptom. No bundling. No functional-medicine extras.
+
    No "while we're at it" tests, no longevity wishlists. If you can't cite a trigger letter, drop it. One focused workup per entry — same organ system only. Do NOT bundle. Maximum 4 tests per pattern.
 5. WRITING STYLE: Plain English. Instead of "HPA-axis dysregulation" say "your stress hormones are elevated." Instead of "hepatocellular dysfunction" say "your liver is working harder than it should." Each "explanation" and "likely_mechanism" should be 1-2 sentences max — not paragraphs.
 6. DO NOT speculate about conditions the patient has no evidence for. Only flag autoimmune conditions with supporting symptoms AND lab clues.
