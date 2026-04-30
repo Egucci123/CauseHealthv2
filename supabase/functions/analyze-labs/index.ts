@@ -128,8 +128,16 @@ CRITICAL RULES:
    - Hair loss + fatigue + ferritin <50 = functional iron deficiency → full iron panel.
    - 3+ Watch-tier or out-of-range values clustering in one system → escalate that system in patterns.
 
-3. WHEN TO RECOMMEND FOLLOW-UP TESTS (missing_tests array):
-   Only recommend a test when there's a SPECIFIC abnormal finding (out-of-range OR Watch-tier) it would investigate. Healthy values don't earn follow-up tests.
+3. WHEN TO RECOMMEND FOLLOW-UP TESTS (missing_tests array) — STRICT TRIAGE RULE:
+   A test may ONLY appear in missing_tests if it directly investigates ONE of:
+     (a) a symptom the patient actually reported, OR
+     (b) a known depletion / side-effect from a medication they're currently taking, OR
+     (c) an out-of-range OR Watch-tier marker on THIS lab draw, OR
+     (d) an early-detection marker pattern matching this patient (see common-but-missed list below).
+   If none of (a)-(d) applies, DO NOT include the test. No "while we're at it" tests. No "good to confirm" tests. No "you don't have a baseline" tests — those belong in Clinical Prep's standard-of-care baseline check, not here.
+   For each test, why_needed MUST cite the specific trigger ("Reports fatigue + ferritin 28" or "On atorvastatin + ALT 97" or "ALT 97 + triglycerides 327"). If you can't cite a trigger, drop the test.
+   Differential thinking: ask "if this comes back abnormal, does management change?" If no, drop it.
+   Maximum 5 tests per analysis.
 
 4. AGE / SEX context: apply age- and sex-appropriate reasoning. For premenopausal females, do NOT flag estradiol, progesterone, FSH, or LH as abnormal unless extreme (FSH >40, estradiol <10 or >500, progesterone >30) — these vary by cycle phase.
 
