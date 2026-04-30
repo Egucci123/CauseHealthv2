@@ -514,89 +514,146 @@ HARD RULES — FOLLOW EXACTLY:
 
     BETTER-PATH RULE (CRITICAL): A little mayo is fine. A normal Wawa hoagie isn't a sin. Don't strip enjoyment for marginal gains. The bar is "meaningfully better than what they're eating now" — NOT "what a longevity podcaster would order." If a swap saves 200 cal or doubles protein, THAT'S the win — don't also demand they ditch the cheese, drop the chips, and hold the dressing. Pick the ONE swap that matters most for THIS user's labs and let the rest ride. Pizza night with the kids = fine. Burger and fries occasionally = fine. Chips with a turkey sandwich = fine. We're putting people on a better path, not ruining their lives.
 
-    PLAYBOOKS (pick the right combination based on the user's life_context — work_type, kids, cooking time, budget, eat-out chains):
+    PLAYBOOKS — anchor pool for the AI to reference. Pick combinations matching the user's BREAKFAST/LUNCH/DINNER patterns. THE NUMBER ONE RULE: every meal output must clearly belong to its declared playbook. Don't tag a hot rotisserie chicken as "frozen_aisle" — that's a `convenience_store`/`grocery_shortcut` move, not frozen.
 
-    [Convenience Store Grabs] gas station, Wawa, 7-Eleven, Sheetz, truck stop:
-      - Wawa egg white wrap (chicken + spinach + cheese + corn salsa) = 30g protein
-      - Wawa turkey hoagie short, mayo + mustard, regular cheese, with kettle chips — eat half now, half later for two meals
-      - Wawa tuna sandwich on wheat short
+    [convenience_store] — Wawa, 7-Eleven, Sheetz, gas station, truck stop. MUST mention the chain or "gas station / convenience store" by name.
+      - Wawa egg white wrap (chicken + spinach + cheese + corn salsa) — 30g protein
+      - Wawa turkey hoagie short (mayo + mustard, regular cheese, kettle chips on the side, eat half + half = two meals)
+      - Wawa tuna hoagie on wheat
+      - Wawa breakfast quesadilla (chicken + cheese + egg)
+      - 7-Eleven Big Bite combo: chicken Caesar wrap + Premier Protein shake = 45g protein, $7
+      - 7-Eleven Cheese & Crackers + 2× hard-boiled egg pack + apple = portable
+      - Sheetz MTO turkey flatbread (double meat, regular dressing, lettuce + tomato)
+      - Sheetz Made-To-Order Greek salad with grilled chicken
       - Truck-stop combo: 2-pack hard-boiled eggs + string cheese + apple + jerky stick = 35g protein, $7
-      - 7-Eleven: chicken Caesar wrap + Premier Protein shake = 45g protein
-      - Sheetz: turkey on flatbread, double meat, regular dressing
-      - Gas-station rescue: granola bar + hard-boiled egg + cheese stick = 25g protein in 90 sec
+      - Cumberland Farms farmhouse breakfast sandwich + black coffee
+      - Gas-station rescue: granola bar + hard-boiled egg + cheese stick = 25g protein, 90 sec
+      - Pilot/Love's truck stop: rotisserie chicken from the grab-and-go + bag of nuts + banana
 
-    [Fast-Food Doubling] (the protein-double trick beats avoiding fast food):
-      - 2× Chick-fil-A grilled sandwiches = 60g protein, $11 (regular bun OK)
-      - Wendy's grilled chicken sandwich + side salad + baked potato (regular butter is fine)
-      - McDonald's: 2× Egg McMuffin OR sausage McMuffin (the real version, not the "no muffin" hack — let them have the muffin)
-      - Subway: rotisserie chicken on flatbread, double meat, all the veggies, regular dressing
+    [fast_food] — chain ORDERS at specific restaurants. MUST name the chain. ROTATE chains: if user's eatOutPlaces has 3+, use AT LEAST 3 different chains in your fast-food meals.
+      - 2× Chick-fil-A grilled sandwiches = 60g protein, $11
+      - Chick-fil-A grilled nuggets (12-pc) + side salad + diet lemonade
+      - Wendy's grilled chicken sandwich + baked potato + side salad (regular butter fine)
+      - Wendy's apple-pecan chicken salad (full size)
+      - McDonald's 2× Egg McMuffin OR sausage McMuffin (let them eat the muffin — protein doubling is the win)
+      - McDonald's: 4-piece Chicken McNugget + side salad + apple slices
+      - Subway: rotisserie chicken on flatbread, double meat, all veggies
+      - Subway: protein bowl (no bread, double meat, full veggies, dressing)
       - Dunkin: 2× wake-up wraps + black coffee = 24g protein, $7
-      - Panera: power chicken hummus bowl OR turkey + avocado BLT
-      - Chipotle: bowl, double chicken, fajita veggies, brown rice OR white rice (whichever they like), salsa, guac (yes, get guac)
+      - Dunkin: bacon + egg + cheese on a multigrain flatbread + cold brew
+      - Panera: power chicken hummus bowl
+      - Panera: turkey + avocado BLT on whole grain (half order)
+      - Taco Bell: 2× soft taco supreme (steak) + side of black beans
+      - Taco Bell: power menu chicken bowl (no rice if low-carb day, with rice on a normal day)
+      - Burger King: grilled chicken sandwich + side salad
+      - Chipotle bowl: double protein, brown OR white rice, fajita veggies, salsa, guac
+      - Five Guys: little hamburger + bunless option OR small fries — split the fries
+      - Starbucks: protein box + iced black coffee
+      - Cracker Barrel: grilled chicken + green beans + side salad
+      - Olive Garden: grilled chicken parmigiana (scoop the breading off, eat the chicken + sauce)
 
-    [Protein Bars + Shakes] real brands, real prices, real availability:
-      - Costco Kirkland protein bars (30g protein, $1.50 each, freezer-friendly)
-      - Premier Protein shake (30g protein, $2.50, gas station nationwide)
-      - Quest bar + apple = portable breakfast
-      - Built bar (lower calorie, viral on TikTok)
-      - Barebells (no chalky aftertaste, $3)
-      - "Stack" hack when desperate: protein bar + Premier shake = 50g protein lunch
+    [protein_bar_shake] — real brands. MUST mention a specific bar/shake brand.
+      - Costco Kirkland protein bar (30g protein, $1.50)
+      - Premier Protein shake — vanilla, chocolate, café latte (30g protein, $2.50)
+      - Quest bar (any flavor) + apple = portable breakfast
+      - Built bar (lower calorie, no chalky finish)
+      - Barebells (no aftertaste)
+      - Fairlife protein milk (26g protein per 8oz, blender-ready)
+      - Stack hack: Quest bar + Premier shake = 50g protein lunch when desperate
+      - OWYN dairy-free shake (allergen-friendly)
+      - Ratio yogurt cup (15g protein, no aftertaste)
+      - Two Good 80-cal yogurt cup (12g protein)
 
-    [Crock Pot / Instant Pot] for parents, labor schedules, "set and forget":
-      - Pulled chicken: 4 chicken breasts + jar of salsa, 6 hrs low → shred → eats for the week (sandwiches, bowls, tacos)
-      - Crock pot chili: 1 lb ground beef + 2 cans tomatoes + 2 cans beans + chili powder = 6 servings (freeze 4)
-      - Instant Pot whole chicken: 40 min start to finish
-      - Crock pot beef + broccoli (1 hr, freezer-friendly portions)
+    [crock_pot] — slow cooker / Instant Pot / pressure cooker. MUST mention crock-pot OR slow cooker OR Instant Pot.
+      - Crock pot pulled chicken (4 breasts + jar of salsa, 6 hr low) → shred → eats for the week (tacos, bowls, sandwiches)
+      - Crock pot chili (1 lb ground beef + 2 cans tomatoes + 2 cans beans + chili powder) — 6 servings, freeze 4
+      - Crock pot Italian sausage soup (sausage + frozen mirepoix + chicken broth + cannellini beans + frozen kale)
+      - Crock pot honey-garlic chicken thighs (10 thighs + soy + honey + garlic + ginger) — meal preps for 4 days
+      - Instant Pot whole chicken (40 min start to finish, $5)
+      - Crock pot beef + broccoli (chuck + soy + brown sugar + frozen broccoli at end)
+      - Crock pot turkey breast (Sunday roast, 8 hrs low → 4 days of sandwich filling)
+      - Crock pot pulled pork (pork shoulder + bottle of BBQ sauce, 8 hrs low) → 12 servings
+      - Crock pot bolognese (pasta sauce + ground beef + Italian seasoning) over Banza pasta
 
-    [Sheet-Pan / One-Pan] zero cleanup:
-      - 5 ingredients max, 1 sheet, 1 oven
-      - "Egg roll in a bowl": ground turkey + bagged coleslaw + soy + ginger, 12 min
-      - Skillet sausage + frozen pre-sliced peppers + onions
-      - One-pan chicken thighs + frozen veg + olive oil
-      - Sheet-pan ground beef + rice + frozen broccoli (mix at end)
+    [sheet_pan] — sheet-pan / one-pan / one-skillet. MUST mention sheet-pan OR one-pan OR skillet.
+      - Sheet-pan chicken thighs + sweet potato cubes + frozen peppers (425°F, 25 min)
+      - Sheet-pan sausage + frozen pre-sliced peppers + onions (one tray, 20 min)
+      - One-skillet "egg roll in a bowl" (ground turkey + bagged coleslaw + soy + ginger, 12 min)
+      - One-pan ground beef + Minute Rice + frozen broccoli (mix at end, 15 min)
+      - Sheet-pan salmon + asparagus + cherry tomatoes (only if user's chosen)
+      - One-skillet chicken fajitas (sliced chicken + frozen pepper-onion mix + taco seasoning, 12 min)
+      - Sheet-pan kielbasa + Brussels sprouts + frozen sweet potato fries (425°F, 25 min)
 
-    [Frozen Aisle Gems] the secret weapon:
-      - Costco frozen salmon burgers (40g protein, 4 min air fryer)
-      - Trader Joe's frozen grilled chicken strips (60-second microwave)
-      - Trader Joe's orange chicken (lighter than takeout, real serving)
-      - Aldi mama cozzi protein crust pizza (30g protein per pie)
-      - Banza chickpea pasta + Rao's marinara (25g protein per serving, kids don't notice)
-      - Aunt Millie's keto bread (45 cal/slice)
-      - Birds Eye veggie blends (microwave bag, 3 min)
+    [frozen_aisle] — frozen items eaten directly OR thawed/microwaved/air-fried. MUST mention frozen, freezer, microwaveable, air-fryer, or a clearly frozen brand SKU.
+      - Costco frozen salmon burgers (40g protein, 4 min air-fryer) on a brioche bun + sliced avocado
+      - Trader Joe's frozen grilled chicken strips (60-sec microwave) + bagged Caesar kit
+      - Trader Joe's frozen orange chicken (lighter than takeout) + frozen broccoli
+      - Trader Joe's frozen riced cauliflower + jarred pesto + frozen shrimp
+      - Aldi Mama Cozzi protein crust pizza (frozen, 30g protein per pie)
+      - Banza chickpea pasta + Rao's marinara + frozen meatballs (Aldi or Costco)
+      - Costco frozen meatballs + jar marinara + Banza pasta
+      - Costco frozen Korean BBQ beef bowl
+      - Birds Eye Steamfresh veggies (microwave bag, 3 min)
+      - Frozen Aunt Millie's protein bread + Boar's Head turkey + cheese (frozen → toaster → 90-sec sandwich)
 
-    [Frozen Breakfast Sandwiches] universal life hack:
-      - Jimmy Dean Delights turkey sausage (260 cal, 17g protein, 60-sec microwave)
-      - Make-ahead egg muffin tin (Sunday batch: 12 eggs + spinach + ham, freeze, microwave 45 sec)
-      - Eggwich (egg-white "buns" with cheese)
-      - Costco frozen breakfast burritos
+    [frozen_breakfast] — frozen breakfast sandwiches and make-ahead breakfasts. MUST mention frozen sandwich, freezer, make-ahead, or a frozen breakfast brand.
+      - Jimmy Dean Delights turkey sausage frozen sandwich (260 cal, 17g protein, 60-sec microwave)
+      - Make-ahead egg muffin tin (Sunday batch: 12 eggs + spinach + ham + cheese → freeze → microwave 45 sec)
+      - Eggwich frozen sandwiches (egg-white buns with cheese filling)
+      - Costco Tattooed Chef frozen breakfast burritos
+      - Costco Kirkland frozen breakfast bowl
+      - Frozen Belgian waffles (Aunt Jemima or Kodiak protein) + peanut butter + banana
 
-    [Low-Cal Drinks] replace soda + sweet coffee:
-      - Premier Protein iced coffee: shake + cold brew + ice = 30g protein "latte"
-      - Black coffee + 1 scoop collagen = 10g extra protein
-      - Sparkling water + LMNT or Liquid IV zero
-      - Apple cider vinegar shot pre-meal (blood-sugar viral hack)
-      - Sleepy girl mocktail (tart cherry juice + magnesium + sparkling water at 9 PM, for mid-night wakers)
-      - Olipop / Poppi (pre/probiotic sodas, kids approve)
+    [low_cal_drink] — replace soda / sweet coffee. MUST be a drink, not a meal.
+      - Premier Protein iced coffee: shake + cold brew + ice (blender or shaker) = 30g protein "latte"
+      - Black coffee + 1 scoop unflavored collagen + dash cinnamon = 10g extra protein
+      - Sparkling water + LMNT or Liquid IV zero stick
+      - Apple cider vinegar shot pre-meal (Bragg's, 1 tbsp in water + ice)
+      - Sleepy girl mocktail (tart cherry juice + magnesium glycinate powder + sparkling water at 9 PM)
+      - Olipop or Poppi prebiotic soda (replaces Coke)
+      - Fairlife Core Power protein shake (24g protein, post-workout)
+      - Iced green matcha (Trader Joe's matcha powder + almond milk + ice)
+      - Athletic Greens or Bloom Greens (greens powder + water, daily)
 
-    [Mom / Parent Specifics] kid-tested adult-friendly:
-      - Banza chickpea pasta + jar marinara + meatballs — kid + parent same plate
-      - Costco rotisserie + Stouffer's mac (split): adult eats chicken + side salad, kid eats mac
-      - Sheet-pan pizza on Aunt Millie's flatbread (kid customizable)
-      - Crock pot pulled chicken tacos (parent skips tortilla and bowls it)
-      - Egg muffin tin (kids love muffins, adults get protein)
+    [mom_friendly] — kid-tested + adult-friendly. MUST work for both kid and adult.
+      - Banza chickpea pasta + jar marinara + Costco frozen meatballs (kid + parent same plate, kid never notices)
+      - Costco rotisserie chicken + Stouffer's mac (kid eats mac, parent eats chicken + bagged Caesar)
+      - Sheet-pan pizza on Aunt Millie's flatbread or Trader Joe's flatbread (kid customizes toppings)
+      - Crock pot pulled chicken tacos (kid uses tortillas, parent bowls it over greens)
+      - Egg muffin tin (Sunday batch — kids love muffins, adults get protein)
+      - Costco rotisserie quesadilla on Mission carb-balance tortilla
+      - Build-your-own bowl night: rice + Costco rotisserie + frozen peppers + salsa + cheese
+      - Banza pasta + Rao's vodka sauce + frozen broccoli (15 min)
 
-    [Viral TikTok Hacks] high-impact, low-effort:
-      - Cottage cheese "ice cream" (1 cup cottage cheese + 2 tbsp PB + sugar-free chocolate, blended)
-      - Greek yogurt bark (yogurt + honey + berries, frozen flat, broken into shards)
-      - Chocolate-covered frozen banana bites
-      - Chia pudding overnight (chia + almond milk + scoop protein powder)
-      - Cottage cheese + everything bagel seasoning + cucumber slices (28g protein, no cooking)
+    [viral_hack] — TikTok / Instagram hacks. MUST be high-impact + low-effort + something that goes viral.
+      - Cottage cheese "ice cream" (1 cup cottage cheese + 2 tbsp PB + sugar-free chocolate, blended in NutriBullet, frozen 30 min)
+      - Greek yogurt bark (yogurt + honey + berries, frozen flat on parchment, broken into shards)
+      - Chocolate-covered frozen banana bites (banana coins + dark chocolate, freezer)
+      - Chia pudding overnight (1/4 cup chia + 1 cup almond milk + scoop protein powder, fridge overnight)
+      - Cottage cheese + everything bagel seasoning + sliced cucumber (28g protein, no cooking)
+      - "Dense bean salad" trend (canned beans + chopped veg + lemon + olive oil, fridges 5 days)
+      - Frozen cottage cheese chips (microwave-bake at 350°F = high-protein chip)
+      - Whipped cottage cheese in toast spread (food-process to ricotta consistency)
+      - Costco rotisserie chicken salad (shred + Greek yogurt + grapes + celery — viral hack)
 
-    [Blue-Collar Lunch Box] driver / construction / shift / labor:
-      - Thermos chili (8 hrs hot) — leftover crock pot
-      - Cooler box: pre-cooked chicken + microwaveable rice + cucumber + ranch packet
+    [lunchbox_thermos] — driver / construction / shift / labor / dashboard food. MUST be portable + transportable + works without microwave OR with thermos hot-hold.
+      - Thermos chili (8-hr hot hold) — leftover crock pot chili
+      - Pyrex cooler box: pre-cooked chicken + microwaveable rice cup + cucumber + ranch packet
       - Dashboard combo: turkey jerky + Premier Protein + apple + string cheese
       - Construction lunchbox: 4 hard-boiled eggs + 2 string cheese + apple + Quest bar = 40g protein, $5
+      - Driver thermos: lentil soup OR Instant Pot beef stew, hot 8 hrs
+      - Cold cooler combo: leftover steak + microwave rice + cherry tomatoes + ranch
+      - Trucker special: 2 hard-boiled eggs + 2 babybel cheese + Premier shake + bag of almonds
+      - Shift-worker overnight box: cold roast beef + spinach wrap + cheese cubes + apple
+
+    [simple_home_cook] — phase 3 real recipes. 15-25 min, 6-10 ingredients. Still grocery-store basic.
+      - Salmon power bowl (Costco frozen filet + brown rice + bagged kale slaw + avocado + sriracha + sesame oil)
+      - Chicken thighs + roasted Brussels sprouts + brown rice + lemon
+      - Steak fajita night (sliced flank + frozen pepper-onion mix + tortillas)
+      - Greek bowl: ground turkey + cucumber + tomato + tzatziki + brown rice + feta
+      - Chicken parmesan night: pounded chicken + jar marinara + Banza pasta + mozzarella
+      - Beef stew (chuck + onion + carrot + potato + canned tomatoes, Dutch oven 2 hrs)
+      - Korean BBQ bowl: ground beef + soy + brown sugar + rice + frozen broccoli + kimchi
 
     PLAN STRUCTURE — PER-PLAYBOOK GENERATION (the "Food Playbook"):
 
@@ -608,14 +665,21 @@ HARD RULES — FOLLOW EXACTLY:
       - "when" field — breakfast / lunch / dinner / snack
       - SPECIFIC brand / SKU / chain name. "Costco rotisserie chicken" beats "rotisserie chicken." "Banza chickpea pasta" beats "high-protein pasta." "Wawa egg white wrap" beats "convenience-store wrap."
 
-    TARGETS PER PLAN:
-      - 3-5 BREAKFAST options across the playbooks the user uses for breakfast.
-      - 3-5 LUNCH options across the playbooks the user uses for lunch.
-      - 3-5 DINNER options across the playbooks the user uses for dinner.
-      - 1-2 SNACK or DRINK options.
-      - Total: 10-15 meals.
-      - If a meal pattern is "skip" — generate 0 meals for that slot but mention in the why field that it's optional.
-      - If LUNCH_PATTERNS/etc. = "unknown" — default to busy-blue-collar mix: 1 fast-food + 1 frozen + 1 convenience-store + 1 cooler-box.
+    TARGETS PER PLAN — PER-PATTERN MINIMUMS (CRITICAL):
+      - For EVERY pattern the user listed in BREAKFAST_PATTERNS / LUNCH_PATTERNS / DINNER_PATTERNS, generate AT LEAST 2 meals matching that playbook. If they listed 4 lunch patterns (e.g. fast_food + gas_station + 7eleven + packed), give 8+ lunch meals.
+      - CHAIN DIVERSITY: if user has 3+ chains in EATS_OUT_AT, fast_food meals MUST cover at least 3 different chains. Don't stack 4 Chipotle ideas — rotate.
+      - 3-6 BREAKFAST options.
+      - 4-8 LUNCH options.
+      - 3-6 DINNER options.
+      - 2-3 SNACK or DRINK options.
+      - Total target: 12-18 meals (was 10-15 — increased for breadth).
+      - "skip" pattern → 0 meals for that slot, but mention briefly.
+      - Pattern = "unknown" → default mix: 1 fast-food + 1 frozen + 1 convenience-store + 1 cooler-box.
+
+    PATTERN → PLAYBOOK MAPPING (use this when picking which playbook a meal belongs to):
+      breakfast: skip→— · fast_food→fast_food · gas_station→convenience_store · coffee_shop→fast_food · frozen_sandwich→frozen_breakfast · eggs_home→simple_home_cook · cereal→simple_home_cook · smoothie→low_cal_drink/viral_hack · protein_bar→protein_bar_shake
+      lunch: fast_food→fast_food · gas_station→convenience_store · wawa_convenience→convenience_store · packed→lunchbox_thermos · cafeteria→fast_food · cooler_box→lunchbox_thermos · drive_thru_salad→fast_food · restaurant→simple_home_cook · skip→—
+      dinner: cook_scratch→simple_home_cook · crock_pot→crock_pot · sheet_pan→sheet_pan · frozen_meal→frozen_aisle · takeout→fast_food · restaurant→simple_home_cook · kid_friendly→mom_friendly · snack_dinner→viral_hack/protein_bar_shake
 
     FORBIDDEN GENERICS — these are the lazy defaults that show up in every shitty plan. NEVER include them. If you generate one, DELETE IT from the output before returning:
       - "Greek yogurt + berries + nuts" / "yogurt parfait" / similar — ONLY include if it's a viral-hack twist (yogurt bark, frozen mango blender ice cream)
@@ -977,10 +1041,14 @@ CRITICAL OUTPUT RULES:
     if (!Array.isArray(plan.today_actions)) plan.today_actions = [];
     if (!Array.isArray(plan.meals)) plan.meals = [];
 
-    // ── Forbidden-meal scrubber + brand-specificity gate (locked-in rule) ──
-    // The AI keeps drifting to lazy defaults. We strip meals matching the
-    // forbidden patterns AND meals that fail to name any specific brand /
-    // chain / SKU. Better to show 6 great meals than 12 mediocre ones.
+    // ── Meal scrubber + playbook content validator (locked-in rule) ──
+    // 4 layers:
+    //   1. Forbidden generic templates (lazy defaults) — drop outright
+    //   2. Brand/chain/SKU specificity gate — meal must name one
+    //   3. Playbook content match — frozen_aisle MUST mention frozen,
+    //      convenience_store MUST mention Wawa/7-Eleven/etc, crock_pot MUST
+    //      mention crock-pot/slow-cooker. Mismatches get re-categorized to
+    //      a guess based on content, or dropped if no clean fit.
     try {
       const FORBIDDEN_PATTERNS: RegExp[] = [
         /^\s*\d?\-?egg\s+(scramble|breakfast|with|and)\s+(toast|bread|whole)/i,
@@ -993,28 +1061,75 @@ CRITICAL OUTPUT RULES:
         /^\s*(ground\s+turkey\s+chili|turkey\s+chili)(\s+\(.*?\))?$/i,
         /^\s*chicken\s+breast\s*\+\s*(rice|quinoa)\s*\+\s*(vegetables|broccoli)/i,
       ];
-      // Brand/chain/SKU keywords. Meal must mention at least ONE of these
-      // either in the name or ingredients to pass the specificity gate.
-      const SPECIFICITY_KEYWORDS: RegExp = /\b(costco|kirkland|trader\s*joe|aldi|walmart|target\s+market|whole\s+foods|wawa|7-?eleven|sheetz|truck\s*stop|chick-?fil-?a|chipotle|wendy|mcdonald|subway|taco\s+bell|dunkin|starbucks|panera|burger\s+king|cracker\s+barrel|olive\s+garden|aunt\s+millie|banza|premier\s+protein|quest\s+bar|built\s+bar|barebells|jimmy\s+dean|stouffer|halo\s+top|halo|olipop|poppi|liquid\s+iv|lmnt|cabot|uncle\s+ben|minute\s+rice|rao|dave's\s+killer|ezekiel|sara\s+lee|birds\s+eye|cuties|kerrygold|fage|chobani|oikos|two\s+good)\b/i;
+      const SPECIFICITY_KEYWORDS = /\b(costco|kirkland|trader\s*joe|aldi|walmart|target\s+market|whole\s+foods|wawa|7-?eleven|sheetz|cumberland|pilot|love'?s|truck\s*stop|chick-?fil-?a|chipotle|wendy|mcdonald|subway|taco\s+bell|dunkin|starbucks|panera|burger\s+king|cracker\s+barrel|olive\s+garden|five\s+guys|aunt\s+millie|banza|premier\s+protein|quest\s+bar|built\s+bar|barebells|jimmy\s+dean|stouffer|halo\s+top|halo|olipop|poppi|liquid\s+iv|lmnt|cabot|uncle\s+ben|minute\s+rice|rao|dave's\s+killer|ezekiel|sara\s+lee|birds\s+eye|cuties|kerrygold|fage|chobani|oikos|two\s+good|fairlife|bragg'?s|kodiak|aunt\s+jemima|tattooed\s+chef|mama\s+cozzi|owyn|ratio|core\s+power|athletic\s+greens|bloom|nutribullet|crock\s*pot|instant\s*pot|slow\s*cooker|sheet[-\s]?pan|one[-\s]?pan|one[-\s]?skillet|dutch\s+oven|air[-\s]?fryer|babybel|boar'?s\s+head|mission|kettle\s+chips|pyrex|gas\s+station|convenience\s+store|hard[-\s]?boiled\s+egg|jerky|frozen)\b/i;
+
+      // Per-playbook content-match validators. Each playbook key maps to a
+      // regex that the meal name+ingredients MUST match. Mismatch = re-categorize
+      // (or drop if we can't find a better playbook).
+      const PLAYBOOK_VALIDATORS: Record<string, RegExp> = {
+        convenience_store: /\b(wawa|7-?eleven|sheetz|cumberland|pilot|love'?s|truck\s*stop|gas\s+station|convenience\s+store|hoagie|big\s+bite|hot[- ]case)\b/i,
+        fast_food: /\b(chick-?fil-?a|chipotle|wendy|mcdonald|subway|taco\s+bell|dunkin|starbucks|panera|burger\s+king|cracker\s+barrel|olive\s+garden|five\s+guys|jersey\s+mike|jimmy\s+john|raising\s+cane|kfc|popeyes|arby|sonic|culver|in[- ]n[- ]out|whataburger|drive[- ]thru)\b/i,
+        protein_bar_shake: /\b(quest\s+bar|premier\s+protein|kirkland\s+protein|built\s+bar|barebells|fairlife|owyn|ratio|core\s+power|two\s+good|protein\s+bar|protein\s+shake|kirkland\s+bar)\b/i,
+        crock_pot: /\b(crock\s*pot|slow\s*cooker|instant\s*pot|pressure\s*cooker|set[- ]and[- ]forget)\b/i,
+        sheet_pan: /\b(sheet[-\s]?pan|one[-\s]?pan|one[-\s]?skillet|skillet|dutch\s+oven|air[-\s]?fryer\s+(?!burger)|wok|stir[-\s]?fry)\b/i,
+        frozen_aisle: /\b(frozen|freezer|microwaveable|microwave\s+bag|thaw|air[-\s]?fryer|salmon\s+burger|frozen\s+meatball|banza|orange\s+chicken|riced\s+cauliflower|protein\s+pizza|mama\s+cozzi|tattooed\s+chef|stouffer|birds\s+eye)\b/i,
+        frozen_breakfast: /\b(jimmy\s+dean|frozen\s+(breakfast|sandwich|burrito|waffle)|eggwich|aunt\s+millie|kodiak|aunt\s+jemima|make[- ]ahead|muffin\s+tin|tattooed\s+chef|kirkland\s+breakfast)\b/i,
+        low_cal_drink: /\b(coffee|cold\s+brew|matcha|tea|sparkling|seltzer|olipop|poppi|liquid\s+iv|lmnt|electrolyte|mocktail|shake\s+(blended|in)|protein\s+(iced|coffee|shake)|acv|apple\s+cider\s+vinegar|collagen|greens|athletic\s+greens|bloom|core\s+power|fairlife|drink|smoothie|kombucha)\b/i,
+        mom_friendly: /\b(kid|family|together|same\s+plate|mom|mama|kiddo|whole\s+family|toddler|little\s+ones)\b/i,
+        viral_hack: /\b(cottage\s+cheese|tiktok|viral|chia\s+pudding|yogurt\s+bark|frozen\s+banana|dense\s+bean|whipped|nutribullet|blender|hack|trend|protein\s+ice\s+cream)\b/i,
+        lunchbox_thermos: /\b(thermos|cooler|pyrex|lunchbox|dashboard|portable|cold\s+pack|bento|hot[- ]hold|construction|driver|trucker|shift\s+work)\b/i,
+        simple_home_cook: /\b(\d+\s*min|recipe|saute|sear|roast|bake|pan[- ]?fry|stew|fajita|stir[-\s]?fry|bowl|powerful|brown\s+rice|quinoa|salmon|chicken\s+thigh|flank|beef\s+stew|kebab|skillet|skewer)\b/i,
+      };
+
+      // Re-classify a meal if its declared playbook doesn't match content.
+      // Try each playbook validator and pick the best match.
+      const reclassify = (name: string, ingredients: string): string | null => {
+        const haystack = `${name} ${ingredients}`;
+        for (const [pb, re] of Object.entries(PLAYBOOK_VALIDATORS)) {
+          if (re.test(haystack)) return pb;
+        }
+        return null;
+      };
 
       const before = plan.meals.length;
-      plan.meals = plan.meals.filter((m: any) => {
-        const name = String(m?.name ?? '').trim();
-        const ingredients = Array.isArray(m?.ingredients) ? m.ingredients.join(' ') : '';
-        const haystack = `${name} ${ingredients}`;
-        if (!name) return false;
-        // Drop forbidden generic templates outright
-        if (FORBIDDEN_PATTERNS.some(p => p.test(name))) {
-          console.log(`[wellness-plan] dropped forbidden meal: ${name}`);
-          return false;
-        }
-        // Require at least one specific brand/chain/SKU mention
-        if (!SPECIFICITY_KEYWORDS.test(haystack)) {
-          console.log(`[wellness-plan] dropped non-specific meal: ${name}`);
-          return false;
-        }
-        return true;
-      });
+      plan.meals = plan.meals
+        .map((m: any) => {
+          const name = String(m?.name ?? '').trim();
+          if (!name) return null;
+          const ingredients = Array.isArray(m?.ingredients) ? m.ingredients.join(' ') : '';
+          const haystack = `${name} ${ingredients}`;
+          // 1. Forbidden generic templates → drop
+          if (FORBIDDEN_PATTERNS.some(p => p.test(name))) {
+            console.log(`[wellness-plan] dropped forbidden meal: ${name}`);
+            return null;
+          }
+          // 2. Brand-specificity gate → drop
+          if (!SPECIFICITY_KEYWORDS.test(haystack)) {
+            console.log(`[wellness-plan] dropped non-specific meal: ${name}`);
+            return null;
+          }
+          // 3. Playbook content validator → re-classify or drop
+          const declaredPlaybook = typeof m?.playbook === 'string' ? m.playbook : null;
+          if (declaredPlaybook && PLAYBOOK_VALIDATORS[declaredPlaybook]) {
+            const matches = PLAYBOOK_VALIDATORS[declaredPlaybook].test(haystack);
+            if (!matches) {
+              const guess = reclassify(name, ingredients);
+              if (guess) {
+                console.log(`[wellness-plan] re-classified meal "${name}" from ${declaredPlaybook} -> ${guess}`);
+                return { ...m, playbook: guess };
+              } else {
+                console.log(`[wellness-plan] dropped playbook-mismatch meal: ${name} (declared: ${declaredPlaybook})`);
+                return null;
+              }
+            }
+          } else if (!declaredPlaybook) {
+            // No playbook declared → try to assign one
+            const guess = reclassify(name, ingredients);
+            if (guess) return { ...m, playbook: guess };
+          }
+          return m;
+        })
+        .filter((m: any) => m !== null);
       if (plan.meals.length !== before) {
         console.log(`[wellness-plan] meal scrub: ${before} -> ${plan.meals.length}`);
       }
