@@ -137,7 +137,7 @@ serve(async (req) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001', max_tokens: 16000,
+        model: 'claude-haiku-4-5-20251001', max_tokens: 11000,
         system: `You are CauseHealth AI. Return ONLY valid JSON.
 
 GLOBAL VOICE RULES (CRITICAL — these apply to EVERY string in the JSON):
@@ -256,6 +256,11 @@ HARD RULES — FOLLOW EXACTLY:
    - Never substitute related conditions (UC ≠ Crohn's, even though they share treatments).
    - MEDICATIONS DO NOT REVEAL DIAGNOSES. A prescription tells you what a doctor wrote, not what the patient has, what's active, or what's been ruled out. Many drugs treat multiple conditions. Never infer or rename a diagnosis based on what's in the meds list.
    - The only valid use of medications is to flag known nutrient depletions, lab interactions, or side effects — never to derive new diagnoses.
+   - **NO INFERENCE LANGUAGE ANYWHERE in the output.** Forbidden phrases — these CANNOT appear in summary, headline, today_actions, supplement why fields, lifestyle interventions, action_plan, ANY string in the JSON:
+       "inferred from", "based on your medication you likely have", "must have", "suggests you have",
+       "not listed but", "likely autoimmune", "appears to have", "implied by your meds",
+       "your meds suggest", "given the medication", "this medication is for [condition]"
+     If the user didn't list a condition in DIAGNOSED CONDITIONS, the AI does not get to mention that condition by name OR allude to it. Talk about the medication's effects (e.g. "mesalamine can deplete folate") without naming the condition the medication treats.
    Address each STATED condition with condition-specific lifestyle interventions.
 4. PATTERN RECOGNITION: Connect abnormal values across organ systems to identify undiagnosed conditions. In the summary, flag every multi-marker pattern (e.g., elevated platelets + elevated RDW = possible iron deficiency or myeloproliferative process; low HDL + borderline glucose = metabolic syndrome risk). In retest_timeline, recommend testing to confirm or rule out each pattern. The goal is EARLY DETECTION.
 5. AGE/SEX CONTEXT: Apply age and sex-appropriate reasoning.
@@ -622,6 +627,61 @@ CRITICAL OUTPUT RULES:
       };
       plan = walk(plan);
     } catch (e) { console.error('[wellness-plan] scrub error:', e); }
+
+    // ── Inference-language scrubber (locked-in chat rule) ──────────────
+    // Two layers:
+    //   1. Generic inference phrases ("inferred from", "not listed but", etc.)
+    //   2. Condition names the user did NOT list — if the user didn't say UC,
+    //      the plan cannot mention UC, IBD, Crohn's anywhere. Universal —
+    //      builds the forbidden list dynamically from condStr.
+    try {
+      const INFERENCE_PHRASES = /\b(inferred from|not listed but|likely have|likely autoimmune|appears to have|implied by your meds|your meds suggest|given the medication|based on your medication|suggests you have|must have)\b/i;
+      // Build dynamic forbidden-condition list. If the user has UC in their
+      // conditions, "UC" is OK. If not, the AI cannot mention UC anywhere.
+      const userCondText = (condStr ?? '').toLowerCase();
+      const forbiddenConditionPatterns: RegExp[] = [];
+      const conditionAliases: { pattern: RegExp; testStr: string }[] = [
+        { pattern: /\b(ulcerative colitis|\bUC\b|inflammatory bowel|\bIBD\b)/i, testStr: 'ulcerative colitis|inflammatory bowel|ibd' },
+        { pattern: /\b(crohn|crohn's)\b/i, testStr: "crohn" },
+        { pattern: /\b(hashimoto|hashimoto's|autoimmune thyroid|thyroiditis)\b/i, testStr: 'hashimoto|autoimmune thyroid|thyroiditis' },
+        { pattern: /\b(graves|graves' disease|hyperthyroid)\b/i, testStr: 'graves|hyperthyroid' },
+        { pattern: /\b(type 2 diabet|t2d|\bt2dm\b|diabetes mellitus type 2)\b/i, testStr: 'type 2 diabet|t2d' },
+        { pattern: /\b(\bPCOS\b|polycystic ovar)\b/i, testStr: 'pcos|polycystic ovar' },
+        { pattern: /\b(rheumatoid arthritis|\bRA\b)\b/i, testStr: 'rheumatoid arthritis' },
+        { pattern: /\b(lupus|\bSLE\b|systemic lupus)\b/i, testStr: 'lupus|sle' },
+        { pattern: /\b(celiac|celiac disease)\b/i, testStr: 'celiac' },
+        { pattern: /\b(multiple sclerosis|\bMS\b)\b/i, testStr: 'multiple sclerosis' },
+        { pattern: /\b(psoriasis|psoriatic)\b/i, testStr: 'psoriasis|psoriatic' },
+        { pattern: /\b(osteoporosis|osteopenia)\b/i, testStr: 'osteoporosis|osteopenia' },
+      ];
+      for (const c of conditionAliases) {
+        // If none of this condition's alias terms appear in the user's listed conditions, forbid the AI from mentioning it
+        const userMentioned = c.testStr.split('|').some(term => userCondText.includes(term));
+        if (!userMentioned) forbiddenConditionPatterns.push(c.pattern);
+      }
+      const namesUnstatedCondition = (s: string) => forbiddenConditionPatterns.some(p => p.test(s));
+      const STRUCTURAL_KEYS_INF = new Set(['nutrient', 'form', 'icd10', 'medication', 'supplement', 'food', 'movement', 'category', 'priority', 'sourced_from', 'when']);
+      const dropInference = (text: string): string => {
+        if (typeof text !== 'string' || !text) return text;
+        const sentences = text.split(/(?<=[.!?])\s+/);
+        const kept = sentences.filter(s => !INFERENCE_PHRASES.test(s) && !namesUnstatedCondition(s));
+        return kept.join(' ').trim();
+      };
+      const walkInf = (val: any, key?: string): any => {
+        if (typeof val === 'string') {
+          if (key && STRUCTURAL_KEYS_INF.has(key)) return val;
+          return dropInference(val);
+        }
+        if (Array.isArray(val)) return val.map(v => walkInf(v, key));
+        if (val && typeof val === 'object') {
+          const out: any = {};
+          for (const k of Object.keys(val)) out[k] = walkInf(val[k], k);
+          return out;
+        }
+        return val;
+      };
+      plan = walkInf(plan);
+    } catch (e) { console.error('[wellness-plan] inference-scrub error:', e); }
 
     // Tag plan mode for frontend display
     plan.plan_mode = isOptimizationMode ? 'optimization' : 'treatment';

@@ -327,7 +327,7 @@ Be concise. Scannable in 3 minutes.`,
 PATIENT: ${age ? `${age}yo` : 'age unknown'} ${profile?.sex ?? ''}
 MODE: ${isHealthy ? 'healthy — apply HEALTHY MODE rules (proactive/optimization framing, no alarmism)' : 'standard'}
 USER'S TOP GOALS (their stated reasons for using this app — your discussion points and tests should connect to these): ${goalsStr}
-DIAGNOSED CONDITIONS (GROUND TRUTH — use these exact names; UC is NOT Crohn's; do NOT infer a different diagnosis from medications): ${condStr}
+DIAGNOSED CONDITIONS (GROUND TRUTH — use these exact names; UC is NOT Crohn's; do NOT infer a different diagnosis from medications. NEVER use phrases like "inferred from medication", "not listed but", "likely have", "suggests you have", "your meds suggest". If a condition isn't in this list, do not name it ANYWHERE in the output — talk about medication effects without naming the condition the medication treats): ${condStr}
 MEDICATIONS:\n${medsStr}
 CURRENT SUPPLEMENTS (consider lab interactions when interpreting findings — e.g., creatine→creatinine artifact, biotin→TSH/T3/T4 interference, B12→masks deficiency, niacin→HDL/ALT, TRT→Hct/LH/FSH, vitamin K2→INR with warfarin): ${suppsStr}
 SYMPTOMS:\n${sympStr}
