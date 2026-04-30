@@ -514,7 +514,7 @@ HARD RULES — FOLLOW EXACTLY:
 
     BETTER-PATH RULE (CRITICAL): A little mayo is fine. A normal Wawa hoagie isn't a sin. Don't strip enjoyment for marginal gains. The bar is "meaningfully better than what they're eating now" — NOT "what a longevity podcaster would order." If a swap saves 200 cal or doubles protein, THAT'S the win — don't also demand they ditch the cheese, drop the chips, and hold the dressing. Pick the ONE swap that matters most for THIS user's labs and let the rest ride. Pizza night with the kids = fine. Burger and fries occasionally = fine. Chips with a turkey sandwich = fine. We're putting people on a better path, not ruining their lives.
 
-    PLAYBOOKS — anchor pool for the AI to reference. Pick combinations matching the user's BREAKFAST/LUNCH/DINNER patterns. THE NUMBER ONE RULE: every meal output must clearly belong to its declared playbook. Don't tag a hot rotisserie chicken as "frozen_aisle" — that's a `convenience_store`/`grocery_shortcut` move, not frozen.
+    PLAYBOOKS — anchor pool for the AI to reference. Pick combinations matching the user's BREAKFAST/LUNCH/DINNER patterns. THE NUMBER ONE RULE: every meal output must clearly belong to its declared playbook. Don't tag a hot rotisserie chicken as "frozen_aisle" — that's a convenience_store / grocery_shortcut move, not frozen.
 
     [convenience_store] — Wawa, 7-Eleven, Sheetz, gas station, truck stop. MUST mention the chain or "gas station / convenience store" by name.
       - Wawa egg white wrap (chicken + spinach + cheese + corn salsa) — 30g protein
