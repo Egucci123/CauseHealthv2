@@ -21,7 +21,7 @@ type TabKey = 'today' | 'eat' | 'move' | 'take';
 
 const TABS: { key: TabKey; label: string; icon: string }[] = [
   { key: 'today', label: 'Today', icon: 'today' },
-  { key: 'eat', label: 'Eat', icon: 'restaurant' },
+  { key: 'eat', label: 'Food Playbook', icon: 'restaurant' },
   { key: 'move', label: 'Move', icon: 'directions_run' },
   { key: 'take', label: 'Take', icon: 'medication' },
 ];
@@ -304,7 +304,7 @@ const EatTab = ({ plan }: { plan: any }) => {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <p className="text-body text-clinical-stone text-sm">Real meals matched to your labs. Cook one, eat one — it counts.</p>
+        <p className="text-body text-clinical-stone text-sm">Real meals + real chain orders + lunchbox hacks for real life. Pick what works this week — start anywhere.</p>
         <button
           onClick={() => setShowList(!showList)}
           className="inline-flex items-center gap-1.5 text-precision text-[0.65rem] font-bold tracking-widest uppercase px-3 py-2 bg-gradient-to-br from-[#1B423A] to-[#0F2A24] hover:from-[#244F46] hover:to-[#163730] text-[#D4A574] rounded-[8px] transition-all"

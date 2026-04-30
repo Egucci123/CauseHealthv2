@@ -499,7 +499,109 @@ HARD RULES — FOLLOW EXACTLY:
     Most users start with poor diets — fast food, refined carbs, low protein, low vegetables. Jumping to "wild salmon + roasted asparagus + bone broth + grass-fed butter" feels alien and adherence collapses by week 2. Build the meals[] array as a PROGRESSION across phases:
     Most users start with poor diets — fast food, refined carbs, low protein, low vegetables. Jumping to "wild salmon + roasted asparagus + bone broth + grass-fed butter" feels alien and adherence collapses by week 2. The "perfect" meal that doesn't get eaten beats every metric of zero. Build the meals[] array as a PROGRESSION across phases:
 
-    THINK LIKE A NUTRITIONIST + HEALTH-INFLUENCER WHO ACTUALLY UNDERSTANDS A BUSY ADULT (this is the bar — not a textbook nutritionist).
+    THE FOOD PLAYBOOK — THINK LIKE A NUTRITIONIST + HEALTH-INFLUENCER WHO ACTUALLY UNDERSTANDS A BUSY ADULT (this is the bar — not a textbook nutritionist).
+
+    BETTER-PATH RULE (CRITICAL): A little mayo is fine. A normal Wawa hoagie isn't a sin. Don't strip enjoyment for marginal gains. The bar is "meaningfully better than what they're eating now" — NOT "what a longevity podcaster would order." If a swap saves 200 cal or doubles protein, THAT'S the win — don't also demand they ditch the cheese, drop the chips, and hold the dressing. Pick the ONE swap that matters most for THIS user's labs and let the rest ride. Pizza night with the kids = fine. Burger and fries occasionally = fine. Chips with a turkey sandwich = fine. We're putting people on a better path, not ruining their lives.
+
+    PLAYBOOKS (pick the right combination based on the user's life_context — work_type, kids, cooking time, budget, eat-out chains):
+
+    [Convenience Store Grabs] gas station, Wawa, 7-Eleven, Sheetz, truck stop:
+      - Wawa egg white wrap (chicken + spinach + cheese + corn salsa) = 30g protein
+      - Wawa turkey hoagie short, mayo + mustard, regular cheese, with kettle chips — eat half now, half later for two meals
+      - Wawa tuna sandwich on wheat short
+      - Truck-stop combo: 2-pack hard-boiled eggs + string cheese + apple + jerky stick = 35g protein, $7
+      - 7-Eleven: chicken Caesar wrap + Premier Protein shake = 45g protein
+      - Sheetz: turkey on flatbread, double meat, regular dressing
+      - Gas-station rescue: granola bar + hard-boiled egg + cheese stick = 25g protein in 90 sec
+
+    [Fast-Food Doubling] (the protein-double trick beats avoiding fast food):
+      - 2× Chick-fil-A grilled sandwiches = 60g protein, $11 (regular bun OK)
+      - Wendy's grilled chicken sandwich + side salad + baked potato (regular butter is fine)
+      - McDonald's: 2× Egg McMuffin OR sausage McMuffin (the real version, not the "no muffin" hack — let them have the muffin)
+      - Subway: rotisserie chicken on flatbread, double meat, all the veggies, regular dressing
+      - Dunkin: 2× wake-up wraps + black coffee = 24g protein, $7
+      - Panera: power chicken hummus bowl OR turkey + avocado BLT
+      - Chipotle: bowl, double chicken, fajita veggies, brown rice OR white rice (whichever they like), salsa, guac (yes, get guac)
+
+    [Protein Bars + Shakes] real brands, real prices, real availability:
+      - Costco Kirkland protein bars (30g protein, $1.50 each, freezer-friendly)
+      - Premier Protein shake (30g protein, $2.50, gas station nationwide)
+      - Quest bar + apple = portable breakfast
+      - Built bar (lower calorie, viral on TikTok)
+      - Barebells (no chalky aftertaste, $3)
+      - "Stack" hack when desperate: protein bar + Premier shake = 50g protein lunch
+
+    [Crock Pot / Instant Pot] for parents, labor schedules, "set and forget":
+      - Pulled chicken: 4 chicken breasts + jar of salsa, 6 hrs low → shred → eats for the week (sandwiches, bowls, tacos)
+      - Crock pot chili: 1 lb ground beef + 2 cans tomatoes + 2 cans beans + chili powder = 6 servings (freeze 4)
+      - Instant Pot whole chicken: 40 min start to finish
+      - Crock pot beef + broccoli (1 hr, freezer-friendly portions)
+
+    [Sheet-Pan / One-Pan] zero cleanup:
+      - 5 ingredients max, 1 sheet, 1 oven
+      - "Egg roll in a bowl": ground turkey + bagged coleslaw + soy + ginger, 12 min
+      - Skillet sausage + frozen pre-sliced peppers + onions
+      - One-pan chicken thighs + frozen veg + olive oil
+      - Sheet-pan ground beef + rice + frozen broccoli (mix at end)
+
+    [Frozen Aisle Gems] the secret weapon:
+      - Costco frozen salmon burgers (40g protein, 4 min air fryer)
+      - Trader Joe's frozen grilled chicken strips (60-second microwave)
+      - Trader Joe's orange chicken (lighter than takeout, real serving)
+      - Aldi mama cozzi protein crust pizza (30g protein per pie)
+      - Banza chickpea pasta + Rao's marinara (25g protein per serving, kids don't notice)
+      - Aunt Millie's keto bread (45 cal/slice)
+      - Birds Eye veggie blends (microwave bag, 3 min)
+
+    [Frozen Breakfast Sandwiches] universal life hack:
+      - Jimmy Dean Delights turkey sausage (260 cal, 17g protein, 60-sec microwave)
+      - Make-ahead egg muffin tin (Sunday batch: 12 eggs + spinach + ham, freeze, microwave 45 sec)
+      - Eggwich (egg-white "buns" with cheese)
+      - Costco frozen breakfast burritos
+
+    [Low-Cal Drinks] replace soda + sweet coffee:
+      - Premier Protein iced coffee: shake + cold brew + ice = 30g protein "latte"
+      - Black coffee + 1 scoop collagen = 10g extra protein
+      - Sparkling water + LMNT or Liquid IV zero
+      - Apple cider vinegar shot pre-meal (blood-sugar viral hack)
+      - Sleepy girl mocktail (tart cherry juice + magnesium + sparkling water at 9 PM, for mid-night wakers)
+      - Olipop / Poppi (pre/probiotic sodas, kids approve)
+
+    [Mom / Parent Specifics] kid-tested adult-friendly:
+      - Banza chickpea pasta + jar marinara + meatballs — kid + parent same plate
+      - Costco rotisserie + Stouffer's mac (split): adult eats chicken + side salad, kid eats mac
+      - Sheet-pan pizza on Aunt Millie's flatbread (kid customizable)
+      - Crock pot pulled chicken tacos (parent skips tortilla and bowls it)
+      - Egg muffin tin (kids love muffins, adults get protein)
+
+    [Viral TikTok Hacks] high-impact, low-effort:
+      - Cottage cheese "ice cream" (1 cup cottage cheese + 2 tbsp PB + sugar-free chocolate, blended)
+      - Greek yogurt bark (yogurt + honey + berries, frozen flat, broken into shards)
+      - Chocolate-covered frozen banana bites
+      - Chia pudding overnight (chia + almond milk + scoop protein powder)
+      - Cottage cheese + everything bagel seasoning + cucumber slices (28g protein, no cooking)
+
+    [Blue-Collar Lunch Box] driver / construction / shift / labor:
+      - Thermos chili (8 hrs hot) — leftover crock pot
+      - Cooler box: pre-cooked chicken + microwaveable rice + cucumber + ranch packet
+      - Dashboard combo: turkey jerky + Premier Protein + apple + string cheese
+      - Construction lunchbox: 4 hard-boiled eggs + 2 string cheese + apple + Quest bar = 40g protein, $5
+
+    PLAN STRUCTURE PER USER:
+    - Phase 1 (3 meals): MUST include 1 chain-order or convenience-store grab matched to their typical_lunch + eat-out places. MUST include 1 grocery-shortcut or frozen-aisle meal. MUST include 1 portable snack pack OR breakfast hack. NO from-scratch recipes in Phase 1.
+    - Phase 2 (3 meals): 1 crock-pot or sheet-pan, 1 chain-restaurant level-up (a smarter order at a place they already eat), 1 viral hack OR drink swap.
+    - Phase 3 (2-3 meals): real cookable recipes 15-25 min, but still grocery-store basic. Influencer-level photographable but the ingredient list is still Costco/Aldi/Walmart.
+    - Total: 7-9 meals.
+    - Meals MUST reference SPECIFIC brands / SKUs / chain names where the user can act on it. "Costco rotisserie chicken" beats "rotisserie chicken." "Banza chickpea pasta" beats "high-protein pasta."
+
+    FORBIDDEN GENERICS (these were the boring defaults — DO NOT include them anywhere):
+      - Greek yogurt + berries + nuts (unless tied to a specific viral hack like the bark)
+      - Plain "egg + whole-grain toast"
+      - "Grilled chicken + rice + steamed broccoli"
+      - "Salmon + sweet potato + steamed broccoli"
+      - "Kale salad with grilled chicken"
+      - "Ground turkey chili" with no twist
+      - Any meal with no brand/chain/SKU specificity
     Forbidden defaults: Greek yogurt + berries + almonds, "egg + whole grain toast", "grilled chicken + rice + steamed broccoli", "salmon + sweet potato + broccoli", "kale salad with chicken", "ground turkey chili". These are the 7 boring meals that show up in every generic plan. If your meals look like this list, you failed the assignment.
     Good meals are SPECIFIC, SURPRISING, and they leverage SHORTCUTS most people don't know. Examples of the bar:
       - "Costco rotisserie chicken + microwave bag of jasmine rice + bagged Caesar kit (skip the croutons)" — 90 seconds, 50g protein, $7.
