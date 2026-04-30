@@ -4,6 +4,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { isHealthyMode } from '../_shared/healthMode.ts';
 import { GOAL_LABELS, formatGoals } from '../_shared/goals.ts';
 import { buildRareDiseaseBlocklist, extractRareDiseaseContext } from '../_shared/rareDiseaseGate.ts';
+import { buildUniversalTestInjections } from '../_shared/testInjectors.ts';
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -792,9 +793,26 @@ CRITICAL OUTPUT RULES:
         });
       }
 
-      // Re-cap after universal condition injectors
+      // ── UNIVERSAL TEST PAIRINGS (shared module — same rules in doctor-prep) ──
+      const universalTests = buildUniversalTestInjections({
+        age,
+        sex: profile?.sex ?? null,
+        conditionsLower,
+        symptomsLower,
+        labsLower,
+        medsLower,
+      });
+      for (const u of universalTests) {
+        // Skip if this test (or close variant) is already in the list
+        const nameRegex = new RegExp(u.name.split('(')[0].trim().split(/\s+/)[0], 'i');
+        if (plan.retest_timeline.some((t: any) => nameRegex.test(t?.marker ?? ''))) continue;
+        plan.retest_timeline.push({ marker: u.name, retest_at: '12 weeks', why: u.whyLong });
+        console.log(`[wellness-plan] Universal-injected: ${u.name}`);
+      }
+
+      // Re-cap after all injectors
       if (plan.retest_timeline.length > 20) {
-        console.log(`[wellness-plan] post-condition-injector cap: ${plan.retest_timeline.length} -> 20`);
+        console.log(`[wellness-plan] post-injector cap: ${plan.retest_timeline.length} -> 20`);
         plan.retest_timeline = plan.retest_timeline.slice(0, 20);
       }
     } catch (e) { console.error('[wellness-plan] retest-injector error:', e); }

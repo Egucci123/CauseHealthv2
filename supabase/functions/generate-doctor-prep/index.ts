@@ -2,6 +2,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { buildRareDiseaseBlocklist, extractRareDiseaseContext } from '../_shared/rareDiseaseGate.ts';
+import { buildUniversalTestInjections } from '../_shared/testInjectors.ts';
 import { isHealthyMode } from '../_shared/healthMode.ts';
 import { GOAL_LABELS, formatGoals } from '../_shared/goals.ts';
 
@@ -745,6 +746,31 @@ CRITICAL OUTPUT RULES (for the new card-stack UI):
       }
       if (hasOsteo) {
         inject({ emoji: '🦴', test_name: 'PTH (Parathyroid Hormone) + Ionized Calcium', why_short: 'Rule out hyperparathyroidism', clinical_justification: '(c) Diagnosed osteoporosis — PTH rules out hyperparathyroid bone loss.', icd10_primary: 'M81.0', icd10_description: 'Age-related osteoporosis', priority: 'moderate', insurance_note: 'Covered with osteoporosis dx.' }, 'pth|parathyroid');
+      }
+
+      // ── UNIVERSAL TEST PAIRINGS (shared module — same rules in wellness-plan) ──
+      const universalTests = buildUniversalTestInjections({
+        age,
+        sex: profile?.sex ?? null,
+        conditionsLower,
+        symptomsLower,
+        labsLower,
+        medsLower,
+      });
+      for (const u of universalTests) {
+        const nameRegex = new RegExp(u.name.split('(')[0].trim().split(/\s+/)[0], 'i');
+        if (doc.tests_to_request.some((t: any) => nameRegex.test(t?.test_name ?? ''))) continue;
+        doc.tests_to_request.push({
+          emoji: '🧪',
+          test_name: u.name,
+          why_short: u.whyShort,
+          clinical_justification: u.whyLong,
+          icd10_primary: u.icd10,
+          icd10_description: u.icd10Description,
+          priority: u.priority,
+          insurance_note: u.insuranceNote,
+        });
+        console.log(`[doctor-prep] Universal-injected: ${u.name}`);
       }
 
       // Differential cap by mode
