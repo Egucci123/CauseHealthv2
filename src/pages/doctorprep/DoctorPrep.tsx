@@ -5,7 +5,6 @@ import { Button } from '../../components/ui/Button';
 import { ClinicalSummary } from '../../components/doctorprep/ClinicalSummary';
 import { TestsToRequest } from '../../components/doctorprep/TestsToRequest';
 import { VisitCardStacks } from '../../components/doctorprep/VisitCardStacks';
-import { useSymptoms } from '../../hooks/useSymptoms';
 import { isHealthyMode as computeIsHealthyMode } from '../../lib/healthMode';
 import { useLatestDoctorPrep, useGenerateDoctorPrep } from '../../hooks/useDoctorPrep';
 import { useLatestLabDraw, useLatestLabValues } from '../../hooks/useLabData';
@@ -31,7 +30,6 @@ export const DoctorPrep = () => {
   const { data: latestDraw } = useLatestLabDraw();
   const { data: latestValues } = useLatestLabValues();
   const { data: symptomAnalysis } = useSymptomAnalysis();
-  const { data: symptoms } = useSymptoms();
 
   const ageNum = profile?.dateOfBirth
     ? Math.floor((Date.now() - new Date(profile.dateOfBirth).getTime()) / 31_557_600_000)
