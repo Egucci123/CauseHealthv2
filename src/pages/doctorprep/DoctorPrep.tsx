@@ -175,7 +175,7 @@ export const DoctorPrep = () => {
         <div className="bg-clinical-white rounded-[10px] shadow-card border-t-[3px] border-primary-container p-12 text-center">
           <div className="w-14 h-14 bg-primary-container/10 rounded-full flex items-center justify-center mx-auto mb-5"><span className="material-symbols-outlined text-primary-container text-2xl animate-pulse">description</span></div>
           <p className="text-authority text-2xl text-clinical-charcoal font-bold mb-2">Preparing your clinical document...</p>
-          <p className="text-body text-clinical-stone max-w-xs mx-auto">Writing clinical summary, pulling ICD-10 codes, building test request list. About 20 seconds.</p>
+          <p className="text-body text-clinical-stone max-w-xs mx-auto">Writing clinical summary, pulling ICD-10 codes, building test request list. About 1–2 minutes.</p>
           <div className="flex gap-2 justify-center mt-6">
             {[0,1,2].map(i => <div key={i} className="w-2 h-2 rounded-full bg-primary-container animate-pulse" style={{ animationDelay: `${i * 0.3}s` }} />)}
           </div>

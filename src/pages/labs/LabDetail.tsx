@@ -451,7 +451,7 @@ export const LabDetail = () => {
           <div className="flex-1">
             <p className="text-precision text-[0.65rem] font-bold tracking-widest uppercase text-[#D4A574] mb-1">Analyzing your bloodwork</p>
             <p className="text-body text-on-surface text-sm">
-              Reading every marker, finding patterns, building your plan. About 30 seconds — this page updates automatically.
+              Reading every marker, finding patterns, building your plan. About 1–2 minutes — this page updates automatically.
             </p>
           </div>
         </div>
