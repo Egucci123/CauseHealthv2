@@ -234,14 +234,24 @@ WRITING STYLE: Write like you're explaining to a smart friend, not a medical tex
 
 TESTS — TWO SEPARATE LISTS:
 
-1. tests_to_request (ESSENTIAL — what the doctor should definitely order at this visit):
-   - MAXIMUM 7 tests. If fewer triggers exist, return fewer. An empty list is acceptable if the patient already has comprehensive labs and nothing is wrong.
+1. tests_to_request (the COMPLETE list of bloodwork to address at the next visit — should be IDENTICAL in scope to the Wellness Plan's retest_timeline):
+   - This list MUST cover BOTH:
+       (i) RE-MEASURE: every currently-abnormal marker on this draw (out-of-range OR Watch-tier). At the visit, the patient asks the doctor to re-order these alongside any new tests.
+       (ii) NEW TESTS: tests not on the current draw that are triggered by symptoms (a), medication depletions (b), or standard-of-care baseline gaps (d).
+   - The clinical reality: when a patient walks into their doctor's office, they ask for ONE comprehensive panel — not "retests" vs "new tests" as separate buckets. The Wellness Plan splits them visually into two folders for clarity, but tests_to_request here should contain ALL of them combined.
+   - MAXIMUM 12 tests for treatment-mode patients with multi-system issues; 5-7 for healthy patients. If fewer triggers exist, return fewer.
    - When the draw is BARE-BONES (under ~30 markers, no ApoB/Lp(a)/A1c/vitamin D/ferritin/TSH/B12), prioritize trigger (d) baseline gaps so the patient walks out of the next visit with a complete workup.
    - ONE focused workup per row. Do NOT bundle across organ systems.
-   - A logical "test_name" combines tests of the SAME organ system (e.g., "Iron panel" = serum iron + TIBC + ferritin + transferrin sat).
-   - clinical_justification: ONE SENTENCE that NAMES the trigger ("Reports hair loss + fatigue; ferritin 28 [LOW]") and what you're ruling out. No vague "comprehensive workup" language.
+   - A logical "test_name" combines tests of the SAME organ system (e.g., "Iron panel" = serum iron + TIBC + ferritin + transferrin sat; "Lipid panel" = total chol + LDL + HDL + triglycerides).
+   - clinical_justification: ONE SENTENCE that NAMES the trigger letter and the specific finding. Examples:
+       "(c) Triglycerides 327 critical-high — re-measure to confirm response to omega-3 + diet."
+       "(a) Reports fatigue + hair loss + (c) ferritin not on draw — full iron panel rules out functional iron deficiency."
+       "(d) Standard baseline for 28yo male — Lp(a) is a once-in-lifetime CV risk marker not in this draw."
+       "(b) On atorvastatin — recheck ALT (currently 97) to confirm liver recovery on lipid protocol."
    - Each test gets the MOST SPECIFIC ICD-10 code. No lazy reuse.
    - Tier as urgent/high/moderate based on the trigger severity, not on the test itself.
+
+   The OUTPUT of this list must mirror the Wellness Plan's retest_timeline: same test names, same triggers, same priorities. The user should see ONE coherent list across both pages, just framed differently (retest tracking vs visit prep).
 
 PLACEMENT RULES (which list a test belongs in):
 
@@ -286,7 +296,7 @@ Return JSON:
 
 CRITICAL OUTPUT RULES (for the new card-stack UI):
 - tell_doctor: 3-5 cards. The most important things this patient must mention (chief complaint, key symptoms, key abnormal lab in lay terms).
-- tests_to_request: keep the existing rules — max 6, one workup per row.
+- tests_to_request: keep the existing rules — max 12 for multi-system treatment-mode patients (5-7 for healthy), one workup per row, must mirror the Wellness Plan retest_timeline.
 - questions_to_ask: 3-5 plain-language questions the patient can literally read aloud at the visit.
 - Every card has an emoji and a short headline so it's scannable in 2 seconds.` }],
       }),
