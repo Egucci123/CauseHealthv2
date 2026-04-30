@@ -9,6 +9,10 @@ export interface SupplementItem {
   rank: number; nutrient: string; form: string; dose: string; timing: string;
   why: string; priority: 'critical' | 'high' | 'moderate' | 'optimize';
   sourced_from: string; evidence_note: string;
+  // Universal practical-wisdom field — covers timing rationale, drug interactions,
+  // and absorption tips. Required on every supplement (prompt rule). Renders as
+  // a tip box under each card alongside the why field.
+  practical_note?: string;
 }
 
 export interface TodayAction {

@@ -501,6 +501,12 @@ const TakeTab = ({ plan }: { plan: any }) => {
                 </div>
               </div>
               {(s.why_short || s.why) && <p className="text-body text-clinical-stone text-xs mt-3 italic leading-relaxed">{s.why_short || s.why}</p>}
+              {s.practical_note && (
+                <div className="mt-3 flex items-start gap-2 bg-clinical-cream/60 rounded-md px-3 py-2 border-l-2 border-[#D4A574]">
+                  <span className="material-symbols-outlined text-[#D4A574] text-[14px] flex-shrink-0 mt-0.5">tips_and_updates</span>
+                  <p className="text-body text-clinical-charcoal text-xs leading-relaxed">{s.practical_note}</p>
+                </div>
+              )}
             </div>
           </div>
         );
