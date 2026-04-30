@@ -602,6 +602,61 @@ CRITICAL OUTPUT RULES:
         console.log('[wellness-plan] Injected CBC retest — missed by AI');
       }
 
+      // Medication-depletion test injections — these are required tests the AI
+      // sometimes drops despite the universal triage rule (b). Documented
+      // pharmacology + universal insurance coverage = no excuse to miss them.
+      const medsLower = (medsStr ?? '').toLowerCase();
+      const onMesalamine = /\b(mesalamine|sulfasalazine|asacol|pentasa|lialda|apriso)\b/.test(medsLower);
+      const onMetformin = /\b(metformin|glucophage)\b/.test(medsLower);
+      const onPPI = /\b(omeprazole|pantoprazole|esomeprazole|lansoprazole|rabeprazole|prilosec|nexium|protonix)\b/.test(medsLower);
+      const onStatin = /\b(atorvastatin|rosuvastatin|simvastatin|pravastatin|lovastatin|pitavastatin|fluvastatin|crestor|lipitor|zocor)\b/.test(medsLower);
+
+      if ((onMesalamine || onMetformin || onPPI) && !has(/\bb[\s-]?12\b|cobalamin|methylmalonic|\bmma\b|homocysteine/i)) {
+        const med = onMesalamine ? 'mesalamine' : onMetformin ? 'metformin' : 'PPI';
+        plan.retest_timeline.push({
+          marker: 'Vitamin B12 Workup (Serum B12 + MMA + Homocysteine)',
+          retest_at: '12 weeks',
+          why: `(b) On ${med} — known to impair B12 absorption over time. Serum B12 alone misses tissue deficiency; MMA and homocysteine are the sensitive markers. Add to retest, treat if confirmed low.`,
+        });
+        console.log(`[wellness-plan] Injected B12 workup — ${med} depletion missed by AI`);
+      }
+
+      if (onMesalamine && !has(/\bfolate\b|folic\s*acid|methylfolate|5-mthf/i)) {
+        plan.retest_timeline.push({
+          marker: 'Folate Workup (Serum + RBC Folate)',
+          retest_at: '12 weeks',
+          why: '(b) Mesalamine + UC inflammation impair folate absorption. Serum folate reflects recent intake; RBC folate reflects 3-month stores (gold standard). Confirm methylfolate dosing is adequate.',
+        });
+        console.log('[wellness-plan] Injected folate workup — mesalamine depletion missed by AI');
+      }
+
+      if (onStatin && /\b(muscle|aches|cramp|weakness|myalg)/.test(symptomsLower) && !has(/creatine kinase|\bck\b|^ck\b/i)) {
+        plan.retest_timeline.push({
+          marker: 'Creatine Kinase (CK)',
+          retest_at: '12 weeks',
+          why: '(b) On a statin + reports muscle/aches symptoms — CK rules out statin-induced myopathy/rhabdomyolysis. Standard monitoring; <$15 covered.',
+        });
+        console.log('[wellness-plan] Injected CK — statin + muscle symptoms missed by AI');
+      }
+
+      // Iron panel injection: hair loss + UC/IBD/menstruating women combo
+      const hasHairLoss = /\bhair (loss|thin|fall)/.test(symptomsLower);
+      const sex = (profile?.sex ?? '').toLowerCase();
+      const ageNum = age ?? 99;
+      const isMenstruatingFemale = sex === 'female' && ageNum >= 12 && ageNum <= 55;
+      if ((hasHairLoss || hasUC || isMenstruatingFemale) && !has(/iron panel|ferritin|tibc|transferrin sat/i)) {
+        const trigger = hasHairLoss && hasUC ? 'hair loss + UC malabsorption'
+          : hasHairLoss ? 'hair loss'
+          : hasUC ? 'UC malabsorption'
+          : 'menstruating + symptoms';
+        plan.retest_timeline.push({
+          marker: 'Iron Panel (Serum Iron, TIBC, Ferritin, Transferrin Saturation)',
+          retest_at: '12 weeks',
+          why: `(a)/(b) ${trigger} — full iron panel rules out functional iron deficiency that ferritin alone may miss. Standard of care for hair loss workup; $15 covered.`,
+        });
+        console.log(`[wellness-plan] Injected iron panel — ${trigger} missed by AI`);
+      }
+
       if (plan.retest_timeline.length > 14) plan.retest_timeline = plan.retest_timeline.slice(0, 14);
     } catch (e) { console.error('[wellness-plan] retest-injector error:', e); }
     // Hard cap on retest_timeline. Treatment-mode patients with multi-system

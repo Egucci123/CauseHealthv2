@@ -620,6 +620,80 @@ CRITICAL OUTPUT RULES (for the new card-stack UI):
         console.log('[doctor-prep] Injected CBC — abnormal CBC marker missed by AI');
       }
 
+      // Medication-depletion test injectors — mirror wellness-plan exactly
+      // so both pages produce the same list for the same patient.
+      const medsLower = (medsStr ?? '').toLowerCase();
+      const onMesalamine = /\b(mesalamine|sulfasalazine|asacol|pentasa|lialda|apriso)\b/.test(medsLower);
+      const onMetformin = /\b(metformin|glucophage)\b/.test(medsLower);
+      const onPPI = /\b(omeprazole|pantoprazole|esomeprazole|lansoprazole|rabeprazole|prilosec|nexium|protonix)\b/.test(medsLower);
+      const onStatin = /\b(atorvastatin|rosuvastatin|simvastatin|pravastatin|lovastatin|pitavastatin|fluvastatin|crestor|lipitor|zocor)\b/.test(medsLower);
+
+      if ((onMesalamine || onMetformin || onPPI) && !has(/\bb[\s-]?12\b|cobalamin|methylmalonic|\bmma\b|homocysteine/i)) {
+        const med = onMesalamine ? 'mesalamine' : onMetformin ? 'metformin' : 'PPI';
+        doc.tests_to_request.push({
+          emoji: '🧬',
+          test_name: 'Vitamin B12 Workup (Serum B12 + MMA + Homocysteine)',
+          why_short: `${med} can deplete B12; check tissue status`,
+          clinical_justification: `(b) On ${med} — known to impair B12 absorption over time. Serum B12 alone misses tissue deficiency; MMA and homocysteine are the sensitive markers. Standard care for any patient on long-term ${med}.`,
+          icd10_primary: 'E53.8',
+          icd10_description: 'Other specified vitamin B deficiencies',
+          priority: 'high',
+          insurance_note: 'Standard panel under medication-related deficiency code; $30–60 covered.',
+        });
+        console.log(`[doctor-prep] Injected B12 workup — ${med} depletion missed by AI`);
+      }
+
+      if (onMesalamine && !has(/\bfolate\b|folic\s*acid|methylfolate|5-mthf/i)) {
+        doc.tests_to_request.push({
+          emoji: '🌿',
+          test_name: 'Folate Workup (Serum + RBC Folate)',
+          why_short: 'Mesalamine depletes folate; check stores',
+          clinical_justification: `(b) Mesalamine + UC inflammation impair folate absorption (FDA black box on sulfasalazine). Serum folate reflects intake; RBC folate is gold standard for tissue stores. Standard of care for any IBD patient on a 5-ASA agent.`,
+          icd10_primary: 'E53.8',
+          icd10_description: 'Folate deficiency, unspecified (E53.8 covers the broader B-vitamin deficiency code)',
+          priority: 'high',
+          insurance_note: 'Universally covered under medication-related deficiency.',
+        });
+        console.log('[doctor-prep] Injected folate workup — mesalamine depletion missed by AI');
+      }
+
+      if (onStatin && /\b(muscle|aches|cramp|weakness|myalg)/.test(symptomsLower) && !has(/creatine kinase|\bck\b/i)) {
+        doc.tests_to_request.push({
+          emoji: '💪',
+          test_name: 'Creatine Kinase (CK)',
+          why_short: 'Statin + muscle aches → rule out myopathy',
+          clinical_justification: `(b) On a statin + reports muscle/aches symptoms — CK rules out statin-induced myopathy or rhabdomyolysis. Standard monitoring per cardiology guidelines.`,
+          icd10_primary: 'M62.82',
+          icd10_description: 'Rhabdomyolysis (rule-out)',
+          priority: 'high',
+          insurance_note: 'Universally covered when statin + muscle symptoms documented.',
+        });
+        console.log('[doctor-prep] Injected CK — statin + muscle symptoms missed by AI');
+      }
+
+      // Iron panel injector
+      const hasHairLoss = /\bhair (loss|thin|fall)/.test(symptomsLower);
+      const sex = (profile?.sex ?? '').toLowerCase();
+      const ageNum = age ?? 99;
+      const isMenstruatingFemale = sex === 'female' && ageNum >= 12 && ageNum <= 55;
+      if ((hasHairLoss || hasUC || isMenstruatingFemale) && !has(/iron panel|ferritin|tibc|transferrin sat/i)) {
+        const trigger = hasHairLoss && hasUC ? 'hair loss + UC malabsorption'
+          : hasHairLoss ? 'hair loss'
+          : hasUC ? 'UC malabsorption'
+          : 'menstruating + symptoms';
+        doc.tests_to_request.push({
+          emoji: '🩸',
+          test_name: 'Iron Panel (Serum Iron, TIBC, Ferritin, Transferrin Saturation)',
+          why_short: `Rule out iron deficiency from ${trigger}`,
+          clinical_justification: `(a)/(b) ${trigger} — full iron panel rules out functional iron deficiency that ferritin alone may miss. Standard of care for hair loss workup; common gap in IBD patients on 5-ASA agents.`,
+          icd10_primary: 'D50.9',
+          icd10_description: 'Iron deficiency anemia, unspecified',
+          priority: 'high',
+          insurance_note: 'Universally covered; ~$15 out-of-pocket if denied.',
+        });
+        console.log(`[doctor-prep] Injected iron panel — ${trigger} missed by AI`);
+      }
+
       // Cap at 14 if injection pushed over
       if (doc.tests_to_request.length > 14) doc.tests_to_request = doc.tests_to_request.slice(0, 14);
     } catch (e) { console.error('[doctor-prep] test-injector error:', e); }
