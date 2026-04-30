@@ -556,6 +556,54 @@ CRITICAL OUTPUT RULES:
     if (!plan.action_plan) plan.action_plan = { phase_1: { name: '', focus: '', actions: [] }, phase_2: { name: '', focus: '', actions: [] }, phase_3: { name: '', focus: '', actions: [] } };
     if (!Array.isArray(plan.retest_timeline)) plan.retest_timeline = [];
     if (!Array.isArray(plan.symptoms_addressed)) plan.symptoms_addressed = [];
+
+    // ── DETERMINISTIC RETEST INJECTOR ─────────────────────────────────────
+    // Mirror of the doctor-prep test injector. Hard-coded backstops for
+    // textbook standard-of-care tests the AI sometimes drops:
+    //   - hs-CRP (autoimmune disease, joint pain, inflammation tracking)
+    //   - CBC with Differential (any abnormal CBC marker)
+    // Same logic, same triggers, ensures wellness-plan retest_timeline
+    // mirrors doctor-prep tests_to_request for the same patient.
+    try {
+      const has = (pattern: RegExp) =>
+        plan.retest_timeline.some((t: any) =>
+          pattern.test(`${t?.marker ?? ''} ${t?.why ?? ''}`)
+        );
+
+      const conditionsLower = (condStr ?? '').toLowerCase();
+      const symptomsLower = (sympStr ?? '').toLowerCase();
+      const labsLower = (allLabsStr ?? '').toLowerCase();
+
+      const hasUC = /\b(ulcerative colitis|crohn|ibd|inflammatory bowel)\b/.test(conditionsLower);
+      const hasAutoimmune = hasUC || /\b(hashimoto|graves|lupus|sle|ra|rheumatoid|psoriasis|ms|multiple sclerosis|celiac|t1d|type 1 diabetes)\b/.test(conditionsLower);
+      const hasJointPain = /\b(joint pain|joint stiffness|arthralg|stiff)/.test(symptomsLower);
+      const hasFatigueOrInflam = /\b(fatigue|tired|exhaust|low energy|brain fog|hair loss|hair thin|joint)/.test(symptomsLower);
+
+      const cbcAbnormal = /\b(rbc|hematocrit|hct|hemoglobin|hgb|wbc|white blood|platelet|mcv|mch|rdw)\b[^\n]*\[(low|high|critical)/i.test(labsLower);
+
+      if ((hasAutoimmune || hasJointPain || hasFatigueOrInflam) && !has(/\b(hs[- ]?crp|c[- ]?reactive protein|inflammation marker)\b/i)) {
+        const trigger = hasUC ? 'UC inflammation tracking + CV risk'
+          : hasAutoimmune ? 'autoimmune inflammation tracking'
+          : 'symptom-driven inflammation marker';
+        plan.retest_timeline.push({
+          marker: 'High-Sensitivity C-Reactive Protein (hs-CRP)',
+          retest_at: '12 weeks',
+          why: `(a)/(e) ${trigger} — standard inflammation marker for autoimmune activity and CV risk. Universally covered; routine for UC/IBD monitoring.`,
+        });
+        console.log('[wellness-plan] Injected hs-CRP retest — missed by AI');
+      }
+
+      if (cbcAbnormal && !has(/\bcbc\b|complete blood count|differential/i)) {
+        plan.retest_timeline.push({
+          marker: 'Complete Blood Count (CBC) with Differential',
+          retest_at: '12 weeks',
+          why: '(c) Existing draw shows abnormal CBC values — re-measure to confirm trend and rule out hemoconcentration. Routine standard of care.',
+        });
+        console.log('[wellness-plan] Injected CBC retest — missed by AI');
+      }
+
+      if (plan.retest_timeline.length > 14) plan.retest_timeline = plan.retest_timeline.slice(0, 14);
+    } catch (e) { console.error('[wellness-plan] retest-injector error:', e); }
     // Hard cap on retest_timeline. Treatment-mode patients with multi-system
     // issues legitimately need 8-10 entries for the 12-week close-out;
     // optimization mode is shorter (3-5). 12 is the absolute ceiling that

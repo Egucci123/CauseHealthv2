@@ -560,6 +560,69 @@ CRITICAL OUTPUT RULES (for the new card-stack UI):
     }
     // Ensure arrays are arrays, not undefined
     if (!Array.isArray(doc.tests_to_request)) doc.tests_to_request = [];
+
+    // ── DETERMINISTIC TEST INJECTOR ──────────────────────────────────────
+    // The AI is probabilistic and sometimes drops obvious tests when its
+    // candidate list gets long. Same backstop pattern as the CoQ10 injector
+    // for supplements: enforce critical tests post-AI based on hard rules.
+    //
+    // Rules below are textbook standard-of-care triggers. A clinician would
+    // never miss them. The AI sometimes does. So we hard-code.
+    try {
+      const has = (pattern: RegExp) =>
+        doc.tests_to_request.some((t: any) =>
+          pattern.test(`${t?.test_name ?? ''} ${t?.why_short ?? ''}`)
+        );
+
+      const conditionsLower = condStr.toLowerCase();
+      const symptomsLower = sympStr.toLowerCase();
+      const labsLower = allLabsStr.toLowerCase();
+
+      const hasUC = /\b(ulcerative colitis|crohn|ibd|inflammatory bowel)\b/.test(conditionsLower);
+      const hasAutoimmune = hasUC || /\b(hashimoto|graves|lupus|sle|ra|rheumatoid|psoriasis|ms|multiple sclerosis|celiac|t1d|type 1 diabetes)\b/.test(conditionsLower);
+      const hasJointPain = /\b(joint pain|joint stiffness|arthralg|stiff)/.test(symptomsLower);
+      const hasFatigueOrInflam = /\b(fatigue|tired|exhaust|low energy|brain fog|hair loss|hair thin|joint)/.test(symptomsLower);
+
+      // Detect any abnormal CBC marker — RBC, Hct, Hgb, WBC, platelets out of standard range
+      const cbcAbnormal = /\b(rbc|hematocrit|hct|hemoglobin|hgb|wbc|white blood|platelet|mcv|mch|rdw)\b[^\n]*\[(low|high|critical)/i.test(labsLower);
+
+      // hs-CRP injector: UC / autoimmune / joint pain / fatigue all warrant it
+      // and it's a $5 test with universal insurance coverage. No reason to miss.
+      if ((hasAutoimmune || hasJointPain || hasFatigueOrInflam) && !has(/\b(hs[- ]?crp|c[- ]?reactive protein|inflammation marker)\b/i)) {
+        const trigger = hasUC ? 'UC inflammation tracking'
+          : hasAutoimmune ? 'autoimmune inflammation tracking'
+          : 'symptom-driven inflammation marker';
+        doc.tests_to_request.push({
+          emoji: '🔥',
+          test_name: 'High-Sensitivity C-Reactive Protein (hs-CRP)',
+          why_short: trigger,
+          clinical_justification: `(a)/(e) ${trigger} — hs-CRP is the standard inflammation marker for autoimmune disease activity and cardiovascular risk. Routine for UC/IBD monitoring; insurance covered under the autoimmune diagnosis or symptom code.`,
+          icd10_primary: hasUC ? 'K51.90' : 'R79.89',
+          icd10_description: hasUC ? 'Ulcerative colitis, unspecified' : 'Other specified abnormal findings of blood chemistry',
+          priority: 'high',
+          insurance_note: 'Universally covered; ~$5–15 out-of-pocket if denied.',
+        });
+        console.log('[doctor-prep] Injected hs-CRP — autoimmune/symptom trigger missed by AI');
+      }
+
+      // CBC with Differential injector: any CBC marker abnormal -> retest CBC
+      if (cbcAbnormal && !has(/\bcbc\b|complete blood count|differential/i)) {
+        doc.tests_to_request.push({
+          emoji: '🩸',
+          test_name: 'Complete Blood Count (CBC) with Differential',
+          why_short: 'Re-measure abnormal CBC values',
+          clinical_justification: `(c) Existing draw shows abnormal CBC values — re-measure to confirm trend and rule out hemoconcentration vs. erythrocytosis. Routine standard of care.`,
+          icd10_primary: 'R71.8',
+          icd10_description: 'Other abnormality of red blood cells',
+          priority: 'moderate',
+          insurance_note: 'Universally covered; bundled into routine bloodwork.',
+        });
+        console.log('[doctor-prep] Injected CBC — abnormal CBC marker missed by AI');
+      }
+
+      // Cap at 14 if injection pushed over
+      if (doc.tests_to_request.length > 14) doc.tests_to_request = doc.tests_to_request.slice(0, 14);
+    } catch (e) { console.error('[doctor-prep] test-injector error:', e); }
     if (!Array.isArray(doc.advanced_screening)) doc.advanced_screening = [];
     if (!Array.isArray(doc.medications)) doc.medications = [];
     if (!Array.isArray(doc.discussion_points)) doc.discussion_points = [];
