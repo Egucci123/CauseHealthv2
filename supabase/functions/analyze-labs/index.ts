@@ -312,17 +312,74 @@ CRITICAL RULES:
       for (const [re, replacement] of JARGON_REPLACEMENTS) out = out.replace(re, replacement);
       return out;
     };
-    const walkAndPlainify = (obj: any): any => {
-      if (typeof obj === 'string') return plainify(obj);
-      if (Array.isArray(obj)) return obj.map(walkAndPlainify);
+    // Keys whose values are STRUCTURAL identifiers used by the UI to pair
+    // analyses to lab cards. These must NOT be plainified — replacing "LDL"
+    // with "bad cholesterol" inside f.marker turns "LDL Cholesterol Calc"
+    // into "bad cholesterol Cholesterol Calc" and breaks the lookup, leaving
+    // out-of-range cards with no clinical analysis subsection.
+    const STRUCTURAL_KEYS = new Set([
+      'marker', 'marker_name', 'test_name', 'icd10', 'icd10_primary',
+      'icd10_secondary', 'icd10_description', 'icd10_secondary_description',
+      'medication', 'supplement', 'lab_finding',
+    ]);
+    const walkAndPlainify = (obj: any, parentKey?: string): any => {
+      if (typeof obj === 'string') {
+        if (parentKey && STRUCTURAL_KEYS.has(parentKey)) return obj;
+        return plainify(obj);
+      }
+      if (Array.isArray(obj)) return obj.map(item => walkAndPlainify(item, parentKey));
       if (obj && typeof obj === 'object') {
         const result: any = {};
-        for (const k of Object.keys(obj)) result[k] = walkAndPlainify(obj[k]);
+        for (const k of Object.keys(obj)) result[k] = walkAndPlainify(obj[k], k);
         return result;
       }
       return obj;
     };
     analysis = walkAndPlainify(analysis);
+
+    // ── Rare-disease prose scrubber ─────────────────────────────────────
+    // Same pattern as doctor-prep: even when the AI mentions JAK2 / SPEP /
+    // Cushing's / etc. in priority_finding explanations or what_to_do, strip
+    // the offending sentences if the patient's markers don't meet the gate
+    // thresholds. Otherwise the AI scares the user with names of rare
+    // diseases ("if RBC stays high, screen for JAK2") on borderline values.
+    try {
+      const rdCtx = extractRareDiseaseContext(labValues, age);
+      const blocked = buildRareDiseaseBlocklist(rdCtx);
+      const stripSentences = (text: string): string => {
+        if (typeof text !== 'string' || !text) return text;
+        const sentences = text.split(/(?<=[.!?])\s+/);
+        const kept = sentences.filter(s => {
+          for (const rule of blocked) {
+            if (rule.allow) continue;
+            if (rule.pattern.test(s)) return false;
+          }
+          return true;
+        });
+        return kept.join(' ').trim();
+      };
+      const scrubProse = (val: any, key?: string): any => {
+        if (typeof val === 'string') {
+          if (key && STRUCTURAL_KEYS.has(key)) return val;
+          return stripSentences(val);
+        }
+        if (Array.isArray(val)) return val.map(v => scrubProse(v, key));
+        if (val && typeof val === 'object') {
+          const out: any = {};
+          for (const k of Object.keys(val)) out[k] = scrubProse(val[k], k);
+          return out;
+        }
+        return val;
+      };
+      analysis = scrubProse(analysis);
+      // Drop any priority_finding whose explanation/what_to_do got entirely
+      // erased by the scrubber (was 100% blocked rare-disease text).
+      if (Array.isArray(analysis.priority_findings)) {
+        analysis.priority_findings = analysis.priority_findings.filter((f: any) =>
+          (f?.headline?.length ?? 0) > 0 || (f?.explanation?.length ?? 0) > 0
+        );
+      }
+    } catch (e) { console.error('[analyze-labs] scrub error:', e); }
 
     // ── Trend-watch injector (deterministic) ────────────────────────────
     // Catch single-draw signals that don't meet rare-disease thresholds

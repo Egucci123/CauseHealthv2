@@ -34,13 +34,17 @@ export function buildRareDiseaseBlocklist(ctx: RareDiseaseContext): BlocklistRul
   const isYoung = ctx.age < 40;
   const isMidAge = ctx.age < 50;
 
+  // JAK2 / polycythemia screening is gated on platelet abnormality
+  // (myeloproliferative pattern) OR genuinely elevated RBC/Hct/Hgb beyond
+  // standard range. Borderline-high CBC values in a young patient (RBC 5.7–6,
+  // Hct 51) are NOT enough — that fired on a normal 28yo with no platelet
+  // issue and was alarming. Require platelets OR a true polycythemia pattern.
   const allowJak2 =
     (ctx.platelets ?? 0) > 600 ||
     (isYoung && (ctx.platelets ?? 0) > 450) ||
     (isMidAge && (ctx.platelets ?? 0) > 500) ||
     ((ctx.rbc ?? 0) > 6.0 && (ctx.hct ?? 0) > 54) ||
-    (isYoung && (ctx.rbc ?? 0) > 5.7 && (ctx.hct ?? 0) > 51) ||
-    ((ctx.hgb ?? 0) > 17 && (ctx.hct ?? 0) > 52);
+    ((ctx.hgb ?? 0) > 17.5 && (ctx.hct ?? 0) > 53);
 
   const allowAnaReflex = (ctx.ana ?? 0) > 0;
 
