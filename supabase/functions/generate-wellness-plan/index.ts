@@ -127,14 +127,23 @@ We do NOT recommend functional-medicine extras (GI-MAP, hair tissue mineral, org
 Test and supplement recommendations are anchored to a specific finding or evidence-based deficiency. No "optimization" stacks.
 
 HARD RULES — FOLLOW EXACTLY:
-1. SUPPLEMENT STACK: Maximum 7 supplements. Valid sourced_from values:
-   - "lab_finding": specific lab value out of standard range OR on the curated Watch list (e.g. HbA1c 5.4-5.6, ApoB ≥90, hs-CRP ≥0.5, ferritin <50). The labStr will tag the status. Healthy values do NOT earn supplements.
-   - "medication_depletion": user takes a drug with established nutrient-depleting effect (statin→CoQ10, metformin→B12, mesalamine→folate, etc.). why must name the medication.
-   - "disease_mechanism": user has a CONFIRMED diagnosed condition with a well-evidenced supplement (UC→L-glutamine/curcumin/omega-3/S.boulardii; Hashimoto's→selenium; T2D→berberine; PCOS→inositol). Not for speculative conditions.
-   - "optimization": OFF BY DEFAULT. Only allowed if the user explicitly stated "longevity" as their PRIMARY goal AND has no out-of-range markers, no symptoms, no medication depletions to address. Even then, max 1-2 entries (e.g., omega-3 if dietary intake is low, vitamin D if level is sub-optimal but in standard range). NOT a longevity stack. NEVER add NAD+, NMN, Resveratrol, Spermidine, methylene blue, or speculative anti-aging compounds.
-   Treatment-tier (lab_finding, medication_depletion, disease_mechanism) always ranks above optimization. Every realistic medication depletion not already supplemented MUST appear. Every diagnosed chronic condition with strong evidence supplements MUST have at least one disease_mechanism entry unless already supplementing.
+
+1. SUPPLEMENT STACK — TEST-FIRST, SUPPLEMENT-SECOND.
+   We do NOT recommend supplements based on theoretical deficiencies. A nutrient/supplement only enters supplement_stack when there is OBJECTIVE evidence the patient needs it. Maximum 7 supplements.
+
+   Valid sourced_from values:
+   - "lab_finding": a SPECIFIC lab value out of standard range OR on the curated Watch list on THIS draw (e.g. ferritin 28, vitamin D 24, hs-CRP 0.8, HbA1c 5.5). Cite the marker and value in why. Healthy values do NOT earn supplements.
+   - "disease_mechanism": user has a CONFIRMED diagnosed condition where the supplement has strong evidence as adjunct therapy (UC → curcumin / omega-3 / S. boulardii; Hashimoto's → selenium IF TPO+ confirmed; T2D → berberine; PCOS → inositol IF diagnosis confirmed; TRT → DHEA only if labs warrant). The diagnosis IS the evidence; no lab finding required.
+   - "optimization": OFF BY DEFAULT. Only allowed if user's PRIMARY goal is "longevity" AND no out-of-range markers, no symptoms, no medication depletions to address. Even then, max 1-2 entries (omega-3 if dietary intake is low, vitamin D if sub-optimal but in standard range). NOT a longevity stack. NEVER NAD+ / NMN / Resveratrol / Spermidine / methylene blue / speculative anti-aging compounds.
+
+   "medication_depletion" is NOT a supplement trigger — it's a TEST trigger. If a user is on a drug with known depletion effect (metformin→B12, mesalamine→folate, statin→CoQ10, PPI→Mg+B12, SSRI→Na, oral contraceptives→B6/folate/B12, levothyroxine→Fe interaction), DO NOT auto-add the supplement. Instead:
+     a) Add the relevant TEST to retest_timeline (B12 + MMA + homocysteine for metformin/PPI; folate for mesalamine; etc.)
+     b) Note the depletion in medication_notes with a "test first, then supplement IF confirmed low" framing
+     c) Only add the supplement to supplement_stack ONCE the lab confirms deficiency on a future draw — at which point sourced_from becomes "lab_finding".
+   The single exception is when the relevant lab IS already on this draw AND shows deficiency — then sourced_from = "lab_finding" with the medication noted as the likely cause in why.
+
    STRICT RANK 1..N: rank 1 = most important for the user's TOP GOALS, then by clinical severity. No gaps, no duplicates.
-   Speculative/untested conditions → put the test in retest_timeline, not a supplement in the stack.
+   Speculative/untested conditions → put the test in retest_timeline, not a supplement.
 3. CONDITIONS — GROUND TRUTH RULE: Use the user's DIAGNOSED CONDITIONS list verbatim.
    - Never substitute related conditions (UC ≠ Crohn's, even though they share treatments).
    - MEDICATIONS DO NOT REVEAL DIAGNOSES. A prescription tells you what a doctor wrote, not what the patient has, what's active, or what's been ruled out. Many drugs treat multiple conditions. Never infer or rename a diagnosis based on what's in the meds list.
@@ -408,6 +417,24 @@ CRITICAL OUTPUT RULES:
     // Normalize supplement_stack: cap at 7, sort by rank, renumber 1..N.
     // Many users take only top 2-3 — rank ordering must be reliable.
     if (plan.supplement_stack && Array.isArray(plan.supplement_stack)) {
+      // Drop any supplements sourced from medication_depletion. The
+      // user-stated rule: medications trigger TESTS, not supplements.
+      // Supplements only get added when an actual lab value confirms
+      // deficiency (sourced_from = lab_finding). Backstop in case the AI
+      // ignores the prompt and slips a medication_depletion entry through.
+      const beforeFilterCount = plan.supplement_stack.length;
+      plan.supplement_stack = plan.supplement_stack.filter((s: any) => {
+        const src = (s?.sourced_from ?? '').toLowerCase();
+        if (src === 'medication_depletion' || src === 'medication-depletion') {
+          console.log(`[wellness-plan] Dropped medication_depletion supplement "${s.nutrient}" — should have been a test recommendation instead`);
+          return false;
+        }
+        return true;
+      });
+      if (beforeFilterCount !== plan.supplement_stack.length) {
+        console.log(`[wellness-plan] supplement_stack filtered ${beforeFilterCount} -> ${plan.supplement_stack.length} (medication_depletion entries dropped)`);
+      }
+
       const priorityRank = (p: string) => p === 'critical' ? 0 : p === 'high' ? 1 : p === 'moderate' ? 2 : 3;
       // Sort first by rank if present, otherwise by priority. Stable sort preserves AI order within ties.
       plan.supplement_stack = [...plan.supplement_stack]
