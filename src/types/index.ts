@@ -24,6 +24,30 @@ export interface LifestyleData {
   smoker?: 'never' | 'former' | 'current';
 }
 
+// Universal life-context: drives AI tailoring (meal complexity, supplement
+// budget, test recommendations) without hardcoding disease-specific logic.
+// Every field is optional — questions can be skipped during onboarding and
+// the AI prompts handle missing fields gracefully.
+export interface LifeContext {
+  // Work & schedule
+  workType?: 'desk' | 'driver' | 'shift' | 'labor' | 'service' | 'parent_home' | 'retired' | 'unemployed';
+  workSchedule?: 'days' | 'nights' | 'rotating' | 'flexible' | 'multi_jobs' | 'na';
+  hoursWorkedPerWeek?: number;
+  // Home situation
+  kidsAtHome?: '0' | '1' | '2' | '3plus';
+  livingSituation?: 'alone' | 'partner' | 'family' | 'roommates';
+  cookHomeFrequency?: number; // 0-10 scale
+  // Food reality
+  cookingTimeAvailable?: 'under_15' | '15_30' | '30_60' | '60_plus';
+  typicalLunch?: 'fast_food' | 'gas_station' | 'packed' | 'cafeteria' | 'skip' | 'restaurant';
+  weeklyFoodBudget?: 'under_50' | '50_100' | '100_150' | '150_plus';
+  eatOutPlaces?: string[];
+  // Healthcare access
+  insuranceType?: 'employer' | 'marketplace' | 'medicaid' | 'medicare' | 'cash' | 'va';
+  hasPCP?: 'regular' | 'rare' | 'none';
+  lastPhysical?: 'under_6mo' | '6_12mo' | '1_2yr' | '2yr_plus' | 'never';
+}
+
 export interface Profile {
   id:                   string;
   createdAt:            string;
@@ -47,6 +71,7 @@ export interface Profile {
   specificConcern:      string | null;
   triedBefore:          string | null;
   hearAboutUs:          string | null;
+  lifeContext:          LifeContext | null;
 }
 
 export interface AuthError {

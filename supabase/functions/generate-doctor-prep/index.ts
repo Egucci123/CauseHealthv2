@@ -54,6 +54,17 @@ serve(async (req) => {
     const userGoals: string[] = (profile?.primary_goals ?? []).filter((g: any) => typeof g === 'string');
     const goalsStr = formatGoals(userGoals);
 
+    // Universal life-context for tailoring (insurance type, PCP access,
+    // last physical, work realities). NOT used to gate clinical decisions —
+    // only to tailor framing of the doctor-prep document (e.g. emphasize
+    // baseline workup if no PCP, prefer cheap tests if cash-pay).
+    const lifeCtx = (profile?.life_context ?? {}) as Record<string, any>;
+    const insurance  = lifeCtx.insuranceType ?? 'unknown';
+    const hasPCP     = lifeCtx.hasPCP ?? 'unknown';
+    const lastPhys   = lifeCtx.lastPhysical ?? 'unknown';
+    const workType   = lifeCtx.workType ?? 'unknown';
+    const lifeCtxStr = `INSURANCE: ${insurance} · HAS_PCP: ${hasPCP} · LAST_PHYSICAL: ${lastPhys} · WORK_TYPE: ${workType}`;
+
     // Healthy-mode detection — same threshold as wellness plan.
     // Lives in _shared/healthMode.ts.
     const isHealthy = isHealthyMode(labValues);
@@ -320,6 +331,11 @@ DIAGNOSED CONDITIONS (GROUND TRUTH — use these exact names; UC is NOT Crohn's;
 MEDICATIONS:\n${medsStr}
 CURRENT SUPPLEMENTS (consider lab interactions when interpreting findings — e.g., creatine→creatinine artifact, biotin→TSH/T3/T4 interference, B12→masks deficiency, niacin→HDL/ALT, TRT→Hct/LH/FSH, vitamin K2→INR with warfarin): ${suppsStr}
 SYMPTOMS:\n${sympStr}
+LIFE_CONTEXT (universal — tailor test selection + framing, not clinical decisions): ${lifeCtxStr}
+  - If INSURANCE = cash → prefer cheapest panels (Quest direct-pay, Walmart). Skip expensive specialty unless triggered by an out-of-range marker.
+  - If HAS_PCP = none / rare → frame "find a PCP for ongoing monitoring" in the doctor-prep document.
+  - If LAST_PHYSICAL = 2yr_plus / never AND no major findings → bias tests_to_request toward a baseline physical workup (CBC + CMP + lipid + HbA1c + TSH).
+  - If WORK_TYPE = driver / shift / labor → mention DOT physical or fitness-for-duty considerations only when relevant (don't volunteer if patient hasn't indicated a need).
 LAB DATE: ${latestDraw?.draw_date ?? 'unknown'} LAB: ${latestDraw?.lab_name ?? 'unknown'}
 
 ALL LAB VALUES:

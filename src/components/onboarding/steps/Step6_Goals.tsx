@@ -43,7 +43,7 @@ export const Step6_Goals = () => {
 
   return (
     <OnboardingShell
-      stepKey="step-6"
+      stepKey="step-7"
       title="What brings you here?"
       description="Pick up to 5 goals — your wellness plan, doctor prep document, and clinical recommendations will all be tailored around them."
       onNext={handleFinish}

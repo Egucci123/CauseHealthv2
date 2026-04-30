@@ -45,6 +45,25 @@ export interface FamilyHistory {
   highCholesterol: boolean;
 }
 
+// Universal life-context. Drives AI tailoring (meal complexity, supplement
+// budget, test recommendations) without hardcoding disease-specific logic.
+// Every field optional — onboarding step can be skipped, AI handles gracefully.
+export interface LifeContext {
+  workType?: 'desk' | 'driver' | 'shift' | 'labor' | 'service' | 'parent_home' | 'retired' | 'unemployed';
+  workSchedule?: 'days' | 'nights' | 'rotating' | 'flexible' | 'multi_jobs' | 'na';
+  hoursWorkedPerWeek?: number;
+  kidsAtHome?: '0' | '1' | '2' | '3plus';
+  livingSituation?: 'alone' | 'partner' | 'family' | 'roommates';
+  cookHomeFrequency?: number;
+  cookingTimeAvailable?: 'under_15' | '15_30' | '30_60' | '60_plus';
+  typicalLunch?: 'fast_food' | 'gas_station' | 'packed' | 'cafeteria' | 'skip' | 'restaurant';
+  weeklyFoodBudget?: 'under_50' | '50_100' | '100_150' | '150_plus';
+  eatOutPlaces?: string[];
+  insuranceType?: 'employer' | 'marketplace' | 'medicaid' | 'medicare' | 'cash' | 'va';
+  hasPCP?: 'regular' | 'rare' | 'none';
+  lastPhysical?: 'under_6mo' | '6_12mo' | '1_2yr' | '2yr_plus' | 'never';
+}
+
 export interface LifestyleData {
   sleepHours:    number;
   sleepQuality:  number;
@@ -89,6 +108,7 @@ export interface OnboardingState {
   noMedications:      boolean;
   symptoms:           AddedSymptom[];
   lifestyle:          Partial<LifestyleData>;
+  lifeContext:        Partial<LifeContext>;
   primaryGoals:       string[];
   specificConcern:    string;
   triedBefore:        string;
@@ -107,6 +127,7 @@ interface OnboardingStore extends OnboardingState {
   updateStep4: (data: Partial<OnboardingState>) => void;
   updateStep5: (data: Partial<OnboardingState>) => void;
   updateStep6: (data: Partial<OnboardingState>) => void;
+  updateStep7: (data: Partial<OnboardingState>) => void;
   addMedication:    (med: Omit<AddedMedication, 'id'>) => void;
   removeMedication: (id: string) => void;
   addSupplement:    (supp: Omit<AddedSupplement, 'id'>) => void;
@@ -132,7 +153,7 @@ const DEFAULT_LIFESTYLE: Partial<LifestyleData> = {
 };
 
 export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
-  currentStep: 1, totalSteps: 6, loading: false,
+  currentStep: 1, totalSteps: 7, loading: false,
   firstName: '', lastName: '', dateOfBirth: '', sex: '',
   heightFt: '', heightIn: '', weightLbs: '', locationState: '',
   conditions: [],
@@ -141,6 +162,7 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
   medications: [], supplements: [], noMedications: false, noSupplements: false,
   symptoms: [],
   lifestyle: DEFAULT_LIFESTYLE,
+  lifeContext: {},
   primaryGoals: [], specificConcern: '', triedBefore: '', hearAboutUs: '',
   quickInsights: [], insightsLoading: false,
 
@@ -159,6 +181,7 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
   updateStep4: (data) => set(data),
   updateStep5: (data) => set(data),
   updateStep6: (data) => set(data),
+  updateStep7: (data) => set(data),
 
   addMedication: (med) => set(s => ({
     medications: [...s.medications, { ...med, id: crypto.randomUUID() }],
@@ -228,6 +251,7 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
     if (profile?.familyHistory) updates.familyHistory = profile.familyHistory as any;
     if (profile?.geneticTesting) updates.geneticTesting = profile.geneticTesting as any;
     if (profile?.lifestyle) updates.lifestyle = profile.lifestyle as any;
+    if (profile?.lifeContext) updates.lifeContext = profile.lifeContext as any;
     if (profile?.specificConcern) updates.specificConcern = profile.specificConcern;
     if (profile?.triedBefore) updates.triedBefore = profile.triedBefore;
     if (profile?.hearAboutUs) updates.hearAboutUs = profile.hearAboutUs;
@@ -403,6 +427,7 @@ async function autoSaveToDB() {
     if (fh && Object.values(fh).some(Boolean)) profileData.family_history = fh;
     if (state.geneticTesting) profileData.genetic_testing = state.geneticTesting;
     if (state.lifestyle && Object.keys(state.lifestyle).length > 0) profileData.lifestyle = state.lifestyle;
+    if (state.lifeContext && Object.keys(state.lifeContext).length > 0) profileData.life_context = state.lifeContext;
     if (state.specificConcern) profileData.specific_concern = state.specificConcern;
     if (state.triedBefore) profileData.tried_before = state.triedBefore;
     if (state.hearAboutUs) profileData.hear_about_us = state.hearAboutUs;
@@ -491,6 +516,7 @@ function persistLocal(state: OnboardingState) {
       medications: state.medications, supplements: state.supplements,
       symptoms: state.symptoms,
       lifestyle: state.lifestyle,
+      lifeContext: state.lifeContext,
       primaryGoals: state.primaryGoals,
       familyHistory: state.familyHistory,
       geneticTesting: state.geneticTesting,
@@ -537,6 +563,7 @@ useOnboardingStore.subscribe((state, prevState) => {
     JSON.stringify(state.familyHistory) !== JSON.stringify(prevState.familyHistory) ||
     state.geneticTesting !== prevState.geneticTesting ||
     JSON.stringify(state.lifestyle) !== JSON.stringify(prevState.lifestyle) ||
+    JSON.stringify(state.lifeContext) !== JSON.stringify(prevState.lifeContext) ||
     state.specificConcern !== prevState.specificConcern ||
     state.triedBefore !== prevState.triedBefore ||
     state.hearAboutUs !== prevState.hearAboutUs;

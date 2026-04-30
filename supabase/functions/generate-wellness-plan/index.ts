@@ -62,20 +62,47 @@ serve(async (req) => {
     const condStr = conditions.map((c: any) => c.name).join(', ') || 'None reported';
     const suppsStr = supps.map((s: any) => `${s.name}${s.dose ? ` (${s.dose})` : ''}`).join(', ') || 'None';
 
-    // ── Lifestyle context for meal/workout tailoring ──
-    // Reads optional fields from profile.lifestyle (added via onboarding when
-    // captured). Missing fields are shown as 'unknown' so the AI defaults to
-    // 'busy adult, limited cooking time, fast-food-friendly upgrades' which is
-    // the safest assumption for the median user.
-    const lifestyle = (profile?.lifestyle ?? {}) as Record<string, any>;
-    const workType = lifestyle.work_type ?? lifestyle.workType ?? 'unknown';      // blue_collar | desk | wfh | shift | retired | unemployed | unknown
-    const hasKids  = lifestyle.has_kids ?? lifestyle.hasKids ?? 'unknown';        // true | false | unknown
-    const cookTime = lifestyle.cooking_time ?? lifestyle.cookingTime ?? 'unknown'; // none | <15 | 15-30 | 30-60 | 60+ | unknown
-    const dietType = lifestyle.dietType ?? lifestyle.diet_type ?? 'standard';     // standard | vegetarian | vegan | keto | paleo | mediterranean | gluten_free
+    // ── Lifestyle context for universal AI tailoring ──
+    // Pulls from BOTH:
+    //   - profile.life_context (new working-class onboarding step — work, kids,
+    //     food, healthcare access)
+    //   - profile.lifestyle (existing sleep/diet/exercise/stress)
+    // Missing fields show 'unknown' so the AI defaults to the safest assumption
+    // for the median user (busy adult, limited time, fast-food friendly).
+    // Universal context only — the AI uses these signals to tailor advice
+    // organically (no hardcoded condition-specific or profile-specific logic).
+    const lifestyle  = (profile?.lifestyle ?? {}) as Record<string, any>;
+    const lifeCtx    = (profile?.life_context ?? {}) as Record<string, any>;
+    const workType   = lifeCtx.workType ?? lifestyle.work_type ?? lifestyle.workType ?? 'unknown';
+    const workSched  = lifeCtx.workSchedule ?? 'unknown';
+    const hoursWk    = lifeCtx.hoursWorkedPerWeek ?? 'unknown';
+    const kids       = lifeCtx.kidsAtHome ?? lifestyle.has_kids ?? 'unknown';
+    const livingSit  = lifeCtx.livingSituation ?? 'unknown';
+    const cookFreq   = lifeCtx.cookHomeFrequency ?? 'unknown';
+    const cookTime   = lifeCtx.cookingTimeAvailable ?? lifestyle.cooking_time ?? 'unknown';
+    const lunch      = lifeCtx.typicalLunch ?? 'unknown';
+    const foodBudget = lifeCtx.weeklyFoodBudget ?? 'unknown';
+    const eatOut     = Array.isArray(lifeCtx.eatOutPlaces) && lifeCtx.eatOutPlaces.length > 0
+                         ? lifeCtx.eatOutPlaces.join(', ') : 'unknown';
+    const insurance  = lifeCtx.insuranceType ?? 'unknown';
+    const hasPCP     = lifeCtx.hasPCP ?? 'unknown';
+    const lastPhys   = lifeCtx.lastPhysical ?? 'unknown';
+    const dietType   = lifestyle.dietType ?? lifestyle.diet_type ?? 'standard';
+
     const lifestyleStr = [
       `WORK_TYPE: ${workType}`,
-      `HAS_KIDS: ${hasKids}`,
+      `WORK_SCHEDULE: ${workSched}`,
+      `HOURS_PER_WEEK: ${hoursWk}`,
+      `KIDS_AT_HOME: ${kids}`,
+      `LIVING_WITH: ${livingSit}`,
+      `COOK_AT_HOME_FREQ_0_TO_10: ${cookFreq}`,
       `COOKING_TIME_PER_DAY: ${cookTime}`,
+      `TYPICAL_LUNCH: ${lunch}`,
+      `WEEKLY_FOOD_BUDGET: ${foodBudget}`,
+      `EATS_OUT_AT: ${eatOut}`,
+      `INSURANCE: ${insurance}`,
+      `HAS_PCP: ${hasPCP}`,
+      `LAST_PHYSICAL: ${lastPhys}`,
       `DIET: ${dietType}`,
     ].join(' · ');
 
@@ -379,16 +406,26 @@ HARD RULES — FOLLOW EXACTLY:
 
 11. MEALS — REALISTIC PROGRESSION + LIFESTYLE-TAILORED (CRITICAL — adherence beats perfection):
 
-    LIFESTYLE BRANCHING (read LIFESTYLE_CONTEXT in the user message):
-      - WORK_TYPE = blue_collar / shift / construction / driver / nurse / etc. → on the move all day, packed lunches, fast food on shift, no kitchen access. Phase 1 meals: gas-station-friendly upgrades (gas station: turkey jerky + apple + water; fast food: Chick-fil-A grilled chicken sandwich no bun + fruit cup; truck stop: hard-boiled eggs + banana). Phase 2: cooler meals — pre-cooked chicken + rice in a Pyrex, fruit, hard cheese. Phase 3: meal-prep Sundays. NO recipes that need a kitchen at lunch.
-      - WORK_TYPE = wfh → has a kitchen at lunch. Phase 1 can include 5-min stovetop meals. Phase 2 introduces 15-min cooks. Phase 3 full recipes.
-      - WORK_TYPE = desk / office → packed lunch from home OR cafeteria/quick-serve. Phase 1: build-your-own from a bag (rotisserie chicken + pre-washed greens + olive oil). Phase 2: simple meal prep. Phase 3: full meals.
-      - WORK_TYPE = shift / nurse / overnight → rotating sleep, irregular meal timing. Phase 1 focuses on portable + protein-dense. Avoid "eat breakfast at 7am" framing.
-      - HAS_KIDS = true → cooking time is fragmented. NO recipes that require >2 burners or constant attention. Sheet-pan, slow-cooker, instant-pot only after Phase 1. Phase 1 meals must be kid-edible too (the parent isn't cooking two meals).
-      - COOKING_TIME = none / <15 → Phase 1 is grocery-store assembly only (no cooking). Phase 2: 5-15 min stovetop. Phase 3: 30 min max.
-      - COOKING_TIME = 60+ → can include real recipes from Phase 1.
+    LIFESTYLE BRANCHING (read LIFESTYLE_CONTEXT in the user message — all values universal, no condition assumptions):
+      - WORK_TYPE = driver / shift / labor / service → on the move, packed lunches, fast food, often no kitchen at lunch. Phase 1 meals: gas-station-friendly upgrades (gas station: turkey jerky + apple + water; fast food: Chick-fil-A grilled chicken sandwich no bun + fruit cup; truck stop: hard-boiled eggs + banana). Phase 2: cooler meals — pre-cooked chicken + rice in Pyrex, fruit, hard cheese. Phase 3: meal-prep Sundays. NO recipes requiring a kitchen at lunch.
+      - WORK_TYPE = desk / parent_home → has kitchen access. Phase 1 can include 5-min stovetop meals. Phase 2 introduces 15-min cooks. Phase 3 full recipes.
+      - WORK_SCHEDULE = nights / rotating → irregular meal timing. Avoid "eat breakfast at 7am" framing. Use "first meal of your day", "last meal before sleep". Phase 1 = portable + protein-dense.
+      - KIDS_AT_HOME = 1 / 2 / 3plus → cooking time is fragmented. NO recipes requiring >2 burners or constant attention. Sheet-pan, slow-cooker, instant-pot only after Phase 1. Phase 1 meals must be kid-edible (parent isn't cooking two meals).
+      - COOKING_TIME_PER_DAY = under_15 → Phase 1 is grocery-store assembly only (no cooking). Phase 2: 5-15 min stovetop. Phase 3: 30 min max.
+      - COOKING_TIME_PER_DAY = 60_plus → can include real recipes from Phase 1.
+      - TYPICAL_LUNCH = fast_food / gas_station → Phase 1 meals MUST be ordering-guides for the EATS_OUT_AT chains the user listed (e.g. McDonald's: Egg McMuffin no hash brown + apple slices; Chipotle: bowl, double chicken, brown rice, fajita veg, salsa, no chips; Chick-fil-A: grilled nuggets + side salad + diet lemonade). Real chain orders, not "make a healthy version at home".
+      - TYPICAL_LUNCH = packed → Phase 1 can be packable (cold meals, no microwave needed).
+      - WEEKLY_FOOD_BUDGET = under_50 → cap supplement_stack cost reasonable, prefer Costco/store-brand meals. Avoid "wild salmon" or "grass-fed". Frozen veggies + chicken thighs + rice = ~$30/week protein-and-veg base. Use that.
+      - WEEKLY_FOOD_BUDGET = 50_100 → include 1 fresh-fish meal/week max in Phase 2+.
+      - WEEKLY_FOOD_BUDGET = 150_plus → fresh ingredients fine throughout.
       - DIET = vegetarian / vegan / keto / etc. → all meals MUST honor the diet. No salmon for vegan. No oatmeal for keto. NEVER suggest a meal that breaks the user's stated diet.
-      - WORK_TYPE = unknown → assume blue_collar/busy default (most realistic for the median user). Don't ask, just keep it grocery-store-basic.
+      - WORK_TYPE = unknown OR LIFESTYLE_CONTEXT mostly unknown → assume busy/blue-collar default (median user). Grocery-store-basic, fast-food-friendly, no fancy ingredients.
+
+    HEALTHCARE-ACCESS BRANCHING (universal — applies to retest_timeline + medication_notes):
+      - INSURANCE = cash / unknown → retest_timeline tests must be cheapest-tier only (Quest/LabCorp direct-pay or Walmart/Costco pharmacy panels). Add an "approx_cost_usd" hint where useful. AVOID expensive specialty tests (NMR, advanced lipid, comprehensive thyroid antibodies, fecal calprotectin out-of-pocket).
+      - INSURANCE = medicaid / medicare → standard PCP-orderable tests only. ICD-10 justification critical (already required by hard rule 2; emphasize coverage).
+      - HAS_PCP = none / rare → wellness plan should mention "find a PCP for retest" in Phase 1 actions if labs warrant ongoing monitoring. Don't assume regular care.
+      - LAST_PHYSICAL = 2yr_plus / never → bias retest_timeline toward a "first proper physical" framing — basic CBC + CMP + lipid + HbA1c + TSH baseline if not already in this draw.
 
     PROGRESSION ACROSS PHASES (regardless of work type):
     Most users start with poor diets — fast food, refined carbs, low protein, low vegetables. Jumping to "wild salmon + roasted asparagus + bone broth + grass-fed butter" feels alien and adherence collapses by week 2. Build the meals[] array as a PROGRESSION across phases:

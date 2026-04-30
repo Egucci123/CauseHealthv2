@@ -264,6 +264,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
           specificConcern:      data.specific_concern ?? null,
           triedBefore:          data.tried_before ?? null,
           hearAboutUs:          data.hear_about_us ?? null,
+          lifeContext:          data.life_context ?? null,
         },
       });
     }
