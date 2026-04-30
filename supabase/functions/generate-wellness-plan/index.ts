@@ -1094,17 +1094,11 @@ CRITICAL OUTPUT RULES:
         console.log(`[wellness-plan] Goal-stack injected ${item.entry.nutrient} for primary goal "${primaryGoal}"`);
       }
 
-      // Re-cap and re-rank after all injections
-      const priorityRank = (p: string) => p === 'critical' ? 0 : p === 'high' ? 1 : p === 'moderate' ? 2 : 3;
-      plan.supplement_stack = plan.supplement_stack
-        .sort((a: any, b: any) => {
-          const ar = typeof a.rank === 'number' ? a.rank : 999;
-          const br = typeof b.rank === 'number' ? b.rank : 999;
-          if (ar !== br) return ar - br;
-          return priorityRank(a.priority ?? 'optimize') - priorityRank(b.priority ?? 'optimize');
-        })
-        .slice(0, 5)
-        .map((s: any, i: number) => ({ ...s, rank: i + 1 }));
+      // No legacy slice here — the final 1-per-category dedup below handles
+      // the cap. Removing the old slice(0,5) was critical: it sorted by AI-
+      // assigned rank (which heavily favored critical-priority lab findings)
+      // and cut off disease-mechanism injectors like UC gut-healing
+      // (L-glutamine, S. boulardii) that legitimately belonged in the stack.
     }
 
     // Final dedup: ONE supplement per category. The UI groups by category, so
