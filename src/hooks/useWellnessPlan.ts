@@ -55,6 +55,9 @@ export interface WellnessPlanData {
     phase_3: { name: string; focus: string; actions: string[] };
   };
   retest_timeline: { marker: string; retest_at: string; why: string }[];
+  // Per-symptom how-this-plan-addresses-it list. Populated by
+  // generate-wellness-plan after the Symptoms page was deleted (April 2026).
+  symptoms_addressed?: { symptom: string; severity?: number; how_addressed: string }[];
   disclaimer: string;
   plan_mode?: 'treatment' | 'optimization';
 }

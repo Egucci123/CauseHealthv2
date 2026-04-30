@@ -33,7 +33,7 @@ const Card = ({ emoji, headline, detail, accent }: { emoji: string; headline: st
   </div>
 );
 
-export const VisitCardStacks = ({ doc, symptomAnalysis }: Props) => {
+export const VisitCardStacks = ({ doc }: Props) => {
   const [unlockedDeeper, setUnlockedDeeper] = useState(false);
 
   // TELL DOCTOR — fall back to executive_summary if new field missing
