@@ -176,7 +176,7 @@ serve(async (req) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001', max_tokens: 11000,
+        model: 'claude-haiku-4-5-20251001', max_tokens: 14000,
         system: `You are CauseHealth AI. Return ONLY valid JSON.
 
 GLOBAL VOICE RULES (CRITICAL — these apply to EVERY string in the JSON):
@@ -693,16 +693,26 @@ HARD RULES — FOLLOW EXACTLY:
       - "when" field — breakfast / lunch / dinner / snack
       - SPECIFIC brand / SKU / chain name. "Costco rotisserie chicken" beats "rotisserie chicken." "Banza chickpea pasta" beats "high-protein pasta." "Wawa egg white wrap" beats "convenience-store wrap."
 
-    TARGETS PER PLAN — PER-PATTERN MINIMUMS (CRITICAL):
-      - For EVERY pattern the user listed in BREAKFAST_PATTERNS / LUNCH_PATTERNS / DINNER_PATTERNS, generate AT LEAST 2 meals matching that playbook. If they listed 4 lunch patterns (e.g. fast_food + gas_station + 7eleven + packed), give 8+ lunch meals.
-      - CHAIN DIVERSITY: if user has 3+ chains in EATS_OUT_AT, fast_food meals MUST cover at least 3 different chains. Don't stack 4 Chipotle ideas — rotate.
-      - 3-6 BREAKFAST options.
-      - 4-8 LUNCH options.
-      - 3-6 DINNER options.
-      - 2-3 SNACK or DRINK options.
-      - Total target: 12-18 meals (was 10-15 — increased for breadth).
-      - "skip" pattern → 0 meals for that slot, but mention briefly.
-      - Pattern = "unknown" → default mix: 1 fast-food + 1 frozen + 1 convenience-store + 1 cooler-box.
+    TARGETS PER PLAN — A FULL WEEK+ OF VARIETY (CRITICAL):
+
+    The user does NOT want to regenerate every 3 days because they ran out of options. Generate enough breadth to cover 1-2 weeks of eating without repetition. PEOPLE DO NOT EAT THE SAME THING EVERY DAY.
+
+    PER-PATTERN HARD MINIMUMS (NON-NEGOTIABLE):
+      - For EVERY pattern the user listed in BREAKFAST_PATTERNS / LUNCH_PATTERNS / DINNER_PATTERNS, generate AT LEAST 3 meals from that playbook. If they listed 4 lunch patterns, give 12+ lunch meals (3 per pattern).
+      - Example: user picked "fast_food + wawa_convenience + gas_station" for lunch → MINIMUM 9 lunch meals (3 fast-food chain orders + 3 Wawa-specific + 3 gas-station/7-Eleven/Sheetz).
+      - If breakfast pattern = "skip" → still give 1-2 breakfast options labeled as "for the day you DO eat breakfast" — don't leave empty.
+
+    CHAIN DIVERSITY:
+      - If user has 3+ chains in EATS_OUT_AT, fast_food meals MUST cover at least 4 different chains. Don't stack 4 Chipotle ideas — rotate Chick-fil-A, Wendy's, Subway, McDonald's, Panera, Taco Bell, Dunkin, Five Guys, Burger King, Cracker Barrel.
+
+    SLOT TARGETS:
+      - 4-6 BREAKFAST options (or 1-2 if pattern is "skip").
+      - 8-12 LUNCH options (the most-frequent meal type for most people).
+      - 6-9 DINNER options.
+      - 3-5 SNACK + DRINK options.
+      - **TOTAL: 21-30 MEALS** (was 12-18 — bumped because users want week+ of variety).
+
+    Pattern = "unknown" → default broad mix: 2 fast-food + 2 frozen + 2 convenience-store + 2 lunchbox + 2 protein-bar/shake.
 
     PATTERN → PLAYBOOK MAPPING (use this when picking which playbook a meal belongs to):
       breakfast: skip→— · fast_food→fast_food · gas_station→convenience_store · coffee_shop→fast_food · frozen_sandwich→frozen_breakfast · eggs_home→simple_home_cook · cereal→simple_home_cook · smoothie→low_cal_drink/viral_hack · protein_bar→protein_bar_shake
@@ -793,7 +803,7 @@ LIFESTYLE_CONTEXT (drives meals + workout realism — see hard rule 11 below): $
 
 INFERRED_LAB_TARGETS (the meals + supplements should hit these): ${labTargets.join(', ') || 'none flagged'}
 
-MEAL_CANDIDATES — pre-filtered from CauseHealth's curated Food Playbook based on this user's life_context + labs. **Pick 12-18 finalists from THIS list** for the meals[] output. Use these candidate names verbatim in meals[].name, copy their playbook + phase + when fields, but write a personalized "why" sentence that links each meal to THIS user's specific lab values or symptoms (use plain English: 'liver enzyme' not 'ALT', '3-month blood sugar' not 'A1c'). Aim for breadth — span as many of the user's selected meal patterns as possible. If a candidate doesn't fit, skip it; you may invent supplemental meals only when candidates don't cover a slot, but every invented meal must follow the same brand-specific + playbook-tagged rules and will be subject to the same scrubbing rules. Candidates:
+MEAL_CANDIDATES — pre-filtered from CauseHealth's curated Food Playbook based on this user's life_context + labs. **Pick 21-30 finalists from THIS list** for the meals[] output (the user wants a full week+ of variety so they don't have to regenerate after 3 days). Use the candidate names verbatim in meals[].name, copy their playbook + phase + when fields, but write a personalized "why" sentence that links each meal to THIS user's specific lab values or symptoms (use plain English: 'liver enzyme' not 'ALT', '3-month blood sugar' not 'A1c'). Aim for BREADTH — span as many of the user's selected meal patterns as possible, ROTATE chains within fast_food (don't pick 4 Chipotle ideas; rotate Wendy's, Chick-fil-A, Subway, McDonald's, Dunkin, etc.), and cover EVERY playbook the user has signal for. If a candidate doesn't fit, skip it; you may invent supplemental meals only when candidates don't cover a slot, but every invented meal must follow the same brand-specific + playbook-tagged rules and will be subject to the same scrubbing rules. Candidates:
 ${mealCandidatesStr}
 
 SUPPLEMENT-LAB INTERACTION KNOWLEDGE (use when interpreting labs and building stack):

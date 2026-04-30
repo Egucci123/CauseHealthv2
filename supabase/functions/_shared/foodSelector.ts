@@ -73,7 +73,7 @@ const BUDGET_MAX_TIER: Record<string, number> = {
  * Filter the library down to meals the user CAN eat (constraint pass) AND
  * rank by match score (life_context + lab targets). Returns top N.
  */
-export function selectMealCandidates(ctx: SelectorContext, topN: number = 30): MealEntry[] {
+export function selectMealCandidates(ctx: SelectorContext, topN: number = 60): MealEntry[] {
   // 1) Identify which playbooks the user actually uses (from their patterns)
   const allPatterns = [
     ...(ctx.breakfastPatterns ?? []),
@@ -149,14 +149,16 @@ export function selectMealCandidates(ctx: SelectorContext, topN: number = 30): M
     return { meal: m, score };
   });
 
-  // 4) Sort + cap, but ensure breadth across playbooks (max 4 per playbook in
-  // candidate list so AI doesn't see a wall of the same playbook).
+  // 4) Sort + cap with breadth control. Per-playbook cap = 8 (was 4) so AI
+  // sees enough Wawa variety, enough crock-pot variety, etc. The user wants
+  // 21-30 meals output to cover a full week of variety, so we surface 60
+  // candidates with up to 8 per playbook.
   scored.sort((a, b) => b.score - a.score);
   const perPlaybookCount = new Map<Playbook, number>();
   const out: MealEntry[] = [];
   for (const s of scored) {
     const count = perPlaybookCount.get(s.meal.playbook) ?? 0;
-    if (count >= 4) continue;
+    if (count >= 8) continue;
     out.push(s.meal);
     perPlaybookCount.set(s.meal.playbook, count + 1);
     if (out.length >= topN) break;
