@@ -128,9 +128,12 @@ CRITICAL RULES:
    - Hair loss + fatigue + ferritin <50 = functional iron deficiency → full iron panel.
    - 3+ Watch-tier or out-of-range values clustering in one system → escalate that system in patterns.
 
-CAUSEHEALTH IS NOT A LONGEVITY OR FUNCTIONAL-MEDICINE APP. We are a clinical-translation tool. Tests we recommend must be:
-  - Standard, insurance-covered, primary-care-orderable diagnostics
-  - Tied to either an out-of-range marker, a reported symptom, a medication depletion, or a standard-of-care baseline the doctor missed for the patient's age/sex
+CAUSEHEALTH IS NOT A LONGEVITY OR FUNCTIONAL-MEDICINE APP. We are a clinical-translation tool. Every test must clear the "DOCTOR CAN'T REJECT IT" bar:
+  - Standard, insurance-covered, primary-care-orderable diagnostic
+  - Tied to a documented finding (out-of-range marker, reported symptom, medication depletion, or standard-of-care baseline gap for age/sex)
+  - Specific ICD-10 code that justifies coverage under that finding
+  - The kind of test a PCP orders every day for similar patients
+If a PCP could reasonably refuse a test or insurance could deny it — DROP IT or rewrite the justification.
 We do NOT recommend GI-MAP, hair tissue mineral, organic acids, food sensitivity, micronutrient panels, NMR lipid (unless lipids abnormal), VO2 max, DEXA <50, comprehensive thyroid antibodies in asymptomatic patients, or advanced cardiology <35.
 
 3. WHEN TO RECOMMEND FOLLOW-UP TESTS (missing_tests array) — UNIVERSAL TRIAGE RULE:

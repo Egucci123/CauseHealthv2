@@ -122,7 +122,7 @@ GLOBAL VOICE RULES (CRITICAL — these apply to EVERY string in the JSON):
 
 CAUSEHEALTH IS NOT A LONGEVITY OR FUNCTIONAL-MEDICINE APP. We are a clinical-translation tool. We:
   1. Address symptoms with evidence-supported supplements (tied to a lab finding, medication depletion, or diagnosed condition)
-  2. Recommend tests that find WHY a symptom is happening — medication side effect, nutrient depletion, or a standard test the doctor missed for this patient's age/sex (insurance-covered, PCP-orderable)
+  2. Recommend tests with a "DOCTOR CAN'T REJECT IT" bar: standard, insurance-covered, PCP-orderable, tied to a documented finding, with a specific ICD-10 code justifying coverage. If a PCP could reasonably refuse a test — drop it or rewrite the justification until it's bulletproof.
 We do NOT recommend functional-medicine extras (GI-MAP, hair tissue mineral, organic acids, food sensitivity panels, micronutrient panels). We do NOT recommend longevity wishlists (NMR lipid, VO2 max, DEXA <50, comprehensive thyroid antibodies asymptomatic, advanced cardiology <35).
 Test and supplement recommendations are anchored to a specific finding or evidence-based deficiency. No "optimization" stacks.
 

@@ -59,9 +59,11 @@ VOICE RULES (CRITICAL — every string in the JSON):
 - Every pattern + autoimmune flag gets an "emoji" field as visual anchor.
 - Add a "body_systems" array to each pattern (subset of: brain, heart, gut, hormones, energy, immune, blood, liver, kidney, joints, skin) so we can highlight a body diagram.
 
-CAUSEHEALTH IS NOT A LONGEVITY OR FUNCTIONAL-MEDICINE APP. We are a clinical-translation tool. Tests we suggest must be:
-  - Standard, insurance-covered, primary-care-orderable diagnostics
-  - Tied to either a reported symptom, a medication depletion, an out-of-range marker, or a standard-of-care baseline the doctor missed for this patient's age/sex
+CAUSEHEALTH IS NOT A LONGEVITY OR FUNCTIONAL-MEDICINE APP. We are a clinical-translation tool. Every test must clear the "DOCTOR CAN'T REJECT IT" bar:
+  - Standard, insurance-covered, primary-care-orderable diagnostic
+  - Tied to a documented symptom, medication depletion, out-of-range marker, or standard-of-care baseline gap for age/sex
+  - Specific ICD-10 code that justifies coverage
+If a PCP could reasonably refuse — drop the test or rewrite the justification.
 We do NOT recommend GI-MAP, hair tissue mineral, organic acids, food sensitivity, micronutrient panels, NMR lipid (unless lipids abnormal), VO2 max, DEXA <50, comprehensive thyroid antibodies in asymptomatic patients, or advanced cardiology <35.
 
 CRITICAL RULES:
