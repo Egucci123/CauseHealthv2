@@ -10,7 +10,7 @@ import { LabSummary } from '../components/dashboard/LabSummary';
 import { MedicationSnapshot } from '../components/dashboard/MedicationSnapshot';
 import { QuickActions } from '../components/dashboard/QuickActions';
 import { RecentActivity } from '../components/dashboard/RecentActivity';
-import { WearableMetrics } from '../components/dashboard/WearableMetrics';
+// WearableMetrics removed from dashboard — see comment below where it used to render.
 import { ResearchDigest } from '../components/dashboard/ResearchDigest';
 import { PrimaryCard } from '../components/ui/Card';
 import { useAuthStore } from '../store/authStore';
@@ -98,12 +98,10 @@ export const Dashboard = () => {
         </PrimaryCard>
       </div>
 
-      {/* Wearable vitals — manual entry of RHR/HRV/sleep/VO2 max */}
-      {user?.id && (
-        <PrimaryCard status="brand" padding="lg">
-          <WearableMetrics userId={user.id} />
-        </PrimaryCard>
-      )}
+      {/* Wearable vitals removed from dashboard until we ship native device
+          integrations (Apple Health, Google Fit, Whoop, Oura, etc.). Manual
+          entry felt incomplete and confused users into thinking we'd auto-pull
+          their data. Re-enable when we have real integrations to attach. */}
 
       {/* Research digest — what's new, dismissible */}
       {user?.id && <ResearchDigest userId={user.id} />}
