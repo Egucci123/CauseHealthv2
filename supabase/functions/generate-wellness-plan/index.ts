@@ -142,7 +142,7 @@ Test and supplement recommendations are anchored to a specific finding or eviden
 HARD RULES — FOLLOW EXACTLY:
 
 1. SUPPLEMENT STACK — TEST-FIRST, SUPPLEMENT-SECOND.
-   We do NOT recommend supplements based on theoretical deficiencies. A nutrient/supplement only enters supplement_stack when there is OBJECTIVE evidence the patient needs it. Maximum 7 supplements.
+   We do NOT recommend supplements based on theoretical deficiencies. A nutrient/supplement only enters supplement_stack when there is OBJECTIVE evidence the patient needs it. Maximum 10 supplements (was 7 — bumped for chronic-condition patients whose legitimate stack genuinely runs higher: e.g. UC patient on statin + mesalamine = vitamin D + omega-3 + magnesium + curcumin + iron + CoQ10 + methylfolate + L-glutamine + S. boulardii + butyrate = 10 with no padding). Healthy patient with no chronic dx should still land at 3-5.
 
    Valid sourced_from values:
    - "lab_finding": a SPECIFIC lab value out of standard range OR on the curated Watch list on THIS draw (e.g. ferritin 28, vitamin D 24, hs-CRP 0.8, HbA1c 5.5). Cite the marker and value in why. Healthy values do NOT earn supplements.
@@ -595,7 +595,7 @@ CRITICAL OUTPUT RULES:
           if (ar !== br) return ar - br;
           return priorityRank(a.priority ?? 'optimize') - priorityRank(b.priority ?? 'optimize');
         })
-        .slice(0, 7)
+        .slice(0, 10)
         .map((s: any, i: number) => ({ ...s, rank: i + 1 })); // force 1..N, no gaps or duplicates
     }
 
@@ -898,6 +898,64 @@ CRITICAL OUTPUT RULES:
         console.log(`[wellness-plan] Injected ${rule.nutrient} for ${rule.regex.source} match`);
       }
 
+      // ── DISEASE-MECHANISM SUPPLEMENT INJECTOR ──────────────────────────
+      // Backstop for the AI dropping evidence-based condition-specific
+      // supplements (UC → L-glutamine + S. boulardii + butyrate; Hashimoto's
+      // → selenium; T2D → berberine; PCOS → inositol; etc.). Each entry
+      // includes practical_note timing + interaction guidance.
+      type DiseaseRule = { conditionRegex: RegExp; matchInStack: RegExp; entry: any };
+      const conditionsLowerForInjector = (condStr ?? '').toLowerCase();
+      const diseaseMechanismRules: DiseaseRule[] = [
+        // ── IBD: gut-barrier repair triad ──────────────────────────────
+        {
+          conditionRegex: /\b(ulcerative colitis|crohn|ibd|inflammatory bowel|indeterminate colitis)\b/i,
+          matchInStack: /\bl[\s-]?glutamine\b/i,
+          entry: { emoji: '🛡️', nutrient: 'L-Glutamine', form: 'Powder (mix in water)', dose: '5g daily', timing: 'Morning, empty stomach', why_short: 'Gut barrier repair for UC', why: 'L-glutamine is the primary fuel for intestinal cells; well-evidenced for IBD mucosal healing.', practical_note: 'Morning on empty stomach with water — competes with food for absorption. Tasteless powder, easy to dose. Safe long-term; no interactions with mesalamine/ustekinumab.', priority: 'high', sourced_from: 'disease_mechanism', evidence_note: 'Multiple clinical trials show benefit in UC mucosal healing.' },
+        },
+        {
+          conditionRegex: /\b(ulcerative colitis|crohn|ibd|inflammatory bowel|indeterminate colitis)\b/i,
+          matchInStack: /\bs\.?\s*boulardii|saccharomyces|probiotic|visbiome|vsl/i,
+          entry: { emoji: '🦠', nutrient: 'Saccharomyces boulardii (Probiotic)', form: 'Capsule, refrigerated or shelf-stable', dose: '500mg (5 billion CFU) twice daily', timing: 'With breakfast and dinner', why_short: 'Strain-specific UC remission support', why: 'S. boulardii is the most-studied probiotic for IBD remission maintenance; reduces flare frequency.', practical_note: 'With meals — survives stomach acid better. Safe with ustekinumab (yeast-based, not bacteria, so no immunosuppression concern). If on antibiotic, take 2hrs apart. Discontinue if severe immunocompromise (rare).', priority: 'high', sourced_from: 'disease_mechanism', evidence_note: 'Multiple RCTs in UC and Crohn\'s remission maintenance.' },
+        },
+        {
+          conditionRegex: /\b(ulcerative colitis|crohn|ibd|inflammatory bowel|indeterminate colitis)\b/i,
+          matchInStack: /\bbutyrate|tributyrin\b/i,
+          entry: { emoji: '⚡', nutrient: 'Butyrate (Tributyrin SR)', form: 'Capsule (sustained-release)', dose: '500-1000mg twice daily', timing: 'With breakfast and dinner', why_short: 'Colonocyte fuel + barrier repair', why: 'Butyrate is the primary energy source for colon cells; sustained-release form delivers to lower GI where UC inflammation sits.', practical_note: 'With meals — fat aids absorption. Tributyrin SR > sodium butyrate (less odor, better delivery). Safe with all UC meds. May cause mild flatulence first 1-2 weeks.', priority: 'high', sourced_from: 'disease_mechanism', evidence_note: 'Direct mucosal energy substrate; supported in UC remission protocols.' },
+        },
+        // ── Hashimoto's: selenium for TPO reduction ─────────────────────
+        {
+          conditionRegex: /\b(hashimoto|autoimmune thyroid|chronic thyroiditis)\b/i,
+          matchInStack: /\bselenium\b/i,
+          entry: { emoji: '🦋', nutrient: 'Selenium (Selenomethionine)', form: 'Capsule', dose: '200mcg daily', timing: 'With breakfast', why_short: 'Lowers TPO antibodies in Hashimoto\'s', why: 'Selenomethionine reduces thyroid peroxidase antibodies and supports T4-to-T3 conversion.', practical_note: 'With breakfast — selenomethionine absorbs better than other forms. Do NOT exceed 400mcg/day (toxicity). Safe with levothyroxine. Brazil nuts (1-2/day) can replace this if preferred.', priority: 'high', sourced_from: 'disease_mechanism', evidence_note: 'Meta-analyses show TPO Ab reduction with 200mcg selenium for 3-6 months.' },
+        },
+        // ── T2D / prediabetes: berberine ────────────────────────────────
+        {
+          conditionRegex: /\b(type 2 diabet|t2d|t2dm|diabetes mellitus type 2|prediabet|insulin resistance)\b/i,
+          matchInStack: /\bberberine\b/i,
+          entry: { emoji: '🌿', nutrient: 'Berberine HCl', form: 'Capsule', dose: '500mg three times daily with meals', timing: 'With breakfast, lunch, dinner', why_short: 'Comparable to metformin for glucose control', why: 'Berberine activates AMPK, lowers fasting glucose, A1c, triglycerides, and LDL. Comparable to metformin in head-to-head studies.', practical_note: 'With each meal — short half-life requires 3x/day dosing. Can cause GI upset first 1-2 weeks; start at 500mg once daily and ramp. AVOID with statin if liver enzymes elevated (both processed by liver — discuss with doctor). Pregnancy: do not take.', priority: 'high', sourced_from: 'disease_mechanism', evidence_note: 'Multiple RCTs show comparable efficacy to metformin for fasting glucose and A1c.' },
+        },
+        // ── PCOS: inositol ──────────────────────────────────────────────
+        {
+          conditionRegex: /\b(pcos|polycystic ovar)\b/i,
+          matchInStack: /\binositol\b/i,
+          entry: { emoji: '🌸', nutrient: 'Myo-inositol + D-chiro-inositol (40:1 ratio)', form: 'Powder or capsule', dose: '4g myo-inositol + 100mg D-chiro daily, split into 2 doses', timing: 'Morning and evening with meals', why_short: 'PCOS-specific insulin sensitization', why: 'The 40:1 myo:D-chiro ratio mimics the natural ratio in healthy ovarian tissue; restores ovulation and insulin sensitivity in PCOS.', practical_note: 'Split into 2 doses with meals. Effects build over 3 months. Safe in pregnancy (commonly recommended for PCOS-related fertility). No interactions with metformin.', priority: 'high', sourced_from: 'disease_mechanism', evidence_note: 'Multiple RCTs for PCOS insulin sensitivity and ovulation.' },
+        },
+        // ── Osteoporosis: vitamin K2 routing ────────────────────────────
+        {
+          conditionRegex: /\b(osteoporosis|osteopenia)\b/i,
+          matchInStack: /\bvitamin\s*k2|menaquinone|mk-?7/i,
+          entry: { emoji: '🦴', nutrient: 'Vitamin K2 (MK-7)', form: 'Softgel', dose: '180mcg daily', timing: 'With dinner (pair with vitamin D + fatty meal)', why_short: 'Routes calcium to bone, away from arteries', why: 'K2 activates osteocalcin (binds calcium to bone) and matrix-Gla protein (prevents arterial calcification). Standard pairing with vitamin D and calcium.', practical_note: 'With dinner alongside vitamin D — fat-soluble. CRITICAL: do NOT take if on warfarin (affects INR; check with doctor). Safe with NOACs (apixaban, rivaroxaban) but inform doctor.', priority: 'high', sourced_from: 'disease_mechanism', evidence_note: 'Strong evidence for bone density and arterial calcification reduction.' },
+        },
+      ];
+
+      for (const rule of diseaseMechanismRules) {
+        if (!rule.conditionRegex.test(conditionsLowerForInjector)) continue;
+        if (rule.matchInStack.test(stackText)) continue;
+        if (rule.matchInStack.test(userSuppNames)) continue;
+        plan.supplement_stack.push(rule.entry);
+        console.log(`[wellness-plan] Injected disease-mechanism: ${rule.entry.nutrient}`);
+      }
+
       // ── Goal-stack injector (optimization mode only) ───────────────────
       // For users in optimization mode (mostly healthy), make sure the
       // canonical longevity / goal-tuned stack is present even if the AI
@@ -970,7 +1028,7 @@ CRITICAL OUTPUT RULES:
           if (ar !== br) return ar - br;
           return priorityRank(a.priority ?? 'optimize') - priorityRank(b.priority ?? 'optimize');
         })
-        .slice(0, 7)
+        .slice(0, 10)
         .map((s: any, i: number) => ({ ...s, rank: i + 1 }));
     }
 
