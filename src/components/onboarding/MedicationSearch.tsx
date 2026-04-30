@@ -1,15 +1,34 @@
 // src/components/onboarding/MedicationSearch.tsx
+//
+// Universal medication picker. Used in onboarding (Step 3) and Settings →
+// Health Profile. State is fully owned by the parent — pass `medications` +
+// `onAdd` + `onRemove` + `onUpdateDuration`. Component handles search/UI only.
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { searchMedications, type MedicationEntry } from '../../data/medications';
 import { searchMedicationsAPI, type MedSearchResult } from '../../lib/medicalSearch';
 import { DEPLETIONS } from '../../data/depletions';
-import { useOnboardingStore, type AddedMedication } from '../../store/onboardingStore';
 import { SeverityBadge } from '../ui/Badge';
 import { InterventionBox } from '../ui/Card';
 import { CustomSelect } from '../ui/CustomSelect';
 
-export const MedicationSearch = () => {
+export interface PickedMedication {
+  id?: string;
+  generic: string;
+  brand?: string;
+  duration: string;
+  depletes: string[];
+}
+
+interface Props {
+  medications: PickedMedication[];
+  onAdd: (m: { generic: string; brand?: string; duration: string; depletes: string[] }) => void;
+  onRemove: (idOrGeneric: string) => void;
+  onUpdateDuration: (idOrGeneric: string, duration: string) => void;
+  showDepletionDetail?: boolean; // onboarding shows full depletion table; settings hides it
+}
+
+export const MedicationSearch = ({ medications, onAdd, onRemove, onUpdateDuration, showDepletionDetail = true }: Props) => {
   const [query, setQuery] = useState('');
   const [localResults, setLocalResults] = useState<MedicationEntry[]>([]);
   const [apiResults, setApiResults] = useState<MedSearchResult[]>([]);
@@ -17,14 +36,11 @@ export const MedicationSearch = () => {
   const [searching, setSearching] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const { medications, addMedication, removeMedication } = useOnboardingStore();
 
   useEffect(() => {
     if (query.length < 2) { setLocalResults([]); setApiResults([]); setOpen(false); return; }
-    // Immediate local search
     setLocalResults(searchMedications(query));
     setOpen(true);
-    // Debounced API search for everything else
     setSearching(true);
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
@@ -35,21 +51,21 @@ export const MedicationSearch = () => {
     return () => clearTimeout(debounceRef.current);
   }, [query]);
 
+  const addedNames = new Set(medications.map(m => m.generic.toLowerCase()));
+
   const handleSelectLocal = (med: MedicationEntry) => {
-    if (medications.some(m => m.generic === med.generic)) { setQuery(''); setOpen(false); return; }
-    addMedication({ generic: med.generic, brand: med.brands[0], duration: '1_6_months', depletes: med.depletes });
+    if (addedNames.has(med.generic.toLowerCase())) { setQuery(''); setOpen(false); return; }
+    onAdd({ generic: med.generic, brand: med.brands[0], duration: '1_6_months', depletes: med.depletes });
     setQuery(''); setOpen(false); inputRef.current?.focus();
   };
 
   const handleSelectAPI = (med: MedSearchResult) => {
-    if (medications.some(m => m.generic.toLowerCase() === med.name.toLowerCase())) { setQuery(''); setOpen(false); return; }
-    addMedication({ generic: med.name, duration: '1_6_months', depletes: [] });
+    if (addedNames.has(med.name.toLowerCase())) { setQuery(''); setOpen(false); return; }
+    onAdd({ generic: med.name, duration: '1_6_months', depletes: [] });
     setQuery(''); setOpen(false); inputRef.current?.focus();
   };
 
-  // Merge results: local first (has depletion data), then API results not already in local
   const localNames = new Set(localResults.map(r => r.generic.toLowerCase()));
-  const addedNames = new Set(medications.map(m => m.generic.toLowerCase()));
   const filteredAPI = apiResults.filter(r => !localNames.has(r.name.toLowerCase()));
 
   return (
@@ -66,7 +82,6 @@ export const MedicationSearch = () => {
           {open && (
             <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.15 }}
               className="absolute top-full left-0 right-0 z-20 bg-clinical-white border border-outline-variant/20 shadow-card-md mt-1 overflow-hidden max-h-64 overflow-y-auto" style={{ borderRadius: '4px' }}>
-              {/* Local results first — these have depletion data */}
               {localResults.map((med) => {
                 const alreadyAdded = addedNames.has(med.generic.toLowerCase());
                 return (
@@ -81,7 +96,6 @@ export const MedicationSearch = () => {
                   </button>
                 );
               })}
-              {/* API results — comprehensive drug database */}
               {filteredAPI.map((med) => {
                 const alreadyAdded = addedNames.has(med.name.toLowerCase());
                 return (
@@ -104,20 +118,20 @@ export const MedicationSearch = () => {
       </div>
       <AnimatePresence>
         {medications.map((med) => (
-          <MedicationCard key={med.id} medication={med} onRemove={() => removeMedication(med.id)} />
+          <MedicationCard key={med.id ?? med.generic} medication={med} onRemove={() => onRemove(med.id ?? med.generic)} onUpdateDuration={d => onUpdateDuration(med.id ?? med.generic, d)} showDepletionDetail={showDepletionDetail} />
         ))}
       </AnimatePresence>
     </div>
   );
 };
 
-const MedicationCard = ({ medication, onRemove }: { medication: AddedMedication; onRemove: () => void }) => {
+const MedicationCard = ({ medication, onRemove, onUpdateDuration, showDepletionDetail }: { medication: PickedMedication; onRemove: () => void; onUpdateDuration: (d: string) => void; showDepletionDetail: boolean }) => {
   const [revealed, setRevealed] = useState(false);
-  const hasDepletions = medication.depletes.length > 0;
+  const hasDepletions = (medication.depletes ?? []).length > 0;
 
   useEffect(() => {
-    if (hasDepletions) { const t = setTimeout(() => setRevealed(true), 400); return () => clearTimeout(t); }
-  }, [hasDepletions]);
+    if (hasDepletions && showDepletionDetail) { const t = setTimeout(() => setRevealed(true), 400); return () => clearTimeout(t); }
+  }, [hasDepletions, showDepletionDetail]);
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8, height: 0 }} transition={{ duration: 0.25 }}
@@ -136,7 +150,7 @@ const MedicationCard = ({ medication, onRemove }: { medication: AddedMedication;
           <CustomSelect
             label="How Long on This Medication?"
             value={medication.duration}
-            onChange={(v) => useOnboardingStore.setState(s => ({ medications: s.medications.map(m => m.id === medication.id ? { ...m, duration: v } : m) }))}
+            onChange={onUpdateDuration}
             options={[
               { value: 'less_than_1_month', label: 'Less than 1 month' },
               { value: '1_6_months', label: '1–6 months' },
@@ -147,51 +161,53 @@ const MedicationCard = ({ medication, onRemove }: { medication: AddedMedication;
           />
         </div>
 
-        <AnimatePresence>
-          {revealed && hasDepletions && (
-            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.4, ease: [0.04, 0.62, 0.23, 0.98] }}>
-              <div className="mt-2 pt-4 border-t border-outline-variant/10">
-                <div className="flex items-center gap-2 mb-4">
-                  <span className="material-symbols-outlined text-[#E8922A] text-[18px]">warning</span>
-                  <span className="text-precision text-[0.68rem] font-bold text-clinical-stone tracking-widest uppercase">Depletion Identified</span>
+        {showDepletionDetail && (
+          <AnimatePresence>
+            {revealed && hasDepletions && (
+              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.4, ease: [0.04, 0.62, 0.23, 0.98] }}>
+                <div className="mt-2 pt-4 border-t border-outline-variant/10">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="material-symbols-outlined text-[#E8922A] text-[18px]">warning</span>
+                    <span className="text-precision text-[0.68rem] font-bold text-clinical-stone tracking-widest uppercase">Depletion Identified</span>
+                  </div>
+                  <table className="w-full text-left mb-4">
+                    <thead>
+                      <tr className="text-precision text-[0.68rem] text-clinical-stone border-b border-outline-variant/10">
+                        <th className="pb-2 font-medium">NUTRIENT</th>
+                        <th className="pb-2 font-medium">SEVERITY</th>
+                        <th className="pb-2 font-medium hidden sm:table-cell">IMPACT</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-body text-clinical-charcoal">
+                      {medication.depletes.map(key => {
+                        const dep = DEPLETIONS[key];
+                        if (!dep) return null;
+                        return (
+                          <tr key={key} className="border-b border-outline-variant/5">
+                            <td className="py-3 font-semibold text-sm">{dep.nutrient}</td>
+                            <td className="py-3"><SeverityBadge severity={dep.severity} /></td>
+                            <td className="py-3 text-clinical-stone text-sm hidden sm:table-cell">{dep.symptoms.slice(0, 2).join(', ')}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                  {medication.depletes[0] && DEPLETIONS[medication.depletes[0]] && (
+                    <InterventionBox label="Included in Your Protocol">
+                      {DEPLETIONS[medication.depletes[0]].intervention}
+                    </InterventionBox>
+                  )}
+                  <div className="mt-3 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-primary-container text-[14px]">check_circle</span>
+                    <p className="text-body text-clinical-stone text-xs">This will be addressed in your personalized wellness plan.</p>
+                  </div>
                 </div>
-                <table className="w-full text-left mb-4">
-                  <thead>
-                    <tr className="text-precision text-[0.68rem] text-clinical-stone border-b border-outline-variant/10">
-                      <th className="pb-2 font-medium">NUTRIENT</th>
-                      <th className="pb-2 font-medium">SEVERITY</th>
-                      <th className="pb-2 font-medium hidden sm:table-cell">IMPACT</th>
-                    </tr>
-                  </thead>
-                  <tbody className="text-body text-clinical-charcoal">
-                    {medication.depletes.map(key => {
-                      const dep = DEPLETIONS[key];
-                      if (!dep) return null;
-                      return (
-                        <tr key={key} className="border-b border-outline-variant/5">
-                          <td className="py-3 font-semibold text-sm">{dep.nutrient}</td>
-                          <td className="py-3"><SeverityBadge severity={dep.severity} /></td>
-                          <td className="py-3 text-clinical-stone text-sm hidden sm:table-cell">{dep.symptoms.slice(0, 2).join(', ')}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-                {medication.depletes[0] && DEPLETIONS[medication.depletes[0]] && (
-                  <InterventionBox label="Included in Your Protocol">
-                    {DEPLETIONS[medication.depletes[0]].intervention}
-                  </InterventionBox>
-                )}
-                <div className="mt-3 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary-container text-[14px]">check_circle</span>
-                  <p className="text-body text-clinical-stone text-xs">This will be addressed in your personalized wellness plan.</p>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        )}
 
-        {!hasDepletions && (
+        {showDepletionDetail && !hasDepletions && (
           <div className="flex items-center gap-2 mt-2">
             <span className="material-symbols-outlined text-primary-container text-[14px]">check_circle</span>
             <p className="text-body text-clinical-stone text-xs">No documented nutrient depletions for this medication.</p>

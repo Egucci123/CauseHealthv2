@@ -8,7 +8,21 @@ export const Step3_Medications = () => {
   const {
     nextStep, noMedications, updateStep3, medications,
     supplements, noSupplements,
+    addMedication, removeMedication,
+    addSupplement, removeSupplement,
   } = useOnboardingStore();
+
+  // Bridge MedicationSearch's prop interface to the onboarding store. The
+  // store still owns durations via setState; the component just emits the new
+  // value when the user picks a different option.
+  const updateMedDuration = (id: string, duration: string) =>
+    useOnboardingStore.setState(s => ({ medications: s.medications.map(m => m.id === id ? { ...m, duration } : m) }));
+  const updateSuppField = (id: string, patch: Partial<{ dose: string; durationCategory: string }>) =>
+    useOnboardingStore.setState(s => ({
+      supplements: s.supplements.map(sp =>
+        sp.id === id ? { ...sp, dose: patch.dose ?? sp.dose, duration: patch.durationCategory ?? sp.duration } : sp
+      ),
+    }));
 
   return (
     <OnboardingShell
@@ -45,7 +59,13 @@ export const Step3_Medications = () => {
 
           {!noMedications && (
             <>
-              <MedicationSearch />
+              <MedicationSearch
+                medications={medications}
+                onAdd={addMedication}
+                onRemove={removeMedication}
+                onUpdateDuration={updateMedDuration}
+                showDepletionDetail
+              />
               {medications.length > 0 && (
                 <div className="bg-[#131313] rounded-[10px] p-4 mt-4">
                   <div className="flex items-center gap-3">
@@ -85,7 +105,12 @@ export const Step3_Medications = () => {
 
           {!noSupplements && (
             <>
-              <SupplementSearch />
+              <SupplementSearch
+                supplements={supplements}
+                onAdd={addSupplement}
+                onRemove={removeSupplement}
+                onUpdateField={(id, patch) => updateSuppField(id, { dose: patch.dose, durationCategory: patch.duration })}
+              />
               {supplements.length > 0 && (
                 <div className="bg-[#131313] rounded-[10px] p-4 mt-4">
                   <div className="flex items-center gap-3">

@@ -14,10 +14,18 @@ const FAMILY_HISTORY_OPTIONS = [
 ] as const;
 
 export const Step2_Diagnoses = () => {
-  const { nextStep, familyHistory, updateStep2, geneticTesting } = useOnboardingStore();
+  const { nextStep, familyHistory, updateStep2, geneticTesting, conditions, addCondition, removeCondition } = useOnboardingStore();
 
   const toggleFamilyHistory = (key: string) => {
     updateStep2({ familyHistory: { ...familyHistory, [key]: !familyHistory[key as keyof typeof familyHistory] } });
+  };
+
+  // Bridge ConditionSearch's prop interface to the onboarding store. Settings
+  // does the same with React Query mutations — same component, same UX.
+  const handleAdd = (c: { name: string; icd10?: string }) => addCondition(c);
+  const handleRemove = (idOrName: string) => {
+    const found = conditions.find(c => c.id === idOrName) ?? conditions.find(c => c.name === idOrName);
+    if (found) removeCondition(found.id);
   };
 
   return (
@@ -25,7 +33,7 @@ export const Step2_Diagnoses = () => {
       description="Include current and past diagnoses. This lets us flag autoimmune cascade risks and connect medications to the right conditions."
       onNext={async () => { await nextStep(); }} showSkip onSkip={async () => { await nextStep(); }}>
       <div className="space-y-10">
-        <ConditionSearch />
+        <ConditionSearch conditions={conditions} onAdd={handleAdd} onRemove={handleRemove} />
         <div>
           <SectionLabel>Family History</SectionLabel>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">

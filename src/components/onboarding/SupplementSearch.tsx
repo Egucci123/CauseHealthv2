@@ -1,17 +1,33 @@
 // src/components/onboarding/SupplementSearch.tsx
-// Pattern: mirrors MedicationSearch but for supplements with lab-interaction display.
+//
+// Universal supplement picker. Used in onboarding (Step 3) and Settings →
+// Health Profile. State is fully owned by the parent — pass `supplements` +
+// callbacks. Component handles search/UI only.
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { searchSupplements, findSupplement, getCommonDoses, type SupplementEntry } from '../../data/supplements';
-import { useOnboardingStore } from '../../store/onboardingStore';
 import { CustomSelect } from '../ui/CustomSelect';
 
-export const SupplementSearch = () => {
+export interface PickedSupplement {
+  id?: string;
+  name: string;
+  dose?: string;
+  duration: string;
+  reason?: string;
+}
+
+interface Props {
+  supplements: PickedSupplement[];
+  onAdd: (s: { name: string; duration: string }) => void;
+  onRemove: (idOrName: string) => void;
+  onUpdateField: (idOrName: string, patch: { dose?: string; duration?: string }) => void;
+}
+
+export const SupplementSearch = ({ supplements, onAdd, onRemove, onUpdateField }: Props) => {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SupplementEntry[]>([]);
   const [open, setOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const { supplements, addSupplement, removeSupplement } = useOnboardingStore();
 
   useEffect(() => {
     if (query.length < 2) { setResults([]); setOpen(false); return; }
@@ -23,31 +39,28 @@ export const SupplementSearch = () => {
 
   const handleSelect = (supp: SupplementEntry) => {
     if (addedNames.has(supp.name.toLowerCase())) { setQuery(''); setOpen(false); return; }
-    addSupplement({ name: supp.name, duration: '1_6_months' });
+    onAdd({ name: supp.name, duration: '1_6_months' });
     setQuery(''); setOpen(false); inputRef.current?.focus();
   };
 
-  // Allow custom entry (supplement not in database)
   const handleCustom = () => {
     if (query.trim().length < 2) return;
     if (addedNames.has(query.toLowerCase().trim())) { setQuery(''); setOpen(false); return; }
-    addSupplement({ name: query.trim(), duration: '1_6_months' });
+    onAdd({ name: query.trim(), duration: '1_6_months' });
     setQuery(''); setOpen(false); inputRef.current?.focus();
   };
 
   return (
     <div className="space-y-4">
-      {/* Search */}
       <div className="relative">
-        <label className="text-precision text-[0.68rem] font-bold text-clinical-stone tracking-widest uppercase mb-1.5 block">
-          Search Supplements
-        </label>
+        <label className="text-precision text-[0.68rem] font-bold text-clinical-stone tracking-widest uppercase mb-1.5 block">Search Supplements</label>
         <div className="relative">
           <input
             ref={inputRef}
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleCustom(); } }}
             placeholder="Type supplement name (e.g. Magnesium, Creatine, Vitamin D)"
             style={{ borderRadius: '4px' }}
             className="w-full pl-10 pr-4 py-3 bg-clinical-cream border border-outline-variant/20 text-clinical-charcoal placeholder-clinical-stone/50 text-body text-sm focus:border-primary-container focus:ring-1 focus:ring-primary-container focus:outline-none transition-colors"
@@ -66,10 +79,7 @@ export const SupplementSearch = () => {
               style={{ borderRadius: '4px' }}
             >
               {results.length === 0 ? (
-                <button
-                  onClick={handleCustom}
-                  className="w-full text-left px-4 py-3 hover:bg-clinical-cream transition-colors flex items-center gap-3"
-                >
+                <button onClick={handleCustom} className="w-full text-left px-4 py-3 hover:bg-clinical-cream transition-colors flex items-center gap-3">
                   <span className="material-symbols-outlined text-primary-container text-[16px]">add</span>
                   <div>
                     <p className="text-body text-clinical-charcoal text-sm font-medium">Add "{query}"</p>
@@ -114,12 +124,14 @@ export const SupplementSearch = () => {
             {supplements.map((supp) => {
               const dbEntry = findSupplement(supp.name);
               const labInteractions = dbEntry?.labInteractions ?? [];
+              const id = supp.id ?? supp.name;
               return (
                 <SupplementCard
-                  key={supp.id}
+                  key={id}
                   supplement={supp}
                   labInteractions={labInteractions}
-                  onRemove={() => removeSupplement(supp.id)}
+                  onRemove={() => onRemove(id)}
+                  onUpdateField={patch => onUpdateField(id, patch)}
                 />
               );
             })}
@@ -131,12 +143,13 @@ export const SupplementSearch = () => {
 };
 
 interface SupplementCardProps {
-  supplement: { id: string; name: string; dose?: string; duration: string; reason?: string };
+  supplement: PickedSupplement;
   labInteractions: { marker: string; effect: string; magnitude: string; note: string }[];
   onRemove: () => void;
+  onUpdateField: (patch: { dose?: string; duration?: string }) => void;
 }
 
-const SupplementCard = ({ supplement, labInteractions, onRemove }: SupplementCardProps) => {
+const SupplementCard = ({ supplement, labInteractions, onRemove, onUpdateField }: SupplementCardProps) => {
   const [expanded, setExpanded] = useState(false);
   const hasLabFlags = labInteractions.length > 0;
 
@@ -162,11 +175,7 @@ const SupplementCard = ({ supplement, labInteractions, onRemove }: SupplementCar
               </div>
             )}
           </div>
-          <button
-            onClick={onRemove}
-            className="text-clinical-stone hover:text-[#C94F4F] transition-colors"
-            aria-label="Remove supplement"
-          >
+          <button onClick={onRemove} className="text-clinical-stone hover:text-[#C94F4F] transition-colors" aria-label="Remove supplement">
             <span className="material-symbols-outlined text-[18px]">close</span>
           </button>
         </div>
@@ -175,9 +184,7 @@ const SupplementCard = ({ supplement, labInteractions, onRemove }: SupplementCar
           <CustomSelect
             label="Duration"
             value={supplement.duration}
-            onChange={(v) => useOnboardingStore.setState((s) => ({
-              supplements: s.supplements.map((x) => x.id === supplement.id ? { ...x, duration: v } : x),
-            }))}
+            onChange={(v) => onUpdateField({ duration: v })}
             options={[
               { value: 'less_than_1_month', label: 'Less than 1 month' },
               { value: '1_6_months', label: '1–6 months' },
@@ -186,26 +193,19 @@ const SupplementCard = ({ supplement, labInteractions, onRemove }: SupplementCar
               { value: '3_plus_years', label: '3+ years' },
             ]}
           />
-          <div className="flex flex-col gap-1.5">
-            <CustomSelect
-              label="Dose"
-              value={supplement.dose ?? ''}
-              onChange={(v) => useOnboardingStore.setState((s) => ({
-                supplements: s.supplements.map((x) => x.id === supplement.id ? { ...x, dose: v } : x),
-              }))}
-              options={[
-                { value: '', label: 'Not sure' },
-                ...getCommonDoses(supplement.name).map((d) => ({ value: d, label: d })),
-              ]}
-            />
-          </div>
+          <CustomSelect
+            label="Dose"
+            value={supplement.dose ?? ''}
+            onChange={(v) => onUpdateField({ dose: v })}
+            options={[
+              { value: '', label: 'Not sure' },
+              ...getCommonDoses(supplement.name).map((d) => ({ value: d, label: d })),
+            ]}
+          />
         </div>
 
         {hasLabFlags && (
-          <button
-            onClick={() => setExpanded((v) => !v)}
-            className="text-precision text-[0.6rem] text-[#E8922A] font-bold tracking-widest uppercase hover:underline flex items-center gap-1"
-          >
+          <button onClick={() => setExpanded((v) => !v)} className="text-precision text-[0.6rem] text-[#E8922A] font-bold tracking-widest uppercase hover:underline flex items-center gap-1">
             {expanded ? 'Hide' : 'Show'} lab interactions
             <span className="material-symbols-outlined text-[14px]" style={{ transform: expanded ? 'rotate(180deg)' : 'rotate(0)' }}>expand_more</span>
           </button>
@@ -213,13 +213,7 @@ const SupplementCard = ({ supplement, labInteractions, onRemove }: SupplementCar
 
         <AnimatePresence>
           {expanded && hasLabFlags && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="overflow-hidden"
-            >
+            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
               <div className="mt-3 pt-3 border-t border-outline-variant/10 space-y-2">
                 {labInteractions.map((interaction, i) => (
                   <div key={i} className="bg-[#E8922A]/5 border-l-2 border-[#E8922A] rounded-r px-3 py-2">
