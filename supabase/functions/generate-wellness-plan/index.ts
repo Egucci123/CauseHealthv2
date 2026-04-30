@@ -168,8 +168,24 @@ Test and supplement recommendations are anchored to a specific finding or eviden
 
 HARD RULES — FOLLOW EXACTLY:
 
-1. SUPPLEMENT STACK — TEST-FIRST, SUPPLEMENT-SECOND.
-   We do NOT recommend supplements based on theoretical deficiencies. A nutrient/supplement only enters supplement_stack when there is OBJECTIVE evidence the patient needs it. Maximum 10 supplements (was 7 — bumped for chronic-condition patients whose legitimate stack genuinely runs higher: e.g. UC patient on statin + mesalamine = vitamin D + omega-3 + magnesium + curcumin + iron + CoQ10 + methylfolate + L-glutamine + S. boulardii + butyrate = 10 with no padding). Healthy patient with no chronic dx should still land at 3-5.
+1. SUPPLEMENT STACK — TEST-FIRST, SUPPLEMENT-SECOND, ONE PER CATEGORY.
+   We do NOT recommend supplements based on theoretical deficiencies. A nutrient/supplement only enters supplement_stack when there is OBJECTIVE evidence the patient needs it.
+
+   HARD CAP: ONE supplement per category. MAX. Pick the SINGLE highest-leverage supplement for each of the 6 categories that applies to this patient. If a category has no clear winner, leave it empty — DO NOT pad. A clean 4-supplement stack with one per category beats 7 with overlap.
+
+   The 6 categories:
+     1. sleep_stress       — sleep onset, mid-night waking, cortisol, anxiety
+     2. gut_healing        — UC/IBD/IBS gut barrier, microbiome
+     3. liver_metabolic    — ALT/AST elevation, lipids, blood sugar / insulin resistance, hepatoprotection (NEW: milk thistle, NAC, CoQ10 for statin)
+     4. inflammation_cardio — omega-3 for TG/ApoB, hs-CRP-driven inflammation, joint
+     5. nutrient_repletion — confirmed deficiencies (vitamin D 24, ferritin <30, B12 <300)
+     6. condition_therapy  — diagnosis-specific evidence-based (PCOS inositol, Hashimoto's selenium IF TPO+, UC L-glutamine)
+
+   "Best one per category" means: highest evidence × highest impact for THIS patient × safest profile. Don't list two "good" supplements for the same category — pick the better one and drop the other.
+
+   Healthy patient with no chronic dx should land at 2-3 supplements total (likely just nutrient_repletion + one empirical exception).
+
+   DO NOT include rank numbers in the displayed stack — the UI groups by category, not by rank.
 
    Valid sourced_from values:
    - "lab_finding": a SPECIFIC lab value out of standard range OR on the curated Watch list on THIS draw (e.g. ferritin 28, vitamin D 24, hs-CRP 0.8, HbA1c 5.5). Cite the marker and value in why. Healthy values do NOT earn supplements.
@@ -189,12 +205,26 @@ HARD RULES — FOLLOW EXACTLY:
      b) Note the depletion in medication_notes with "test first, then supplement IF confirmed low" framing
      c) Once a future lab confirms deficiency, sourced_from becomes "lab_finding".
 
-   EMPIRICAL SUPPLEMENTATION ALLOWED (sourced_from = "medication_depletion") when ALL THREE of these are true:
-     1. The depletion is near-universal in patients on the drug (well-documented in mainstream pharmacology)
-     2. The lab test is impractical, expensive, or not insurance-covered (so test-first creates a real barrier)
-     3. The patient has symptoms consistent with the depletion (or the supplement is essentially harmless prophylaxis)
-   The canonical example: STATIN → CoQ10 (ubiquinol). CoQ10 testing is rare and rarely covered; statin-induced CoQ10 depletion is documented in nearly every treated patient; CoQ10 supplementation is safe and inexpensive. If user is on any statin (atorvastatin, rosuvastatin, simvastatin, pravastatin, lovastatin, pitavastatin, fluvastatin, ezetimibe+statin combo), ADD CoQ10 (200 mg ubiquinol daily) to supplement_stack with sourced_from = "medication_depletion".
-   Other narrow exceptions: long-term metformin (>5 years) + B12 supplementation; long-term PPI (>2 years) + magnesium glycinate.
+   EMPIRICAL SUPPLEMENTATION ALLOWED (no lab confirmation needed) when ALL THREE are true:
+     1. The depletion / mechanism is near-universal in the relevant population (well-documented mainstream evidence)
+     2. The supplement is broadly safe with no major interactions (safety profile = OTC/multi-decade evidence)
+     3. The lab test is either impractical/expensive OR the supplement is so safe that test-first creates unnecessary friction
+
+   APPROVED EMPIRICAL EXCEPTIONS (these are the ONLY ones — do not invent more):
+     - **STATIN → CoQ10 (Ubiquinol)** 100-200mg daily. Universal depletion + safe + test rarely covered. sourced_from = "medication_depletion". Category = liver_metabolic.
+     - **ALT > 60 OR hepatotoxic medication (statin, methotrexate, isoniazid, valproate, acetaminophen >3g/day) → Milk Thistle (Silymarin)** 200-400mg daily. 30+ years of safety data, no significant interactions, hepatoprotective effect well-documented. Category = liver_metabolic.
+     - **Sleep symptoms (waking mid-night, difficulty falling asleep, restless sleep) → Magnesium Glycinate** 200-400mg evening. Broad safety, no labs required for sleep complaint. Category = sleep_stress.
+     - **Triglycerides > 150 OR low fish intake (self-reported < 2 servings/week) → Omega-3 EPA/DHA** 1-2g daily. Food-equivalent supplement; safe; high-leverage for cardio. Category = inflammation_cardio.
+     - **Long-term metformin (>5 years)** → B12 (Methylcobalamin) 500-1000mcg sublingual. Universal subclinical depletion; B12 testing IS cheap so prefer test-first if recent serum B12/MMA available; otherwise empirical OK. Category = nutrient_repletion.
+     - **Long-term PPI (>2 years)** → Magnesium Glycinate (covers sleep too). Category = sleep_stress.
+
+   STILL TEST-FIRST (the test is cheap, common, insurance-covered, and the result changes what supplement is needed):
+     - **Methylfolate** → ALWAYS test serum folate + RBC folate first. Mesalamine/sulfasalazine depletion suspected? Test first. Don't auto-add.
+     - **Berberine** → A1c 5.5-5.9 alone is NOT enough. Test fasting insulin + HOMA-IR first; only add berberine if insulin resistance confirmed.
+     - **Iron** → ALWAYS test ferritin + iron + TIBC + transferrin saturation first. Iron supplementation without confirmed deficiency causes harm in heterozygous hemochromatosis carriers (1 in 200 adults).
+     - **B12** → If recent labs don't include serum B12 + MMA, add to retest_timeline. Don't auto-add unless long-term metformin (see exception above).
+     - **Curcumin** → Has interactions (blood thinners, gallbladder, GI effects in some). For ALT elevation, prefer milk thistle empirically and reserve curcumin for confirmed inflammatory diagnosis (RA, IBD active flare with hs-CRP>3).
+     - **Selenium for Hashimoto's** → Test TPO antibodies first. Don't add selenium without TPO+ confirmation.
 
    IF the relevant lab IS on this draw AND shows deficiency, sourced_from becomes "lab_finding" with the medication named as the likely cause in why (no double-counting).
 
@@ -505,7 +535,7 @@ ${allLabsStr.slice(0, 4000)}
 NUTRIENTS NOT TESTED (do NOT recommend supplements for these — mention in disclaimer only. Do NOT add them to retest_timeline as a 'baseline gap'. The strict triage rule still applies in optimization mode — a missing test only earns a retest_timeline entry if the patient has a symptom, medication depletion, or out-of-range marker that the test would investigate. Healthy patients with no triggers get a SHORT retest list focused on actual labs to track, not a longevity wishlist.):
 ${notTestedStr}
 
-Return JSON: {"generated_at":"${new Date().toISOString()}","headline":"one 12-word verdict in plain English (e.g. 'Your iron is low — fix it and the fatigue lifts')","summary":"3 short sentences max — what's wrong, what we'll fix, how long it takes","today_actions":[{"emoji":"","action":"one verb-led sentence the user does TODAY (e.g. 'Eat a 3-egg breakfast')","why":"one short sentence","category":"eat|move|take|sleep|stress"}],"supplement_stack":[{"rank":1,"emoji":"💊","nutrient":"","form":"","dose":"","timing":"","why_short":"6-10 word reason in plain English","why":"1 sentence linking to a lab or symptom","practical_note":"REQUIRED — 1 short sentence covering: WHY this timing (absorption / fat-soluble / GABA / circadian), interaction warnings with this user's actual medications, and any 'avoid taking with X' or 'take on empty stomach' caveats. Keep it ONE sentence.","category":"REQUIRED — ONE of: 'sleep_stress' / 'gut_healing' / 'inflammation_cardio' / 'nutrient_repletion' / 'condition_therapy'. Pick the supplement's PRIMARY purpose for this patient.","alternatives":"REQUIRED — array of 1-2 EQUIVALENT alternative options the user can pick instead, formatted as objects {name, form, note}. Examples: Magnesium Glycinate primary -> alternatives: [{name:'Magnesium Threonate', form:'Capsule', note:'Better for cognition + sleep; pricier'}, {name:'Magnesium Citrate', form:'Powder', note:'Cheaper, mild laxative effect'}]. Saccharomyces boulardii primary -> alternatives: [{name:'Visbiome (multi-strain)', form:'Capsule', note:'Most-studied multi-strain UC probiotic; needs refrigeration'}, {name:'VSL#3', form:'Sachets', note:'Higher CFU count; more expensive'}]. Omega-3 primary -> alternatives: [{name:'Algae-based DHA/EPA', form:'Softgel', note:'Vegan option, no fish burps'}, {name:'Liquid fish oil', form:'Liquid', note:'Easier to dose 2-3g; cheaper per gram'}]. Give the user real choice between EQUIVALENT options (different form/source/price/brand) — never alternatives that solve a different problem.","priority":"critical|high|moderate","sourced_from":"lab_finding|disease_mechanism","evidence_note":""}],"meals":[{"emoji":"🥗","name":"meal name","when":"breakfast|lunch|dinner|snack","phase":1,"ingredients":["short list"],"why":"1 sentence — favor 'why now / why this swap' framing for phase 1, 'why this lab' for phase 3"}],"workouts":[{"emoji":"🏃","day":"Mon|Tue|Wed|Thu|Fri|Sat|Sun","title":"e.g. 'Zone 2 walk'","duration_min":30,"description":"1 sentence","why":"1 sentence — which goal/lab this serves"}],"lifestyle_interventions":{"diet":[{"emoji":"🥗","intervention":"","rationale":"","priority":""}],"sleep":[{"emoji":"😴","intervention":"","rationale":"","priority":""}],"exercise":[{"emoji":"💪","intervention":"","rationale":"","priority":""}],"stress":[{"emoji":"🧘","intervention":"","rationale":"","priority":""}]},"action_plan":{"phase_1":{"name":"Stabilize (Weeks 1-4)","focus":"","actions":[]},"phase_2":{"name":"Optimize (Weeks 5-8)","focus":"","actions":[]},"phase_3":{"name":"Maintain (Weeks 9-12)","focus":"","actions":[]}},"symptoms_addressed":[{"symptom":"","severity":7,"how_addressed":"MAX 30 WORDS. Two short sentences max. 6th-grade reading level. Format: '[plain-English cause]. [What we're doing about it].' Example: 'Mostly your low vitamin D (24) plus iron loss from UC. We added vitamin D, an iron test, and folate. Hair grows slow — give it 12 weeks.' DO NOT list dosages, percentage improvements, mechanisms, or jargon. Just: cause + plan."}],"retest_timeline":[{"marker":"","retest_at":"","why":""}],"medication_notes":[{"medication":"","organ_impact":"","depletions":"","monitoring":"","alternative":""}],"disclaimer":"Educational only. Talk to your doctor before changing anything."}
+Return JSON: {"generated_at":"${new Date().toISOString()}","headline":"one 12-word verdict in plain English (e.g. 'Your iron is low — fix it and the fatigue lifts')","summary":"3 short sentences max — what's wrong, what we'll fix, how long it takes","today_actions":[{"emoji":"","action":"one verb-led sentence the user does TODAY (e.g. 'Eat a 3-egg breakfast')","why":"one short sentence","category":"eat|move|take|sleep|stress"}],"supplement_stack":[{"emoji":"💊","nutrient":"","form":"","dose":"","timing":"","why_short":"6-10 word reason in plain English","why":"1 sentence linking to a lab or symptom","practical_note":"REQUIRED — 1 short sentence covering: WHY this timing (absorption / fat-soluble / GABA / circadian), interaction warnings with this user's actual medications, and any 'avoid taking with X' or 'take on empty stomach' caveats. Keep it ONE sentence.","category":"REQUIRED — ONE of: 'sleep_stress' / 'gut_healing' / 'liver_metabolic' / 'inflammation_cardio' / 'nutrient_repletion' / 'condition_therapy'. Pick the supplement's PRIMARY purpose for this patient. Use 'liver_metabolic' for liver enzyme elevation, lipid/cholesterol, blood sugar / insulin resistance, or hepatoprotective supplements (milk thistle, NAC, TUDCA). 'inflammation_cardio' is for heart-rhythm + inflammation markers (omega-3 for ApoB/TG when liver is fine; turmeric for joint inflammation only). When in doubt, the LIVER goes in liver_metabolic.","alternatives":"REQUIRED — array of 1-2 EQUIVALENT alternative options the user can pick instead, formatted as objects {name, form, note}. Examples: Magnesium Glycinate primary -> alternatives: [{name:'Magnesium Threonate', form:'Capsule', note:'Better for cognition + sleep; pricier'}, {name:'Magnesium Citrate', form:'Powder', note:'Cheaper, mild laxative effect'}]. Saccharomyces boulardii primary -> alternatives: [{name:'Visbiome (multi-strain)', form:'Capsule', note:'Most-studied multi-strain UC probiotic; needs refrigeration'}, {name:'VSL#3', form:'Sachets', note:'Higher CFU count; more expensive'}]. Omega-3 primary -> alternatives: [{name:'Algae-based DHA/EPA', form:'Softgel', note:'Vegan option, no fish burps'}, {name:'Liquid fish oil', form:'Liquid', note:'Easier to dose 2-3g; cheaper per gram'}]. Give the user real choice between EQUIVALENT options (different form/source/price/brand) — never alternatives that solve a different problem.","priority":"critical|high|moderate","sourced_from":"lab_finding|disease_mechanism","evidence_note":""}],"meals":[{"emoji":"🥗","name":"meal name","when":"breakfast|lunch|dinner|snack","phase":1,"ingredients":["short list"],"why":"1 sentence — favor 'why now / why this swap' framing for phase 1, 'why this lab' for phase 3"}],"workouts":[{"emoji":"🏃","day":"Mon|Tue|Wed|Thu|Fri|Sat|Sun","title":"e.g. 'Zone 2 walk'","duration_min":30,"description":"1 sentence","why":"1 sentence — which goal/lab this serves"}],"lifestyle_interventions":{"diet":[{"emoji":"🥗","intervention":"","rationale":"","priority":""}],"sleep":[{"emoji":"😴","intervention":"","rationale":"","priority":""}],"exercise":[{"emoji":"💪","intervention":"","rationale":"","priority":""}],"stress":[{"emoji":"🧘","intervention":"","rationale":"","priority":""}]},"action_plan":{"phase_1":{"name":"Stabilize (Weeks 1-4)","focus":"","actions":[]},"phase_2":{"name":"Optimize (Weeks 5-8)","focus":"","actions":[]},"phase_3":{"name":"Maintain (Weeks 9-12)","focus":"","actions":[]}},"symptoms_addressed":[{"symptom":"","severity":7,"how_addressed":"MAX 30 WORDS. Two short sentences max. 6th-grade reading level. Format: '[plain-English cause]. [What we're doing about it].' Example: 'Mostly your low vitamin D (24) plus iron loss from UC. We added vitamin D, an iron test, and folate. Hair grows slow — give it 12 weeks.' DO NOT list dosages, percentage improvements, mechanisms, or jargon. Just: cause + plan."}],"retest_timeline":[{"marker":"","retest_at":"","why":""}],"medication_notes":[{"medication":"","organ_impact":"","depletions":"","monitoring":"","alternative":""}],"disclaimer":"Educational only. Talk to your doctor before changing anything."}
 
 CRITICAL OUTPUT RULES:
 - today_actions: EXACTLY 3 items — the most important things this user can do TODAY. Mix categories (one eat, one move, one take is ideal).
@@ -891,7 +921,7 @@ CRITICAL OUTPUT RULES:
         regex: /\b(atorvastatin|rosuvastatin|simvastatin|pravastatin|lovastatin|pitavastatin|fluvastatin|crestor|lipitor|zocor)\b/i,
         nutrient: 'CoQ10',
         matchInStack: /\b(coq[\s-]?10|ubiquinol|ubiquinone|coenzyme\s*q)\b/i,
-        entry: { emoji: '💊', nutrient: 'CoQ10 (Ubiquinol)', form: 'Softgel', dose: '100-200mg', timing: 'With breakfast (take with fat)', why_short: 'Statins block your body from making CoQ10', why: 'Statins (like atorvastatin) inhibit the same pathway your body uses to make CoQ10 — the energy molecule muscle and heart cells depend on. Replacing it cuts statin-related fatigue and muscle aches.', practical_note: 'Take with the fattiest meal of the day — CoQ10 is fat-soluble and absorption drops 50%+ on an empty stomach. Ubiquinol is the absorbable form (vs. ubiquinone). Safe alongside atorvastatin.', category: 'inflammation_cardio', alternatives: [{ name: 'CoQ10 (Ubiquinone)', form: 'Capsule', note: 'Cheaper but ~50% less bioavailable; needs higher dose (200-400mg)' }, { name: 'PQQ + CoQ10 combo', form: 'Capsule', note: 'PQQ supports mitochondrial production; pricier' }], priority: 'high', sourced_from: 'medication_depletion', evidence_note: 'Multiple RCTs support 100-200mg ubiquinol daily for statin users.' },
+        entry: { emoji: '💊', nutrient: 'CoQ10 (Ubiquinol)', form: 'Softgel', dose: '100-200mg', timing: 'With breakfast (take with fat)', why_short: 'Statins block your body from making CoQ10', why: 'Statins (like atorvastatin) inhibit the same pathway your body uses to make CoQ10 — the energy molecule muscle and heart cells depend on. Replacing it cuts statin-related fatigue and muscle aches.', practical_note: 'Take with the fattiest meal of the day — CoQ10 is fat-soluble and absorption drops 50%+ on an empty stomach. Ubiquinol is the absorbable form (vs. ubiquinone). Safe alongside atorvastatin.', category: 'liver_metabolic', alternatives: [{ name: 'CoQ10 (Ubiquinone)', form: 'Capsule', note: 'Cheaper but ~50% less bioavailable; needs higher dose (200-400mg)' }, { name: 'PQQ + CoQ10 combo', form: 'Capsule', note: 'PQQ supports mitochondrial production; pricier' }], priority: 'high', sourced_from: 'medication_depletion', evidence_note: 'Multiple RCTs support 100-200mg ubiquinol daily for statin users.' },
       },
       {
         regex: /\b(metformin|glucophage)\b/i,
@@ -905,11 +935,19 @@ CRITICAL OUTPUT RULES:
         matchInStack: /\b(b[\s-]?12|magnesium)\b/i,
         entry: { emoji: '💊', nutrient: 'Magnesium Glycinate', form: 'Capsule', dose: '200-400mg', timing: 'Evening', why_short: 'PPIs deplete magnesium and B12', why: 'PPIs (like omeprazole) suppress stomach acid, reducing absorption of magnesium, B12, calcium, and iron. Glycinate form is gentle on the gut.', practical_note: 'Bedtime — activates GABA pathways for calming sleep. Take 2hrs apart from any antibiotic (cipro, doxy) and 4hrs apart from levothyroxine if on it. Glycinate form avoids the laxative effect of magnesium oxide/citrate.', category: 'sleep_stress', alternatives: [{ name: 'Magnesium Threonate', form: 'Capsule', note: 'Crosses blood-brain barrier; better for cognition + sleep' }, { name: 'Magnesium Citrate', form: 'Powder', note: 'Cheaper; has mild laxative effect (avoid if loose stools)' }], priority: 'high', sourced_from: 'medication_depletion', evidence_note: 'FDA black-box warning on PPI-induced hypomagnesemia.' },
       },
+      // Mesalamine/sulfasalazine → folate testing (TEST-FIRST). The supplement
+      // does NOT auto-inject; instead we ensure a folate panel is in
+      // retest_timeline (handled by retest-injector below). This satisfies
+      // the test-first rule: serum folate + RBC folate are cheap and standard.
+      // Universal: applies to ANY 5-ASA user.
+      // ALT > 60 OR hepatotoxic medication → Milk Thistle (silymarin) — empirical
+      // exception (30+ years safety data, no significant interactions, broad
+      // hepatoprotective evidence). Universal across patient profiles.
       {
-        regex: /\b(mesalamine|sulfasalazine|asacol|pentasa|lialda|apriso)\b/i,
-        nutrient: 'Methylfolate',
-        matchInStack: /\b(folate|folic\s*acid|methylfolate|5-mthf)\b/i,
-        entry: { emoji: '💊', nutrient: 'Methylfolate (5-MTHF)', form: 'Capsule', dose: '400-800mcg', timing: 'Morning with food', why_short: 'Mesalamine + UC both lower folate absorption', why: 'Mesalamine and sulfasalazine block folate absorption, and UC inflammation compounds the deficit. Methylfolate is the active form your body can use directly.', practical_note: 'Morning with breakfast — needs the meal to absorb and methylfolate is mildly energizing for some. Take 2hrs apart from your mesalamine dose to avoid absorption competition. The "methyl" form bypasses MTHFR variation common in IBD.', category: 'nutrient_repletion', alternatives: [{ name: 'Folinic Acid (Calcium Folinate)', form: 'Capsule', note: 'Alternative active form; some tolerate better than methylfolate' }, { name: 'Methylated B-Complex', form: 'Capsule', note: 'Includes methylfolate + B12 + B6 in one (more efficient if also B12 deficient)' }], priority: 'high', sourced_from: 'medication_depletion', evidence_note: 'Sulfasalazine especially well-documented for inducing folate deficiency.' },
+        regex: /\b(atorvastatin|rosuvastatin|simvastatin|pravastatin|lovastatin|pitavastatin|fluvastatin|methotrexate|isoniazid|valproate|valproic|crestor|lipitor|zocor)\b/i,
+        nutrient: 'Milk Thistle',
+        matchInStack: /\b(milk\s*thistle|silymarin|silybin)\b/i,
+        entry: { emoji: '🌿', nutrient: 'Milk Thistle (Silymarin)', form: 'Capsule (standardized 80% silymarin)', dose: '200-400mg daily', timing: 'With breakfast (with food for absorption)', why_short: 'Liver protection on hepatotoxic meds', why: 'Hepatotoxic medications (statins, methotrexate, isoniazid) stress the liver over time. Silymarin protects hepatocytes and supports detox pathways with 30+ years of safety evidence.', practical_note: 'With breakfast or any meal containing fat. Standardized to 80% silymarin is the studied form. Safe long-term — no significant drug interactions even alongside multiple liver-processed meds. May mildly lower blood sugar; monitor if diabetic.', category: 'liver_metabolic', alternatives: [{ name: 'NAC (N-Acetyl-Cysteine)', form: 'Capsule', note: 'Glutathione precursor; complementary liver support; can stack with milk thistle' }, { name: 'TUDCA', form: 'Capsule', note: 'Bile-acid liver protective; targets bile-flow issues; pricier' }], priority: 'high', sourced_from: 'medication_depletion', evidence_note: 'Multiple meta-analyses support silymarin for drug-induced and chronic liver injury.' },
       },
       {
         regex: /\b(prednisone|prednisolone|methylprednisolone|dexamethasone)\b/i,
@@ -1049,7 +1087,7 @@ CRITICAL OUTPUT RULES:
 
       const stackTextNow = () => plan.supplement_stack.map((s: any) => `${s.nutrient ?? ''} ${s.form ?? ''}`).join(' ').toLowerCase();
       for (const item of goalStack) {
-        if (plan.supplement_stack.length >= 7) break;
+        if (plan.supplement_stack.length >= 5) break;
         if (item.matchInStack.test(stackTextNow())) continue;
         if (item.matchInStack.test(userSuppNames)) continue; // already supplementing
         plan.supplement_stack.push(item.entry);
@@ -1065,8 +1103,45 @@ CRITICAL OUTPUT RULES:
           if (ar !== br) return ar - br;
           return priorityRank(a.priority ?? 'optimize') - priorityRank(b.priority ?? 'optimize');
         })
-        .slice(0, 10)
+        .slice(0, 5)
         .map((s: any, i: number) => ({ ...s, rank: i + 1 }));
+    }
+
+    // Final dedup: ONE supplement per category. The UI groups by category, so
+    // duplicates within a category overwhelm the user (statin patient ended
+    // up with 7 supplements; user explicitly asked for 1 per category, the
+    // single best one). Sort each category's candidates by priority, keep
+    // the top one, drop the rest. Rank field stripped — UI doesn't display it.
+    if (Array.isArray(plan.supplement_stack)) {
+      const priorityRank = (p: string) => p === 'critical' ? 0 : p === 'high' ? 1 : p === 'moderate' ? 2 : 3;
+      const byCategory = new Map<string, any[]>();
+      const uncategorized: any[] = [];
+      for (const supp of plan.supplement_stack) {
+        const cat = supp?.category;
+        if (typeof cat === 'string' && cat.length > 0) {
+          if (!byCategory.has(cat)) byCategory.set(cat, []);
+          byCategory.get(cat)!.push(supp);
+        } else {
+          uncategorized.push(supp);
+        }
+      }
+      const winners: any[] = [];
+      for (const [cat, candidates] of byCategory) {
+        const best = candidates.sort((a, b) => priorityRank(a.priority ?? 'optimize') - priorityRank(b.priority ?? 'optimize'))[0];
+        winners.push(best);
+        if (candidates.length > 1) {
+          console.log(`[wellness-plan] category=${cat} had ${candidates.length} candidates, kept ${best?.nutrient ?? '?'}`);
+        }
+      }
+      // Uncategorized supplements (AI failure) — keep up to 1 as fallback
+      if (uncategorized.length > 0) {
+        winners.push(uncategorized.sort((a, b) => priorityRank(a.priority ?? 'optimize') - priorityRank(b.priority ?? 'optimize'))[0]);
+      }
+      // Final order: critical first, then high, then moderate. Strip rank field.
+      plan.supplement_stack = winners
+        .sort((a, b) => priorityRank(a.priority ?? 'optimize') - priorityRank(b.priority ?? 'optimize'))
+        .map((s) => { const { rank: _drop, ...rest } = s; return rest; });
+      console.log(`[wellness-plan] supplement_stack final size: ${plan.supplement_stack.length}`);
     }
 
     // Keep old plans for history — don't delete

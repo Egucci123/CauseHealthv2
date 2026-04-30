@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import type { WellnessPlan } from '../types';
 
 export interface SupplementItem {
-  rank: number; nutrient: string; form: string; dose: string; timing: string;
+  rank?: number; nutrient: string; form: string; dose: string; timing: string;
   why: string; priority: 'critical' | 'high' | 'moderate' | 'optimize';
   sourced_from: string; evidence_note: string;
   // Universal practical-wisdom field — covers timing rationale, drug interactions,

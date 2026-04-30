@@ -447,14 +447,15 @@ const amazonSearchUrl = (s: any) => {
 const CATEGORY_META: Record<string, { label: string; sub: string; icon: string; color: string }> = {
   sleep_stress: { label: 'Sleep & Stress', sub: 'Calming, sleep onset, cortisol management', icon: 'bedtime', color: '#7B1FA2' },
   gut_healing: { label: 'Gut Healing', sub: 'Mucosal repair, microbiome, digestive support', icon: 'restaurant', color: '#2A9D8F' },
+  liver_metabolic: { label: 'Liver & Metabolic', sub: 'Liver enzymes, lipids, blood sugar, hepatoprotection', icon: 'water_drop', color: '#5E8C61' },
   inflammation_cardio: { label: 'Inflammation & Cardio', sub: 'Lower inflammation, support heart + lipids', icon: 'favorite', color: '#C94F4F' },
   nutrient_repletion: { label: 'Nutrient Repletion', sub: 'Fixing measurable deficiencies', icon: 'science', color: '#1B423A' },
   condition_therapy: { label: 'Condition-Specific', sub: 'Disease-mechanism therapy with strong evidence', icon: 'medication', color: '#D4A574' },
 };
-const CATEGORY_ORDER_SUPPS = ['nutrient_repletion', 'gut_healing', 'inflammation_cardio', 'condition_therapy', 'sleep_stress'];
+const CATEGORY_ORDER_SUPPS = ['nutrient_repletion', 'liver_metabolic', 'gut_healing', 'inflammation_cardio', 'condition_therapy', 'sleep_stress'];
 
 const TakeTab = ({ plan }: { plan: any }) => {
-  const supps = [...(plan.supplement_stack ?? [])].sort((a: any, b: any) => (a.rank ?? 99) - (b.rank ?? 99));
+  const supps = [...(plan.supplement_stack ?? [])];
   if (supps.length === 0) {
     return <p className="text-body text-clinical-stone text-sm">No supplements recommended. Your plan focuses on food and movement.</p>;
   }
@@ -500,7 +501,6 @@ const TakeTab = ({ plan }: { plan: any }) => {
                   <p className="text-precision text-[0.7rem] font-bold tracking-widest uppercase text-clinical-charcoal">{meta.label}</p>
                   <p className="text-precision text-[0.6rem] text-clinical-stone">{meta.sub}</p>
                 </div>
-                <span className="text-precision text-[0.55rem] text-clinical-stone tracking-widest">{items.length}</span>
               </div>
             )}
             {items.map((s: any, i: number) => {
@@ -510,7 +510,7 @@ const TakeTab = ({ plan }: { plan: any }) => {
             <div className="p-5">
               <div className="flex items-start gap-3">
                 <div className="w-11 h-11 rounded-[10px] bg-gradient-to-br from-[#1B423A] to-[#0F2A24] flex items-center justify-center flex-shrink-0 shadow-card">
-                  <span className="text-authority text-lg font-bold text-[#D4A574] leading-none">{s.rank ?? i + 1}</span>
+                  <span className="text-[18px] leading-none">{s.emoji ?? '💊'}</span>
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
