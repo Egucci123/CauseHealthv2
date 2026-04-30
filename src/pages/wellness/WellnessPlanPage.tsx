@@ -454,7 +454,7 @@ const TakeTab = ({ plan }: { plan: any }) => {
       <div className="bg-[#D4A574]/10 border border-[#D4A574]/30 rounded-[10px] p-4 flex items-start gap-3">
         <span className="material-symbols-outlined text-[#B8915F] text-[20px] flex-shrink-0 mt-0.5">tips_and_updates</span>
         <p className="text-body text-clinical-charcoal text-sm leading-relaxed">
-          Ranked 1 to {supps.length} by what matters most for your goals. If you can only take a few, start with <strong>#1</strong>. Tap "Buy" to find each one on Amazon.
+          Ranked 1 to {supps.length} by what matters most for your goals. If you can only take a few, start with <strong>#1</strong>. Tap the cart icon to find each one on Amazon.
         </p>
       </div>
       {supps.map((s: any, i: number) => {
@@ -469,11 +469,23 @@ const TakeTab = ({ plan }: { plan: any }) => {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
                     <p className="text-body text-clinical-charcoal font-semibold leading-tight">{s.nutrient}</p>
-                    {s.priority && (
-                      <span className="text-precision text-[0.55rem] font-bold tracking-widest uppercase px-2 py-0.5 rounded" style={{ backgroundColor: `${priorityColor}20`, color: priorityColor }}>
-                        {s.priority}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {s.priority && (
+                        <span className="text-precision text-[0.55rem] font-bold tracking-widest uppercase px-2 py-0.5 rounded" style={{ backgroundColor: `${priorityColor}20`, color: priorityColor }}>
+                          {s.priority}
+                        </span>
+                      )}
+                      <a
+                        href={amazonSearchUrl(s)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Find on Amazon"
+                        aria-label={`Find ${s.nutrient} on Amazon`}
+                        className="inline-flex items-center justify-center w-7 h-7 rounded-md bg-clinical-cream hover:bg-[#D4A574]/20 text-clinical-charcoal hover:text-[#1B423A] transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">shopping_cart</span>
+                      </a>
+                    </div>
                   </div>
                   {s.form && <p className="text-precision text-[0.6rem] text-clinical-stone tracking-wide">{s.form}</p>}
                 </div>
@@ -489,16 +501,6 @@ const TakeTab = ({ plan }: { plan: any }) => {
                 </div>
               </div>
               {(s.why_short || s.why) && <p className="text-body text-clinical-stone text-xs mt-3 italic leading-relaxed">{s.why_short || s.why}</p>}
-              <a
-                href={amazonSearchUrl(s)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-4 w-full inline-flex items-center justify-center gap-2 text-precision text-[0.65rem] font-bold tracking-widest uppercase px-3 py-2.5 bg-gradient-to-br from-[#1B423A] to-[#0F2A24] hover:from-[#244F46] hover:to-[#163730] text-[#D4A574] rounded-[8px] transition-all"
-              >
-                <span className="material-symbols-outlined text-[16px]">shopping_cart</span>
-                Buy on Amazon
-                <span className="material-symbols-outlined text-[14px]">open_in_new</span>
-              </a>
             </div>
           </div>
         );
