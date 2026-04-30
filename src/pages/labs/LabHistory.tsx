@@ -2,6 +2,7 @@
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
 import { AppShell } from '../../components/layout/AppShell';
 import { Button } from '../../components/ui/Button';
 import { useLabDraws } from '../../hooks/useLabData';
@@ -20,8 +21,33 @@ export const LabHistory = () => {
   const needsReview = uploadPhase === 'reviewing';
   const qc = useQueryClient();
 
+  // Local lock: track which drawIds were just retried, with the timestamp.
+  // The retry mutation completes in ~300ms (just the DB update), but the
+  // actual analyze-labs call runs ~30s in the background. Without this
+  // lock, the button snaps back to "RETRY ANALYSIS" the moment the DB
+  // update finishes — making it look like retry failed. We hold the
+  // "Analyzing…" UI for 60s (or until status flips to 'complete'),
+  // whichever comes first.
+  const [retryingAt, setRetryingAt] = useState<Record<string, number>>({});
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    if (Object.keys(retryingAt).length === 0) return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [retryingAt]);
+
+  const isRetrying = (drawId: string, status: string) => {
+    const startedAt = retryingAt[drawId];
+    if (!startedAt) return false;
+    // Clear the lock once status has moved past 'failed' for >2s, OR after 60s ceiling.
+    if (now - startedAt > 60_000) return false;
+    if (status === 'complete' && now - startedAt > 2_000) return false;
+    return true;
+  };
+
   const retryAnalysis = useMutation({
     mutationFn: async (drawId: string) => {
+      setRetryingAt(prev => ({ ...prev, [drawId]: Date.now() }));
       await supabase.from('lab_draws').update({ processing_status: 'processing' }).eq('id', drawId);
       // Raw fetch detached from React lifecycle — survives navigation
       fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-labs`, {
@@ -137,7 +163,14 @@ export const LabHistory = () => {
                   <p className="text-body text-clinical-stone text-sm mt-1">{format(new Date(draw.drawDate), 'MMMM d, yyyy')}</p>
                 </button>
                 <div className="flex items-center gap-3">
-                  {draw.processingStatus === 'complete' ? (
+                  {/* Local retry lock takes precedence — prevents flicker between
+                      'failed' and 'processing' during the analyze-labs window. */}
+                  {isRetrying(draw.id, draw.processingStatus) ? (
+                    <span className="inline-flex items-center gap-1 bg-[#614018] text-[#FFDCBC] text-precision text-[0.6rem] px-2 py-0.5 font-bold">
+                      <div className="w-2 h-2 border border-[#FFDCBC] border-t-transparent rounded-full animate-spin" />
+                      ANALYZING…
+                    </span>
+                  ) : draw.processingStatus === 'complete' ? (
                     <span className="inline-block bg-primary-container text-white text-precision text-[0.6rem] px-2 py-0.5 font-bold">ANALYZED</span>
                   ) : draw.processingStatus === 'failed' ? (
                     <button
