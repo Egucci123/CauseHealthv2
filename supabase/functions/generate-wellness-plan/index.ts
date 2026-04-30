@@ -163,7 +163,7 @@ HARD RULES — FOLLOW EXACTLY:
      45+: add coronary calcium score once.
      50+: add DEXA (women), colorectal screening discussion.
      Women any age: iron panel if menstruating + symptoms.
-     Men 35+: total T + SHBG + estradiol once at baseline.
+     Men ANY AGE: total T + SHBG + estradiol — once-in-lifetime baseline (standard CauseHealth recommendation, regardless of age or symptoms).
 
    Tests EXPLICITLY NOT on the standard-of-care baseline (only include via triggers (a)/(b)/(c)/(e), never via (d)): Cortisol, AM Cortisol, DHEA-S, Zinc, Free Testosterone, SHBG, Homocysteine, MMA, Free T3, Free T4, Reverse T3, TPO antibodies, thyroglobulin antibodies, NMR lipid, GI-MAP, comprehensive stool, food sensitivity panels, organic acids, hair tissue mineral analysis, micronutrient panels.
 

@@ -95,7 +95,7 @@ CRITICAL RULES:
    - PCOS (women): testosterone + DHEA-S + LH:FSH + fasting insulin + SHBG. Trigger: irregular cycles, acne, hirsutism, weight gain, hair thinning, insulin resistance.
    - Hashimoto's: TPO + thyroglobulin antibodies. Trigger: TSH outside 1.0-2.5, thyroid symptoms, family history.
    - Subclinical hypothyroidism: Free T3 + Free T4 + reverse T3. Trigger: TSH 2.5-4.5 with symptoms.
-   - Low T (men): total + free T + SHBG + estradiol + LH/FSH. Trigger: fatigue, weight gain, low libido in men.
+   - Low T (men): total + free T + SHBG + estradiol + LH/FSH. Trigger: fatigue, weight gain, low libido in men — OR no testosterone test on record at any age (standard CauseHealth baseline for all men).
    - Perimenopause (women 35-50): FSH + estradiol + progesterone + AMH. Trigger: cycle/mood/sleep changes.
    - Adrenal/HPA-axis: AM cortisol + DHEA-S + ACTH. Trigger: chronic stress fatigue, salt cravings, anxiety.
    - Functional iron deficiency: full iron panel. Trigger: ferritin <50, hair loss, fatigue (esp menstruating women).

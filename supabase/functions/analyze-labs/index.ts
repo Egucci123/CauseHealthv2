@@ -149,7 +149,7 @@ We do NOT recommend GI-MAP, hair tissue mineral, organic acids, food sensitivity
      45+: coronary calcium once.
      50+: DEXA (women), colorectal screening.
      Women any age: iron panel if menstruating + symptoms.
-     Men 35+: total T + SHBG + estradiol once.
+     Men ANY AGE: total T + SHBG + estradiol — once-in-lifetime baseline (standard CauseHealth recommendation, regardless of age or symptoms).
 
    NOT standard-of-care baseline (only via triggers (a)/(b)/(c)/(e), never (d)): Cortisol, DHEA-S, Zinc, Free Testosterone, Homocysteine, MMA, Free T3, Free T4, Reverse T3, TPO/Tg antibodies, NMR lipid, GI-MAP, food sensitivity panels, organic acids, hair tissue mineral analysis.
 

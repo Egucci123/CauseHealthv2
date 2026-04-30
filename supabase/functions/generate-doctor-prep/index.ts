@@ -126,7 +126,8 @@ Test recommendations are standard, insurance-covered, primary-care-orderable dia
      - Iron panel (serum iron, TIBC, ferritin, transferrin sat) if menstruating + ANY fatigue/hair issues.
      - HPV screening / pelvic exam discussion (refer, don't test in this context).
    MEN-SPECIFIC 35+:
-     - Total testosterone + SHBG + estradiol — once at baseline for trend tracking.
+   MEN-SPECIFIC ANY AGE:
+     - Total testosterone + SHBG + estradiol — once-in-lifetime baseline. Standard CauseHealth recommendation regardless of age or symptoms. Cheap, insurance-typically-covered, and gives the user a baseline to compare future draws against. Frame as "baseline for trend tracking" not "you have low T."
 
    When trigger (d) fires, frame the clinical_justification as: "Standard baseline for [age]yo [sex] — not present in this draw. Common gap that USPSTF / AHA / ADA recommends for routine evaluation." Tone: matter-of-fact, not alarmist.
 
