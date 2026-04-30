@@ -188,6 +188,15 @@ export const LabDetail = () => {
   useEffect(() => {
     if (triggeredOnMount.current) return;
     if (!data || !drawId || !user) return;
+    // CRITICAL: don't auto-trigger if the user (or this component) just fired
+    // a retry. The retry mutation sets status='processing' + analysis_result=null
+    // and immediately fires analyze-labs. When the cache refetches the new
+    // 'processing' status, this effect was racing with the retry's call —
+    // running analyze-labs CONCURRENTLY for the same drawId. Both crash with
+    // HTTP 500 trying to delete/insert priority_alerts and detections at the
+    // same time. Guard: if a retry is in flight or fired recently, skip.
+    if (retryAnalysis.isPending) return;
+    if (retriedAt && Date.now() - retriedAt < 60_000) return;
     const needsTrigger =
       data.draw.processing_status === 'processing' &&
       !data.analysis &&
