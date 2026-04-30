@@ -30,17 +30,48 @@ const LIVING_OPTS: { value: LifeContext['livingSituation']; label: string }[] = 
 const COOKING_TIME_OPTS: { value: LifeContext['cookingTimeAvailable']; label: string }[] = [
   { value: 'under_15', label: '<15 min' }, { value: '15_30', label: '15–30 min' }, { value: '30_60', label: '30–60 min' }, { value: '60_plus', label: '1 hr+' },
 ];
-const LUNCH_OPTS: { value: LifeContext['typicalLunch']; label: string; icon: string }[] = [
-  { value: 'fast_food', label: 'Fast food', icon: '🍔' }, { value: 'gas_station', label: 'Gas station', icon: '⛽' },
-  { value: 'packed', label: 'Packed from home', icon: '🥪' }, { value: 'cafeteria', label: 'Cafeteria / work', icon: '🍽️' },
-  { value: 'skip', label: 'Skip lunch', icon: '🚫' }, { value: 'restaurant', label: 'Restaurant', icon: '🍴' },
+const BREAKFAST_OPTS: { value: string; label: string; icon: string }[] = [
+  { value: 'skip', label: 'Skip', icon: '🚫' },
+  { value: 'fast_food', label: 'Fast food', icon: '🍔' },
+  { value: 'gas_station', label: 'Gas station', icon: '⛽' },
+  { value: 'coffee_shop', label: 'Coffee shop', icon: '☕' },
+  { value: 'frozen_sandwich', label: 'Frozen sandwich', icon: '🥪' },
+  { value: 'eggs_home', label: 'Eggs at home', icon: '🍳' },
+  { value: 'cereal', label: 'Cereal / oatmeal', icon: '🥣' },
+  { value: 'smoothie', label: 'Smoothie / shake', icon: '🥤' },
+  { value: 'protein_bar', label: 'Protein bar', icon: '🍫' },
+  { value: 'other', label: 'Other', icon: '🍽️' },
+];
+const LUNCH_OPTS: { value: string; label: string; icon: string }[] = [
+  { value: 'fast_food', label: 'Fast food', icon: '🍔' },
+  { value: 'gas_station', label: 'Gas station', icon: '⛽' },
+  { value: 'wawa_convenience', label: 'Wawa / 7-Eleven / Sheetz', icon: '🏪' },
+  { value: 'packed', label: 'Packed from home', icon: '🥪' },
+  { value: 'cafeteria', label: 'Cafeteria / work', icon: '🍽️' },
+  { value: 'cooler_box', label: 'Cooler / Pyrex box', icon: '🧊' },
+  { value: 'drive_thru_salad', label: 'Drive-thru salad / bowl', icon: '🥗' },
+  { value: 'restaurant', label: 'Sit-down restaurant', icon: '🍴' },
+  { value: 'skip', label: 'Skip lunch', icon: '🚫' },
+];
+const DINNER_OPTS: { value: string; label: string; icon: string }[] = [
+  { value: 'cook_scratch', label: 'Cook from scratch', icon: '🍳' },
+  { value: 'crock_pot', label: 'Crock pot / Instant Pot', icon: '🍲' },
+  { value: 'sheet_pan', label: 'Sheet pan / one-pan', icon: '🥘' },
+  { value: 'frozen_meal', label: 'Frozen meal', icon: '❄️' },
+  { value: 'takeout', label: 'Takeout / delivery', icon: '🥡' },
+  { value: 'restaurant', label: 'Sit-down restaurant', icon: '🍴' },
+  { value: 'kid_friendly', label: 'Kid-friendly meal', icon: '🧒' },
+  { value: 'snack_dinner', label: 'Snacks-as-dinner', icon: '🥨' },
+  { value: 'skip', label: 'Skip dinner', icon: '🚫' },
 ];
 const BUDGET_OPTS: { value: LifeContext['weeklyFoodBudget']; label: string }[] = [
   { value: 'under_50', label: '<$50' }, { value: '50_100', label: '$50–100' }, { value: '100_150', label: '$100–150' }, { value: '150_plus', label: '$150+' },
 ];
 const EAT_OUT_PLACES = [
-  "McDonald's", 'Chick-fil-A', 'Chipotle', 'Subway', 'Starbucks',
-  'Taco Bell', 'Wendy\'s', 'Panera', 'Local diner', 'Pizza',
+  "McDonald's", 'Chick-fil-A', 'Chipotle', 'Subway', 'Starbucks', 'Dunkin',
+  'Taco Bell', 'Wendy\'s', 'Burger King', 'Panera', 'Wawa', '7-Eleven',
+  'Sheetz', 'Cracker Barrel', 'Olive Garden', 'Local diner', 'Pizza',
+  'Costco food court', 'Whole Foods hot bar', 'Trader Joe\'s prepared',
   'Don\'t eat out', 'Other',
 ];
 const INSURANCE_OPTS: { value: LifeContext['insuranceType']; label: string }[] = [
@@ -144,7 +175,17 @@ export const DailyLifeEditor = ({ value, onChange }: Props) => {
       {tab === 'food' && (
         <div className="space-y-6">
           <div><SectionLabel>Time you can spend on food per day</SectionLabel><Toggle options={COOKING_TIME_OPTS} val={value.cookingTimeAvailable} onPick={v => onChange({ cookingTimeAvailable: v })} /></div>
-          <div><SectionLabel>Typical lunch right now</SectionLabel><IconGrid options={LUNCH_OPTS} val={value.typicalLunch} onPick={v => onChange({ typicalLunch: v })} /></div>
+
+          <MealMultiPick label="Breakfast — what do you actually eat? (pick up to 5)" options={BREAKFAST_OPTS}
+            selected={value.breakfastPatterns ?? []} onChange={(v) => onChange({ breakfastPatterns: v as any })} max={5} />
+
+          <MealMultiPick label="Lunch — what do you actually eat? (pick up to 5)" options={LUNCH_OPTS}
+            selected={value.typicalLunches ?? (value.typicalLunch ? [value.typicalLunch] : [])}
+            onChange={(v) => onChange({ typicalLunches: v as any })} max={5} />
+
+          <MealMultiPick label="Dinner — how does dinner usually happen? (pick up to 5)" options={DINNER_OPTS}
+            selected={value.dinnerPatterns ?? []} onChange={(v) => onChange({ dinnerPatterns: v as any })} max={5} />
+
           <div><SectionLabel>Weekly food budget (per person)</SectionLabel><Toggle options={BUDGET_OPTS} val={value.weeklyFoodBudget} onPick={v => onChange({ weeklyFoodBudget: v })} /></div>
           <div><SectionLabel>Where do you usually eat out?</SectionLabel>
             <ChipMulti items={EAT_OUT_PLACES} selected={value.eatOutPlaces ?? []}
@@ -162,6 +203,45 @@ export const DailyLifeEditor = ({ value, onChange }: Props) => {
           <div><SectionLabel>Last full physical</SectionLabel><Toggle options={PHYSICAL_OPTS} val={value.lastPhysical} onPick={v => onChange({ lastPhysical: v })} /></div>
         </div>
       )}
+    </div>
+  );
+};
+
+// Multi-pick icon-grid with a max-cap. Used for the meal-pattern fields.
+const MealMultiPick = ({ label, options, selected, onChange, max }: {
+  label: string;
+  options: { value: string; label: string; icon: string }[];
+  selected: string[];
+  onChange: (v: string[]) => void;
+  max: number;
+}) => {
+  const toggle = (v: string) => {
+    if (selected.includes(v)) onChange(selected.filter(x => x !== v));
+    else if (selected.length < max) onChange([...selected, v]);
+  };
+  return (
+    <div>
+      <div className="flex justify-between items-baseline mb-2">
+        <SectionLabel className="mb-0">{label}</SectionLabel>
+        <span className="text-precision text-[0.55rem] text-clinical-stone tracking-widest">{selected.length}/{max}</span>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        {options.map(opt => {
+          const sel = selected.includes(opt.value);
+          const atCap = !sel && selected.length >= max;
+          return (
+            <button key={opt.value} onClick={() => toggle(opt.value)} disabled={atCap} style={{ borderRadius: '4px' }}
+              className={`flex flex-col items-center gap-1 py-3 px-2 border text-center transition-all ${
+                sel ? 'bg-primary-container border-primary-container text-white'
+                : atCap ? 'border-outline-variant/10 text-clinical-stone/40 cursor-not-allowed'
+                : 'border-outline-variant/20 text-clinical-stone hover:border-outline-variant/40'
+              }`}>
+              <span className="text-xl">{opt.icon}</span>
+              <span className="text-body text-xs font-medium leading-tight">{opt.label}</span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 };

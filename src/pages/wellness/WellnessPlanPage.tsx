@@ -343,64 +343,84 @@ const EatTab = ({ plan }: { plan: any }) => {
         </div>
       )}
 
-      {/* Render meals grouped by phase so the user sees the progression: easy
-          swaps first (weeks 1-4), level up (5-8), optimal (9-12). */}
+      {/* Render meals grouped by PLAYBOOK (the "Food Playbook"). Each meal
+          carries a phase badge (1=Start Here, 2=Level Up, 3=Optimal) so the
+          user sees difficulty without sections being walled off by phase. */}
       {(() => {
-        const PHASE_META: Record<number, { label: string; sub: string; color: string }> = {
-          1: { label: 'Weeks 1–4 · Start Here', sub: 'Easy swaps using groceries you already buy', color: '#2A9D8F' },
-          2: { label: 'Weeks 5–8 · Level Up', sub: 'Add one new thing — you have the routine now', color: '#D4A574' },
-          3: { label: 'Weeks 9–12 · Optimal', sub: 'Full clean meals — habits are built', color: '#1B4332' },
+        const PLAYBOOK_META: Record<string, { label: string; sub: string; emoji: string; color: string }> = {
+          convenience_store: { label: 'Convenience Store Grabs', sub: 'Wawa, 7-Eleven, gas stations, truck stops', emoji: '🏪', color: '#7B1FA2' },
+          fast_food: { label: 'Fast-Food Smart Orders', sub: 'Real chains, real orders — protein-doubled', emoji: '🍔', color: '#E8922A' },
+          protein_bar_shake: { label: 'Bars & Shakes', sub: 'Real brands, real prices, anywhere in 60 sec', emoji: '🍫', color: '#C94F4F' },
+          crock_pot: { label: 'Crock Pot Set-and-Forget', sub: 'Throw it in, eats for the week', emoji: '🍲', color: '#5E8C61' },
+          sheet_pan: { label: 'Sheet-Pan / One-Pan', sub: '5 ingredients, zero cleanup', emoji: '🥘', color: '#D4A574' },
+          frozen_aisle: { label: 'Frozen Aisle Wins', sub: 'Costco, Trader Joe\'s, Aldi specifics', emoji: '❄️', color: '#1B423A' },
+          frozen_breakfast: { label: 'Frozen Breakfast Sandwiches', sub: 'Microwave it, eat it, go', emoji: '🥪', color: '#A2845E' },
+          low_cal_drink: { label: 'Drink Swaps', sub: 'Replace soda + sweet coffee with these', emoji: '🥤', color: '#2A9D8F' },
+          mom_friendly: { label: 'Kid-Tested + Adult-Friendly', sub: 'Same plate, parent gets the protein', emoji: '🧒', color: '#B5651D' },
+          viral_hack: { label: 'Viral Hacks That Actually Work', sub: 'TikTok-tested, lab-targeted', emoji: '📱', color: '#9B59B6' },
+          lunchbox_thermos: { label: 'Lunchbox / Cooler / Thermos', sub: 'Driver, construction, shift work', emoji: '🧊', color: '#1F77B4' },
+          simple_home_cook: { label: 'Simple Home Cook', sub: 'Real recipes, still grocery-store basic', emoji: '🍳', color: '#1B4332' },
         };
-        const phaseOrder = [1, 2, 3];
-        const phaseGroups = phaseOrder.map(p => ({
-          phase: p,
-          meals: sorted.filter((m: any) => (m.phase ?? 1) === p),
-        })).filter(g => g.meals.length > 0);
-        // If no phase tags present (legacy plans), render flat list
-        if (phaseGroups.length === 0 || (phaseGroups.length === 1 && phaseGroups[0].phase === 1 && !sorted.some((m: any) => m.phase != null))) {
-          return sorted.map((m: any, i: number) => (
-            <div key={i} className="bg-clinical-white border border-outline-variant/15 rounded-[10px] p-4">
-              <div className="flex items-start gap-3">
-                <span className="text-3xl flex-shrink-0">{m.emoji || '🍽️'}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2 mb-1">
-                    <p className="text-body text-clinical-charcoal font-semibold">{m.name}</p>
-                    <span className="text-precision text-[0.55rem] font-bold tracking-widest uppercase text-primary-container">{m.when}</span>
-                  </div>
-                  {m.ingredients?.length > 0 && <p className="text-body text-clinical-stone text-sm">{m.ingredients.join(' · ')}</p>}
-                  {m.why && <p className="text-precision text-[0.65rem] text-clinical-stone mt-2 italic">{m.why}</p>}
-                </div>
-              </div>
-            </div>
-          ));
+        const PLAYBOOK_ORDER = [
+          'convenience_store', 'fast_food', 'protein_bar_shake', 'frozen_aisle',
+          'frozen_breakfast', 'lunchbox_thermos', 'sheet_pan', 'crock_pot',
+          'simple_home_cook', 'mom_friendly', 'viral_hack', 'low_cal_drink',
+        ];
+        const PHASE_BADGE: Record<number, { label: string; color: string }> = {
+          1: { label: 'Start here', color: '#2A9D8F' },
+          2: { label: 'Level up', color: '#D4A574' },
+          3: { label: 'Optimal', color: '#1B4332' },
+        };
+        // Group meals by playbook field. Meals with no playbook fall into "_other" bucket.
+        const byPlaybook = new Map<string, any[]>();
+        for (const m of sorted) {
+          const key = (typeof m?.playbook === 'string' && m.playbook in PLAYBOOK_META) ? m.playbook : '_other';
+          if (!byPlaybook.has(key)) byPlaybook.set(key, []);
+          byPlaybook.get(key)!.push(m);
         }
-        return phaseGroups.map(g => {
-          const meta = PHASE_META[g.phase];
+        const orderedKeys = [...PLAYBOOK_ORDER.filter(k => byPlaybook.has(k))];
+        if (byPlaybook.has('_other')) orderedKeys.push('_other');
+        if (orderedKeys.length === 0) {
+          return <p className="text-body text-clinical-stone text-sm py-4">No meals yet. Hit Regenerate.</p>;
+        }
+        return orderedKeys.map(key => {
+          const meta = key === '_other'
+            ? { label: 'More Ideas', sub: 'Other meals from your plan', emoji: '🍽️', color: '#999' }
+            : PLAYBOOK_META[key];
+          const meals = byPlaybook.get(key)!;
           return (
-            <div key={g.phase} className="space-y-3">
+            <div key={key} className="space-y-3">
               <div className="flex items-center gap-3 pt-2">
-                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: meta.color }} />
+                <span className="text-2xl flex-shrink-0">{meta.emoji}</span>
                 <div className="flex-1">
                   <p className="text-precision text-[0.65rem] font-bold tracking-widest uppercase text-clinical-charcoal">{meta.label}</p>
                   <p className="text-precision text-[0.6rem] text-clinical-stone">{meta.sub}</p>
                 </div>
-                <span className="text-precision text-[0.55rem] text-clinical-stone tracking-widest">{g.meals.length}</span>
+                <span className="text-precision text-[0.55rem] text-clinical-stone tracking-widest">{meals.length}</span>
               </div>
-              {g.meals.map((m: any, i: number) => (
-                <div key={i} className="bg-clinical-white border-l-2 rounded-[10px] p-4" style={{ borderLeftColor: meta.color }}>
-                  <div className="flex items-start gap-3">
-                    <span className="text-3xl flex-shrink-0">{m.emoji || '🍽️'}</span>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2 mb-1">
-                        <p className="text-body text-clinical-charcoal font-semibold">{m.name}</p>
-                        <span className="text-precision text-[0.55rem] font-bold tracking-widest uppercase text-primary-container">{m.when}</span>
+              {meals.map((m: any, i: number) => {
+                const badge = PHASE_BADGE[m.phase as number] ?? null;
+                return (
+                  <div key={i} className="bg-clinical-white border-l-2 rounded-[10px] p-4" style={{ borderLeftColor: meta.color }}>
+                    <div className="flex items-start gap-3">
+                      <span className="text-3xl flex-shrink-0">{m.emoji || meta.emoji}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
+                          <p className="text-body text-clinical-charcoal font-semibold">{m.name}</p>
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            {badge && (
+                              <span className="text-precision text-[0.5rem] font-bold tracking-widest uppercase px-1.5 py-0.5 rounded" style={{ backgroundColor: `${badge.color}20`, color: badge.color }}>{badge.label}</span>
+                            )}
+                            {m.when && <span className="text-precision text-[0.55rem] font-bold tracking-widest uppercase text-primary-container">{m.when}</span>}
+                          </div>
+                        </div>
+                        {m.ingredients?.length > 0 && <p className="text-body text-clinical-stone text-sm">{m.ingredients.join(' · ')}</p>}
+                        {m.why && <p className="text-precision text-[0.65rem] text-clinical-stone mt-2 italic">{m.why}</p>}
                       </div>
-                      {m.ingredients?.length > 0 && <p className="text-body text-clinical-stone text-sm">{m.ingredients.join(' · ')}</p>}
-                      {m.why && <p className="text-precision text-[0.65rem] text-clinical-stone mt-2 italic">{m.why}</p>}
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           );
         });

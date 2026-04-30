@@ -48,6 +48,16 @@ export interface FamilyHistory {
 // Universal life-context. Drives AI tailoring (meal complexity, supplement
 // budget, test recommendations) without hardcoding disease-specific logic.
 // Every field optional — onboarding step can be skipped, AI handles gracefully.
+//
+// Meal-pattern fields are multi-select arrays (up to 5 picks each). Most
+// people don't eat the same way every day — a driver might do gas-station
+// breakfast Monday, McDonald's Tuesday, packed Wednesday, etc. Capturing
+// the breadth lets the Food Playbook generate options across multiple
+// playbooks per meal rather than one rigid pattern.
+export type BreakfastPattern = 'skip' | 'fast_food' | 'gas_station' | 'coffee_shop' | 'frozen_sandwich' | 'eggs_home' | 'cereal' | 'smoothie' | 'protein_bar' | 'other';
+export type LunchPattern = 'fast_food' | 'gas_station' | 'wawa_convenience' | 'packed' | 'cafeteria' | 'skip' | 'restaurant' | 'drive_thru_salad' | 'cooler_box';
+export type DinnerPattern = 'cook_scratch' | 'crock_pot' | 'sheet_pan' | 'frozen_meal' | 'takeout' | 'restaurant' | 'kid_friendly' | 'skip' | 'snack_dinner';
+
 export interface LifeContext {
   workType?: 'desk' | 'driver' | 'shift' | 'labor' | 'service' | 'parent_home' | 'retired' | 'unemployed';
   workSchedule?: 'days' | 'nights' | 'rotating' | 'flexible' | 'multi_jobs' | 'na';
@@ -56,7 +66,12 @@ export interface LifeContext {
   livingSituation?: 'alone' | 'partner' | 'family' | 'roommates';
   cookHomeFrequency?: number;
   cookingTimeAvailable?: 'under_15' | '15_30' | '30_60' | '60_plus';
+  /** @deprecated kept for backward-compat — new code reads typicalLunches[] */
   typicalLunch?: 'fast_food' | 'gas_station' | 'packed' | 'cafeteria' | 'skip' | 'restaurant';
+  // Multi-select meal patterns (up to 5 each)
+  breakfastPatterns?: BreakfastPattern[];
+  typicalLunches?: LunchPattern[];
+  dinnerPatterns?: DinnerPattern[];
   weeklyFoodBudget?: 'under_50' | '50_100' | '100_150' | '150_plus';
   eatOutPlaces?: string[];
   insuranceType?: 'employer' | 'marketplace' | 'medicaid' | 'medicare' | 'cash' | 'va';

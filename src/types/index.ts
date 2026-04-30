@@ -39,7 +39,11 @@ export interface LifeContext {
   cookHomeFrequency?: number; // 0-10 scale
   // Food reality
   cookingTimeAvailable?: 'under_15' | '15_30' | '30_60' | '60_plus';
+  /** @deprecated kept for backward-compat — new code reads typicalLunches[] */
   typicalLunch?: 'fast_food' | 'gas_station' | 'packed' | 'cafeteria' | 'skip' | 'restaurant';
+  breakfastPatterns?: string[];
+  typicalLunches?: string[];
+  dinnerPatterns?: string[];
   weeklyFoodBudget?: 'under_50' | '50_100' | '100_150' | '150_plus';
   eatOutPlaces?: string[];
   // Healthcare access

@@ -80,7 +80,16 @@ serve(async (req) => {
     const livingSit  = lifeCtx.livingSituation ?? 'unknown';
     const cookFreq   = lifeCtx.cookHomeFrequency ?? 'unknown';
     const cookTime   = lifeCtx.cookingTimeAvailable ?? lifestyle.cooking_time ?? 'unknown';
-    const lunch      = lifeCtx.typicalLunch ?? 'unknown';
+    // Multi-select meal patterns. Backwards compat: legacy single-string
+    // typicalLunch is wrapped into an array. Comma-joined for the prompt.
+    const breakfastArr: string[] = Array.isArray(lifeCtx.breakfastPatterns) ? lifeCtx.breakfastPatterns : [];
+    const lunchArr: string[] = Array.isArray(lifeCtx.typicalLunches) && lifeCtx.typicalLunches.length > 0
+      ? lifeCtx.typicalLunches
+      : (typeof lifeCtx.typicalLunch === 'string' ? [lifeCtx.typicalLunch] : []);
+    const dinnerArr: string[] = Array.isArray(lifeCtx.dinnerPatterns) ? lifeCtx.dinnerPatterns : [];
+    const breakfastPatterns = breakfastArr.length > 0 ? breakfastArr.join(', ') : 'unknown';
+    const lunch = lunchArr.length > 0 ? lunchArr.join(', ') : 'unknown';
+    const dinnerPatterns = dinnerArr.length > 0 ? dinnerArr.join(', ') : 'unknown';
     const foodBudget = lifeCtx.weeklyFoodBudget ?? 'unknown';
     const eatOut     = Array.isArray(lifeCtx.eatOutPlaces) && lifeCtx.eatOutPlaces.length > 0
                          ? lifeCtx.eatOutPlaces.join(', ') : 'unknown';
@@ -97,7 +106,9 @@ serve(async (req) => {
       `LIVING_WITH: ${livingSit}`,
       `COOK_AT_HOME_FREQ_0_TO_10: ${cookFreq}`,
       `COOKING_TIME_PER_DAY: ${cookTime}`,
-      `TYPICAL_LUNCH: ${lunch}`,
+      `BREAKFAST_PATTERNS: ${breakfastPatterns}`,
+      `LUNCH_PATTERNS: ${lunch}`,
+      `DINNER_PATTERNS: ${dinnerPatterns}`,
       `WEEKLY_FOOD_BUDGET: ${foodBudget}`,
       `EATS_OUT_AT: ${eatOut}`,
       `INSURANCE: ${insurance}`,
@@ -587,21 +598,35 @@ HARD RULES — FOLLOW EXACTLY:
       - Dashboard combo: turkey jerky + Premier Protein + apple + string cheese
       - Construction lunchbox: 4 hard-boiled eggs + 2 string cheese + apple + Quest bar = 40g protein, $5
 
-    PLAN STRUCTURE PER USER:
-    - Phase 1 (3 meals): MUST include 1 chain-order or convenience-store grab matched to their typical_lunch + eat-out places. MUST include 1 grocery-shortcut or frozen-aisle meal. MUST include 1 portable snack pack OR breakfast hack. NO from-scratch recipes in Phase 1.
-    - Phase 2 (3 meals): 1 crock-pot or sheet-pan, 1 chain-restaurant level-up (a smarter order at a place they already eat), 1 viral hack OR drink swap.
-    - Phase 3 (2-3 meals): real cookable recipes 15-25 min, but still grocery-store basic. Influencer-level photographable but the ingredient list is still Costco/Aldi/Walmart.
-    - Total: 7-9 meals.
-    - Meals MUST reference SPECIFIC brands / SKUs / chain names where the user can act on it. "Costco rotisserie chicken" beats "rotisserie chicken." "Banza chickpea pasta" beats "high-protein pasta."
+    PLAN STRUCTURE — PER-PLAYBOOK GENERATION (the "Food Playbook"):
 
-    FORBIDDEN GENERICS (these were the boring defaults — DO NOT include them anywhere):
-      - Greek yogurt + berries + nuts (unless tied to a specific viral hack like the bark)
-      - Plain "egg + whole-grain toast"
-      - "Grilled chicken + rice + steamed broccoli"
-      - "Salmon + sweet potato + steamed broccoli"
-      - "Kale salad with grilled chicken"
-      - "Ground turkey chili" with no twist
-      - Any meal with no brand/chain/SKU specificity
+    The user has TOLD YOU which meal patterns they actually use via BREAKFAST_PATTERNS, LUNCH_PATTERNS, DINNER_PATTERNS (multi-select, up to 5 each). Generate 1-2 meals PER PATTERN they listed, not a generic phase progression. So if they said "fast_food + wawa_convenience + packed" for lunch, you give them 1-2 fast-food order ideas, 1-2 Wawa ideas, AND 1-2 packed-cooler ideas — total 3-6 lunch options across their actual lunch reality.
+
+    Each meal entry MUST include:
+      - "playbook" field — REQUIRED — ONE of: 'convenience_store' / 'fast_food' / 'protein_bar_shake' / 'crock_pot' / 'sheet_pan' / 'frozen_aisle' / 'frozen_breakfast' / 'low_cal_drink' / 'mom_friendly' / 'viral_hack' / 'lunchbox_thermos' / 'simple_home_cook'. Pick the playbook that best describes the meal's CATEGORY in real life. UI groups by playbook.
+      - "phase" field — 1 (start here, easiest), 2 (level up after a few weeks), or 3 (optimal, real recipe). Within each playbook section, phase determines difficulty/ambition. Phase 1 should dominate.
+      - "when" field — breakfast / lunch / dinner / snack
+      - SPECIFIC brand / SKU / chain name. "Costco rotisserie chicken" beats "rotisserie chicken." "Banza chickpea pasta" beats "high-protein pasta." "Wawa egg white wrap" beats "convenience-store wrap."
+
+    TARGETS PER PLAN:
+      - 3-5 BREAKFAST options across the playbooks the user uses for breakfast.
+      - 3-5 LUNCH options across the playbooks the user uses for lunch.
+      - 3-5 DINNER options across the playbooks the user uses for dinner.
+      - 1-2 SNACK or DRINK options.
+      - Total: 10-15 meals.
+      - If a meal pattern is "skip" — generate 0 meals for that slot but mention in the why field that it's optional.
+      - If LUNCH_PATTERNS/etc. = "unknown" — default to busy-blue-collar mix: 1 fast-food + 1 frozen + 1 convenience-store + 1 cooler-box.
+
+    FORBIDDEN GENERICS — these are the lazy defaults that show up in every shitty plan. NEVER include them. If you generate one, DELETE IT from the output before returning:
+      - "Greek yogurt + berries + nuts" / "yogurt parfait" / similar — ONLY include if it's a viral-hack twist (yogurt bark, frozen mango blender ice cream)
+      - "Egg + whole-grain toast" / "scrambled eggs with toast" — too generic. Use a specific hack: "Avocado toast on Aunt Millie's keto bread + 2 fried eggs" or "Make-ahead egg muffin tin (Sunday batch) + Premier shake"
+      - "Grilled chicken + rice + steamed broccoli" — banned outright. Use specifics: "Costco rotisserie + Uncle Ben's microwave rice + bagged Caesar (skip croutons)"
+      - "Salmon + sweet potato + steamed broccoli" / "salmon + asparagus" — banned. Use: "Costco frozen salmon burger on brioche bun + frozen sweet potato fries"
+      - "Kale salad with grilled chicken" — banned. Use: "Trader Joe's grilled chicken strips on bagged Caesar kit"
+      - "Ground turkey chili" with no twist — banned unless it's specifically the crock-pot batch-and-freeze version with a brand mention
+      - "Salad with chicken" — banned without a specific dressing/topping/brand twist
+      - Any meal with NO brand/chain/SKU specificity — banned
+      - Any meal whose only differentiation is "low-carb" or "high-protein" without naming HOW
     Forbidden defaults: Greek yogurt + berries + almonds, "egg + whole grain toast", "grilled chicken + rice + steamed broccoli", "salmon + sweet potato + broccoli", "kale salad with chicken", "ground turkey chili". These are the 7 boring meals that show up in every generic plan. If your meals look like this list, you failed the assignment.
     Good meals are SPECIFIC, SURPRISING, and they leverage SHORTCUTS most people don't know. Examples of the bar:
       - "Costco rotisserie chicken + microwave bag of jasmine rice + bagged Caesar kit (skip the croutons)" — 90 seconds, 50g protein, $7.
@@ -701,7 +726,7 @@ ${allLabsStr.slice(0, 4000)}
 NUTRIENTS NOT TESTED (do NOT recommend supplements for these — mention in disclaimer only. Do NOT add them to retest_timeline as a 'baseline gap'. The strict triage rule still applies in optimization mode — a missing test only earns a retest_timeline entry if the patient has a symptom, medication depletion, or out-of-range marker that the test would investigate. Healthy patients with no triggers get a SHORT retest list focused on actual labs to track, not a longevity wishlist.):
 ${notTestedStr}
 
-Return JSON: {"generated_at":"${new Date().toISOString()}","headline":"one 12-word verdict in plain English (e.g. 'Your iron is low — fix it and the fatigue lifts')","summary":"3 short sentences max — what's wrong, what we'll fix, how long it takes","today_actions":[{"emoji":"","action":"one verb-led sentence the user does TODAY (e.g. 'Eat a 3-egg breakfast')","why":"one short sentence","category":"eat|move|take|sleep|stress"}],"supplement_stack":[{"emoji":"💊","nutrient":"","form":"","dose":"","timing":"","why_short":"6-10 word reason in plain English","why":"1 sentence linking to a lab or symptom","practical_note":"REQUIRED — 1 short sentence covering: WHY this timing (absorption / fat-soluble / GABA / circadian), interaction warnings with this user's actual medications, and any 'avoid taking with X' or 'take on empty stomach' caveats. Keep it ONE sentence.","category":"REQUIRED — ONE of: 'sleep_stress' / 'gut_healing' / 'liver_metabolic' / 'inflammation_cardio' / 'nutrient_repletion' / 'condition_therapy'. Pick the supplement's PRIMARY purpose for this patient. Use 'liver_metabolic' for liver enzyme elevation, lipid/cholesterol, blood sugar / insulin resistance, or hepatoprotective supplements (milk thistle, NAC, TUDCA). 'inflammation_cardio' is for heart-rhythm + inflammation markers (omega-3 for ApoB/TG when liver is fine; turmeric for joint inflammation only). When in doubt, the LIVER goes in liver_metabolic.","alternatives":"REQUIRED — array of 1-2 EQUIVALENT alternative options the user can pick instead, formatted as objects {name, form, note}. Examples: Magnesium Glycinate primary -> alternatives: [{name:'Magnesium Threonate', form:'Capsule', note:'Better for cognition + sleep; pricier'}, {name:'Magnesium Citrate', form:'Powder', note:'Cheaper, mild laxative effect'}]. Saccharomyces boulardii primary -> alternatives: [{name:'Visbiome (multi-strain)', form:'Capsule', note:'Most-studied multi-strain UC probiotic; needs refrigeration'}, {name:'VSL#3', form:'Sachets', note:'Higher CFU count; more expensive'}]. Omega-3 primary -> alternatives: [{name:'Algae-based DHA/EPA', form:'Softgel', note:'Vegan option, no fish burps'}, {name:'Liquid fish oil', form:'Liquid', note:'Easier to dose 2-3g; cheaper per gram'}]. Give the user real choice between EQUIVALENT options (different form/source/price/brand) — never alternatives that solve a different problem.","priority":"critical|high|moderate","sourced_from":"lab_finding|disease_mechanism","evidence_note":""}],"meals":[{"emoji":"🥗","name":"meal name","when":"breakfast|lunch|dinner|snack","phase":1,"ingredients":["short list"],"why":"1 sentence — favor 'why now / why this swap' framing for phase 1, 'why this lab' for phase 3"}],"workouts":[{"emoji":"🏃","day":"Mon|Tue|Wed|Thu|Fri|Sat|Sun","title":"e.g. 'Zone 2 walk'","duration_min":30,"description":"1 sentence","why":"1 sentence — which goal/lab this serves"}],"lifestyle_interventions":{"diet":[{"emoji":"🥗","intervention":"","rationale":"","priority":""}],"sleep":[{"emoji":"😴","intervention":"","rationale":"","priority":""}],"exercise":[{"emoji":"💪","intervention":"","rationale":"","priority":""}],"stress":[{"emoji":"🧘","intervention":"","rationale":"","priority":""}]},"action_plan":{"phase_1":{"name":"Stabilize (Weeks 1-4)","focus":"","actions":[]},"phase_2":{"name":"Optimize (Weeks 5-8)","focus":"","actions":[]},"phase_3":{"name":"Maintain (Weeks 9-12)","focus":"","actions":[]}},"symptoms_addressed":[{"symptom":"","severity":7,"how_addressed":"MAX 30 WORDS. Two short sentences max. 6th-grade reading level. Format: '[plain-English cause]. [What we're doing about it].' Example: 'Mostly your low vitamin D (24) plus iron loss from UC. We added vitamin D, an iron test, and folate. Hair grows slow — give it 12 weeks.' DO NOT list dosages, percentage improvements, mechanisms, or jargon. Just: cause + plan."}],"retest_timeline":[{"marker":"","retest_at":"","why":""}],"medication_notes":[{"medication":"","organ_impact":"","depletions":"","monitoring":"","alternative":""}],"disclaimer":"Educational only. Talk to your doctor before changing anything."}
+Return JSON: {"generated_at":"${new Date().toISOString()}","headline":"one 12-word verdict in plain English (e.g. 'Your iron is low — fix it and the fatigue lifts')","summary":"3 short sentences max — what's wrong, what we'll fix, how long it takes","today_actions":[{"emoji":"","action":"one verb-led sentence the user does TODAY (e.g. 'Eat a 3-egg breakfast')","why":"one short sentence","category":"eat|move|take|sleep|stress"}],"supplement_stack":[{"emoji":"💊","nutrient":"","form":"","dose":"","timing":"","why_short":"6-10 word reason in plain English","why":"1 sentence linking to a lab or symptom","practical_note":"REQUIRED — 1 short sentence covering: WHY this timing (absorption / fat-soluble / GABA / circadian), interaction warnings with this user's actual medications, and any 'avoid taking with X' or 'take on empty stomach' caveats. Keep it ONE sentence.","category":"REQUIRED — ONE of: 'sleep_stress' / 'gut_healing' / 'liver_metabolic' / 'inflammation_cardio' / 'nutrient_repletion' / 'condition_therapy'. Pick the supplement's PRIMARY purpose for this patient. Use 'liver_metabolic' for liver enzyme elevation, lipid/cholesterol, blood sugar / insulin resistance, or hepatoprotective supplements (milk thistle, NAC, TUDCA). 'inflammation_cardio' is for heart-rhythm + inflammation markers (omega-3 for ApoB/TG when liver is fine; turmeric for joint inflammation only). When in doubt, the LIVER goes in liver_metabolic.","alternatives":"REQUIRED — array of 1-2 EQUIVALENT alternative options the user can pick instead, formatted as objects {name, form, note}. Examples: Magnesium Glycinate primary -> alternatives: [{name:'Magnesium Threonate', form:'Capsule', note:'Better for cognition + sleep; pricier'}, {name:'Magnesium Citrate', form:'Powder', note:'Cheaper, mild laxative effect'}]. Saccharomyces boulardii primary -> alternatives: [{name:'Visbiome (multi-strain)', form:'Capsule', note:'Most-studied multi-strain UC probiotic; needs refrigeration'}, {name:'VSL#3', form:'Sachets', note:'Higher CFU count; more expensive'}]. Omega-3 primary -> alternatives: [{name:'Algae-based DHA/EPA', form:'Softgel', note:'Vegan option, no fish burps'}, {name:'Liquid fish oil', form:'Liquid', note:'Easier to dose 2-3g; cheaper per gram'}]. Give the user real choice between EQUIVALENT options (different form/source/price/brand) — never alternatives that solve a different problem.","priority":"critical|high|moderate","sourced_from":"lab_finding|disease_mechanism","evidence_note":""}],"meals":[{"emoji":"🥗","name":"meal name (MUST include specific brand/chain/SKU — e.g. 'Costco rotisserie + Uncle Ben’s rice + bagged Caesar')","when":"breakfast|lunch|dinner|snack","phase":1,"playbook":"REQUIRED — ONE of: 'convenience_store' / 'fast_food' / 'protein_bar_shake' / 'crock_pot' / 'sheet_pan' / 'frozen_aisle' / 'frozen_breakfast' / 'low_cal_drink' / 'mom_friendly' / 'viral_hack' / 'lunchbox_thermos' / 'simple_home_cook'","ingredients":["short list with brand names where useful"],"why":"1 sentence — link to user's specific lab or symptom or barrier. Reference labs by plain English (e.g. 'liver enzyme' not 'ALT')."}],"workouts":[{"emoji":"🏃","day":"Mon|Tue|Wed|Thu|Fri|Sat|Sun","title":"e.g. 'Zone 2 walk'","duration_min":30,"description":"1 sentence","why":"1 sentence — which goal/lab this serves"}],"lifestyle_interventions":{"diet":[{"emoji":"🥗","intervention":"","rationale":"","priority":""}],"sleep":[{"emoji":"😴","intervention":"","rationale":"","priority":""}],"exercise":[{"emoji":"💪","intervention":"","rationale":"","priority":""}],"stress":[{"emoji":"🧘","intervention":"","rationale":"","priority":""}]},"action_plan":{"phase_1":{"name":"Stabilize (Weeks 1-4)","focus":"","actions":[]},"phase_2":{"name":"Optimize (Weeks 5-8)","focus":"","actions":[]},"phase_3":{"name":"Maintain (Weeks 9-12)","focus":"","actions":[]}},"symptoms_addressed":[{"symptom":"","severity":7,"how_addressed":"MAX 30 WORDS. Two short sentences max. 6th-grade reading level. Format: '[plain-English cause]. [What we're doing about it].' Example: 'Mostly your low vitamin D (24) plus iron loss from UC. We added vitamin D, an iron test, and folate. Hair grows slow — give it 12 weeks.' DO NOT list dosages, percentage improvements, mechanisms, or jargon. Just: cause + plan."}],"retest_timeline":[{"marker":"","retest_at":"","why":""}],"medication_notes":[{"medication":"","organ_impact":"","depletions":"","monitoring":"","alternative":""}],"disclaimer":"Educational only. Talk to your doctor before changing anything."}
 
 CRITICAL OUTPUT RULES:
 - today_actions: EXACTLY 3 items — the most important things this user can do TODAY. Mix categories (one eat, one move, one take is ideal).
@@ -951,6 +976,50 @@ CRITICAL OUTPUT RULES:
     if (!Array.isArray(plan.supplement_stack)) plan.supplement_stack = [];
     if (!Array.isArray(plan.today_actions)) plan.today_actions = [];
     if (!Array.isArray(plan.meals)) plan.meals = [];
+
+    // ── Forbidden-meal scrubber + brand-specificity gate (locked-in rule) ──
+    // The AI keeps drifting to lazy defaults. We strip meals matching the
+    // forbidden patterns AND meals that fail to name any specific brand /
+    // chain / SKU. Better to show 6 great meals than 12 mediocre ones.
+    try {
+      const FORBIDDEN_PATTERNS: RegExp[] = [
+        /^\s*\d?\-?egg\s+(scramble|breakfast|with|and)\s+(toast|bread|whole)/i,
+        /^\s*greek\s+yogurt\s*\+\s*berries\s*\+\s*(nuts|granola|almonds)/i,
+        /^\s*greek\s+yogurt\s+(parfait|with\s+berries\s+and\s+granola)/i,
+        /^\s*grilled\s+chicken\s*\+?\s*(rice|brown\s+rice)\s*\+?\s*(broccoli|steamed\s+broccoli)/i,
+        /^\s*salmon\s*\+?\s*(sweet\s+potato|asparagus)\s*\+?\s*(broccoli|lemon)/i,
+        /^\s*(grilled\s+)?salmon\s*\+\s*asparagus(\s*\+\s*lemon)?\s*$/i,
+        /^\s*kale\s+salad\s+(with|\+)\s+grilled\s+chicken/i,
+        /^\s*(ground\s+turkey\s+chili|turkey\s+chili)(\s+\(.*?\))?$/i,
+        /^\s*chicken\s+breast\s*\+\s*(rice|quinoa)\s*\+\s*(vegetables|broccoli)/i,
+      ];
+      // Brand/chain/SKU keywords. Meal must mention at least ONE of these
+      // either in the name or ingredients to pass the specificity gate.
+      const SPECIFICITY_KEYWORDS: RegExp = /\b(costco|kirkland|trader\s*joe|aldi|walmart|target\s+market|whole\s+foods|wawa|7-?eleven|sheetz|truck\s*stop|chick-?fil-?a|chipotle|wendy|mcdonald|subway|taco\s+bell|dunkin|starbucks|panera|burger\s+king|cracker\s+barrel|olive\s+garden|aunt\s+millie|banza|premier\s+protein|quest\s+bar|built\s+bar|barebells|jimmy\s+dean|stouffer|halo\s+top|halo|olipop|poppi|liquid\s+iv|lmnt|cabot|uncle\s+ben|minute\s+rice|rao|dave's\s+killer|ezekiel|sara\s+lee|birds\s+eye|cuties|kerrygold|fage|chobani|oikos|two\s+good)\b/i;
+
+      const before = plan.meals.length;
+      plan.meals = plan.meals.filter((m: any) => {
+        const name = String(m?.name ?? '').trim();
+        const ingredients = Array.isArray(m?.ingredients) ? m.ingredients.join(' ') : '';
+        const haystack = `${name} ${ingredients}`;
+        if (!name) return false;
+        // Drop forbidden generic templates outright
+        if (FORBIDDEN_PATTERNS.some(p => p.test(name))) {
+          console.log(`[wellness-plan] dropped forbidden meal: ${name}`);
+          return false;
+        }
+        // Require at least one specific brand/chain/SKU mention
+        if (!SPECIFICITY_KEYWORDS.test(haystack)) {
+          console.log(`[wellness-plan] dropped non-specific meal: ${name}`);
+          return false;
+        }
+        return true;
+      });
+      if (plan.meals.length !== before) {
+        console.log(`[wellness-plan] meal scrub: ${before} -> ${plan.meals.length}`);
+      }
+    } catch (e) { console.error('[wellness-plan] meal-scrub error:', e); }
+
     if (!Array.isArray(plan.workouts)) plan.workouts = [];
     if (!plan.headline) plan.headline = '';
     if (!plan.lifestyle_interventions) plan.lifestyle_interventions = { diet: [], sleep: [], exercise: [], stress: [] };
