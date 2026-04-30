@@ -41,7 +41,7 @@ const GeneratingState = () => (
       <span className="material-symbols-outlined text-primary-container text-3xl animate-pulse">favorite</span>
     </div>
     <p className="text-authority text-2xl text-clinical-charcoal font-bold mb-3">Building your plan…</p>
-    <p className="text-body text-clinical-stone max-w-sm mx-auto leading-relaxed">Reading your labs, picking your meals, building your workouts. About 1–2 minutes.</p>
+    <p className="text-body text-clinical-stone max-w-sm mx-auto leading-relaxed">Reading your labs, picking your meals, building your workouts. About 45–90 seconds.</p>
     <div className="flex gap-2 justify-center mt-6">
       {[0,1,2].map(i => <div key={i} className="w-2 h-2 rounded-full bg-primary-container animate-pulse" style={{ animationDelay: `${i * 0.3}s` }} />)}
     </div>

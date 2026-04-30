@@ -162,7 +162,7 @@ export const SymptomMapper = () => {
             <div className="bg-clinical-white rounded-[10px] shadow-card border-t-[3px] border-primary-container p-12 text-center">
               <div className="w-14 h-14 bg-primary-container/10 rounded-full flex items-center justify-center mx-auto mb-5"><span className="material-symbols-outlined text-primary-container text-2xl animate-pulse">pattern</span></div>
               <p className="text-authority text-2xl text-clinical-charcoal font-bold mb-2">Analyzing your symptoms...</p>
-              <p className="text-body text-clinical-stone max-w-xs mx-auto">Connecting symptoms to labs, medications, and patterns. About 1–2 minutes.</p>
+              <p className="text-body text-clinical-stone max-w-xs mx-auto">Connecting symptoms to labs, medications, and patterns. About 45–90 seconds.</p>
             </div>
           ) : !analysis ? (
             <div className="bg-clinical-white rounded-[10px] shadow-card border-t-[3px] border-primary-container p-12 text-center">
