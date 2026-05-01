@@ -67,10 +67,33 @@ export function useAppendToDraw(drawId: string | null) {
       // 1. Upload PDF to storage (so it's preserved alongside the original)
       setStatus('uploading');
       logEvent('append_to_draw_start', { drawId, fileName: file.name });
+      console.log('[append] starting storage upload', { fileName: file.name, size: file.size, type: file.type });
+
+      // Refresh auth session before storage upload — staging tokens go stale on
+      // mobile and a stale token causes the upload to hang silently for the
+      // session timeout instead of failing fast.
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          console.warn('[append] no session, refreshing');
+          await supabase.auth.refreshSession();
+        }
+      } catch (e) {
+        console.warn('[append] session refresh failed:', e);
+      }
 
       const rand = Math.random().toString(36).slice(2, 10);
       const fileName = `${userId}/${Date.now()}_${rand}_append_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
-      const { error: storageErr } = await supabase.storage.from('lab-pdfs').upload(fileName, file, { cacheControl: '3600', upsert: true });
+      console.log('[append] uploading to path', fileName);
+
+      // 30-second hard timeout so a stalled upload surfaces a real error
+      // instead of leaving the modal frozen forever.
+      const uploadPromise = supabase.storage.from('lab-pdfs').upload(fileName, file, { cacheControl: '3600', upsert: true });
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Storage upload timed out after 30 seconds. Try again or check your connection.')), 30_000)
+      );
+      const { error: storageErr } = await Promise.race([uploadPromise, timeoutPromise]) as any;
+      console.log('[append] storage upload done', { error: storageErr });
       if (storageErr) throw new Error(`Upload failed: ${storageErr.message}`);
 
       // 2. Try client-side text extraction first (faster + cheaper)
