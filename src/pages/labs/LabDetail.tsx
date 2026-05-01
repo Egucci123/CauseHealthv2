@@ -241,6 +241,17 @@ export const LabDetail = () => {
     })();
   }, [data, drawId, user]);
 
+  // Detect whether the draw's processing_status='processing' flag is stuck
+  // (analysis crashed / 401'd / never started). Used by both the button label
+  // and the "Analyzing your bloodwork" banner so they don't contradict.
+  const drawForStale = data?.draw;
+  const drawIsStale = (() => {
+    if (!drawForStale || drawForStale.processing_status !== 'processing') return false;
+    const updatedAt = (drawForStale as any).updated_at ?? drawForStale.created_at;
+    if (!updatedAt) return false;
+    return (Date.now() - new Date(updatedAt).getTime()) > 180_000;
+  })();
+
   // Deterministic critical-findings detection — runs in code, never via AI.
   // Visible to free users too (safety > paywall).
   // MUST be before early returns (Rules of Hooks).
@@ -374,26 +385,18 @@ export const LabDetail = () => {
           </button>
           <div className="flex items-center gap-3">
             {(() => {
-              // Detect a stuck 'processing' state: if the draw row hasn't been
-              // updated in 3+ minutes but still says processing, the analysis
-              // crashed or 401'd (e.g., the append-to-draw 401 bug shipped earlier).
-              // Show a "Stuck — Retry" affordance instead of locking the button forever.
-              const updatedAt = (draw as any).updated_at ?? draw.created_at;
-              const ageMs = updatedAt ? Date.now() - new Date(updatedAt).getTime() : 0;
-              const isStale = draw.processing_status === 'processing' && ageMs > 180_000;
-
               const isRunning =
-                !isStale && (
+                !drawIsStale && (
                   retryLocked ||
                   retryAnalysis.isPending ||
                   draw.processing_status === 'processing'
                 );
-              const label = isRunning ? 'Running…' : isStale ? 'Stuck — Retry' : 'Re-run Analysis';
+              const label = isRunning ? 'Running…' : drawIsStale ? 'Stuck — Retry' : 'Re-run Analysis';
               return (
                 <button
                   onClick={() => retryAnalysis.mutate()}
                   disabled={isRunning}
-                  className={`text-precision text-[0.6rem] tracking-widest uppercase hover:text-[#D4A574] transition-colors flex items-center gap-1 disabled:opacity-70 ${isStale ? 'text-[#E8922A]' : 'text-on-surface-variant'}`}
+                  className={`text-precision text-[0.6rem] tracking-widest uppercase hover:text-[#D4A574] transition-colors flex items-center gap-1 disabled:opacity-70 ${drawIsStale ? 'text-[#E8922A]' : 'text-on-surface-variant'}`}
                 >
                   <span className={`material-symbols-outlined text-[14px] ${isRunning ? 'animate-spin' : ''}`}>refresh</span>
                   {label}
@@ -452,7 +455,7 @@ export const LabDetail = () => {
       {/* Status banner — shown PROMINENTLY above counts so user always knows
           if analysis is in flight or failed. Self-polling via useEffect for
           extra reliability if React Query's refetchInterval isn't triggering. */}
-      {(retryLocked || draw.processing_status === 'processing') && (
+      {(retryLocked || (draw.processing_status === 'processing' && !drawIsStale)) && (
         <div className="bg-gradient-to-r from-[#1B423A] to-[#2D6A4F] rounded-[14px] p-5 flex items-center gap-4 shadow-card">
           <div className="relative w-10 h-10 flex-shrink-0">
             <div className="absolute inset-0 rounded-full border-2 border-white/20" />
