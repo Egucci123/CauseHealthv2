@@ -1,44 +1,31 @@
 // src/components/progress/ComplianceCalendar.tsx
 //
-// "Vibe Board" — visual at-a-glance check-in calendar. Two views stacked:
+// Light cards matching lab-analytics + CheckInForm aesthetic. No emojis on
+// tiles — score number rendered directly inside the colored tile (tabular
+// monospace numbers). Today highlighted with a thick green ring.
 //
-//   1. THIS WEEK strip — Mon→Sun, big tiles, mood emoji on each day with a
-//      check-in, today highlighted with a glowing ring. Reads like an Oura
-//      / Apple Watch weekly view. The hero of the section.
-//
-//   2. PAST 30 DAYS heat map — denser grid below, color blocks per day for
-//      trend context. No emojis (too noisy at this density). GitHub style
-//      but with bigger tiles + softer gradient palette so it doesn't look
-//      like a dev tool.
-//
-// Pulls from progress_entries.overall_score. We'll surface the dominant mood
-// emoji per day by reverse-mapping from the picker values used in CheckInForm.
+// Two stacked cards:
+//   1. THIS WEEK — 7 large day tiles M-S, each showing the day's score number
+//   2. PAST 30 DAYS — denser color-block trend strip for at-a-glance trend
 
 import { useMemo } from 'react';
 import { format, subDays, eachDayOfInterval, startOfWeek, isToday, isFuture } from 'date-fns';
 import type { ProgressEntry } from '../../hooks/useProgress';
 
-// Score → background gradient. Soft, mid-saturation palette.
-const scoreToBg = (s: number | null, isFuture: boolean): string => {
-  if (isFuture) return 'transparent';
-  if (s === null) return '#F4F0E6';            // empty cream
-  if (s >= 8.5)  return 'linear-gradient(135deg, #2D6A4F 0%, #1B4332 100%)';
-  if (s >= 7)    return 'linear-gradient(135deg, #5E8C61 0%, #3D6647 100%)';
-  if (s >= 5.5)  return 'linear-gradient(135deg, #D4A574 0%, #B8915F 100%)';
-  if (s >= 3.5)  return 'linear-gradient(135deg, #E8922A 0%, #C97C1F 100%)';
+const scoreToBg = (s: number | null, future: boolean): string => {
+  if (future) return 'transparent';
+  if (s === null) return '#F4F0E6';
+  if (s >= 8.5) return 'linear-gradient(135deg, #2D6A4F 0%, #1B4332 100%)';
+  if (s >= 7)   return 'linear-gradient(135deg, #5E8C61 0%, #3D6647 100%)';
+  if (s >= 5.5) return 'linear-gradient(135deg, #D4A574 0%, #B8915F 100%)';
+  if (s >= 3.5) return 'linear-gradient(135deg, #E8922A 0%, #C97C1F 100%)';
   return 'linear-gradient(135deg, #C94F4F 0%, #A53A3A 100%)';
 };
 
-// Reverse-map score → mood emoji. Picks the mood that's the dominant feeling
-// at that score band. Matches the picker emojis in CheckInForm so users see
-// what they "felt like" each day at a glance.
-const scoreToEmoji = (s: number | null): string => {
-  if (s === null) return '';
-  if (s >= 8.5)  return '⚡';   // High energy
-  if (s >= 7)    return '🙂';   // Good
-  if (s >= 5.5)  return '😐';   // Average
-  if (s >= 3.5)  return '😩';   // Tired
-  return '😵';                  // Awful
+const scoreToTextColor = (s: number | null): string => {
+  if (s === null) return '#A6A39B';
+  if (s >= 5.5) return '#FFFFFF';   // dark backgrounds → white text
+  return '#FFFFFF';                  // bright orange/red → still white
 };
 
 const scoreToLabel = (s: number | null) =>
@@ -60,8 +47,6 @@ export const ComplianceCalendar = ({ entries }: { entries: ProgressEntry[] }) =>
     return m;
   }, [entries]);
 
-  // ── THIS WEEK ───────────────────────────────────────────────────
-  // Week starts on Monday for consistency.
   const thisWeekDays = useMemo(() => {
     const start = startOfWeek(today, { weekStartsOn: 1 });
     return Array.from({ length: 7 }, (_, i) => {
@@ -71,7 +56,6 @@ export const ComplianceCalendar = ({ entries }: { entries: ProgressEntry[] }) =>
     });
   }, []);
 
-  // ── PAST 30 DAYS (smooth heat map) ──────────────────────────────
   const past30 = useMemo(() => {
     const end = today;
     const start = subDays(end, 29);
@@ -85,7 +69,7 @@ export const ComplianceCalendar = ({ entries }: { entries: ProgressEntry[] }) =>
         <div className="flex items-baseline justify-between mb-5">
           <div>
             <p className="text-precision text-[0.6rem] text-clinical-stone uppercase tracking-widest font-bold mb-1">This Week</p>
-            <p className="text-authority text-lg text-clinical-charcoal font-bold">{format(today, 'MMMM yyyy')}</p>
+            <p className="text-authority text-xl text-clinical-charcoal font-bold">{format(today, 'MMMM yyyy')}</p>
           </div>
           <span className="text-precision text-[0.6rem] text-clinical-stone tracking-wide">Week of {format(thisWeekDays[0], 'MMM d')}</span>
         </div>
@@ -94,7 +78,6 @@ export const ComplianceCalendar = ({ entries }: { entries: ProgressEntry[] }) =>
           {thisWeekDays.map((d, i) => {
             const dateStr = format(d, 'yyyy-MM-dd');
             const score = scoreMap[dateStr] ?? null;
-            const emoji = scoreToEmoji(score);
             const isFutureDay = isFuture(d);
             const isTodayDay = isToday(d);
             const dayLabel = format(d, 'd');
@@ -106,10 +89,10 @@ export const ComplianceCalendar = ({ entries }: { entries: ProgressEntry[] }) =>
                   {dayInitial}
                 </span>
                 <div
-                  title={`${format(d, 'EEEE, MMM d')} — ${scoreToLabel(score)}`}
+                  title={`${format(d, 'EEEE, MMM d')} — ${scoreToLabel(score)}${score !== null ? ` (${score.toFixed(1)})` : ''}`}
                   className={`relative w-full aspect-square rounded-[12px] flex items-center justify-center transition-all ${
                     isFutureDay ? 'border border-dashed border-outline-variant/30 bg-clinical-cream/30'
-                    : score === null ? 'bg-clinical-cream'
+                    : score === null ? 'bg-clinical-cream/60 border border-outline-variant/10'
                     : 'shadow-card-md'
                   }`}
                   style={{
@@ -118,12 +101,24 @@ export const ComplianceCalendar = ({ entries }: { entries: ProgressEntry[] }) =>
                     outlineOffset: '2px',
                   }}
                 >
-                  {emoji ? (
-                    <span className="text-2xl md:text-3xl leading-none drop-shadow-sm">{emoji}</span>
+                  {/* Score number — tabular monospace for clean alignment */}
+                  {score !== null ? (
+                    <div className="flex items-baseline gap-0.5">
+                      <span
+                        className="text-authority font-bold leading-none"
+                        style={{
+                          color: scoreToTextColor(score),
+                          fontSize: 'clamp(1.5rem, 5vw, 1.875rem)',
+                          fontVariantNumeric: 'tabular-nums',
+                        }}
+                      >
+                        {score.toFixed(0)}
+                      </span>
+                    </div>
                   ) : isFutureDay ? (
-                    <span className="text-clinical-stone/30 text-xs">—</span>
+                    <span className="text-clinical-stone/30 text-xs">·</span>
                   ) : (
-                    <span className="text-clinical-stone/40 text-xs">·</span>
+                    <span className="text-clinical-stone/40 text-xs">—</span>
                   )}
                 </div>
                 <span className={`text-precision text-[0.6rem] font-bold ${isTodayDay ? 'text-primary-container' : 'text-clinical-stone'}`}>
@@ -135,14 +130,16 @@ export const ComplianceCalendar = ({ entries }: { entries: ProgressEntry[] }) =>
         </div>
       </div>
 
-      {/* PAST 30 DAYS strip */}
+      {/* PAST 30 DAYS card */}
       <div className="bg-clinical-white rounded-[14px] shadow-card p-6">
         <div className="flex items-baseline justify-between mb-4">
           <div>
             <p className="text-precision text-[0.6rem] text-clinical-stone uppercase tracking-widest font-bold mb-1">Past 30 Days</p>
             <p className="text-authority text-lg text-clinical-charcoal font-bold">Trend at a glance</p>
           </div>
-          <span className="text-precision text-[0.6rem] text-clinical-stone tracking-wide">{entries.filter(e => past30.some(d => format(d, 'yyyy-MM-dd') === e.logged_at?.slice(0, 10))).length}/30 logged</span>
+          <span className="text-precision text-[0.6rem] text-clinical-stone tracking-wide">
+            {entries.filter(e => past30.some(d => format(d, 'yyyy-MM-dd') === e.logged_at?.slice(0, 10))).length}/30 logged
+          </span>
         </div>
 
         <div className="grid grid-cols-10 gap-1.5">
@@ -164,7 +161,6 @@ export const ComplianceCalendar = ({ entries }: { entries: ProgressEntry[] }) =>
           })}
         </div>
 
-        {/* Legend */}
         <div className="flex items-center gap-2 mt-5">
           <span className="text-precision text-[0.55rem] text-clinical-stone tracking-wide">Hard</span>
           {[
@@ -177,7 +173,6 @@ export const ComplianceCalendar = ({ entries }: { entries: ProgressEntry[] }) =>
             <div key={g} className="w-[14px] h-[14px] rounded-[3px]" style={{ background: g }} />
           ))}
           <span className="text-precision text-[0.55rem] text-clinical-stone tracking-wide">Great</span>
-          <span className="ml-auto text-precision text-[0.55rem] text-clinical-stone tracking-wide">No log = ▢</span>
         </div>
       </div>
     </div>
