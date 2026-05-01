@@ -452,13 +452,21 @@ HARD RULES — FOLLOW EXACTLY:
       - 3-5 SNACK + DRINK options.
       - **TOTAL: 25-35 MEALS** (bumped from 21-30 to give the weekly spotlight rotation enough headroom across the 12-week journey).
 
-    PHASE COVERAGE FOR WEEKLY PROGRESSION (REQUIRED):
-    The /wellness page surfaces a "This Week's Focus" spotlight that rotates meals across weeks 1-12, gradually shifting from convenience (Phase 1) to home cooking (Phase 3). For the rotation to work, every plan MUST include enough variety across phases:
+    PHASE COVERAGE FOR WEEKLY PROGRESSION (HARD REQUIREMENT — DO NOT SKIP):
+    The /wellness page surfaces a "This Week's Focus" spotlight that rotates meals across weeks 1-12, gradually shifting from convenience (Phase 1) to home cooking (Phase 3). For the rotation to work, every plan MUST include this distribution:
       - AT LEAST 6 Phase-1 meals (easy mode for weeks 1-3 — convenience_store, fast_food, frozen_breakfast, low_cal_drink, protein_bar_shake)
       - AT LEAST 8 Phase-2 meals (level up for weeks 4-6 — lunchbox_thermos, sheet_pan, frozen_aisle, viral_hack, mom_friendly)
       - AT LEAST 6 Phase-3 meals (home cook for weeks 7-12 — simple_home_cook, crock_pot, sheet_pan)
-      - DINNER-SPECIFIC FLOOR: AT LEAST 4 Phase-2 dinners AND AT LEAST 4 Phase-3 dinners (sheet-pan, crock-pot, simple-home-cook). Without enough Phase-3 dinners the user has nothing to graduate to in weeks 7-12 — the spotlight becomes stale.
-    Copy each candidate's phase tag verbatim from MEAL_CANDIDATES; do NOT invent phases.
+
+    DINNER FLOOR — ABSOLUTE MINIMUM (failing this means the plan is broken):
+      - AT LEAST 6 dinners total (when="dinner") in meals[]. NOT 1, NOT 2, NOT 3. **AT LEAST 6.**
+      - Of those dinners: AT LEAST 2 Phase-1 (frozen-aisle, fast-food, convenience-store dinner options).
+      - Of those dinners: AT LEAST 2 Phase-2 (sheet-pan, frozen-aisle dinners with prep).
+      - Of those dinners: AT LEAST 2 Phase-3 (crock-pot, simple-home-cook).
+      - If MEAL_CANDIDATES doesn't include enough crock-pot / sheet-pan / simple-home-cook options, you MUST INVENT extra dinners that follow the brand-specific naming rule. Examples of valid invented Phase-3 dinners: "Sheet-pan honey-mustard chicken thighs + frozen broccoli + Minute brown rice", "Crock-pot pulled chicken (Frank's hot sauce + ranch) + bagged Caesar", "Air-fryer salmon + frozen Brussels + Minute rice".
+      - A plan with only 1 dinner option is the #1 known failure mode. Treat the 6-dinner floor as non-negotiable.
+
+    Copy each candidate's phase tag verbatim from MEAL_CANDIDATES when using a candidate; for invented meals you assign the phase based on prep effort (Phase 1 = no cooking, Phase 2 = sheet-pan/frozen w/ prep, Phase 3 = stove + multiple ingredients).
 
     Pattern = "unknown" → default broad mix: 2 fast-food + 2 frozen + 2 convenience-store + 2 lunchbox + 2 protein-bar/shake.
 
