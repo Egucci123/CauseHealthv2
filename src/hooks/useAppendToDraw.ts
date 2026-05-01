@@ -197,18 +197,22 @@ export function useAppendToDraw(drawId: string | null) {
       if (insertErr) throw new Error(`Could not save values: ${insertErr.message}`);
 
       // 7. Re-trigger analyze-labs on this draw so the analysis reflects the
-      // merged dataset. Same fire-and-forget pattern as the LabHistory retry.
+      // merged dataset. Use supabase.functions.invoke (not raw fetch) so the
+      // user's Bearer token is auto-attached — raw fetch with apikey alone
+      // returns 401 Unauthorized on this function. We await it so the modal
+      // shows "Re-analyzing…" until the new picture is ready.
       setStatus('reanalyzing');
       await supabase.from('lab_draws').update({ processing_status: 'processing' }).eq('id', drawId);
-      fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-labs`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-        },
-        body: JSON.stringify({ drawId, userId }),
-        keepalive: true,
-      }).catch(console.warn);
+      const { error: analyzeErr } = await supabase.functions.invoke('analyze-labs', {
+        body: { drawId, userId },
+      });
+      if (analyzeErr) {
+        console.warn('[append] analyze-labs failed:', analyzeErr);
+        // Don't throw — the values are already saved. Surface a soft warning
+        // in the success copy instead so the user knows to manually re-run.
+      } else {
+        console.log('[append] analyze-labs complete');
+      }
 
       logEvent('append_to_draw_success', { drawId, appended: newRows.length, skipped });
       return { appendedCount: newRows.length, skippedCount: skipped, newMarkerNames };
