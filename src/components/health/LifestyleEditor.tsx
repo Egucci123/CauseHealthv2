@@ -2,7 +2,10 @@
 //
 // Shared lifestyle form. Used by onboarding Step 5 and Settings → Health
 // Profile. Pure UI — takes `value` + `onChange` and emits patches.
-import { useState } from 'react';
+//
+// Layout: stacked vertical sections (Sleep, Diet, Exercise, Stress) — was
+// originally tabs but users were missing 3 of 4 sections (filling Sleep
+// only and clicking Continue). Stacked forces them through every section.
 import { SectionLabel } from '../ui/SectionLabel';
 
 const DIET_TYPES = [
@@ -28,16 +31,20 @@ interface Props {
   onChange: (patch: Partial<LifestyleValue>) => void;
 }
 
+// Section header used across all 4 lifestyle sections.
+const SectionHeader = ({ icon, title, subtitle }: { icon: string; title: string; subtitle: string }) => (
+  <div className="flex items-center gap-3 mb-4">
+    <div className="w-10 h-10 bg-primary-container/10 rounded-lg flex items-center justify-center flex-shrink-0">
+      <span className="material-symbols-outlined text-primary-container text-[20px]">{icon}</span>
+    </div>
+    <div>
+      <h3 className="text-authority text-lg text-clinical-charcoal font-semibold leading-tight">{title}</h3>
+      <p className="text-precision text-[0.6rem] text-clinical-stone tracking-wide uppercase">{subtitle}</p>
+    </div>
+  </div>
+);
+
 export const LifestyleEditor = ({ value, onChange }: Props) => {
-  const [tab, setTab] = useState<'sleep' | 'diet' | 'exercise' | 'stress'>('sleep');
-
-  const tabs = [
-    { id: 'sleep', label: 'Sleep', icon: 'bedtime' },
-    { id: 'diet', label: 'Diet', icon: 'restaurant' },
-    { id: 'exercise', label: 'Exercise', icon: 'fitness_center' },
-    { id: 'stress', label: 'Stress', icon: 'psychology' },
-  ] as const;
-
   const ToggleButtons = ({ options, val, onPick }: { options: { value: string; label: string }[]; val: string | undefined; onPick: (v: string) => void }) => (
     <div className="flex gap-2 flex-wrap">
       {options.map(opt => (
@@ -63,19 +70,19 @@ export const LifestyleEditor = ({ value, onChange }: Props) => {
     </div>
   );
 
-  return (
-    <div>
-      <div className="flex gap-1 bg-[#131313] rounded-[10px] p-1 mb-6">
-        {tabs.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-precision text-[0.6rem] tracking-wider uppercase font-bold transition-all ${tab === t.id ? 'bg-primary-container text-white rounded-lg' : 'text-on-surface-variant hover:text-white'}`}>
-            <span className="material-symbols-outlined text-[14px]">{t.icon}</span>
-            <span className="hidden sm:inline">{t.label}</span>
-          </button>
-        ))}
-      </div>
+  // Card wrapper for each section — clean visual separation so users see
+  // every section as they scroll instead of having to discover tabs.
+  const SectionCard = ({ children }: { children: React.ReactNode }) => (
+    <div className="bg-clinical-white rounded-[10px] border border-outline-variant/15 p-5 md:p-6">
+      {children}
+    </div>
+  );
 
-      {tab === 'sleep' && (
+  return (
+    <div className="space-y-5">
+      {/* ── SLEEP ───────────────────────────────────────────── */}
+      <SectionCard>
+        <SectionHeader icon="bedtime" title="Sleep" subtitle="Affects every hormone + recovery" />
         <div className="space-y-6">
           <div>
             <div className="flex justify-between items-center mb-2"><SectionLabel className="mb-0">Hours per Night</SectionLabel><span className="text-authority text-2xl text-clinical-charcoal font-bold">{value.sleepHours ?? 7}h</span></div>
@@ -88,9 +95,11 @@ export const LifestyleEditor = ({ value, onChange }: Props) => {
           <div><SectionLabel>Do You Snore?</SectionLabel><ToggleButtons options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }, { value: 'partner_says', label: 'Partner says yes' }]} val={value.snoring} onPick={v => onChange({ snoring: v as any })} /></div>
           <div><SectionLabel>Wake Feeling Rested?</SectionLabel><ToggleButtons options={[{ value: 'yes', label: 'Yes' }, { value: 'sometimes', label: 'Sometimes' }, { value: 'no', label: 'Rarely' }]} val={value.wakeRested} onPick={v => onChange({ wakeRested: v as any })} /></div>
         </div>
-      )}
+      </SectionCard>
 
-      {tab === 'diet' && (
+      {/* ── DIET ────────────────────────────────────────────── */}
+      <SectionCard>
+        <SectionHeader icon="restaurant" title="Diet" subtitle="Drives meal recommendations + lab interpretation" />
         <div className="space-y-6">
           <div><SectionLabel>Diet Type</SectionLabel>
             <div className="grid grid-cols-3 gap-2">
@@ -111,9 +120,11 @@ export const LifestyleEditor = ({ value, onChange }: Props) => {
             <input type="range" min={0} max={8} value={value.coffeePerDay ?? 1} onChange={e => onChange({ coffeePerDay: parseInt(e.target.value) })} className="w-full accent-primary-container" />
           </div>
         </div>
-      )}
+      </SectionCard>
 
-      {tab === 'exercise' && (
+      {/* ── EXERCISE ────────────────────────────────────────── */}
+      <SectionCard>
+        <SectionHeader icon="fitness_center" title="Exercise" subtitle="Metabolic + cardiovascular context" />
         <div className="space-y-6">
           <div>
             <div className="flex justify-between items-center mb-2"><SectionLabel className="mb-0">Days per Week</SectionLabel><span className="text-authority text-2xl text-clinical-charcoal font-bold">{value.exerciseDaysPerWeek ?? 2}</span></div>
@@ -124,9 +135,11 @@ export const LifestyleEditor = ({ value, onChange }: Props) => {
               onToggle={t => { const c = value.exerciseTypes ?? []; onChange({ exerciseTypes: c.includes(t) ? c.filter(x => x !== t) : [...c, t] }); }} />
           </div>
         </div>
-      )}
+      </SectionCard>
 
-      {tab === 'stress' && (
+      {/* ── STRESS ──────────────────────────────────────────── */}
+      <SectionCard>
+        <SectionHeader icon="psychology" title="Stress & Smoking" subtitle="Cortisol + cardiovascular risk markers" />
         <div className="space-y-6">
           <div>
             <div className="flex justify-between items-center mb-2"><SectionLabel className="mb-0">Overall Stress Level</SectionLabel><span className="text-authority text-2xl text-clinical-charcoal font-bold">{value.stressLevel ?? 5}/10</span></div>
@@ -138,7 +151,7 @@ export const LifestyleEditor = ({ value, onChange }: Props) => {
           </div>
           <div><SectionLabel>Smoking Status</SectionLabel><ToggleButtons options={[{ value: 'never', label: 'Never' }, { value: 'former', label: 'Former' }, { value: 'current', label: 'Current' }]} val={value.smoker} onPick={v => onChange({ smoker: v as any })} /></div>
         </div>
-      )}
+      </SectionCard>
     </div>
   );
 };

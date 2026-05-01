@@ -3,7 +3,10 @@
 // Shared "Daily Life" form (work / home / food / healthcare). Used by
 // onboarding Step 6 and Settings → Health Profile. Pure UI — takes
 // `value` + `onChange`. Drives universal AI tailoring without hardcoding.
-import { useState } from 'react';
+//
+// Layout: stacked vertical sections — was originally tabs (Work/Home/Food/
+// Healthcare) but most users filled only the first tab and missed the rest.
+// Stacked sections force users to scroll past every required field.
 import { SectionLabel } from '../ui/SectionLabel';
 import type { LifeContext } from '../../store/onboardingStore';
 
@@ -92,15 +95,20 @@ interface Props {
   onChange: (patch: Partial<LifeContext>) => void;
 }
 
-export const DailyLifeEditor = ({ value, onChange }: Props) => {
-  const [tab, setTab] = useState<'work' | 'home' | 'food' | 'health'>('work');
-  const tabs = [
-    { id: 'work', label: 'Work', icon: 'work' },
-    { id: 'home', label: 'Home', icon: 'home' },
-    { id: 'food', label: 'Food', icon: 'restaurant' },
-    { id: 'health', label: 'Healthcare', icon: 'medical_services' },
-  ] as const;
+// Section header used for every Daily-Life section.
+const DLSectionHeader = ({ icon, title, subtitle }: { icon: string; title: string; subtitle: string }) => (
+  <div className="flex items-center gap-3 mb-4">
+    <div className="w-10 h-10 bg-primary-container/10 rounded-lg flex items-center justify-center flex-shrink-0">
+      <span className="material-symbols-outlined text-primary-container text-[20px]">{icon}</span>
+    </div>
+    <div>
+      <h3 className="text-authority text-lg text-clinical-charcoal font-semibold leading-tight">{title}</h3>
+      <p className="text-precision text-[0.6rem] text-clinical-stone tracking-wide uppercase">{subtitle}</p>
+    </div>
+  </div>
+);
 
+export const DailyLifeEditor = ({ value, onChange }: Props) => {
   const Toggle = <T extends string | undefined>({ options, val, onPick }: { options: { value: T; label: string }[]; val: T | undefined; onPick: (v: T) => void }) => (
     <div className="flex gap-2 flex-wrap">
       {options.map(opt => (
@@ -138,19 +146,18 @@ export const DailyLifeEditor = ({ value, onChange }: Props) => {
     </div>
   );
 
-  return (
-    <div>
-      <div className="flex gap-1 bg-[#131313] rounded-[10px] p-1 mb-6">
-        {tabs.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-precision text-[0.6rem] tracking-wider uppercase font-bold transition-all ${tab === t.id ? 'bg-primary-container text-white rounded-lg' : 'text-on-surface-variant hover:text-white'}`}>
-            <span className="material-symbols-outlined text-[14px]">{t.icon}</span>
-            <span className="hidden sm:inline">{t.label}</span>
-          </button>
-        ))}
-      </div>
+  // Card wrapper for each section — clear visual separation as users scroll.
+  const SectionCard = ({ children }: { children: React.ReactNode }) => (
+    <div className="bg-clinical-white rounded-[10px] border border-outline-variant/15 p-5 md:p-6">
+      {children}
+    </div>
+  );
 
-      {tab === 'work' && (
+  return (
+    <div className="space-y-5">
+      {/* ── WORK ────────────────────────────────────────────── */}
+      <SectionCard>
+        <DLSectionHeader icon="work" title="Work" subtitle="Schedule shapes meal timing + stress" />
         <div className="space-y-6">
           <div><SectionLabel>What kind of work do you do?</SectionLabel><IconGrid options={WORK_TYPES} val={value.workType} onPick={v => onChange({ workType: v })} cols={2} /></div>
           <div><SectionLabel>When do you work?</SectionLabel><Toggle options={SCHEDULE_OPTS} val={value.workSchedule} onPick={v => onChange({ workSchedule: v })} /></div>
@@ -159,9 +166,11 @@ export const DailyLifeEditor = ({ value, onChange }: Props) => {
             <input type="range" min={0} max={80} value={value.hoursWorkedPerWeek ?? 40} onChange={e => onChange({ hoursWorkedPerWeek: parseInt(e.target.value) })} className="w-full accent-primary-container" />
           </div>
         </div>
-      )}
+      </SectionCard>
 
-      {tab === 'home' && (
+      {/* ── HOME ────────────────────────────────────────────── */}
+      <SectionCard>
+        <DLSectionHeader icon="home" title="Home" subtitle="Family + living situation" />
         <div className="space-y-6">
           <div><SectionLabel>Kids at home?</SectionLabel><Toggle options={KIDS_OPTS} val={value.kidsAtHome} onPick={v => onChange({ kidsAtHome: v })} /></div>
           <div><SectionLabel>You live with...</SectionLabel><Toggle options={LIVING_OPTS} val={value.livingSituation} onPick={v => onChange({ livingSituation: v })} /></div>
@@ -170,9 +179,11 @@ export const DailyLifeEditor = ({ value, onChange }: Props) => {
             <input type="range" min={0} max={10} value={value.cookHomeFrequency ?? 5} onChange={e => onChange({ cookHomeFrequency: parseInt(e.target.value) })} className="w-full accent-primary-container" />
           </div>
         </div>
-      )}
+      </SectionCard>
 
-      {tab === 'food' && (
+      {/* ── FOOD ────────────────────────────────────────────── */}
+      <SectionCard>
+        <DLSectionHeader icon="restaurant" title="Food" subtitle="What you eat drives the wellness plan" />
         <div className="space-y-6">
           <div><SectionLabel>Time you can spend on food per day</SectionLabel><Toggle options={COOKING_TIME_OPTS} val={value.cookingTimeAvailable} onPick={v => onChange({ cookingTimeAvailable: v })} /></div>
 
@@ -192,9 +203,11 @@ export const DailyLifeEditor = ({ value, onChange }: Props) => {
               onToggle={p => { const c = value.eatOutPlaces ?? []; onChange({ eatOutPlaces: c.includes(p) ? c.filter(x => x !== p) : [...c, p] }); }} />
           </div>
         </div>
-      )}
+      </SectionCard>
 
-      {tab === 'health' && (
+      {/* ── HEALTHCARE ──────────────────────────────────────── */}
+      <SectionCard>
+        <DLSectionHeader icon="medical_services" title="Healthcare" subtitle="Insurance + access shapes test recommendations" />
         <div className="space-y-6">
           <div><SectionLabel>Insurance type</SectionLabel><Toggle options={INSURANCE_OPTS} val={value.insuranceType} onPick={v => onChange({ insuranceType: v })} />
             <p className="text-body text-xs text-clinical-stone mt-2">Used to pick tests your insurance is likely to cover.</p>
@@ -202,7 +215,7 @@ export const DailyLifeEditor = ({ value, onChange }: Props) => {
           <div><SectionLabel>Do you have a primary care doctor?</SectionLabel><Toggle options={PCP_OPTS} val={value.hasPCP} onPick={v => onChange({ hasPCP: v })} /></div>
           <div><SectionLabel>Last full physical</SectionLabel><Toggle options={PHYSICAL_OPTS} val={value.lastPhysical} onPick={v => onChange({ lastPhysical: v })} /></div>
         </div>
-      )}
+      </SectionCard>
     </div>
   );
 };
