@@ -90,15 +90,15 @@ const StatTile = ({
 }: {
   icon: string; label: string; valueText: string; pct: number; color: string; disabled?: boolean;
 }) => (
-  <div className={`bg-clinical-cream/40 rounded-[12px] p-4 ${disabled ? 'opacity-60' : ''}`}>
+  <div className={`bg-[#1C1B1B] border border-[#414844]/15 rounded-[12px] p-4 ${disabled ? 'opacity-60' : ''}`}>
     <div className="flex items-center gap-2 mb-2">
-      <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${color}20` }}>
+      <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${color}25` }}>
         <span className="material-symbols-outlined text-[16px]" style={{ color }}>{icon}</span>
       </div>
-      <span className="text-precision text-[0.6rem] font-bold tracking-wider uppercase text-clinical-stone">{label}</span>
+      <span className="text-precision text-[0.6rem] font-bold tracking-wider uppercase text-on-surface-variant">{label}</span>
     </div>
-    <p className="text-authority text-2xl text-clinical-charcoal font-bold mb-2 leading-none">{valueText}</p>
-    <div className="h-1.5 w-full bg-clinical-cream rounded-full overflow-hidden">
+    <p className="text-authority text-2xl text-on-surface font-bold mb-2 leading-none">{valueText}</p>
+    <div className="h-1.5 w-full bg-[#2A2A2A] rounded-full overflow-hidden">
       <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, backgroundColor: color }} />
     </div>
   </div>
@@ -109,15 +109,15 @@ const StarterCallout = ({
 }: {
   icon: string; label: string; done: boolean; doneText: string; todoText: string; accent: string;
 }) => (
-  <div className="bg-clinical-cream/40 rounded-[12px] p-4 flex items-start gap-3">
-    <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0`} style={{ backgroundColor: done ? `#1B433215` : `${accent}15` }}>
-      <span className="material-symbols-outlined text-[18px]" style={{ color: done ? '#1B4332' : accent }}>
+  <div className="bg-[#1C1B1B] border border-[#414844]/15 rounded-[12px] p-4 flex items-start gap-3">
+    <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0`} style={{ backgroundColor: done ? `#5E8C6125` : `${accent}25` }}>
+      <span className="material-symbols-outlined text-[18px]" style={{ color: done ? '#5E8C61' : accent }}>
         {done ? 'check_circle' : icon}
       </span>
     </div>
     <div className="flex-1 min-w-0">
-      <p className="text-precision text-[0.6rem] font-bold tracking-wider uppercase text-clinical-stone mb-1">{label}</p>
-      <p className={`text-body text-sm leading-snug ${done ? 'text-clinical-charcoal' : 'text-clinical-stone'}`}>
+      <p className="text-precision text-[0.6rem] font-bold tracking-wider uppercase text-on-surface-variant mb-1">{label}</p>
+      <p className={`text-body text-sm leading-snug ${done ? 'text-on-surface' : 'text-on-surface-variant'}`}>
         {done ? doneText : todoText}
       </p>
     </div>
@@ -176,27 +176,31 @@ export const AdherenceHero = () => {
   const cfg = TONE(overallPct);
 
   return (
-    <div className="bg-clinical-white rounded-[14px] shadow-card p-6">
+    <div className="bg-[#131313] rounded-[14px] shadow-card p-6 relative overflow-hidden">
+      {/* Subtle gold gradient orb in the corner for depth */}
+      <div className="absolute -top-20 -right-20 w-64 h-64 rounded-full opacity-20 pointer-events-none"
+        style={{ background: 'radial-gradient(circle, #D4A574 0%, transparent 70%)' }} />
+
       {/* Top label strip */}
-      <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+      <div className="flex items-center justify-between gap-3 mb-3 flex-wrap relative">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-primary-container/15 flex items-center justify-center">
-            <span className="material-symbols-outlined text-primary-container text-[16px]">trending_up</span>
+          <div className="w-7 h-7 rounded-lg bg-[#D4A574]/15 flex items-center justify-center">
+            <span className="material-symbols-outlined text-[#D4A574] text-[16px]">trending_up</span>
           </div>
-          <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-clinical-stone">
+          <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-[#D4A574]">
             Day {daysIntoPlan} of 84
           </p>
         </div>
-        <span className="text-precision text-[0.55rem] text-clinical-stone tracking-wide">
+        <span className="text-precision text-[0.55rem] text-on-surface-variant tracking-wide">
           Week {weekNumber} of 12 · {daysRemaining} days left
         </span>
       </div>
 
       {/* Headline + sub */}
-      <h2 className="text-authority text-2xl md:text-3xl text-clinical-charcoal font-bold leading-tight mb-1.5">
+      <h2 className="text-authority text-2xl md:text-3xl text-on-surface font-bold leading-tight mb-1.5 relative">
         {showScore ? WEEK_LABEL(weekNumber) : 'Just getting started'}
       </h2>
-      <p className="text-body text-clinical-stone text-sm mb-5 leading-relaxed max-w-2xl">
+      <p className="text-body text-on-surface-variant text-sm mb-5 leading-relaxed max-w-2xl relative">
         {showScore
           ? 'How well are you doing what your protocol asks for? Adherence drives whether your projected lab improvements actually show up at retest.'
           : "Tap your supplements below as you take them and log a check-in each day. Your adherence score appears at day 4 once we've got real data going."}

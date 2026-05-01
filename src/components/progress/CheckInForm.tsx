@@ -1,15 +1,12 @@
 // src/components/progress/CheckInForm.tsx
 //
-// Replaces the old 5-slider clinical form with an emoji-grid picker.
-// Each metric is one row: 5 emoji buttons (low → high), tap once.
-// Selected state shows a colored ring + value chip on the right.
+// Light card style matching Lab Analytics — bg-clinical-white + shadow-card.
+// Each metric is one row: icon + label, big number readout, then a 10-button
+// pill row (1-10) for tap-to-pick. Selected pill highlights with the metric's
+// color. No emojis (user feedback). Numbers + labels under each row.
 //
-// On submit, form collapses into a "Today's vibe" summary card showing the
-// selected emojis horizontally — way more rewarding to look at than "logged".
-//
-// All state still maps to the existing 1–10 scale on save (3, 5, 7, 8, 10
-// for the 5 buttons) so the rest of the app (sparklines, heat map, score)
-// keeps working unchanged.
+// Maps directly to the existing 1-10 scale on save so sparklines / heat map
+// keep working unchanged.
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -20,107 +17,116 @@ interface MetricSpec {
   label: string;
   icon: string;
   color: string;
-  invert?: boolean;        // pain: higher emoji index = less pain
-  options: { emoji: string; value: number; label: string }[];
+  /** Word-label per number range — drawn under the picker row. */
+  bands: { min: number; max: number; label: string }[];
 }
 
-// 5-step pickers for each metric. Values map to the 1–10 scale on save so
-// downstream sparklines/heat map keep working without DB changes.
 const METRICS: MetricSpec[] = [
   {
     key: 'energy', label: 'Energy', icon: 'bolt', color: '#1B4332',
-    options: [
-      { emoji: '🪫', value: 2, label: 'Drained' },
-      { emoji: '😴', value: 4, label: 'Tired' },
-      { emoji: '😐', value: 6, label: 'Average' },
-      { emoji: '🙂', value: 8, label: 'Good' },
-      { emoji: '⚡', value: 10, label: 'High' },
+    bands: [
+      { min: 1, max: 3, label: 'Drained' },
+      { min: 4, max: 6, label: 'Average' },
+      { min: 7, max: 8, label: 'Good' },
+      { min: 9, max: 10, label: 'High' },
     ],
   },
   {
     key: 'sleep_quality', label: 'Sleep last night', icon: 'bedtime', color: '#4A90D9',
-    options: [
-      { emoji: '😵', value: 2, label: 'Awful' },
-      { emoji: '😩', value: 4, label: 'Restless' },
-      { emoji: '😶', value: 6, label: 'OK' },
-      { emoji: '😌', value: 8, label: 'Solid' },
-      { emoji: '🌙', value: 10, label: 'Great' },
+    bands: [
+      { min: 1, max: 3, label: 'Awful' },
+      { min: 4, max: 6, label: 'OK' },
+      { min: 7, max: 8, label: 'Solid' },
+      { min: 9, max: 10, label: 'Great' },
     ],
   },
   {
-    key: 'pain_level', label: 'Pain today', icon: 'heal', color: '#E8922A', invert: true,
-    options: [
-      { emoji: '🙏', value: 1, label: 'None' },
-      { emoji: '🙂', value: 3, label: 'Mild' },
-      { emoji: '😐', value: 5, label: 'Some' },
-      { emoji: '😣', value: 7, label: 'Bad' },
-      { emoji: '🥵', value: 10, label: 'Severe' },
+    key: 'pain_level', label: 'Pain today', icon: 'personal_injury', color: '#E8922A',
+    bands: [
+      { min: 1, max: 2, label: 'None' },
+      { min: 3, max: 5, label: 'Mild' },
+      { min: 6, max: 8, label: 'Bad' },
+      { min: 9, max: 10, label: 'Severe' },
     ],
   },
   {
     key: 'mental_clarity', label: 'Mental clarity', icon: 'psychology', color: '#9B59B6',
-    options: [
-      { emoji: '🌫️', value: 2, label: 'Foggy' },
-      { emoji: '😶‍🌫️', value: 4, label: 'Hazy' },
-      { emoji: '🤔', value: 6, label: 'Average' },
-      { emoji: '🧠', value: 8, label: 'Clear' },
-      { emoji: '🎯', value: 10, label: 'Sharp' },
+    bands: [
+      { min: 1, max: 3, label: 'Foggy' },
+      { min: 4, max: 6, label: 'Average' },
+      { min: 7, max: 8, label: 'Clear' },
+      { min: 9, max: 10, label: 'Sharp' },
     ],
   },
   {
     key: 'mood', label: 'Mood', icon: 'sentiment_calm', color: '#D4A574',
-    options: [
-      { emoji: '😞', value: 2, label: 'Low' },
-      { emoji: '😕', value: 4, label: 'Off' },
-      { emoji: '😐', value: 6, label: 'Neutral' },
-      { emoji: '🙂', value: 8, label: 'Good' },
-      { emoji: '😄', value: 10, label: 'Great' },
+    bands: [
+      { min: 1, max: 3, label: 'Low' },
+      { min: 4, max: 6, label: 'Neutral' },
+      { min: 7, max: 8, label: 'Good' },
+      { min: 9, max: 10, label: 'Great' },
     ],
   },
 ];
 
+const bandLabelFor = (spec: MetricSpec, value: number | undefined): string => {
+  if (typeof value !== 'number') return '';
+  return spec.bands.find(b => value >= b.min && value <= b.max)?.label ?? '';
+};
+
 interface MetricRowProps {
   spec: MetricSpec;
-  selectedValue: number | undefined;
-  onPick: (value: number) => void;
+  value: number | undefined;
+  onPick: (n: number) => void;
 }
 
-const MetricRow = ({ spec, selectedValue, onPick }: MetricRowProps) => {
-  const selectedOption = spec.options.find(o => o.value === selectedValue);
+const MetricRow = ({ spec, value, onPick }: MetricRowProps) => {
+  const label = bandLabelFor(spec, value);
   return (
-    <div className="bg-clinical-cream/40 rounded-[12px] p-4">
+    <div className="bg-clinical-cream/40 rounded-[12px] p-4 border border-outline-variant/10">
+      {/* Header: icon + label + big readout */}
       <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${spec.color}15` }}>
-            <span className="material-symbols-outlined text-[16px]" style={{ color: spec.color }}>{spec.icon}</span>
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${spec.color}15` }}>
+            <span className="material-symbols-outlined text-[18px]" style={{ color: spec.color }}>{spec.icon}</span>
           </div>
-          <span className="text-body text-clinical-charcoal font-semibold text-sm">{spec.label}</span>
+          <div>
+            <p className="text-body text-clinical-charcoal font-semibold text-sm leading-tight">{spec.label}</p>
+            {label && (
+              <p className="text-precision text-[0.55rem] font-bold tracking-wider uppercase mt-0.5" style={{ color: spec.color }}>{label}</p>
+            )}
+          </div>
         </div>
-        {selectedOption && (
-          <span className="text-precision text-[0.6rem] font-bold tracking-wider uppercase" style={{ color: spec.color }}>
-            {selectedOption.label}
+        <div className="flex items-baseline gap-1">
+          <span className="text-authority text-2xl font-bold" style={{ color: typeof value === 'number' ? spec.color : '#A6A39B' }}>
+            {typeof value === 'number' ? value : '–'}
           </span>
-        )}
+          <span className="text-precision text-[0.6rem] text-clinical-stone tracking-wide">/10</span>
+        </div>
       </div>
-      <div className="grid grid-cols-5 gap-2">
-        {spec.options.map(opt => {
-          const selected = opt.value === selectedValue;
+
+      {/* Number pill row (1-10) */}
+      <div className="grid grid-cols-10 gap-1">
+        {Array.from({ length: 10 }, (_, i) => i + 1).map(n => {
+          const selected = n === value;
           return (
             <motion.button
-              key={opt.value}
+              key={n}
               type="button"
-              onClick={() => onPick(opt.value)}
+              onClick={() => onPick(n)}
               whileTap={{ scale: 0.92 }}
-              className={`relative flex items-center justify-center aspect-square rounded-[10px] transition-all ${selected ? 'bg-clinical-white shadow-card' : 'bg-clinical-white/60 hover:bg-clinical-white'}`}
+              className="relative flex items-center justify-center aspect-square rounded-[6px] transition-all"
               style={{
-                outline: selected ? `2px solid ${spec.color}` : '2px solid transparent',
-                outlineOffset: '-1px',
+                background: selected ? spec.color : '#FFFFFF',
+                border: selected ? `1.5px solid ${spec.color}` : '1px solid rgba(105,105,105,0.15)',
+                color: selected ? '#FFFFFF' : '#6B6B6B',
+                fontWeight: selected ? 700 : 500,
+                fontSize: '0.7rem',
+                fontVariantNumeric: 'tabular-nums',
               }}
-              title={opt.label}
+              aria-label={`${spec.label} ${n}`}
             >
-              <span className="text-2xl leading-none" style={{ filter: selected ? 'none' : 'grayscale(0.6) opacity(0.85)' }}>
-                {opt.emoji}
-              </span>
+              {n}
             </motion.button>
           );
         })}
@@ -166,7 +172,7 @@ export const CheckInForm = ({ todayEntry, onSaved }: Props) => {
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-precision text-[0.6rem] text-clinical-stone uppercase tracking-widest font-bold mb-1">
-            {todayEntry ? "Today's Vibe — Logged" : "Today's Vibe"}
+            {todayEntry ? "Today's Check-In — Logged" : "Today's Check-In"}
           </p>
           <p className="text-authority text-xl text-clinical-charcoal font-bold">
             {todayEntry ? 'Update your log' : 'How are you feeling today?'}
@@ -180,7 +186,7 @@ export const CheckInForm = ({ todayEntry, onSaved }: Props) => {
         )}
       </div>
 
-      {/* Progress chip */}
+      {/* Progress bar */}
       {!todayEntry && (
         <div className="flex items-center gap-2">
           <div className="flex-1 h-1 bg-clinical-cream rounded-full overflow-hidden">
@@ -202,8 +208,8 @@ export const CheckInForm = ({ todayEntry, onSaved }: Props) => {
           <MetricRow
             key={m.key}
             spec={m}
-            selectedValue={values[m.key]}
-            onPick={(v) => setValues(prev => ({ ...prev, [m.key]: v }))}
+            value={values[m.key]}
+            onPick={(n) => setValues(prev => ({ ...prev, [m.key]: n }))}
           />
         ))}
       </div>
