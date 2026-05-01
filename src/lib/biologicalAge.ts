@@ -116,8 +116,10 @@ function matchMarker(name: string): string | null {
   // Glucose: must be the serum/fasting/blood glucose, not urine
   if (n.includes('glucose') && !n.includes('urine') && !n.includes('post')) return 'glucose';
 
-  // CRP: catch all C-Reactive Protein variants
-  if (n.includes('c-reactive') || n.includes('c reactive') || n === 'crp' || n === 'hs-crp' || n === 'hscrp') return 'crp';
+  // CRP: catch all C-Reactive Protein variants — labs report it many ways:
+  // "CRP", "hs-CRP", "hsCRP", "CRP, High Sensitivity", "High Sensitivity CRP",
+  // "C-Reactive Protein, Cardiac", etc.
+  if (n.includes('c-reactive') || n.includes('c reactive') || /\bcrp\b/.test(n) || n.includes('hscrp')) return 'crp';
 
   // Lymphocyte percentage (NOT absolute count)
   if (n === 'lymphs' || n === 'lymphocytes' || n.includes('lymphocyte percent') || n.includes('lymph %') || n.includes('lymphs%')) {

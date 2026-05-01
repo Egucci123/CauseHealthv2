@@ -29,10 +29,18 @@ function weightFor(flag: string | null | undefined, standardFlag: string | null 
   return 1.0;
 }
 
-function bucketFor(flag: string | null | undefined): 'healthy' | 'watch' | 'out' {
+// Bucket a marker into Healthy / Watch / Out-of-range. Must match LabDetail's
+// chip semantics exactly so the dashboard ring and lab card show the same numbers.
+// Markers with a missing/unknown optimalFlag fall back to standardFlag — only
+// markers explicitly out-of-standard-range count as "out".
+function bucketFor(flag: string | null | undefined, standardFlag: string | null | undefined): 'healthy' | 'watch' | 'out' {
   if (flag === 'healthy' || flag === 'optimal') return 'healthy';
   if (flag === 'watch' || flag === 'suboptimal_low' || flag === 'suboptimal_high') return 'watch';
-  return 'out';
+  if (flag === 'low' || flag === 'high' || flag === 'critical_low' || flag === 'critical_high' || flag === 'deficient' || flag === 'elevated') return 'out';
+  // No usable optimalFlag — fall back to standardFlag
+  if (standardFlag === 'low' || standardFlag === 'high' || standardFlag === 'critical_low' || standardFlag === 'critical_high') return 'out';
+  // standardFlag === 'normal' or missing → treat as healthy (matches LabDetail's strict behavior)
+  return 'healthy';
 }
 
 export function useHealthScore(currentValues: LabValue[] | undefined, previousValues: LabValue[] | undefined): HealthScore | null {
@@ -45,7 +53,7 @@ export function useHealthScore(currentValues: LabValue[] | undefined, previousVa
     let weightedSum = 0;
     for (const v of scoreable) {
       weightedSum += weightFor(v.optimalFlag, v.standardFlag);
-      const bucket = bucketFor(v.optimalFlag);
+      const bucket = bucketFor(v.optimalFlag, v.standardFlag);
       if (bucket === 'healthy') optimalCount++;
       else if (bucket === 'watch') monitorCount++;
       else urgentCount++;
