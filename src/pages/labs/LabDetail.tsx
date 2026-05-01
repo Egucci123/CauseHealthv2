@@ -8,6 +8,7 @@ import { Button } from '../../components/ui/Button';
 import { LabMarkerCard } from '../../components/labs/LabMarkerCard';
 import { CriticalBanner } from '../../components/labs/CriticalBanner';
 import { TrajectoryStrip } from '../../components/labs/TrajectoryStrip';
+import { AppendToDrawModal } from '../../components/labs/AppendToDrawModal';
 import { detectCriticalFindings } from '../../lib/criticalFindings';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/authStore';
@@ -28,6 +29,7 @@ export const LabDetail = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState<'all' | 'urgent' | 'monitor'>('all');
+  const [appendOpen, setAppendOpen] = useState(false);
   const qc = useQueryClient();
   const { isPro } = useSubscription();
 
@@ -395,6 +397,13 @@ export const LabDetail = () => {
                 </button>
               );
             })()}
+            <button
+              onClick={() => setAppendOpen(true)}
+              className="text-precision text-[0.6rem] text-on-surface-variant tracking-widest uppercase hover:text-[#D4A574] transition-colors flex items-center gap-1"
+              title="Add a missing lab report (e.g. CRP from a different file) to this draw"
+            >
+              <span className="material-symbols-outlined text-[14px]">add_circle</span>Add to this draw
+            </button>
             <button onClick={() => navigate('/labs/upload')} className="text-precision text-[0.6rem] text-on-surface-variant tracking-widest uppercase hover:text-[#D4A574] transition-colors flex items-center gap-1">
               <span className="material-symbols-outlined text-[14px]">upload_file</span>Upload New
             </button>
@@ -602,6 +611,14 @@ export const LabDetail = () => {
           This analysis is generated for educational purposes only. It does not constitute medical advice. Discuss all findings with your physician.
         </p>
       </div>
+      {drawId && (
+        <AppendToDrawModal
+          drawId={drawId}
+          drawDate={format(new Date(draw.draw_date), 'MMMM d, yyyy')}
+          open={appendOpen}
+          onClose={() => setAppendOpen(false)}
+        />
+      )}
     </AppShell>
   );
 };
