@@ -35,6 +35,11 @@ export const AppendToDrawModal = ({ drawId, drawDate, open, onClose }: Props) =>
   const [picked, setPicked] = useState<File | null>(null);
 
   const handleClose = () => {
+    // Prevent accidental dismissal while the upload + extract + reanalyze
+    // pipeline is in flight. On mobile, a stray tap outside the dialog box
+    // would silently kill the visible UI even though the mutation keeps
+    // running in the background — leaving the user with no idea what happened.
+    if (isPending) return;
     reset();
     setPicked(null);
     onClose();
