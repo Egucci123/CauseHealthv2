@@ -313,14 +313,25 @@ export const LabDetail = () => {
     return acc;
   }, {});
 
-  // Out-of-range flags include both new (low/high/critical_*) and legacy (deficient/elevated)
+  // Out-of-range flags include both new (low/high/critical_*) and legacy (deficient/elevated).
+  // Markers without an optimal_flag (e.g., freshly appended values that haven't
+  // been re-analyzed yet) fall back to standard_flag — matches the dashboard
+  // ring's bucketFor logic so the two never disagree.
   const isOutOfRange = (f: any) => ['low', 'high', 'critical_low', 'critical_high', 'deficient', 'elevated'].includes(f ?? '');
   const isWatch = (f: any) => ['watch', 'suboptimal_low', 'suboptimal_high'].includes(f ?? '');
   const isHealthy = (f: any) => ['healthy', 'optimal'].includes(f ?? '');
+  const bucketOf = (v: any): 'out' | 'watch' | 'healthy' => {
+    if (isOutOfRange(v.optimal_flag)) return 'out';
+    if (isWatch(v.optimal_flag)) return 'watch';
+    if (isHealthy(v.optimal_flag)) return 'healthy';
+    // No usable optimal_flag → fall back to standard_flag
+    if (['low', 'high', 'critical_low', 'critical_high'].includes(v.standard_flag ?? '')) return 'out';
+    return 'healthy';
+  };
 
-  const urgentCount = values.filter((v: any) => isOutOfRange(v.optimal_flag)).length;
-  const monitorCount = values.filter((v: any) => isWatch(v.optimal_flag)).length;
-  const optimalCount = values.filter((v: any) => isHealthy(v.optimal_flag)).length;
+  const urgentCount = values.filter((v: any) => bucketOf(v) === 'out').length;
+  const monitorCount = values.filter((v: any) => bucketOf(v) === 'watch').length;
+  const optimalCount = values.filter((v: any) => bucketOf(v) === 'healthy').length;
 
   // Match a lab card to its priority_finding. The AI is supposed to use the
   // EXACT marker name in finding.marker, but older analyses (and the model's
@@ -374,8 +385,8 @@ export const LabDetail = () => {
   };
 
   const getDisplayValues = () => {
-    if (activeTab === 'urgent') return values.filter((v: any) => isOutOfRange(v.optimal_flag));
-    if (activeTab === 'monitor') return values.filter((v: any) => isWatch(v.optimal_flag));
+    if (activeTab === 'urgent') return values.filter((v: any) => bucketOf(v) === 'out');
+    if (activeTab === 'monitor') return values.filter((v: any) => bucketOf(v) === 'watch');
     return values;
   };
 

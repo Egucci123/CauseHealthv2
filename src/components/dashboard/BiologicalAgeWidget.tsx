@@ -137,6 +137,9 @@ export const BiologicalAgeWidget = () => {
           ? 'Your blood biomarkers suggest accelerated biological aging. Your wellness plan and clinical prep have specific actions to slow this.'
           : 'Your biological age matches your chronological age — a healthy baseline.'}
       </p>
+      <p className="text-precision text-[0.55rem] text-clinical-stone/70 leading-relaxed mb-3 italic">
+        PhenoAge uses 9 specific markers (albumin, creatinine, glucose, CRP, lymphocytes, MCV, RDW, ALP, WBC). It does not include lipids, liver enzymes, or vitamin status — review your full panel separately for those.
+      </p>
 
       <button
         onClick={() => navigate(`/labs/${latestDraw.id}`)}
