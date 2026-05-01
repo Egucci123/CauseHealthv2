@@ -198,7 +198,7 @@ export const HeroSection = () => (
           </div>
 
           <p className="text-precision text-[0.68rem] text-clinical-stone tracking-wide">
-            Free to upload · $19/month for full AI · Cancel anytime · Master codes for friends
+            Free to upload · $7.67/month for full plan · Cancel anytime · Master codes for friends
           </p>
 
           <div className="flex flex-wrap gap-3 mt-10">

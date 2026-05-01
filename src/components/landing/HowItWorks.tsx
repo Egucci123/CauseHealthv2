@@ -15,7 +15,7 @@ const STEPS = [
     icon: 'biotech',
     title: 'Get Root Cause Analysis',
     body: 'We compare your values against optimal ranges, identify patterns across multiple markers, connect your medications to your symptoms, and surface what 12-minute appointments miss.',
-    detail: 'Optimal ranges · Pattern detection · Medication depletions · Autoimmune cascade',
+    detail: 'Optimal ranges · Pattern detection · Medication depletions · Symptom links',
   },
   {
     number: '03',

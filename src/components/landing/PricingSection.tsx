@@ -3,14 +3,16 @@ import { Button } from '../ui/Button';
 
 const FEATURES = [
   'Unlimited lab report uploads',
-  'Full optimal range analysis',
-  'Complete personalized wellness plan',
-  'Medication depletion checker',
-  'Symptom root cause mapper',
-  'Lab trend tracking over time',
-  'Nutrition + exercise protocols',
+  'Optimal range analysis (not just "normal")',
+  '90-day personalized wellness plan',
   'Doctor Prep document with ICD-10 codes',
-  'Insurance coverage talking points',
+  'Medication depletion mapping (CoQ10, B12, folate, magnesium)',
+  'Biological + Cardiometabolic Age scoring',
+  'Daily check-in + adherence tracking',
+  'Weekly meal spotlight (rotating + chain-aware)',
+  'AI chat that reads your actual labs',
+  'Lab trend tracking over time',
+  'PDF export — yours to keep',
 ];
 
 export const PricingSection = () => {
@@ -57,10 +59,13 @@ export const PricingSection = () => {
               </p>
               <div className="flex items-baseline justify-center gap-1">
                 <span className="text-authority text-5xl text-clinical-charcoal font-bold">
-                  $19
+                  $7.67
                 </span>
                 <span className="text-body text-clinical-stone text-sm">/month</span>
               </div>
+              <p className="text-precision text-[0.6rem] text-clinical-stone tracking-wide mt-2">
+                Less than your morning coffee · $92/year
+              </p>
             </div>
 
             <Button

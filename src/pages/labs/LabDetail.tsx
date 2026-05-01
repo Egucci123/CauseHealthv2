@@ -523,7 +523,7 @@ export const LabDetail = () => {
                 Unlock the full breakdown — what every abnormal value means, the patterns it reveals, the exact tests to ask your doctor for, and a 90-day plan to fix what's wrong.
               </p>
               <div className="inline-flex items-center gap-2 text-precision text-[0.65rem] font-bold tracking-widest uppercase text-primary-container">
-                Unlock with Pro · $19/month
+                Unlock with Pro · $7.67/month
                 <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
               </div>
             </div>

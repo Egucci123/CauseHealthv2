@@ -188,7 +188,7 @@ export const LabMarkerCard = ({ value, analysis, onAddToPrep }: LabMarkerCardPro
             <span className="material-symbols-outlined text-[#D4A574] text-[18px] flex-shrink-0">lock</span>
             <div className="flex-1 min-w-0">
               <p className="text-body text-clinical-charcoal text-sm font-semibold">What does this mean?</p>
-              <p className="text-precision text-[0.6rem] text-clinical-stone">Unlock AI analysis with Pro · $19/mo</p>
+              <p className="text-precision text-[0.6rem] text-clinical-stone">Unlock AI analysis with Pro · $7.67/mo</p>
             </div>
             <span className="material-symbols-outlined text-[#D4A574] text-[18px]">arrow_forward</span>
           </Link>
