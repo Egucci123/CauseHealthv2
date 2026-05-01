@@ -22,9 +22,12 @@ export const Step6_DailyLife = () => {
   const hasArr = (k: string) => Array.isArray((lifeContext as any)[k]) && (lifeContext as any)[k].length > 0;
 
   // 4 single-pick fields + 3 meal-pattern arrays (must have at least one pick each)
+  // Lunch is saved as `typicalLunches` (legacy `typicalLunch` for old accounts)
+  // — NOT `lunchPatterns` like the others. The wellness plan generator
+  // bridges the names at runtime, so the validation has to too.
   const baseMissing = REQUIRED_LIFE_FIELDS.filter(k => !isFilled(k));
   const breakfastOk = hasArr('breakfastPatterns');
-  const lunchOk = hasArr('lunchPatterns');
+  const lunchOk = hasArr('typicalLunches') || isFilled('typicalLunch');
   const dinnerOk = hasArr('dinnerPatterns');
 
   const canContinue = baseMissing.length === 0 && breakfastOk && lunchOk && dinnerOk;
