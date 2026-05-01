@@ -449,7 +449,7 @@ export const LabDetail = () => {
       {/* Status banner — shown PROMINENTLY above counts so user always knows
           if analysis is in flight or failed. Self-polling via useEffect for
           extra reliability if React Query's refetchInterval isn't triggering. */}
-      {(retryLocked || (draw.processing_status === 'processing' && !analysis)) && (
+      {(retryLocked || draw.processing_status === 'processing') && (
         <div className="bg-gradient-to-r from-[#1B423A] to-[#2D6A4F] rounded-[14px] p-5 flex items-center gap-4 shadow-card">
           <div className="relative w-10 h-10 flex-shrink-0">
             <div className="absolute inset-0 rounded-full border-2 border-white/20" />
