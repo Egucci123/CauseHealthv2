@@ -99,6 +99,22 @@ export function selectMealCandidates(ctx: SelectorContext, topN: number = 60): M
   // low_cal_drink always allowed (drinks are universal)
   activePlaybooks.add('low_cal_drink');
 
+  // DINNER-VARIETY GUARANTEE: if the user has ANY dinner pattern at all,
+  // we always include the home-cooking playbooks (crock_pot, sheet_pan,
+  // simple_home_cook) in the candidate pool — even if the user only ticked
+  // "frozen_meal" or "takeout" in onboarding. Without this, the weekly
+  // spotlight has no material to graduate users into for weeks 7-12, and
+  // the wellness plan stays stuck in Phase 1 dinners forever. The Phase
+  // tag on each meal still controls WHEN they're surfaced in the spotlight,
+  // so the user's preference is preserved early — they only see home-cook
+  // dinners later, as their behavior is meant to evolve.
+  const hasAnyDinnerPattern = (ctx.dinnerPatterns ?? []).length > 0;
+  if (hasAnyDinnerPattern) {
+    activePlaybooks.add('crock_pot');
+    activePlaybooks.add('sheet_pan');
+    activePlaybooks.add('simple_home_cook');
+  }
+
   const cookingMax = ctx.cookingTimeAvailable ? COOKING_TIME_MAX[ctx.cookingTimeAvailable] ?? 999 : 999;
   const budgetMaxTier = ctx.weeklyFoodBudget ? BUDGET_MAX_TIER[ctx.weeklyFoodBudget] ?? 3 : 3;
   const userChains = (ctx.eatOutPlaces ?? []).map(c => c.toLowerCase().trim());
