@@ -1,4 +1,5 @@
 // src/components/dashboard/PriorityAlerts.tsx
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import type { PriorityAlert } from '../../types';
@@ -70,14 +71,16 @@ const AlertCard = ({ alert, onDismiss, isPro }: { alert: PriorityAlert; onDismis
 };
 
 export const PriorityAlerts = () => {
-  const navigate = useNavigate();
   const { data: alerts} = usePriorityAlerts();
   const { mutate: dismiss } = useDismissAlert();
   const { isPro } = useSubscription();
+  const [expanded, setExpanded] = useState(false);
 
   // Skeleton only on TRUE first load. If we have cached alerts (even empty),
   // show them and refetch silently — no flicker on every dashboard remount.
   if (!alerts) return <div><SectionLabel className="mb-4">Priority Findings</SectionLabel><AlertSkeleton /></div>;
+
+  const visible = expanded ? alerts : alerts.slice(0, 5);
 
   return (
     <div>
@@ -87,15 +90,17 @@ export const PriorityAlerts = () => {
       </div>
       {!alerts || alerts.length === 0 ? <AlertsEmpty /> : (
         <div className="space-y-3">
-          <AnimatePresence>
-            {alerts.slice(0, 5).map(alert => <AlertCard key={alert.id} alert={alert} onDismiss={() => dismiss(alert.id)} isPro={isPro} />)}
+          <AnimatePresence initial={false}>
+            {visible.map(alert => <AlertCard key={alert.id} alert={alert} onDismiss={() => dismiss(alert.id)} isPro={isPro} />)}
           </AnimatePresence>
           {alerts.length > 5 && (
             <button
-              onClick={() => navigate('/labs')}
-              className="text-precision text-[0.68rem] text-primary-container font-bold tracking-widest uppercase hover:underline w-full text-center py-2"
+              onClick={() => setExpanded(e => !e)}
+              className="text-precision text-[0.68rem] text-primary-container font-bold tracking-widest uppercase hover:underline w-full text-center py-2 flex items-center justify-center gap-1"
             >
-              View all {alerts.length} findings →
+              {expanded
+                ? <>Show fewer <span className="material-symbols-outlined text-[14px]">expand_less</span></>
+                : <>View all {alerts.length} findings <span className="material-symbols-outlined text-[14px]">expand_more</span></>}
             </button>
           )}
         </div>

@@ -17,7 +17,7 @@ export function usePriorityAlerts() {
   return useQuery({
     queryKey: ['priorityAlerts', user?.id], enabled: !!user?.id,
     queryFn: async () => {
-      const { data, error } = await supabase.from('priority_alerts').select('*').eq('user_id', user!.id).eq('dismissed', false).order('status', { ascending: true }).order('created_at', { ascending: false }).limit(10);
+      const { data, error } = await supabase.from('priority_alerts').select('*').eq('user_id', user!.id).eq('dismissed', false).order('status', { ascending: true }).order('created_at', { ascending: false }).limit(50);
       if (error) throw error;
       return (data ?? []).map(mapAlert);
     },
