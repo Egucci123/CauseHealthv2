@@ -74,7 +74,7 @@ serve(async (req) => {
       headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001', max_tokens: 6000,
-        system: `You are CauseHealth AI. Return ONLY valid JSON.
+        system: [{ type: 'text', cache_control: { type: 'ephemeral' }, text: `You are CauseHealth AI. Return ONLY valid JSON.
 
 GLOBAL VOICE RULES (CRITICAL — apply to EVERY string in the JSON):
 - 6TH-GRADE READING LEVEL. PERIOD. The user's friend who failed high school chemistry must be able to read it.
@@ -320,7 +320,7 @@ PLACEMENT RULES (which list a test belongs in):
 
 ICD-10: Use most specific code. Corrections applied post-generation.
 
-Be concise. Scannable in 3 minutes.`,
+Be concise. Scannable in 3 minutes.` }],
         messages: [{ role: 'user', content: `Generate clinical visit prep document.
 
 PATIENT: ${age ? `${age}yo` : 'age unknown'} ${profile?.sex ?? ''}

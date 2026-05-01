@@ -177,7 +177,7 @@ serve(async (req) => {
       headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001', max_tokens: 14000,
-        system: `You are CauseHealth AI. Return ONLY valid JSON.
+        system: [{ type: 'text', cache_control: { type: 'ephemeral' }, text: `You are CauseHealth AI. Return ONLY valid JSON.
 
 GLOBAL VOICE RULES (CRITICAL — these apply to EVERY string in the JSON):
 - 6TH-GRADE READING LEVEL. PERIOD. If your friend who failed high school chemistry can't read it, you wrote it wrong.
@@ -473,7 +473,7 @@ HARD RULES — FOLLOW EXACTLY:
     - User goals (longevity supplements, etc.)
     - Lifestyle interventions tailored to symptoms and goals
     - Recommend baseline lab work as the FIRST item in retest_timeline so the next regeneration can be more precise.
-    Do NOT refuse to generate a plan due to missing labs — just frame supplements with clear "evidence" sourcing and recommend testing.`,
+    Do NOT refuse to generate a plan due to missing labs — just frame supplements with clear "evidence" sourcing and recommend testing.` }],
         messages: [{ role: 'user', content: `Create a comprehensive wellness plan addressing ALL lab findings.
 
 PATIENT: ${age ? `${age}yo` : 'age unknown'} ${profile?.sex ?? ''}
