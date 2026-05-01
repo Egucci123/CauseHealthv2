@@ -16,6 +16,7 @@ import { AppShell } from '../../components/layout/AppShell';
 import { AdherenceHero } from '../../components/progress/AdherenceHero';
 import { StreakCounter } from '../../components/progress/StreakCounter';
 import { CheckInForm } from '../../components/progress/CheckInForm';
+import { SupplementChecklist } from '../../components/dashboard/SupplementChecklist';
 import { ComplianceCalendar } from '../../components/progress/ComplianceCalendar';
 import { WellbeingTrend } from '../../components/progress/WellbeingTrend';
 import { LabTrendChart } from '../../components/progress/LabTrendChart';
@@ -43,8 +44,17 @@ export const ProgressTracking = () => {
   const { data: entries = [] } = useProgressEntries(90);
   const { data: todayEntry } = useTodayEntry();
 
+  // Today's date — shown in the header so users always see what calendar
+  // day the app is treating as "today". Avoids timezone confusion.
+  const todayLine = new Date().toLocaleDateString('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+  });
+
   return (
     <AppShell pageTitle="Progress">
+      {/* Today's date pill — clarifies which day all logging targets */}
+      <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-clinical-stone -mb-4">{todayLine}</p>
+
       {/* ── Hero ─────────────────────────────────────────────────── */}
       <AdherenceHero />
 
@@ -79,6 +89,10 @@ export const ProgressTracking = () => {
           {activeTab === 'checkin' && (
             <div className="space-y-6">
               <CheckInForm todayEntry={todayEntry ?? null} onSaved={() => setActiveTab('trends')} />
+              {/* Supplement check-off — directly under check-in so users
+                  finish wellbeing log + supplement log in one motion. Reuses
+                  the dashboard component (single source of truth). */}
+              <SupplementChecklist />
             </div>
           )}
 
