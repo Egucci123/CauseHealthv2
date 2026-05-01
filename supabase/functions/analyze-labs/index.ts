@@ -352,9 +352,29 @@ We do NOT recommend GI-MAP, hair tissue mineral, organic acids, food sensitivity
       [/\bclinical correlation\b/gi, 'context'],
       [/\bworkup\b/gi, 'follow-up tests'],
     ];
+    // Strip parentheticals whose contents repeat 2+ meaningful words already
+    // in the surrounding text. Catches double-translations like
+    // "Red blood cells elevated (too many red blood cells)" — created when the
+    // model writes "elevated (polycythemia)" and the jargon scrubber translates
+    // the medical term, leaving a redundant restatement.
+    const dropRedundantParens = (s: string): string => {
+      return s.replace(/\s*\(([^()]+)\)/g, (match, inner: string) => {
+        const innerWords = new Set(
+          inner.toLowerCase().match(/\b[a-z]{4,}\b/g) ?? []
+        );
+        if (innerWords.size === 0) return match;
+        const outside = s.replace(match, '').toLowerCase();
+        let overlap = 0;
+        for (const w of innerWords) if (outside.includes(w)) overlap++;
+        // If 2+ meaningful words from inside the parens already appear outside,
+        // the parenthetical is redundant — drop it.
+        return overlap >= 2 ? '' : match;
+      }).replace(/\s+/g, ' ').trim();
+    };
     const plainify = (s: string): string => {
       let out = s;
       for (const [re, replacement] of JARGON_REPLACEMENTS) out = out.replace(re, replacement);
+      out = dropRedundantParens(out);
       return out;
     };
     // Keys whose values are STRUCTURAL identifiers used by the UI to pair

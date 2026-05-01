@@ -139,7 +139,7 @@ const REFERENCE: CohortEntry[] = [
   },
   {
     marker: 'HDL Cholesterol',
-    matchPatterns: ['hdl cholesterol', '\\bhdl\\b'],
+    matchPatterns: ['\\bhdl\\b'],
     higherIsBetter: true,
     unit: 'mg/dL',
     source: 'NHANES 2017-2020',
@@ -163,8 +163,33 @@ const REFERENCE: CohortEntry[] = [
     },
   },
   {
+    marker: 'Total Cholesterol',
+    matchPatterns: ['cholesterol, total', 'total cholesterol', '^cholesterol$'],
+    higherIsBetter: false,
+    unit: 'mg/dL',
+    source: 'NHANES 2017-2020',
+    data: {
+      male: {
+        '18-29': { p10: 140, p25: 160, p50: 180, p75: 205, p90: 230 },
+        '30-39': { p10: 155, p25: 175, p50: 195, p75: 220, p90: 250 },
+        '40-49': { p10: 160, p25: 180, p50: 200, p75: 225, p90: 255 },
+        '50-59': { p10: 160, p25: 180, p50: 200, p75: 225, p90: 250 },
+        '60-69': { p10: 155, p25: 175, p50: 195, p75: 220, p90: 245 },
+        '70+':   { p10: 150, p25: 170, p50: 190, p75: 215, p90: 240 },
+      },
+      female: {
+        '18-29': { p10: 140, p25: 158, p50: 180, p75: 202, p90: 225 },
+        '30-39': { p10: 150, p25: 170, p50: 190, p75: 215, p90: 245 },
+        '40-49': { p10: 165, p25: 185, p50: 205, p75: 230, p90: 260 },
+        '50-59': { p10: 175, p25: 195, p50: 215, p75: 245, p90: 280 },
+        '60-69': { p10: 180, p25: 200, p50: 220, p75: 250, p90: 285 },
+        '70+':   { p10: 175, p25: 195, p50: 215, p75: 245, p90: 280 },
+      },
+    },
+  },
+  {
     marker: 'LDL Cholesterol',
-    matchPatterns: ['ldl cholesterol', '\\bldl\\b'],
+    matchPatterns: ['\\bldl\\b'],
     higherIsBetter: false,
     unit: 'mg/dL',
     source: 'NHANES 2017-2020',
@@ -298,11 +323,21 @@ export interface CohortPercentile {
   higherIsBetter: boolean;
 }
 
-/** Find the matching reference entry for a marker name. */
+/** Find the matching reference entry for a marker name.
+ *
+ * Patterns containing regex meta-characters (^, $, \b, \\) are treated as
+ * regex; otherwise we do a substring match. This fixes the bug where
+ * "vldl cholesterol cal" was matching the LDL entry because "ldl cholesterol"
+ * is a substring of "vldl cholesterol".
+ */
 function findEntry(markerName: string): CohortEntry | null {
   const n = markerName.toLowerCase();
   for (const e of REFERENCE) {
-    if (e.matchPatterns.some(p => p.startsWith('^') ? new RegExp(p, 'i').test(n) : n.includes(p))) {
+    if (e.matchPatterns.some(p => {
+      // Anything looking like a regex (^, $, \b, \\, |) goes through RegExp
+      if (/[\^$|\\]/.test(p)) return new RegExp(p, 'i').test(n);
+      return n.includes(p);
+    })) {
       return e;
     }
   }
