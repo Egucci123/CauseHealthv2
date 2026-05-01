@@ -879,28 +879,74 @@ CRITICAL OUTPUT RULES:
     // The AI keeps undershooting the 21-meal target. If we end up below 21,
     // pad from the unused candidates automatically — they were already
     // pre-filtered by the selector for this user's life_context. Padded
-    // meals get a generic "why" tying them to inferred lab targets, the
-    // user can swap them out via the Browse Full Library modal anyway.
+    // meals get a varied "why" so the playbook doesn't read like a template.
     try {
       const TARGET_MIN = 21;
       if (Array.isArray(plan.meals) && plan.meals.length < TARGET_MIN && Array.isArray(mealCandidates)) {
-        const usedIds = new Set(plan.meals.map((m: any) => String(m.name).trim().toLowerCase()));
-        const unused = mealCandidates.filter(c => !usedIds.has(c.name.trim().toLowerCase()));
+        // Build a signature key for each meal that strips trailing "+ drink"
+        // additions and punctuation, so "Wawa wrap + black coffee" and
+        // "Wawa wrap" dedup to the same entry.
+        const sig = (s: string) =>
+          String(s)
+            .toLowerCase()
+            .replace(/\s*\+\s*[^+]+(coffee|tea|water|sparkling|seltzer|diet|coke|sprite|lemonade|celsius|cold brew)[^+]*$/g, '')
+            .replace(/[^a-z0-9]/g, '')
+            .trim();
+        const usedSigs = new Set(plan.meals.map((m: any) => sig(m.name)));
+        const unused = mealCandidates.filter(c => {
+          const candSig = sig(c.name);
+          if (usedSigs.has(candSig)) return false;
+          return true;
+        });
+
+        // Balance across playbooks — group unused candidates by playbook
+        // and round-robin pick from each so we don't dump 11 convenience-
+        // store entries while frozen-aisle/drink-swaps sit at 1.
+        const byPlaybook: Record<string, any[]> = {};
+        for (const c of unused) {
+          const pb = c.playbook ?? 'other';
+          (byPlaybook[pb] ??= []).push(c);
+        }
+        const playbookKeys = Object.keys(byPlaybook);
         const need = TARGET_MIN - plan.meals.length;
-        const padded = unused.slice(0, need).map(c => ({
+        const picked: any[] = [];
+        let pi = 0;
+        while (picked.length < need && playbookKeys.some(k => byPlaybook[k].length > 0)) {
+          const key = playbookKeys[pi % playbookKeys.length];
+          const next = byPlaybook[key].shift();
+          if (next) picked.push(next);
+          pi++;
+        }
+
+        // Vary the "why" copy by what targets the meal hits + its prep style.
+        // Beats stamping every padded meal with "Quick win matched to your life".
+        const buildWhy = (c: any): string => {
+          const t = new Set(c.targets ?? []);
+          const prepText = c.prepMinutes === 0 ? 'no prep' : `${c.prepMinutes} min total`;
+          const protein = c.protein_g ? `${c.protein_g}g protein` : null;
+          // Pick the strongest signal first
+          if (t.has('anti_inflammatory') && t.has('high_protein')) return `Anti-inflammatory + ${protein ?? 'high protein'}, ${prepText}.`;
+          if (t.has('liver_support')) return `Easy on the liver, ${protein ? protein + ', ' : ''}${prepText}.`;
+          if (t.has('low_carb') && protein) return `Steady-energy option — ${protein}, ${prepText}.`;
+          if (t.has('high_protein') && protein) return `${protein} for satiety + muscle, ${prepText}.`;
+          if (t.has('high_fiber')) return `Gut + cholesterol-friendly fiber, ${prepText}.`;
+          if (t.has('hydrating')) return `Hydration win, ${prepText}.`;
+          if (protein) return `${protein}, ${prepText} — fits a busy day.`;
+          return `Simple add — ${prepText}.`;
+        };
+
+        const padded = picked.map(c => ({
           emoji: c.emoji,
           name: c.name,
           when: c.when,
           phase: c.phase,
           playbook: c.playbook,
           ingredients: c.ingredients,
-          why: c.targets.length > 0
-            ? `Quick win matched to your life — ${c.protein_g ? c.protein_g + 'g protein, ' : ''}${c.prepMinutes === 0 ? 'no prep' : c.prepMinutes + ' min'}.`
-            : `Easy add — ${c.prepMinutes === 0 ? 'no prep needed' : c.prepMinutes + ' min total'}.`,
+          why: buildWhy(c),
         }));
         if (padded.length > 0) {
           plan.meals.push(...padded);
-          console.log(`[wellness-plan] meal padder: AI returned ${plan.meals.length - padded.length}, padded to ${plan.meals.length}`);
+          console.log(`[wellness-plan] meal padder: AI returned ${plan.meals.length - padded.length}, padded to ${plan.meals.length} (round-robin across ${playbookKeys.length} playbooks)`);
         }
       }
     } catch (e) { console.error('[wellness-plan] meal-padder error:', e); }
