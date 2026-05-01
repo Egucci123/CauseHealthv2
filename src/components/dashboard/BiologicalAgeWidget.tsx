@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { useLatestLabValues, useLatestLabDraw } from '../../hooks/useLabData';
 import { useAuthStore } from '../../store/authStore';
 import { computeBioAgeFromLabs, type BioAgeResult } from '../../lib/biologicalAge';
+import { computeCardiometabolicAge, type CardiometabolicResult } from '../../lib/cardiometabolicAge';
 
 const colorFor = (cat: BioAgeResult['category']) => {
   if (cat === 'younger') return '#2A9D8F';
@@ -28,6 +29,17 @@ export const BiologicalAgeWidget = () => {
   const result = !loading && values && latestDraw
     ? computeBioAgeFromLabs(values, profile?.dateOfBirth, latestDraw.drawDate)
     : null;
+
+  // Compute Cardiometabolic Age in parallel — same chronological age input,
+  // different marker set. Both can render; they answer different questions.
+  const cardio: CardiometabolicResult | null = (() => {
+    if (loading || !values || !latestDraw || !profile?.dateOfBirth) return null;
+    const dob = new Date(profile.dateOfBirth);
+    const draw = new Date(latestDraw.drawDate);
+    if (isNaN(dob.getTime()) || isNaN(draw.getTime())) return null;
+    const chronAge = (draw.getTime() - dob.getTime()) / (365.25 * 86_400_000);
+    return computeCardiometabolicAge(values, chronAge);
+  })();
 
   // Skeleton ONLY on true first load (no cached values yet). When we have
   // cached values, render the result and let refetch happen silently.
@@ -138,8 +150,41 @@ export const BiologicalAgeWidget = () => {
           : 'Your biological age matches your chronological age — a healthy baseline.'}
       </p>
       <p className="text-precision text-[0.55rem] text-clinical-stone/70 leading-relaxed mb-3 italic">
-        PhenoAge uses 9 specific markers (albumin, creatinine, glucose, CRP, lymphocytes, MCV, RDW, ALP, WBC). It does not include lipids, liver enzymes, or vitamin status — review your full panel separately for those.
+        PhenoAge uses 9 specific markers (albumin, creatinine, glucose, CRP, lymphocytes, MCV, RDW, ALP, WBC). It does not include lipids, liver enzymes, or vitamin status.
       </p>
+
+      {cardio && (() => {
+        const cardioColor = cardio.category === 'younger' ? '#2A9D8F' : cardio.category === 'older' ? '#C94F4F' : '#D4A574';
+        const cardioLabel = cardio.category === 'younger'
+          ? `${Math.abs(cardio.delta).toFixed(1)} years younger`
+          : cardio.category === 'older'
+          ? `${Math.abs(cardio.delta).toFixed(1)} years older`
+          : 'Matches your age';
+        return (
+          <div className="mt-4 pt-4 border-t border-outline-variant/15">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-precision text-[0.6rem] font-bold text-clinical-stone tracking-widest uppercase">Cardiometabolic Age</p>
+              <span className="text-precision text-[0.55rem] text-clinical-stone tracking-wider">CauseHealth model</span>
+            </div>
+            <div className="flex items-baseline gap-3 mb-2">
+              <span className="text-authority text-3xl font-bold leading-none" style={{ color: cardioColor }}>
+                {cardio.age.toFixed(1)}
+              </span>
+              <span className="text-body text-clinical-stone text-xs">years</span>
+              <span
+                className="text-precision text-[0.55rem] font-bold tracking-widest uppercase px-2 py-0.5"
+                style={{ borderRadius: '3px', backgroundColor: `${cardioColor}15`, color: cardioColor }}
+              >
+                {cardioLabel}
+              </span>
+            </div>
+            <p className="text-precision text-[0.55rem] text-clinical-stone/70 leading-relaxed italic">
+              Lipids, liver enzymes, glucose control, and vitamin D — the markers PhenoAge skips. Not a peer-reviewed score; a transparent CauseHealth composite.
+            </p>
+          </div>
+        );
+      })()}
+
 
       <button
         onClick={() => navigate(`/labs/${latestDraw.id}`)}
