@@ -23,8 +23,6 @@ export function useMedications() {
   });
 }
 
-// Alias — used by MedicationChecker page
-export const useActiveMedications = useMedications;
 
 export function useSaveMedications() {
   const user = useAuthStore(s => s.user);

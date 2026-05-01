@@ -7,8 +7,6 @@ import { useState } from 'react';
 
 interface Props {
   doc: any;
-  // symptomAnalysis prop removed — symptom-pattern cards consolidated into Wellness Plan.
-  symptomAnalysis?: any | null;  // kept optional for backward-compat, no longer rendered
 }
 
 const Stack = ({ title, subtitle, accent, children }: { title: string; subtitle: string; accent: string; children: React.ReactNode }) => (
