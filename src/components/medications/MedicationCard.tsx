@@ -81,7 +81,11 @@ export const MedicationCard = ({ medication, index }: MedicationCardProps) => {
         </div>
         <div className="flex items-center gap-3">
           {profile ? (
-            <span className="text-precision text-[0.6rem] font-bold px-2 py-1 bg-[#614018] text-[#FFDCBC]" style={{ borderRadius: '3px' }}>{profile.depletions.length} DEPLETIONS</span>
+            profile.depletions.length > 0 ? (
+              <span className="text-precision text-[0.6rem] font-bold px-2 py-1 bg-[#614018] text-[#FFDCBC]" style={{ borderRadius: '3px' }}>{profile.depletions.length} DEPLETIONS</span>
+            ) : (
+              <span className="text-precision text-[0.6rem] font-bold px-2 py-1 bg-primary-container/20 text-primary-container" style={{ borderRadius: '3px' }}>TARGETED THERAPY</span>
+            )
           ) : (
             <span className="text-precision text-[0.6rem] font-bold px-2 py-1 bg-surface-container text-on-surface-variant" style={{ borderRadius: '3px' }}>NO DATA</span>
           )}
