@@ -7,22 +7,29 @@ const STEPS = [
     number: '01',
     icon: 'upload_file',
     title: 'Upload Your Labs',
-    body: 'Drag and drop your bloodwork PDF from any lab — LabCorp, Quest, hospital systems, or any standard lab report. Our AI reads every value on the page.',
-    detail: 'PDF upload · Automatic extraction · Manual entry alternative',
+    body: 'Drag and drop any lab PDF or take a photo — LabCorp, Quest, MyChart, hospital systems, paper printouts. Our AI extracts every value in 30 seconds. Add more files to the same draw if your CRP comes back later.',
+    detail: 'PDF + photo · Auto-extraction · Manual entry · Add-to-draw',
   },
   {
     number: '02',
     icon: 'biotech',
-    title: 'Get Root Cause Analysis',
-    body: 'We compare your values against optimal ranges, identify patterns across multiple markers, connect your medications to your symptoms, and surface what 12-minute appointments miss.',
-    detail: 'Optimal ranges · Pattern detection · Medication depletions · Symptom links',
+    title: 'Get the Analysis',
+    body: 'Healthy / Watch / Out-of-Range bucketing on every value. Watch list catches drift before diagnosis. Biological + cardiometabolic age. Percentile vs your age and sex. Medication depletions mapped to your symptoms. Critical findings flagged instantly with deterministic safety logic.',
+    detail: 'Watch list · Bio + cardiometabolic age · Percentile cohort · Critical alerts',
   },
   {
     number: '03',
+    icon: 'favorite',
+    title: 'Your 90-Day Plan',
+    body: '25-35 personalized meals from a 360+ meal library — convenience-store shortcuts to home-cook recipes — that evolve weekly from easy mode to home cooking. Supplement stack with alternatives. Workouts. Daily check-in. AI chat that reads your labs.',
+    detail: 'Weekly meal spotlight · Supplements with alternatives · Daily check-in · AI chat',
+  },
+  {
+    number: '04',
     icon: 'description',
     title: 'Walk In Prepared',
-    body: 'Download your doctor visit prep document — formatted as a clinical reference with ICD-10 billing codes for every test you need. Your insurance covers it when the codes are right.',
-    detail: 'ICD-10 codes · Insurance coverage guide · Specialist referrals · PDF download',
+    body: 'Doctor Prep PDF formatted as a clinical reference — every test with ICD-10 billing codes, medical-necessity statements, and insurance coverage signals. Hand it to your doctor. Insurance covers what they order when the codes are right.',
+    detail: 'ICD-10 codes · Coverage signals · Patient questions · PDF download',
   },
 ];
 
@@ -57,7 +64,7 @@ export const HowItWorks = () => {
         <div ref={ref} className="relative">
           <div className="hidden md:block absolute top-12 left-0 right-0 h-px bg-outline-variant/20 z-0" />
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12 md:gap-8 relative z-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 md:gap-8 relative z-10">
             {STEPS.map((step, i) => (
               <motion.div
                 key={i}

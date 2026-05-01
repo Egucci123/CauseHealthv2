@@ -168,9 +168,10 @@ export const HeroSection = () => (
           </h2>
 
           <p className="text-body text-clinical-stone text-lg leading-relaxed mb-4 max-w-lg">
-            Upload your bloodwork. Get a list of tests your doctor <strong className="text-clinical-charcoal">should have ordered</strong> for
-            someone your age — with the ICD-10 codes that get them covered by insurance. Walk
-            into your next appointment with a list they can&rsquo;t reject.
+            Upload your bloodwork. Get a <strong className="text-clinical-charcoal">Healthy / Watch / Out-of-Range</strong> read
+            on every value, your <strong className="text-clinical-charcoal">biological + cardiometabolic age</strong>,
+            a <strong className="text-clinical-charcoal">90-day plan</strong> with meals and supplements that fit your real life,
+            and a <strong className="text-clinical-charcoal">Doctor Prep PDF</strong> with ICD-10 codes that get tests covered.
           </p>
           <p className="text-body text-clinical-stone text-base leading-relaxed mb-10 max-w-lg">
             Built for nurses, truckers, parents, shift workers — the patients doctors rush
@@ -203,8 +204,9 @@ export const HeroSection = () => (
 
           <div className="flex flex-wrap gap-3 mt-10">
             <DetectionCounter />
-            <StatPill label="ICD-10 coded doctor prep documents" delay={1.0} />
-            <StatPill label="Medication depletion mapping" delay={1.2} />
+            <StatPill label="90-day personalized plan" delay={1.0} />
+            <StatPill label="Biological + cardiometabolic age" delay={1.2} />
+            <StatPill label="ICD-10 coded doctor prep" delay={1.4} />
           </div>
         </motion.div>
 
