@@ -259,8 +259,6 @@ HARD RULES — FOLLOW EXACTLY:
 
    IF the relevant lab IS on this draw AND shows deficiency, sourced_from becomes "lab_finding" with the medication named as the likely cause in why (no double-counting).
 
-   STRICT RANK 1..N: rank 1 = most important for the user's TOP GOALS, then by clinical severity. No gaps, no duplicates.
-
    PRACTICAL_NOTE — REQUIRED on every supplement, ONE short sentence combining (1) why this timing/form (absorption/GABA/circadian), (2) any interaction with the user's actual meds, (3) any avoid-caveat (empty stomach, with calcium, etc.). High-impact interactions to flag if relevant: berberine+statin (liver-processed, check with doctor); vitamin K2+warfarin (affects INR, MD only); St John's Wort+SSRI (serotonin syndrome — never combine); calcium/iron+levothyroxine (4hr apart); magnesium+antibiotic (2hr apart); curcumin+blood thinner (potentiation); DHEA+hormone cancer hx (avoid); saw palmetto+PSA monitoring (masks). If timing is generic ("with food"), still note why that form was chosen.
    Speculative supplements → put the test in retest_timeline, not a supplement.
 3. CONDITIONS — GROUND TRUTH RULE: Use the user's DIAGNOSED CONDITIONS list verbatim.
