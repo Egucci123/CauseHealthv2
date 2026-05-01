@@ -25,9 +25,15 @@ const PLAYBOOK_META: Record<Playbook, { label: string; sub: string; emoji: strin
   viral_hack: { label: 'Viral Hacks That Actually Work', sub: 'TikTok-tested, lab-targeted', emoji: '📱', color: '#9B59B6' },
   lunchbox_thermos: { label: 'Lunchbox / Cooler / Thermos', sub: 'Driver, construction, shift work', emoji: '🧊', color: '#1F77B4' },
   simple_home_cook: { label: 'Simple Home Cook', sub: 'Real recipes, still grocery-store basic', emoji: '🍳', color: '#1B4332' },
+  travel_hotel: { label: 'Travel & Hotel', sub: 'Airport, road trip, hotel mini-fridge hacks', emoji: '✈️', color: '#3D5A80' },
+  dorm_no_stove: { label: 'Dorm / No-Stove', sub: 'Microwave + mini-fridge only', emoji: '🛏️', color: '#7C3AED' },
+  protein_dessert: { label: 'Protein Desserts', sub: 'Sweet-tooth swaps that hit macros', emoji: '🍦', color: '#EC4899' },
+  international: { label: 'International Flavors', sub: 'Pho, curry, bibimbap, ceviche', emoji: '🌍', color: '#0D9488' },
+  big_box_grocery: { label: 'Costco / Walmart / Aldi', sub: 'Big-box hauls + ready-to-eat staples', emoji: '🛒', color: '#475569' },
 };
 const PLAYBOOK_ORDER: Playbook[] = [
-  'convenience_store', 'fast_food', 'protein_bar_shake', 'frozen_aisle',
+  'convenience_store', 'fast_food', 'big_box_grocery', 'protein_bar_shake', 'frozen_aisle',
+  'travel_hotel', 'dorm_no_stove', 'protein_dessert', 'international',
   'frozen_breakfast', 'lunchbox_thermos', 'sheet_pan', 'crock_pot',
   'simple_home_cook', 'mom_friendly', 'viral_hack', 'low_cal_drink',
 ];
