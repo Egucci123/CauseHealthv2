@@ -123,6 +123,7 @@ GLOBAL VOICE RULES (CRITICAL — every string in JSON):
 - EVERY out-of-range marker MUST have its own priority_finding entry with the exact marker name.
 - Every priority_finding gets an "emoji" field.
 - If a sentence doesn't pull its weight, CUT IT.
+- NEVER use vague hedging phrases like "rare blood disorder", "rare disease", "rare condition" in priority_findings or summary. These scare patients without adding clinical value. Be specific (dehydration / smoking / NAFLD / etc.) or say nothing.
 
 CRITICAL RULES:
 1. RANGE MODEL — three states, treat them differently:
@@ -354,6 +355,25 @@ We do NOT recommend GI-MAP, hair tissue mineral, organic acids, food sensitivity
       [/\bclinical correlation\b/gi, 'context'],
       [/\bworkup\b/gi, 'follow-up tests'],
     ];
+    // Strip vague rare-disease hedging like "or rare blood disorder",
+    // "rare bone marrow disease", "rare bleeding condition" etc. The named
+    // rare-disease scrubber catches specific terms (JAK2, multiple myeloma,
+    // polycythemia vera, Cushing's) but generic phrases like "rare disorder"
+    // slip through and scare patients without adding clinical info. Strip
+    // the clause, not the whole sentence, so the useful "dehydration,
+    // smoking" prefix survives.
+    const stripVagueRareDisease = (s: string): string => {
+      let out = s;
+      out = out.replace(/,?\s*(?:or\s+)?(?:a\s+)?rare\s+(?:blood\s+|bone\s+marrow\s+|bleeding\s+|clotting\s+|liver\s+|kidney\s+|thyroid\s+)?(?:disorder|disease|condition|cancer|illness)s?/gi, '');
+      // Clean up trailing ", or" or dangling "or" at sentence ends
+      out = out.replace(/,\s*or\s*(?=\.|$)/gi, '');
+      out = out.replace(/,\s*(?=\.|$)/g, '');
+      out = out.replace(/\bor\s+(?=\.|$)/gi, '');
+      // Collapse double spaces
+      out = out.replace(/\s+/g, ' ').trim();
+      return out;
+    };
+
     // Strip parentheticals whose contents repeat 2+ meaningful words already
     // in the surrounding text. Catches double-translations like
     // "Red blood cells elevated (too many red blood cells)" — created when the
@@ -376,6 +396,7 @@ We do NOT recommend GI-MAP, hair tissue mineral, organic acids, food sensitivity
     const plainify = (s: string): string => {
       let out = s;
       for (const [re, replacement] of JARGON_REPLACEMENTS) out = out.replace(re, replacement);
+      out = stripVagueRareDisease(out);
       out = dropRedundantParens(out);
       return out;
     };
