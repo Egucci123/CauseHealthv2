@@ -374,26 +374,29 @@ export const LabDetail = () => {
           </button>
           <div className="flex items-center gap-3">
             {(() => {
-              // Single, deterministic "is the analysis running" signal:
-              //   retryLocked: user clicked retry recently (60s window)
-              //   isPending: mutation's DB update in flight
-              //   processing: server is currently working
-              // Removed the legacy "Stuck — Retry" state — it used draw.created_at
-              // as a proxy for updated_at and falsely fired on re-runs of older
-              // draws (created_at is hours old, so it always looked "stuck").
-              // The retry-lock's 60s ceiling now handles genuine stuck cases.
+              // Detect a stuck 'processing' state: if the draw row hasn't been
+              // updated in 3+ minutes but still says processing, the analysis
+              // crashed or 401'd (e.g., the append-to-draw 401 bug shipped earlier).
+              // Show a "Stuck — Retry" affordance instead of locking the button forever.
+              const updatedAt = (draw as any).updated_at ?? draw.created_at;
+              const ageMs = updatedAt ? Date.now() - new Date(updatedAt).getTime() : 0;
+              const isStale = draw.processing_status === 'processing' && ageMs > 180_000;
+
               const isRunning =
-                retryLocked ||
-                retryAnalysis.isPending ||
-                draw.processing_status === 'processing';
+                !isStale && (
+                  retryLocked ||
+                  retryAnalysis.isPending ||
+                  draw.processing_status === 'processing'
+                );
+              const label = isRunning ? 'Running…' : isStale ? 'Stuck — Retry' : 'Re-run Analysis';
               return (
                 <button
                   onClick={() => retryAnalysis.mutate()}
                   disabled={isRunning}
-                  className="text-precision text-[0.6rem] text-on-surface-variant tracking-widest uppercase hover:text-[#D4A574] transition-colors flex items-center gap-1 disabled:opacity-70"
+                  className={`text-precision text-[0.6rem] tracking-widest uppercase hover:text-[#D4A574] transition-colors flex items-center gap-1 disabled:opacity-70 ${isStale ? 'text-[#E8922A]' : 'text-on-surface-variant'}`}
                 >
                   <span className={`material-symbols-outlined text-[14px] ${isRunning ? 'animate-spin' : ''}`}>refresh</span>
-                  {isRunning ? 'Running…' : 'Re-run Analysis'}
+                  {label}
                 </button>
               );
             })()}
