@@ -76,7 +76,7 @@ export function computeOrganAges(values: LabValueLite[], chronologicalAge: numbe
     const drivers = [alt && `ALT ${alt.value}`, ast && `AST ${ast.value}`, ggt && `GGT ${ggt.value}`].filter(Boolean) as string[];
     out.push({
       system: 'Liver',
-      emoji: '🫀',
+      emoji: '🧬',
       age,
       delta: age - chronologicalAge,
       status: age > chronologicalAge + 2 ? 'older' : age < chronologicalAge - 1 ? 'younger' : 'on-track',
