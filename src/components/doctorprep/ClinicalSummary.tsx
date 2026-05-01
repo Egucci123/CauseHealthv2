@@ -86,30 +86,9 @@ export const ClinicalSummary = ({ doc }: { doc: DoctorPrepDocument }) => {
         </div>
       </FolderSection>
 
-      {/* Medications */}
-      {doc.medications && doc.medications.length > 0 && (
-        <FolderSection
-          icon="medication"
-          title="Current Medications"
-          count={doc.medications.length}
-          countLabel="medications"
-          explanation="Your current medications with notable nutrient depletions flagged. The yellow warnings tell your doctor what each medication is silently depleting — most physicians don't routinely discuss this."
-          accentColor="#E8922A"
-        >
-          <div className="space-y-2">
-            {doc.medications.map((med, i) => (
-              <div key={i} className="flex items-start gap-3">
-                <span className="text-body text-clinical-charcoal text-sm w-4 flex-shrink-0">·</span>
-                <div>
-                  <span className="text-body text-clinical-charcoal text-sm font-medium">{med.name}</span>
-                  {med.dose && <span className="text-body text-clinical-stone text-sm"> — {med.dose}</span>}
-                  {med.notable_depletion && <span className="text-precision text-[0.6rem] text-[#E8922A] ml-2">⚠ {renderText(med.notable_depletion)}</span>}
-                </div>
-              </div>
-            ))}
-          </div>
-        </FolderSection>
-      )}
+      {/* Medications moved to dedicated "Medications" tab — keeps the Clinical
+          Summary tab focused on the narrative + ROS + lab summary, while the
+          Medications tab shows full depletion profiles + healthier alternatives. */}
 
       {/* Review of Systems */}
       {rosPositive.length > 0 && (

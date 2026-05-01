@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { ClinicalSummary } from '../../components/doctorprep/ClinicalSummary';
 import { TestsToRequest } from '../../components/doctorprep/TestsToRequest';
 import { VisitCardStacks } from '../../components/doctorprep/VisitCardStacks';
+import { MedicationsTab } from '../../components/doctorprep/MedicationsTab';
 import { isHealthyMode as computeIsHealthyMode } from '../../lib/healthMode';
 import { useLatestDoctorPrep, useGenerateDoctorPrep } from '../../hooks/useDoctorPrep';
 import { useLatestLabDraw, useLatestLabValues } from '../../hooks/useLabData';
@@ -22,11 +23,12 @@ const TABS = [
   { id: 'visit', label: 'At Your Visit', icon: 'fact_check' },
   { id: 'summary', label: 'Clinical Summary', icon: 'description' },
   { id: 'tests', label: 'Suggested Tests', icon: 'biotech' },
+  { id: 'medications', label: 'Medications', icon: 'medication' },
 ];
 
 export const DoctorPrep = () => {
   const { profile } = useAuthStore();
-  const [activeTab, setActiveTab] = useState<'visit' | 'summary' | 'tests'>('visit');
+  const [activeTab, setActiveTab] = useState<'visit' | 'summary' | 'tests' | 'medications'>('visit');
   const { data: doc} = useLatestDoctorPrep();
   const { generate, generating } = useGenerateDoctorPrep();
   const { data: latestDraw } = useLatestLabDraw();
@@ -225,6 +227,7 @@ export const DoctorPrep = () => {
               <TestsToRequest tests={Array.isArray(doc.tests_to_request) ? doc.tests_to_request : []} advanced={Array.isArray(doc.advanced_screening) ? doc.advanced_screening : []} />
             </div>
           )}
+          {activeTab === 'medications' && <MedicationsTab />}
         </div>
       )}
     </AppShell>

@@ -34,7 +34,8 @@ import { LabsIndex } from './pages/labs/LabsIndex';
 import { WellnessPlanPage } from './pages/wellness/WellnessPlanPage';
 
 // Medications
-import { MedicationChecker } from './pages/medications/MedicationChecker';
+// Medications page consolidated into the Doctor Prep "Medications" tab (May 2026).
+// Keeping the redirect so old links / bookmarks still work.
 
 // Symptoms page consolidated into Wellness Plan (April 2026 product change).
 
@@ -120,7 +121,7 @@ function App() {
 
       {/* Features */}
       <Route path="/wellness" element={<ProtectedRoute><WellnessPlanPage /></ProtectedRoute>} />
-      <Route path="/medications" element={<ProtectedRoute><MedicationChecker /></ProtectedRoute>} />
+      <Route path="/medications" element={<Navigate to="/doctor-prep" replace />} />
       {/* /symptoms route removed — symptoms now surface in the Wellness Plan with how-addressed details. */}
       <Route path="/symptoms" element={<Navigate to="/wellness" replace />} />
       <Route path="/doctor-prep" element={<ProtectedRoute><DoctorPrepPage /></ProtectedRoute>} />
