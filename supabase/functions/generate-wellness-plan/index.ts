@@ -439,7 +439,7 @@ HARD RULES — FOLLOW EXACTLY:
     PER-PATTERN HARD MINIMUMS (NON-NEGOTIABLE):
       - For EVERY pattern the user listed in BREAKFAST_PATTERNS / LUNCH_PATTERNS / DINNER_PATTERNS, generate AT LEAST 3 meals from that playbook. If they listed 4 lunch patterns, give 12+ lunch meals (3 per pattern).
       - Example: user picked "fast_food + wawa_convenience + gas_station" for lunch → MINIMUM 9 lunch meals (3 fast-food chain orders + 3 Wawa-specific + 3 gas-station/7-Eleven/Sheetz).
-      - If breakfast pattern = "skip" → still give 1-2 breakfast options labeled as "for the day you DO eat breakfast" — don't leave empty.
+      - If breakfast pattern includes "skip" → meals[].when="breakfast" entries are OK (label them "for the days you DO eat breakfast" in the why), BUT today_actions MUST NOT prescribe eating breakfast as a daily action. The user actively chose to skip — recommending "eat a 2-egg breakfast every morning" contradicts their stated pattern. If breakfast=skip, today_actions should focus on hydration + lunch protein + supplement timing instead.
 
     CHAIN DIVERSITY:
       - If user has 3+ chains in EATS_OUT_AT, fast_food meals MUST cover at least 4 different chains. Don't stack 4 Chipotle ideas — rotate Chick-fil-A, Wendy's, Subway, McDonald's, Panera, Taco Bell, Dunkin, Five Guys, Burger King, Cracker Barrel.

@@ -2,20 +2,40 @@
 // Default /labs route — shows the latest analyzed lab detail page directly
 // so users see their analytics every time, not a list. List view lives at
 // /labs/history (button on the detail page).
-import { Navigate } from 'react-router-dom';
+//
+// AppShell stays mounted for ALL render paths — including during redirect —
+// so navigating to /labs from sidebar doesn't flash the body background
+// between the unmount of the previous AppShell and the mount of the new
+// AppShell at /labs/:drawId. Imperative useNavigate inside an effect lets
+// the layout chrome persist while the route swap happens.
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AppShell } from '../../components/layout/AppShell';
 import { Button } from '../../components/ui/Button';
 import { useLatestLabDraw, useLabDraws } from '../../hooks/useLabData';
-import { useNavigate } from 'react-router-dom';
 
 export const LabsIndex = () => {
   const navigate = useNavigate();
   const { data: latest} = useLatestLabDraw();
   const { data: allDraws} = useLabDraws();
 
-  // Skeleton while either query hasn't resolved yet. After that, render
-  // navigates based on what's there.
-  if (latest === undefined || allDraws === undefined) {
+  // Decide redirect target — null while queries pending, undefined after
+  // they resolve when there's no draw at all. Keeps the side-effect logic
+  // tight in one place.
+  const redirectTo: string | null =
+    latest ? `/labs/${latest.id}`
+    : (allDraws && allDraws.length > 0) ? `/labs/${allDraws[0].id}`
+    : null;
+
+  useEffect(() => {
+    if (redirectTo) navigate(redirectTo, { replace: true });
+  }, [redirectTo, navigate]);
+
+  // Skeleton state covers both: queries still loading AND queries resolved
+  // with a redirect pending. AppShell stays mounted the whole time so there's
+  // no flash between this page and the lab detail page that's about to render.
+  const isLoading = latest === undefined || allDraws === undefined;
+  if (isLoading || redirectTo) {
     return (
       <AppShell pageTitle="Lab Analytics">
         <div className="space-y-4">
@@ -28,19 +48,6 @@ export const LabsIndex = () => {
         </div>
       </AppShell>
     );
-  }
-
-  // Have an analyzed draw → jump to its detail page
-  if (latest) return <Navigate to={`/labs/${latest.id}`} replace />;
-
-  // Have at least one draw but none complete (still analyzing OR last
-  // analysis failed) → still land on the most recent draw's DETAIL page
-  // so the user sees their values immediately. The detail page itself
-  // shows the analyzing/failed banner with proper retry UX. Don't dump
-  // them on the history list — that hides the values they uploaded and
-  // forces an extra click to see anything.
-  if (allDraws && allDraws.length > 0) {
-    return <Navigate to={`/labs/${allDraws[0].id}`} replace />;
   }
 
   // No draws yet — empty state with upload prompt
