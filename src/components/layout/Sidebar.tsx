@@ -6,7 +6,6 @@ const NAV_ITEMS = [
   { label: 'Intelligence Hub',  icon: 'analytics',    path: '/dashboard' },
   { label: 'Lab Analytics',     icon: 'biotech',       path: '/labs' },
   { label: 'Wellness Protocol', icon: 'favorite',      path: '/wellness' },
-  { label: 'Medications',       icon: 'medication',    path: '/medications' },
   { label: 'Clinical Prep',     icon: 'description',   path: '/doctor-prep' },
   { label: 'Progress',          icon: 'trending_up',   path: '/progress' },
   { label: 'Glossary',          icon: 'menu_book',     path: '/glossary' },

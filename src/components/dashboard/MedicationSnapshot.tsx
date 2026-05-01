@@ -22,7 +22,7 @@ export const MedicationSnapshot = () => {
     <div>
       <div className="flex items-center justify-between mb-4">
         <SectionLabel className="mb-0">Medication Depletions</SectionLabel>
-        <button onClick={() => navigate('/medications')} className="text-precision text-[0.68rem] text-primary-container font-bold tracking-widest uppercase hover:underline">View all</button>
+        <button onClick={() => navigate('/doctor-prep')} className="text-precision text-[0.68rem] text-primary-container font-bold tracking-widest uppercase hover:underline">View all</button>
       </div>
       <div className="space-y-2">
         {medsWithDepletions.slice(0, 3).map(med => (
