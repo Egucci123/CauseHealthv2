@@ -244,8 +244,15 @@ export const LabDetail = () => {
   // Detect whether the draw's processing_status='processing' flag is stuck
   // (analysis crashed / 401'd / never started). Used by both the button label
   // and the "Analyzing your bloodwork" banner so they don't contradict.
+  //
+  // IMPORTANT: must defer to retryLocked. If the user just clicked Retry,
+  // we can't trust draw.created_at as a "fresh" signal because the row may
+  // not have an updated_at column — falling back to created_at would falsely
+  // mark every old draw as stale forever, even mid-retry.
   const drawForStale = data?.draw;
   const drawIsStale = (() => {
+    if (retryLocked) return false;                                          // user just retried → trust the lock
+    if (retryAnalysis.isPending) return false;                              // mutation in flight → trust it
     if (!drawForStale || drawForStale.processing_status !== 'processing') return false;
     const updatedAt = (drawForStale as any).updated_at ?? drawForStale.created_at;
     if (!updatedAt) return false;
