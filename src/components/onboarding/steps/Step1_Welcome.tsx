@@ -9,11 +9,27 @@ import { CustomSelect } from '../../ui/CustomSelect';
 import { useOnboardingStore } from '../../../store/onboardingStore';
 import { useAuthStore } from '../../../store/authStore';
 
+// DOB + sex are REQUIRED — they drive bio age, lab range tables, and
+// percentile cohort lookups. Without them the analysis is wrong, not just
+// less personal. Height/weight/state stay optional (BMI is nice-to-have).
 const schema = z.object({
-  firstName: z.string().min(2, 'Required'), lastName: z.string().min(2, 'Required'),
-  dateOfBirth: z.string().optional(), sex: z.string().optional(),
-  heightFt: z.string().optional(), heightIn: z.string().optional(),
-  weightLbs: z.string().optional(), locationState: z.string().optional(),
+  firstName: z.string().min(2, 'Required'),
+  lastName: z.string().min(2, 'Required'),
+  dateOfBirth: z.string().min(1, 'Required for age-specific lab ranges').refine(
+    (v) => {
+      if (!v) return false;
+      const d = new Date(v);
+      if (isNaN(d.getTime())) return false;
+      const age = (Date.now() - d.getTime()) / 31_557_600_000;
+      return age >= 13 && age <= 120;
+    },
+    { message: 'Enter a valid date of birth' }
+  ),
+  sex: z.string().min(1, 'Required — drives hormone + CBC ranges'),
+  heightFt: z.string().optional(),
+  heightIn: z.string().optional(),
+  weightLbs: z.string().optional(),
+  locationState: z.string().optional(),
 });
 type FormData = z.infer<typeof schema>;
 
@@ -61,11 +77,11 @@ export const Step1_Welcome = () => {
           <Input label="Last Name" placeholder="Johnson" error={errors.lastName?.message} {...register('lastName')} />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Input label="Date of Birth" type="date" hint="Used to apply age-specific optimal ranges." {...register('dateOfBirth')} />
+          <Input label="Date of Birth *" type="date" hint="Required — drives age-specific optimal lab ranges." error={errors.dateOfBirth?.message} {...register('dateOfBirth')} />
           <CustomSelect
-            label="Biological Sex"
+            label="Biological Sex *"
             placeholder="Select..."
-            hint="Affects hormone and CBC optimal ranges."
+            hint="Required — drives hormone + CBC optimal ranges."
             options={[
               { value: 'male', label: 'Male' },
               { value: 'female', label: 'Female' },

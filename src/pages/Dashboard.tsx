@@ -17,6 +17,7 @@ import { useAuthStore } from '../store/authStore';
 import { useLatestLabValues, useLabDraws } from '../hooks/useLabData';
 import { useHealthScore } from '../hooks/useHealthScore';
 import { CriticalBanner } from '../components/labs/CriticalBanner';
+import { FinishProfileBanner } from '../components/dashboard/FinishProfileBanner';
 import { detectCriticalFindings } from '../lib/criticalFindings';
 import { useMemo } from 'react';
 
@@ -50,6 +51,10 @@ export const Dashboard = () => {
     <AppShell pageTitle="Intelligence Hub">
       {/* Critical / Emergency banner — ALWAYS visible (safety overrides paywall) */}
       {criticalFindings.length > 0 && <CriticalBanner findings={criticalFindings} />}
+
+      {/* "Finish your profile" banner — only shows for users who started but
+          didn't finish onboarding. Resumes at the highest unfilled step. */}
+      <FinishProfileBanner />
 
       {/* Dark hero card — clean text only. Score lives below in its own light card. */}
       <div className="bg-[#131313] rounded-[14px] p-6 shadow-card">

@@ -24,14 +24,23 @@ export const Step3_Medications = () => {
       ),
     }));
 
+  // Validation: user must either list at least one med or actively confirm
+  // "I don't take any". Same rule for supplements. Forces a positive answer
+  // instead of letting people click Continue blindly.
+  const medsOk = medications.length > 0 || noMedications;
+  const suppsOk = supplements.length > 0 || noSupplements;
+  const canContinue = medsOk && suppsOk;
+  const errorMsg = !medsOk ? 'Add a medication or confirm none.'
+    : !suppsOk ? 'Add a supplement or confirm none.'
+    : null;
+
   return (
     <OnboardingShell
       stepKey="step-3"
       title="Medications & Supplements"
       description="Include all prescription medications AND supplements you take regularly. Many supplements (like biotin, creatine, niacin) directly alter lab values — knowing them helps us interpret your bloodwork accurately."
-      onNext={async () => { await nextStep(); }}
-      showSkip
-      onSkip={async () => { updateStep3({ noMedications: true, noSupplements: true }); await nextStep(); }}
+      onNext={async () => { if (canContinue) await nextStep(); }}
+      nextDisabled={!canContinue}
     >
       <div className="space-y-10">
         {/* ── MEDICATIONS ──────────────────────────────────────────── */}
@@ -124,6 +133,10 @@ export const Step3_Medications = () => {
             </>
           )}
         </section>
+
+        {errorMsg && (
+          <p className="text-precision text-[0.65rem] text-[#C94F4F] tracking-wide">{errorMsg}</p>
+        )}
       </div>
     </OnboardingShell>
   );

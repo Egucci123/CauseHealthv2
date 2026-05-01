@@ -8,18 +8,28 @@ import { SectionLabel } from '../../ui/SectionLabel';
 
 export const Step4_Symptoms = () => {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const { nextStep, symptoms, addSymptom, removeSymptom, updateSymptom } = useOnboardingStore();
+  const { nextStep, symptoms, addSymptom, removeSymptom, updateSymptom, noSymptoms } = useOnboardingStore();
+  const updateStep4 = useOnboardingStore(s => s.updateStep4);
 
   const isSelected = (symptom: string) => symptoms.some(s => s.symptom === symptom);
   const toggleSymptom = (symptom: string, category: string) => {
     if (isSelected(symptom)) { const f = symptoms.find(s => s.symptom === symptom); if (f) removeSymptom(f.id); }
-    else addSymptom({ symptom, category, severity: 5, duration: '1_6_months' });
+    else {
+      addSymptom({ symptom, category, severity: 5, duration: '1_6_months' });
+      // Adding any symptom clears the "no symptoms" flag
+      if (noSymptoms) updateStep4({ noSymptoms: false });
+    }
   };
+
+  // Validation: either at least one symptom OR explicit "no current symptoms".
+  const canContinue = symptoms.length > 0 || noSymptoms;
+  const errorMsg = canContinue ? null : 'Pick at least one symptom or confirm none below.';
 
   return (
     <OnboardingShell stepKey="step-4" title="How are you feeling?"
       description="Select all symptoms you experience regularly. Be thorough — this is how we connect your labs and medications to your day-to-day experience."
-      onNext={async () => { await nextStep(); }} showSkip onSkip={async () => { await nextStep(); }}>
+      onNext={async () => { if (canContinue) await nextStep(); }}
+      nextDisabled={!canContinue}>
       <div className="space-y-4">
         {symptoms.length > 0 && (
           <div className="bg-primary-container/5 border border-primary-container/20 rounded-lg px-4 py-3">
@@ -83,6 +93,23 @@ export const Step4_Symptoms = () => {
               {symptoms.length > 5 && <p className="text-body text-clinical-stone text-xs text-center">+ {symptoms.length - 5} more symptoms selected. Rate them in your full profile.</p>}
             </div>
           </div>
+        )}
+
+        <button
+          type="button"
+          onClick={() => updateStep4({ noSymptoms: !noSymptoms })}
+          disabled={symptoms.length > 0}
+          className={`w-full px-4 py-3 text-left border transition-colors flex items-center gap-3 ${noSymptoms ? 'bg-primary-container/10 border-primary-container/40 text-primary-container' : 'border-outline-variant/20 text-clinical-stone hover:border-outline-variant/40'} ${symptoms.length > 0 ? 'opacity-40 cursor-not-allowed' : ''}`}
+          style={{ borderRadius: '4px' }}
+        >
+          <div className={`w-4 h-4 flex-shrink-0 border flex items-center justify-center ${noSymptoms ? 'bg-primary-container border-primary-container' : 'border-outline-variant/40'}`} style={{ borderRadius: '2px' }}>
+            {noSymptoms && <span className="material-symbols-outlined text-white text-[10px]">check</span>}
+          </div>
+          <span className="text-body text-sm">I have no current symptoms</span>
+        </button>
+
+        {errorMsg && (
+          <p className="text-precision text-[0.65rem] text-[#C94F4F] tracking-wide">{errorMsg}</p>
         )}
       </div>
     </OnboardingShell>

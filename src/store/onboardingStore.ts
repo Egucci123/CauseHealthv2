@@ -115,13 +115,16 @@ export interface OnboardingState {
   weightLbs:   string;
   locationState: string;
   conditions:    AddedCondition[];
+  noConditions:  boolean;          // explicit "I have no diagnosed conditions" confirmation
   familyHistory: FamilyHistory;
+  noFamilyHistory: boolean;        // explicit "no notable family history" confirmation
   geneticTesting: 'yes' | 'no' | 'in_progress' | '';
   medications:        AddedMedication[];
   supplements:        AddedSupplement[];
   noSupplements:      boolean;
   noMedications:      boolean;
   symptoms:           AddedSymptom[];
+  noSymptoms:         boolean;     // explicit "no current symptoms" confirmation
   lifestyle:          Partial<LifestyleData>;
   lifeContext:        Partial<LifeContext>;
   primaryGoals:       string[];
@@ -171,11 +174,12 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
   currentStep: 1, totalSteps: 7, loading: false,
   firstName: '', lastName: '', dateOfBirth: '', sex: '',
   heightFt: '', heightIn: '', weightLbs: '', locationState: '',
-  conditions: [],
+  conditions: [], noConditions: false,
   familyHistory: { heartDisease: false, diabetes: false, autoimmune: false, cancer: false, earlyDeath: false, highCholesterol: false },
+  noFamilyHistory: false,
   geneticTesting: '',
   medications: [], supplements: [], noMedications: false, noSupplements: false,
-  symptoms: [],
+  symptoms: [], noSymptoms: false,
   lifestyle: DEFAULT_LIFESTYLE,
   lifeContext: {},
   primaryGoals: [], specificConcern: '', triedBefore: '', hearAboutUs: '',
@@ -536,6 +540,7 @@ function persistLocal(state: OnboardingState) {
       familyHistory: state.familyHistory,
       geneticTesting: state.geneticTesting,
       noMedications: state.noMedications, noSupplements: state.noSupplements,
+      noConditions: state.noConditions, noFamilyHistory: state.noFamilyHistory, noSymptoms: state.noSymptoms,
       specificConcern: state.specificConcern, triedBefore: state.triedBefore, hearAboutUs: state.hearAboutUs,
       _saved_at: Date.now(),
     };
