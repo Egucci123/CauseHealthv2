@@ -6,8 +6,13 @@
 // meals their cooking time / budget / chains / diet rule out.
 //
 // Universal: no condition-specific logic. Pure constraint matching.
+//
+// Coast-to-coast nationwide chains pass through eligibility EVEN when the
+// user didn't tick them in onboarding — McDonald's, Subway, Starbucks etc.
+// are realistically available to everyone. Wawa, Sheetz, Royal Farms, In-N-Out
+// stay gated since they're regional.
 
-import { FOOD_PLAYBOOK, type MealEntry } from '../data/foodPlaybook';
+import { FOOD_PLAYBOOK, chainIsNationwide, type MealEntry } from '../data/foodPlaybook';
 
 // Loose shape — accepts both the strict `LifeContext` from onboardingStore
 // AND the looser one from types/index.ts (Profile field). Keeps eligibility
@@ -54,7 +59,12 @@ export function getEligibleMeals(ctx: EligibilityContext): MealEntry[] {
     if (c.maxPrepMinutes && m.prepMinutes > c.maxPrepMinutes) return false;
     if (c.minBudgetTier && budgetMaxTier < c.minBudgetTier) return false;
     if (c.requiresChain && c.requiresChain.length > 0) {
-      const ok = c.requiresChain.some((chain: string) => userChains.some((uc: string) => uc.includes(chain.toLowerCase())));
+      // Nationwide chains (McDonald's, Subway, Starbucks, BK, Wendy's, etc.)
+      // always pass — they're available coast-to-coast so we don't make the
+      // user explicitly list them. Regional chains (Wawa, Sheetz, In-N-Out,
+      // Whataburger) still require explicit user pre-selection.
+      const ok = chainIsNationwide(c.requiresChain) ||
+        c.requiresChain.some((chain: string) => userChains.some((uc: string) => uc.includes(chain.toLowerCase())));
       if (!ok) return false;
     }
     if (c.diet && c.diet.length > 0 && !c.diet.includes(userDiet)) return false;

@@ -43,6 +43,49 @@ export type Playbook =
 // hide options the user can't actually access.
 export type Region = 'national' | 'east_coast' | 'midwest' | 'south' | 'west_coast' | 'mountain' | 'urban';
 
+// Chains so dominant in the US that we treat them as default-available
+// regardless of whether the user explicitly listed them in onboarding.
+// Eligibility filter passes meals from these chains through automatically;
+// the selector still gives a chain-match BONUS to chains the user did list,
+// but nationwide ones aren't blocked when the user skipped the question.
+//
+// Inclusion criteria: 3,000+ US locations OR present in 45+ states.
+// Updated 2026 — re-check when expanding.
+export const NATIONWIDE_CHAINS: string[] = [
+  "mcdonald's", 'mcdonald',
+  'subway',
+  'starbucks',
+  'burger king',
+  "wendy's", 'wendy',
+  'taco bell',
+  'kfc',
+  "domino's", 'domino',
+  'pizza hut',
+  'chipotle',
+  'chick-fil-a',
+  'dunkin',
+  'sonic',
+  "arby's", 'arby',
+  'popeyes',
+  'panera',
+  'five guys',
+  'jersey mike',
+  'jimmy john',
+  'cracker barrel',
+  'olive garden',
+];
+
+// Quick check: does ANY of a meal's required chains overlap with the
+// nationwide list? Used by eligibility + selector so we don't hide
+// McDonald's from a user who didn't explicitly tick the McDonald's box.
+export function chainIsNationwide(requiresChain: string[] | undefined): boolean {
+  if (!requiresChain || requiresChain.length === 0) return false;
+  return requiresChain.some(c => {
+    const lc = c.toLowerCase();
+    return NATIONWIDE_CHAINS.some(nc => lc.includes(nc) || nc.includes(lc));
+  });
+}
+
 export type MealSlot = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 export type Phase = 1 | 2 | 3;
 export type CostTier = 1 | 2 | 3; // 1 = cheap (<$5), 2 = mid ($5-12), 3 = higher ($12+)

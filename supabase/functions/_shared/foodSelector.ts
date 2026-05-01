@@ -9,7 +9,7 @@
 // no condition-specific hardcoding. Lab targets come from the user's actual
 // flagged lab values, not from a diagnosis list.
 
-import { FOOD_PLAYBOOK, type MealEntry, type Playbook, type Target } from './foodPlaybook.ts';
+import { FOOD_PLAYBOOK, chainIsNationwide, type MealEntry, type Playbook, type Target } from './foodPlaybook.ts';
 
 export interface SelectorContext {
   workType?: string;
@@ -122,7 +122,10 @@ export function selectMealCandidates(ctx: SelectorContext, topN: number = 60): M
       if (c.maxPrepMinutes && m.prepMinutes > c.maxPrepMinutes) return false;
       if (c.minBudgetTier && budgetMaxTier < c.minBudgetTier) return false;
       if (c.requiresChain && c.requiresChain.length > 0) {
-        const ok = c.requiresChain.some(chain => userChains.some(uc => uc.includes(chain.toLowerCase())));
+        // Nationwide chains pass even when user didn't list them; regional
+        // chains (Wawa/Sheetz/In-N-Out/Whataburger) still require explicit listing.
+        const ok = chainIsNationwide(c.requiresChain) ||
+          c.requiresChain.some(chain => userChains.some(uc => uc.includes(chain.toLowerCase())));
         if (!ok) return false;
       }
       if (c.diet && c.diet.length > 0 && !c.diet.includes(userDiet)) return false;
