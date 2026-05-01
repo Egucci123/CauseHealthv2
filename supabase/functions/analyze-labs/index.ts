@@ -302,8 +302,10 @@ We do NOT recommend GI-MAP, hair tissue mineral, organic acids, food sensitivity
       [/\bhemolysis\b/gi, 'red blood cells breaking down'],
       [/\bhemolytic\b/gi, 'red-cell-breakdown'],
       [/\bglobulins?\b/gi, 'blood proteins'],
-      [/\bbone marrow\b/gi, 'where your blood is made'],
-      [/\bbile metabolism\b/gi, 'how your liver clears waste'],
+      // 'bone marrow' is already plain English — leave it alone.
+      // Old replacement → 'where your blood is made' broke grammar in
+      // sentences like "bone marrow overproduction".
+      [/\bbile metabolism\b/gi, 'bile processing'],
       [/\bbiliary\b/gi, 'bile-related'],
       [/\bhepatocellular\b/gi, 'liver-cell'],
       [/\bhepatic\b/gi, 'liver'],
