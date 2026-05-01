@@ -450,7 +450,15 @@ HARD RULES — FOLLOW EXACTLY:
       - 8-12 LUNCH options (the most-frequent meal type for most people).
       - 6-9 DINNER options.
       - 3-5 SNACK + DRINK options.
-      - **TOTAL: 21-30 MEALS** (was 12-18 — bumped because users want week+ of variety).
+      - **TOTAL: 25-35 MEALS** (bumped from 21-30 to give the weekly spotlight rotation enough headroom across the 12-week journey).
+
+    PHASE COVERAGE FOR WEEKLY PROGRESSION (REQUIRED):
+    The /wellness page surfaces a "This Week's Focus" spotlight that rotates meals across weeks 1-12, gradually shifting from convenience (Phase 1) to home cooking (Phase 3). For the rotation to work, every plan MUST include enough variety across phases:
+      - AT LEAST 6 Phase-1 meals (easy mode for weeks 1-3 — convenience_store, fast_food, frozen_breakfast, low_cal_drink, protein_bar_shake)
+      - AT LEAST 8 Phase-2 meals (level up for weeks 4-6 — lunchbox_thermos, sheet_pan, frozen_aisle, viral_hack, mom_friendly)
+      - AT LEAST 6 Phase-3 meals (home cook for weeks 7-12 — simple_home_cook, crock_pot, sheet_pan)
+      - DINNER-SPECIFIC FLOOR: AT LEAST 4 Phase-2 dinners AND AT LEAST 4 Phase-3 dinners (sheet-pan, crock-pot, simple-home-cook). Without enough Phase-3 dinners the user has nothing to graduate to in weeks 7-12 — the spotlight becomes stale.
+    Copy each candidate's phase tag verbatim from MEAL_CANDIDATES; do NOT invent phases.
 
     Pattern = "unknown" → default broad mix: 2 fast-food + 2 frozen + 2 convenience-store + 2 lunchbox + 2 protein-bar/shake.
 

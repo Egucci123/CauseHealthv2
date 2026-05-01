@@ -9,6 +9,7 @@ import { FolderSection } from '../../components/ui/FolderSection';
 import { LifestyleInterventions } from '../../components/wellness/LifestyleInterventions';
 import { ActionPlan } from '../../components/wellness/ActionPlan';
 import { FoodPlaybookLibrary } from '../../components/wellness/FoodPlaybookLibrary';
+import { WeeklySpotlight } from '../../components/wellness/WeeklySpotlight';
 import { TransformationForecast } from '../../components/wellness/TransformationForecast';
 import { useWellnessPlan, useGenerateWellnessPlan } from '../../hooks/useWellnessPlan';
 import { useLatestLabDraw, useLatestLabValues } from '../../hooks/useLabData';
@@ -292,6 +293,7 @@ const EatTab = ({ plan }: { plan: any }) => {
   const meals = plan.meals ?? [];
   const [showList, setShowList] = useState(false);
   const [showLibrary, setShowLibrary] = useState(false);
+  const userId = useAuthStore(s => s.user?.id ?? '');
 
   // Export the AI-curated plan meals to a PDF directly. Different from the
   // "Browse Full Library" PDF — this one's just the user's curated week.
@@ -373,6 +375,19 @@ const EatTab = ({ plan }: { plan: any }) => {
 
   return (
     <div className="space-y-4">
+      {/* Weekly spotlight — rotates which meals from the user's plan get
+          highlighted based on weeks since plan generation. Phase 1 dominates
+          early weeks, Phase 3 home-cooking dominates late weeks. Dinner gets
+          a stronger push toward home-cook over time. Pure deterministic logic
+          — no new AI calls. */}
+      {plan.generated_at && userId && meals.length > 0 && (
+        <WeeklySpotlight
+          meals={meals}
+          planGeneratedAt={plan.generated_at}
+          userId={userId}
+          browseAnchorId="wellness-meals-all"
+        />
+      )}
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <p className="text-body text-clinical-stone text-sm">Real meals + real chain orders + lunchbox hacks for real life. Pick what works this week — start anywhere.</p>
         <div className="flex gap-2 flex-wrap">
@@ -433,7 +448,9 @@ const EatTab = ({ plan }: { plan: any }) => {
 
       {/* Render meals grouped by PLAYBOOK (the "Food Playbook"). Each meal
           carries a phase badge (1=Start Here, 2=Level Up, 3=Optimal) so the
-          user sees difficulty without sections being walled off by phase. */}
+          user sees difficulty without sections being walled off by phase.
+          Anchor id used by WeeklySpotlight's "Browse all" button to scroll. */}
+      <div id="wellness-meals-all" />
       {(() => {
         const PLAYBOOK_META: Record<string, { label: string; sub: string; emoji: string; color: string }> = {
           convenience_store: { label: 'Convenience Store Grabs', sub: 'Wawa, 7-Eleven, gas stations, truck stops', emoji: '🏪', color: '#7B1FA2' },
