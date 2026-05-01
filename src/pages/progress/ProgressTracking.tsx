@@ -1,7 +1,20 @@
 // src/pages/progress/ProgressTracking.tsx
+//
+// Progress page revamp — Phase 1.
+//
+// Old: 3 generic stat tiles + 5 disconnected sliders + hardcoded 6 lab markers.
+// New: AdherenceHero showing protocol adherence vs the wellness plan, weekly
+// progress, streak counter, and the existing tabbed deep-dive (check-in,
+// trends, lab trends). The tabs stay because returning users want to drill
+// in; the hero is the new "what matters this week" summary.
+//
+// Phase 2 (next session): personalized check-in questions, weekly AI coach
+// note, forecast vs reality cards. Phase 1.5: nightly push notifications.
+
 import { useState } from 'react';
 import { AppShell } from '../../components/layout/AppShell';
-import { SectionHeader } from '../../components/ui/Card';
+import { AdherenceHero } from '../../components/progress/AdherenceHero';
+import { StreakCounter } from '../../components/progress/StreakCounter';
 import { CheckInForm } from '../../components/progress/CheckInForm';
 import { ComplianceCalendar } from '../../components/progress/ComplianceCalendar';
 import { WellbeingTrend } from '../../components/progress/WellbeingTrend';
@@ -27,30 +40,38 @@ type Tab = typeof TABS[number]['id'];
 
 export const ProgressTracking = () => {
   const [activeTab, setActiveTab] = useState<Tab>('checkin');
-  const { data: entries = []} = useProgressEntries(90);
+  const { data: entries = [] } = useProgressEntries(90);
   const { data: todayEntry } = useTodayEntry();
 
   return (
-    <AppShell pageTitle="Progress Tracking">
-      <div className="flex flex-col md:flex-row justify-between items-start gap-4">
-        <SectionHeader title="Progress Tracking" description="Daily wellbeing logs and lab trends — your proof that the protocol is working." />
-        {todayEntry && (
-          <div className="flex items-center gap-2 px-3 py-2 bg-primary-container/10 border border-primary-container/20" style={{ borderRadius: '6px' }}>
-            <span className="material-symbols-outlined text-primary-container text-[16px]">check_circle</span>
-            <span className="text-precision text-[0.68rem] text-primary-container font-bold uppercase tracking-wider">Checked in today</span>
-          </div>
-        )}
+    <AppShell pageTitle="Progress">
+      {/* ── Hero ─────────────────────────────────────────────────── */}
+      <AdherenceHero />
+
+      {/* ── Header strip with streak + today badge ───────────────── */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
+          <StreakCounter entries={entries} />
+          {todayEntry && (
+            <div className="inline-flex items-center gap-2 px-3 py-2 bg-primary-container/10 border border-primary-container/20 rounded-[6px]">
+              <span className="material-symbols-outlined text-primary-container text-[16px]">check_circle</span>
+              <span className="text-precision text-[0.68rem] text-primary-container font-bold uppercase tracking-wider">Checked in today</span>
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="flex border-b border-outline-variant/10">
+      {/* ── Tabs ─────────────────────────────────────────────────── */}
+      <div className="flex border-b border-outline-variant/10 overflow-x-auto">
         {TABS.map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 px-5 py-3 text-precision text-[0.68rem] font-bold tracking-wider uppercase border-b-2 transition-all ${activeTab === tab.id ? 'border-primary-container text-primary-container' : 'border-transparent text-clinical-stone hover:text-clinical-charcoal'}`}>
+            className={`flex items-center gap-2 px-5 py-3 text-precision text-[0.68rem] font-bold tracking-wider uppercase border-b-2 transition-all flex-shrink-0 ${activeTab === tab.id ? 'border-primary-container text-primary-container' : 'border-transparent text-clinical-stone hover:text-clinical-charcoal'}`}>
             <span className="material-symbols-outlined text-[16px]">{tab.icon}</span>{tab.label}
           </button>
         ))}
       </div>
 
+      {/* ── Tab content ──────────────────────────────────────────── */}
       {!entries ? (
         <div className="space-y-4 animate-pulse">{[1, 2].map(i => <div key={i} className="bg-clinical-white rounded-[10px] border-t-[3px] border-[#E8E3DB] p-6"><div className="h-4 bg-[#E8E3DB] rounded w-1/3 mb-3" /><div className="h-24 bg-[#E8E3DB] rounded" /></div>)}</div>
       ) : (
@@ -58,21 +79,6 @@ export const ProgressTracking = () => {
           {activeTab === 'checkin' && (
             <div className="space-y-6">
               <CheckInForm todayEntry={todayEntry ?? null} onSaved={() => setActiveTab('trends')} />
-              {entries.length > 0 && (
-                <div className="grid grid-cols-3 gap-3">
-                  {[
-                    { label: 'Days Logged', value: `${entries.length}`, icon: 'calendar_month' },
-                    { label: 'Avg Energy', value: (entries.reduce((s, e) => s + e.energy, 0) / entries.length).toFixed(1), icon: 'bolt' },
-                    { label: 'Avg Sleep', value: (entries.reduce((s, e) => s + e.sleep_quality, 0) / entries.length).toFixed(1), icon: 'bedtime' },
-                  ].map(({ label, value, icon }) => (
-                    <div key={label} className="bg-clinical-white rounded-[10px] shadow-card border-t-[3px] border-[#E8E3DB] p-4">
-                      <span className="material-symbols-outlined text-clinical-stone text-[18px] block mb-1">{icon}</span>
-                      <p className="text-precision text-xl font-bold text-clinical-charcoal">{value}</p>
-                      <p className="text-precision text-[0.62rem] text-clinical-stone uppercase tracking-wider">{label}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           )}
 
