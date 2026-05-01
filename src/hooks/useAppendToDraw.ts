@@ -99,6 +99,7 @@ export function useAppendToDraw(drawId: string | null) {
           : { pdfBase64: base64 };
       }
       const { data: extracted, error: extractErr } = await supabase.functions.invoke('extract-labs', { body: extractBody });
+      console.log('[append] extract-labs response:', { extracted, extractErr, usedText: useText });
       if (extractErr) {
         const ctx = (extractErr as any).context;
         let detail = extractErr.message;
@@ -106,10 +107,22 @@ export function useAppendToDraw(drawId: string | null) {
         throw new Error(`Could not read the file: ${detail}`);
       }
       const extractedValues = Array.isArray((extracted as any)?.values) ? (extracted as any).values : [];
-      if (extractedValues.length === 0) throw new Error('No lab values found in this file. Try a clearer PDF or scan.');
+      if (extractedValues.length === 0) {
+        throw new Error('No lab values found in this file. The AI could not parse the report — try a clearer PDF or scan.');
+      }
+      console.log('[append] extracted', extractedValues.length, 'value(s):', extractedValues.map((v: any) => v.marker_name));
 
-      // 4. Pull existing markers on this draw — to skip duplicates
+      // 4. Pull the existing draw row (we need the draw_date to stamp on
+      // the new lab_values rows — the regular upload pipeline always sets
+      // this, and downstream queries / TrajectoryStrip rely on it).
       setStatus('merging');
+      const { data: drawRow, error: drawErr } = await supabase
+        .from('lab_draws')
+        .select('draw_date, raw_pdf_url')
+        .eq('id', drawId)
+        .single();
+      if (drawErr || !drawRow) throw new Error(`Could not load draw: ${drawErr?.message ?? 'not found'}`);
+
       const { data: existingValues, error: existingErr } = await supabase
         .from('lab_values')
         .select('marker_name')
@@ -137,9 +150,18 @@ export function useAppendToDraw(drawId: string | null) {
           standard_high: v.standard_high ?? null,
           standard_flag: v.standard_flag ?? 'normal',
           marker_category: v.category ?? 'other',
+          draw_date: drawRow.draw_date,
         });
         newMarkerNames.push(v.marker_name);
       }
+
+      console.log('[append] extract result:', {
+        rawValuesFromExtract: extractedValues.length,
+        existingMarkers: existingNormalized.size,
+        newRowsToInsert: newRows.length,
+        newMarkerNames,
+        skipped,
+      });
 
       if (newRows.length === 0) {
         // Nothing new to add — every marker was already on the draw.
@@ -147,7 +169,8 @@ export function useAppendToDraw(drawId: string | null) {
       }
 
       // 6. Insert the new lab_values rows
-      const { error: insertErr } = await supabase.from('lab_values').insert(newRows);
+      const { error: insertErr, data: insertData } = await supabase.from('lab_values').insert(newRows).select();
+      console.log('[append] insert result:', { inserted: insertData?.length ?? 0, error: insertErr });
       if (insertErr) throw new Error(`Could not save values: ${insertErr.message}`);
 
       // 7. Re-trigger analyze-labs on this draw so the analysis reflects the
