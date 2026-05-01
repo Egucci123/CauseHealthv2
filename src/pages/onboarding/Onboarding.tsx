@@ -1,6 +1,7 @@
 // src/pages/onboarding/Onboarding.tsx
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useOnboardingStore } from '../../store/onboardingStore';
+import { Step0_Primer }     from '../../components/onboarding/steps/Step0_Primer';
 import { Step1_Welcome }    from '../../components/onboarding/steps/Step1_Welcome';
 import { Step2_Diagnoses }  from '../../components/onboarding/steps/Step2_Diagnoses';
 import { Step3_Medications } from '../../components/onboarding/steps/Step3_Medications';
@@ -10,14 +11,30 @@ import { Step6_DailyLife }  from '../../components/onboarding/steps/Step6_DailyL
 import { Step6_Goals }      from '../../components/onboarding/steps/Step6_Goals';
 import { Step7_Complete }   from '../../components/onboarding/steps/Step7_Complete';
 
+const PRIMER_FLAG = 'onboarding_primer_dismissed_v1';
+
 export const Onboarding = () => {
   const { currentStep, loadSavedProgress } = useOnboardingStore();
+  // Show the primer ONCE per device, before Step 1. Returning users mid-flow
+  // (or anyone who already saw it) skip straight to the numbered steps.
+  const [showPrimer, setShowPrimer] = useState(() => {
+    try { return localStorage.getItem(PRIMER_FLAG) !== 'true'; }
+    catch { return false; }
+  });
 
   useEffect(() => { loadSavedProgress(); }, [loadSavedProgress]);
 
-  // Step 6 is the new "Daily Life" step (work, kids, food, healthcare access)
-  // — drives universal AI tailoring without disease-specific logic. The
-  // existing Goals + Complete components keep their filenames for git history
+  // If user is mid-flow (currentStep > 1 from a saved DB session), don't show
+  // primer. They've already seen the numbered steps.
+  if (showPrimer && currentStep === 1) {
+    return <Step0_Primer onContinue={() => {
+      try { localStorage.setItem(PRIMER_FLAG, 'true'); } catch {}
+      setShowPrimer(false);
+    }} />;
+  }
+
+  // Step 6 is the "Daily Life" step (work, kids, food, healthcare access).
+  // Existing Goals + Complete components keep their filenames for git history
   // continuity but mount at positions 7 and 8 respectively.
   const steps: Record<number, React.ReactNode> = {
     1: <Step1_Welcome />, 2: <Step2_Diagnoses />, 3: <Step3_Medications />,

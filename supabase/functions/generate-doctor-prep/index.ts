@@ -89,7 +89,7 @@ GLOBAL VOICE RULES (CRITICAL — apply to EVERY string in the JSON):
     discussion_points[]: ≤25 words each. lead with the ask.
     functional_medicine_note: 2 sentences max, ≤40 words.
 - NO PERCENTAGE IMPROVEMENTS, NO MECHANISMS, NO LISTING dosages in why fields.
-- NO JARGON. "bad cholesterol" not "LDL". "liver enzyme" not "ALT". "stress hormone" not "cortisol". "blood sugar" not "glucose". "iron stores" not "ferritin".
+- NO JARGON. 6th-grade everywhere. Plain English ("liver enzyme" not "ALT", "blood sugar" not "glucose", "iron stores" not "ferritin"). Marker abbreviation in PARENTHESES only ("liver enzyme (ALT) is 97").
 - Lead with a verb when action ("Tell your doctor...", "Ask for..."). Lead with the finding when why.
 - Every card gets a one-emoji "emoji" field.
 - If a sentence doesn't pull its weight, CUT IT. Don't pad. Don't hedge.
@@ -163,72 +163,71 @@ If a PCP could reasonably look at a test and say "I won't order that" or "your i
 
    When trigger (d) fires, frame the clinical_justification as: "Standard baseline for [age]yo [sex] — not present in this draw. Common gap that USPSTF / AHA / ADA recommends for routine evaluation." Tone: matter-of-fact, not alarmist.
 
-   SYMPTOM → STANDARD-OF-CARE TEST MAPPING (trigger (a) — when patient reports a symptom AND the relevant test is missing or worth investigating, add it. These are PCP-orderable, insurance-covered tests. ONE focused workup per symptom; don't bundle every test for every symptom):
-     - Fatigue / low energy → CBC, ferritin + iron panel, B12 + MMA, vitamin D, TSH, A1c, AM cortisol (if other HPA-axis signs); for men also total T + SHBG.
-     - Joint pain / stiffness → hs-CRP, vitamin D, uric acid; ESR + RF + anti-CCP only if persistent inflammatory pattern (>6 weeks, morning stiffness >1hr).
-     - Can't lose weight / metabolic slowdown → fasting insulin + HOMA-IR, A1c, TSH (free T3/T4 if borderline), AM cortisol, total T (men).
-     - Hair loss / thinning → ferritin + iron panel, vitamin D, TSH + TPO if other Hashimoto's features; for women add free T + DHEA-S if androgen pattern.
-     - Brain fog / cognitive issues → B12 + MMA, vitamin D, TSH, ferritin, A1c.
-     - Low mood / depression → vitamin D, B12, TSH, AM cortisol if other stress symptoms; for men add total T.
-     - Sleep issues / waking unrefreshed → vitamin D, ferritin (RLS), AM cortisol, A1c (insulin variability disrupts sleep), TSH.
-     - GI symptoms (bloating, gas, alt-stool, reflux) → CMP, albumin, tTG-IgA + total IgA (celiac), H. pylori if epigastric pain.
-     - Acne / hormonal skin → for women: total + free T, DHEA-S, fasting insulin (PCOS workup); for men: liver panel + insulin (NAFLD-acne link).
-     - Cold or heat intolerance → TSH, free T3, free T4, ferritin (low ferritin worsens cold intolerance).
-     - Frequent urination / excessive thirst → fasting glucose, A1c, basic metabolic panel.
-     - Heart palpitations / racing heart → TSH (hyperthyroid screen), CMP (electrolytes including Mg if measured), CBC.
-     - Restless legs / leg pain at night → ferritin (target >75 for RLS), iron panel, B12.
-     - Recurrent infections → vitamin D, CBC with differential, total IgA + IgG.
-     - Difficulty building muscle / poor recovery → for men: total T + SHBG + estradiol; vitamin D, ferritin.
-   These mappings reflect PCP standard of care. Do NOT add functional-medicine extras (organic acids, hair tissue mineral, food sensitivity, GI-MAP) regardless of symptom. The blocklist earlier in this prompt is hard.
+   SYMPTOM → STANDARD-OF-CARE TEST MAPPING (trigger (a) — ONE focused workup per symptom; never functional-medicine extras):
+     Fatigue: CBC, Ferritin + Iron Panel, B12+MMA, Vit D, TSH, A1c, AM cortisol if HPA signs; men add T+SHBG
+     Joint pain: hs-CRP, Vit D, Uric Acid; ESR+RF+anti-CCP only if persistent inflammatory >6wk
+     Can't lose weight: Fasting Insulin+HOMA-IR, A1c, TSH (free T3/T4 if borderline), AM cortisol, T (men)
+     Hair loss: Ferritin+Iron Panel, Vit D, TSH+TPO; women add free T+DHEA-S if androgen pattern
+     Brain fog: B12+MMA, Vit D, TSH, Ferritin, A1c
+     Low mood: Vit D, B12, TSH, AM cortisol if other stress; men add T
+     Sleep issues: Vit D, Ferritin (RLS), AM cortisol, A1c, TSH
+     GI symptoms: CMP, Albumin, tTG-IgA+Total IgA, H. pylori if epigastric pain
+     Acne: women → T+Free T+DHEA-S+Fasting Insulin (PCOS); men → liver + insulin (NAFLD-acne)
+     Cold/heat intolerance: TSH, free T3, free T4, Ferritin
+     Frequent urination/thirst: Fasting Glucose, A1c, BMP
+     Palpitations: TSH, CMP, CBC
+     Restless legs: Ferritin (>75 target), Iron Panel, B12
+     Recurrent infections: Vit D, CBC w/ diff, Total IgA+IgG
+     Poor recovery: men → T+SHBG+Estradiol; Vit D, Ferritin
 
-   EARLY-DETECTION MARKER PATTERNS (these count as trigger (c) — values "within range" but clinically meaningful, especially in young or symptomatic patients. Catch these aggressively. Always cite the specific value in clinical_justification):
-   - Ferritin <50 even with normal hemoglobin → functional iron deficiency. Order full iron panel (serum iron, TIBC, ferritin, transferrin sat). Trigger any time ferritin <50, ESPECIALLY with fatigue / hair loss / restless legs / menstruating female.
-   - Serum B12 <500 (low end of "normal") with fatigue, brain fog, neuropathy, or depression → MMA + homocysteine to confirm tissue B12 status.
-   - MCV >92 without anemia → early B12/folate deficiency, alcohol, or liver. Order B12, folate, MMA.
-   - MCV <82 without anemia → iron deficiency or thalassemia trait. Iron panel + hemoglobin electrophoresis.
-   - HbA1c 5.4–5.6 OR fasting glucose 95–99 OR triglycerides high + HDL low → insulin resistance pattern. Fasting insulin + HOMA-IR.
-   - ApoB ≥90 → cardiovascular risk pattern. Order ApoB + Lp(a) (once-in-lifetime).
-   - hs-CRP ≥0.5 → subclinical inflammation. Repeat hs-CRP in 3 months + investigate source if persistent.
-   - ALT >25 (even within "range") + high triglycerides or weight gain → NAFLD pattern. Liver ultrasound + GGT.
-   - TSH 2.5–4.5 (within range, not optimal) + fatigue / weight gain / cold intolerance / hair loss → Free T3, Free T4, TPO antibodies, thyroglobulin antibodies (Hashimoto's screen).
-   - TSH <1.0 + symptoms → Free T3, Free T4, TSI antibodies (Graves' screen).
-   - Total testosterone <500 in symptomatic male → free T, SHBG, estradiol, LH, FSH.
-   - Premenopausal female with irregular cycles, acne, hirsutism, weight gain, OR insulin resistance markers → PCOS workup (total + free testosterone, DHEA-S, LH:FSH, fasting insulin, SHBG).
-   - Female 35–50 with irregular cycles, hot flashes, sleep changes → AMH + FSH + estradiol (perimenopause).
-   - Vitamin D 30–40 → recheck in 3 months after supplementation; <30 always retest.
-   - Uric acid >6 (female) or >7 (male) in young patient → gout / metabolic syndrome / kidney stone risk. Lifestyle counseling + recheck.
-   - Calcium >10.0 repeated → PTH + ionized calcium (primary hyperparathyroidism).
-   - Globulin >3.0 → albumin/globulin ratio + total protein context. Investigate if >3.5 with anemia or bone pain.
-   - Persistent GI symptoms (bloating, gas, alt-stool) + iron deficiency or low albumin → celiac panel (tTG-IgA + total IgA).
-   - Snoring / daytime fatigue / hypertension / insulin resistance pattern → STOP-BANG + sleep study referral.
+   EARLY-DETECTION MARKER PATTERNS (trigger (c) — within-range but clinically meaningful; cite value in clinical_justification):
+     Ferritin <50: full Iron Panel (esp. with fatigue/hair loss/RLS/menstruating female)
+     B12 <500 + (fatigue/brain fog/neuropathy): MMA + homocysteine
+     MCV >92 no anemia: B12, folate, MMA
+     MCV <82 no anemia: Iron Panel + hemoglobin electrophoresis
+     A1c 5.4–5.6 OR glucose 95–99 OR TG high + HDL low: Fasting Insulin + HOMA-IR
+     ApoB ≥90: ApoB + Lp(a) once-in-lifetime
+     hs-CRP ≥0.5: repeat in 3mo + investigate source if persistent
+     ALT >25 + high TG or weight gain: liver ultrasound + GGT (NAFLD)
+     TSH 2.5–4.5 + hypothyroid sx: Free T3/T4 + TPO Ab + Tg Ab (Hashimoto's screen)
+     TSH <1.0 + sx: Free T3/T4 + TSI Ab (Graves' screen)
+     Total T <500 in symptomatic male: Free T, SHBG, Estradiol, LH, FSH
+     Premenopausal female + cycle/acne/hirsutism/IR signs: PCOS panel (T+Free T+DHEA-S+LH:FSH+Fasting Insulin+SHBG)
+     Female 35–50 + cycle changes/hot flashes: AMH + FSH + Estradiol (perimenopause)
+     Vitamin D 30–40: recheck in 3mo; <30 always retest
+     Uric Acid >6 (F) or >7 (M) young patient: lifestyle + recheck
+     Calcium >10.0 repeated: PTH + Ionized Calcium (hyperparathyroidism)
+     Globulin >3.0: A/G ratio + total protein; investigate if >3.5 with anemia/bone pain
+     GI sx + iron def or low albumin: Celiac Panel (tTG-IgA + Total IgA)
+     Snoring + daytime fatigue + HTN + IR: sleep questionnaire + sleep study
 
-   AUTOIMMUNE / ENDOCRINE PATTERNS (commonly missed for years — surface when triggers match):
-   - Hashimoto's (autoimmune hypothyroid): TSH 2.5–4.5 + fatigue/weight gain/cold/hair loss/family hx → TPO antibodies + thyroglobulin antibodies. Also if patient has another autoimmune dx (UC, T1D, vitiligo).
-   - Graves' / autoimmune hyperthyroid: TSH <1.0 + heat intolerance / weight loss / palpitations / anxiety → Free T3, Free T4, TSI antibodies.
-   - Pernicious anemia: B12 <500 + macrocytic indices (MCV >95) OR autoimmune hx → intrinsic factor antibodies + parietal cell antibodies + MMA + homocysteine.
-   - Sjögren's syndrome: dry eyes / dry mouth / joint pain + (positive ANA on this draw OR existing autoimmune dx) → SSA (Ro) + SSB (La) antibodies + rheumatology referral.
-   - LADA / late-onset type 1 diabetes (commonly mislabeled as T2D in lean adults): rising HbA1c + lean body type + age 25–55 + family hx of T1D or autoimmunity → GAD-65 antibodies + IA-2 antibodies + C-peptide.
-   - Adrenal insufficiency (Addison's): chronic fatigue + salt cravings + low Na + high K + low BP + skin hyperpigmentation → AM serum cortisol + ACTH (and consider ACTH stim test).
-   - Primary biliary cholangitis (PBC): female + ALP elevated DISPROPORTIONATELY to AST/ALT + fatigue / itching → AMA antibody + GGT.
-   - Autoimmune hepatitis: ALT/AST elevated + female + (positive ANA OR ASMA) → ASMA + anti-LKM antibodies + IgG level.
-   - Hemolytic anemia: anemia + elevated indirect bilirubin + elevated LDH → haptoglobin + reticulocyte count + peripheral smear + direct Coombs test.
-   - Chronic kidney disease (early): eGFR 60–89 sustained, OR any proteinuria → urine albumin-to-creatinine ratio (UACR) + cystatin C + nephrology referral if eGFR drops.
-   - MASH / fibrotic NAFLD risk: ALT/AST elevated + low-normal platelets + age 40+ → FIB-4 score (calculable from age/AST/ALT/platelets) + FibroScan / hepatology referral if FIB-4 >1.45.
-   - EBV reactivation / chronic fatigue: persistent fatigue >6 months + elevated lymphocytes or monocytes + low-grade lymphadenopathy → EBV panel (VCA-IgG, VCA-IgM, EBNA-1).
+   AUTOIMMUNE/ENDOCRINE PATTERNS (commonly missed — surface when triggers match):
+     Hashimoto's: TSH 2.5–4.5 + fatigue/weight gain/cold/hair loss/family hx → TPO Ab + Tg Ab. Also if patient has another autoimmune dx.
+     Graves': TSH <1.0 + heat intolerance/palpitations → Free T3/T4 + TSI Ab.
+     Pernicious anemia: B12 <500 + MCV >95 OR autoimmune hx → Intrinsic Factor Ab + Parietal Cell Ab + MMA + homocysteine.
+     Sjögren's: dry eyes/mouth/joint pain + ANA+ OR existing autoimmune → SSA(Ro)+SSB(La) Ab + rheumatology.
+     LADA (mislabeled T2D in lean adults): rising A1c + lean + age 25–55 + family hx T1D → GAD-65 + IA-2 Ab + C-peptide.
+     Addison's: chronic fatigue + salt cravings + low Na + high K + skin hyperpigmentation → AM cortisol + ACTH + stim test.
+     PBC: female + ALP DISPROPORTIONATELY high vs AST/ALT + itching → AMA + GGT.
+     Autoimmune hepatitis: ALT/AST high + female + ANA+ OR ASMA → ASMA + anti-LKM + IgG.
+     Hemolytic anemia: anemia + elevated indirect bilirubin + LDH → Haptoglobin + reticulocyte + smear + Coombs.
+     Early CKD: eGFR 60–89 sustained OR proteinuria → UACR + Cystatin C + nephrology if dropping.
+     MASH/fibrotic NAFLD risk: ALT/AST high + low-normal platelets + age 40+ → FIB-4 score + FibroScan if >1.45.
+     EBV reactivation: persistent fatigue >6mo + elevated lymph/mono + adenopathy → EBV panel (VCA-IgG/IgM, EBNA-1).
 
-   WEIRD-CASE PATTERNS (presentations doctors routinely dismiss because single numbers look "fine" — fire when the cluster matches):
-   - Lean PCOS: premenopausal female + cycle irregularity + ANY androgen elevation (free T, DHEA-S, or LH:FSH >2) regardless of BMI → full PCOS panel. The "you don't look like PCOS" dismissal misses lean phenotypes.
-   - T4→T3 conversion problem (low-T3 syndrome): hypothyroid symptoms + TSH and Free T4 in range + (Free T3 low-normal OR Reverse T3 >250) → repeat Free T3 + Reverse T3 + selenium + ferritin (cofactors).
-   - Subclinical hemochromatosis: transferrin saturation >45% with ANY ferritin level (ferritin lags behind sat by years) → repeat iron panel + HFE genetics if confirmed.
-   - MGUS surveillance: globulin 3.0–3.5 + age >50 (not yet myeloma threshold but worth tracking) → annual SPEP + free light chain ratio. No urgency framing — this is monitoring.
-   - Functional B12 deficiency with "normal" serum B12: serum B12 500–800 + (vegetarian diet OR metformin OR PPI use OR fatigue/neuropathy/brain fog) → MMA + homocysteine to confirm tissue B12.
-   - Hidden Lp(a) cardiovascular risk: LDL normal but family hx of early MI/stroke OR ANY cardiovascular concern → Lp(a) measured once-in-lifetime. Genetic risk independent of LDL.
-   - Adult ADHD / restless legs + iron link: ferritin <75 + cognitive/sleep/mood symptoms → optimize ferritin to >100 BEFORE escalating to stimulants or sleep meds.
-   - POTS / dysautonomia: palpitations + lightheadedness on standing + fatigue + (female 15–45 OR post-viral) → 10-minute orthostatic stand test (HR rise >30 bpm = positive) + autonomic / cardiology referral. Commonly mislabeled as "anxiety."
-   - Autoimmune neutropenia / cyclical neutropenia: WBC <4.0 sustained + recurrent infections → repeat CBC + ANA + B12 + folate before dismissing as "your baseline."
-   - SIBO / IMO: persistent bloating + post-meal gas + IBS-like pattern + symptoms worse on prebiotic foods → lactulose breath test (hydrogen + methane).
+   WEIRD-CASE PATTERNS (presentations doctors dismiss when single numbers look fine — fire only when the cluster matches):
+     Lean PCOS: premenopausal female + cycle irregularity + ANY androgen elevation regardless of BMI → full PCOS panel.
+     T4→T3 conversion (low-T3): hypothyroid sx + TSH/Free T4 in range + (Free T3 low-normal OR Reverse T3 >250) → Free T3 + Reverse T3 + selenium + ferritin.
+     Subclinical hemochromatosis: transferrin sat >45% any ferritin → iron panel repeat + HFE genetics.
+     MGUS surveillance: globulin 3.0–3.5 + age >50 → annual SPEP + free light chains. Monitoring framing.
+     Functional B12: B12 500–800 + (vegetarian/metformin/PPI/fatigue/neuropathy) → MMA + homocysteine.
+     Hidden Lp(a): normal LDL + family hx early MI/stroke → Lp(a) once-in-lifetime.
+     ADHD/RLS-iron: ferritin <75 + cognitive/sleep/mood → optimize to >100 BEFORE stimulants.
+     POTS: palpitations + standing lightheadedness + fatigue + (female 15–45 OR post-viral) → 10-min orthostatic stand test + cardiology.
+     Autoimmune neutropenia: WBC <4.0 sustained + recurrent infections → CBC repeat + ANA + B12 + folate.
+     SIBO/IMO: persistent bloating + post-meal gas + symptoms worse on prebiotic foods → lactulose breath test.
 
-   Do NOT use this list to fish for tests on healthy patients. Use it when a marker on this draw or a symptom on file matches one of the patterns above. The pattern itself IS the trigger.
+   Use these patterns ONLY when a marker on THIS draw OR a symptom on file matches the cluster. Don't fish on healthy patients.
 4. AGE AND SEX CONTEXT: Always consider the patient's age and sex when evaluating findings. A value that is "normal" for a 50-year-old male may be concerning in an 18-year-old female. Apply age/sex-appropriate clinical reasoning.
 
 FEMALE HORMONE RULE: Do NOT interpret estradiol, progesterone, FSH, or LH as abnormal in premenopausal females unless extreme (FSH >40, estradiol <10 or >500, progesterone >30). These vary by cycle phase. A single blood draw cannot diagnose "estrogen dominance" without knowing cycle day. Note this limitation if discussing these values.
@@ -327,7 +326,7 @@ Be concise. Scannable in 3 minutes.`,
 PATIENT: ${age ? `${age}yo` : 'age unknown'} ${profile?.sex ?? ''}
 MODE: ${isHealthy ? 'healthy — apply HEALTHY MODE rules (proactive/optimization framing, no alarmism)' : 'standard'}
 USER'S TOP GOALS (their stated reasons for using this app — your discussion points and tests should connect to these): ${goalsStr}
-DIAGNOSED CONDITIONS (GROUND TRUTH — use these exact names; UC is NOT Crohn's; do NOT infer a different diagnosis from medications. NEVER use phrases like "inferred from medication", "not listed but", "likely have", "suggests you have", "your meds suggest". If a condition isn't in this list, do not name it ANYWHERE in the output — talk about medication effects without naming the condition the medication treats): ${condStr}
+DIAGNOSED CONDITIONS (GROUND TRUTH — verbatim names only; never infer a condition from a medication. If a condition isn't in this list, don't name or allude to it anywhere — talk about med effects without naming the condition the med treats. A scrubber catches stragglers): ${condStr}
 MEDICATIONS:\n${medsStr}
 CURRENT SUPPLEMENTS (consider lab interactions when interpreting findings — e.g., creatine→creatinine artifact, biotin→TSH/T3/T4 interference, B12→masks deficiency, niacin→HDL/ALT, TRT→Hct/LH/FSH, vitamin K2→INR with warfarin): ${suppsStr}
 SYMPTOMS:\n${sympStr}
