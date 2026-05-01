@@ -269,7 +269,7 @@ TESTS — TWO SEPARATE LISTS:
    - This list MUST cover BOTH:
        (i) RE-MEASURE: every currently-abnormal marker on this draw (out-of-range OR Watch-tier). At the visit, the patient asks the doctor to re-order these alongside any new tests.
        (ii) NEW TESTS: tests not on the current draw that are triggered by symptoms (a), medication depletions (b), or standard-of-care baseline gaps (d).
-   - The clinical reality: when a patient walks into their doctor's office, they ask for ONE comprehensive panel — not "retests" vs "new tests" as separate buckets. The Wellness Plan splits them visually into two folders for clarity, but tests_to_request here should contain ALL of them combined.
+   - The clinical reality: when a patient walks into their doctor's office, they ask for ONE comprehensive panel — not "retests" vs "new tests" as separate buckets. tests_to_request must contain ALL of them combined; this matches the Wellness Plan's single unified retest_timeline list.
    - MAXIMUM 14 tests for treatment-mode patients with multi-system issues; 5-7 for healthy patients. Be COMPREHENSIVE for sick patients — 5-test panels on someone with UC + dyslipidemia + low T + insulin resistance leave the patient back at the doctor in 6 weeks for round two. If fewer triggers exist, return fewer.
    - When the draw is BARE-BONES (under ~30 markers, no ApoB/Lp(a)/A1c/vitamin D/ferritin/TSH/B12), prioritize trigger (d) baseline gaps so the patient walks out of the next visit with a complete workup.
    - ONE focused workup per row. Do NOT bundle across organ systems.
