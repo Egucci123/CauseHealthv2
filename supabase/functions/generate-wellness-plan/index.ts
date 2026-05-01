@@ -443,6 +443,7 @@ HARD RULES — FOLLOW EXACTLY:
 
     CHAIN DIVERSITY:
       - If user has 3+ chains in EATS_OUT_AT, fast_food meals MUST cover at least 4 different chains. Don't stack 4 Chipotle ideas — rotate Chick-fil-A, Wendy's, Subway, McDonald's, Panera, Taco Bell, Dunkin, Five Guys, Burger King, Cracker Barrel.
+      - HARD CHAIN CAP: maximum 3 meals from any single chain across the WHOLE plan. If candidates show 6 Wawa entries, you pick at most 3. Same rule for Sheetz, Chick-fil-A, 7-Eleven, Costco, Trader Joe's, every chain. If you exceed this you've failed the variety test.
 
     SLOT TARGETS:
       - 4-6 BREAKFAST options (or 1-2 if pattern is "skip").

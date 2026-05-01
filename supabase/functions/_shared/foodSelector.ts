@@ -149,16 +149,37 @@ export function selectMealCandidates(ctx: SelectorContext, topN: number = 60): M
     return { meal: m, score };
   });
 
-  // 4) Sort + cap with breadth control. Per-playbook cap = 8 (was 4) so AI
-  // sees enough Wawa variety, enough crock-pot variety, etc. The user wants
-  // 21-30 meals output to cover a full week of variety, so we surface 60
-  // candidates with up to 8 per playbook.
+  // 4) Sort + cap with breadth control across two dimensions:
+  //   • per-playbook cap = 6 (was 8) so each category gets variety
+  //   • per-chain cap = 3 — prevents a single chain (Wawa, Chick-fil-A) from
+  //     dominating just because the user listed it. With 11 Wawa entries +
+  //     a +2 chain-match bonus, the old code put 7+ Wawa meals in front of
+  //     the AI and the plan came out 30% Wawa. Hard cap at 3 forces the AI
+  //     to pull from Sheetz, 7-Eleven, etc. when those are also listed.
   scored.sort((a, b) => b.score - a.score);
   const perPlaybookCount = new Map<Playbook, number>();
+  const perChainCount = new Map<string, number>();
   const out: MealEntry[] = [];
+
+  // Detect a chain "key" from the meal — uses constraint.requiresChain[0]
+  // when present (Wawa, Chick-fil-A, etc.), otherwise falls back to the
+  // first significant word of the meal name (so home-cooked meals don't
+  // accidentally count toward the same chain bucket).
+  const chainKey = (m: MealEntry): string | null => {
+    const required = m.constraint?.requiresChain?.[0];
+    if (required) return required.toLowerCase();
+    return null;
+  };
+
   for (const s of scored) {
     const count = perPlaybookCount.get(s.meal.playbook) ?? 0;
-    if (count >= 8) continue;
+    if (count >= 6) continue;
+    const ck = chainKey(s.meal);
+    if (ck) {
+      const cc = perChainCount.get(ck) ?? 0;
+      if (cc >= 3) continue;
+      perChainCount.set(ck, cc + 1);
+    }
     out.push(s.meal);
     perPlaybookCount.set(s.meal.playbook, count + 1);
     if (out.length >= topN) break;
