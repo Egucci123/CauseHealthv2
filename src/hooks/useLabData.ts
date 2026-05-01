@@ -29,7 +29,10 @@ export function useLabDraws() {
     queryKey: ['labDraws', user?.id], enabled: !!user?.id,
     // 10s staleTime keeps list responsive to upload completions but stops
     // the sign-in flicker from refetching on every component remount.
-    staleTime: 10 * 1000, refetchOnMount: true, refetchOnWindowFocus: true,
+    // 'always' (not `true`) — guarantees a refetch on every page mount even
+    // within the staleTime window. Was causing users to see stale lab lists
+    // when navigating between pages quickly without refreshing.
+    staleTime: 10 * 1000, refetchOnMount: 'always', refetchOnWindowFocus: true,
     queryFn: async () => {
       const { data, error } = await supabase.from('lab_draws').select('*').eq('user_id', user!.id).order('draw_date', { ascending: false }).limit(100);
       if (error) throw error;
@@ -71,7 +74,10 @@ export function useLatestLabDraw() {
   const qc = useQueryClient();
   const query = useQuery({
     queryKey: ['latestLabDraw', user?.id], enabled: !!user?.id,
-    staleTime: 30 * 1000, refetchOnMount: true,
+    // 'always' so the latest-draw card on the dashboard stays fresh when
+    // user bounces between pages — staleTime alone doesn't guarantee a
+    // refetch on mount.
+    staleTime: 30 * 1000, refetchOnMount: 'always',
     queryFn: async () => {
       const { data, error } = await supabase
         .from('lab_draws').select('*')

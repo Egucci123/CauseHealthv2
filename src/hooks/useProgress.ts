@@ -24,7 +24,7 @@ export interface CheckInInput {
 export function useProgressEntries(days = 90) {
   const userId = useAuthStore(s => s.user?.id);
   return useQuery({
-    queryKey: ['progress', userId, days], enabled: !!userId, staleTime: 15 * 1000,
+    queryKey: ['progress', userId, days], enabled: !!userId, staleTime: 15 * 1000, refetchOnMount: 'always',
     queryFn: async () => {
       const since = format(subDays(new Date(), days), 'yyyy-MM-dd');
       const { data, error } = await supabase.from('progress_entries').select('*').eq('user_id', userId!).gte('logged_at', since).order('logged_at', { ascending: true });
@@ -68,7 +68,7 @@ export function useLogCheckIn() {
 export function useLabTrends(markerName: string) {
   const userId = useAuthStore(s => s.user?.id);
   return useQuery({
-    queryKey: ['lab-trend', userId, markerName], enabled: !!userId && !!markerName, staleTime: 30 * 1000,
+    queryKey: ['lab-trend', userId, markerName], enabled: !!userId && !!markerName, staleTime: 30 * 1000, refetchOnMount: 'always',
     queryFn: async () => {
       const { data: draws, error: drawsErr } = await supabase.from('lab_draws').select('id, draw_date').eq('user_id', userId!).eq('processing_status', 'complete').order('draw_date', { ascending: true });
       if (drawsErr) throw drawsErr;
@@ -86,7 +86,7 @@ export function useLabTrends(markerName: string) {
 export function useSupplementCompliance() {
   const user = useAuthStore(s => s.user);
   return useQuery({
-    queryKey: ['supplementCompliance', user?.id, getToday()], enabled: !!user?.id,
+    queryKey: ['supplementCompliance', user?.id, getToday()], enabled: !!user?.id, refetchOnMount: 'always',
     queryFn: async () => {
       const { data, error } = await supabase.from('supplement_compliance').select('*').eq('user_id', user!.id).eq('taken_date', getToday());
       if (error) throw error;
@@ -128,7 +128,7 @@ export function useToggleCompliance() {
 export function useComplianceStreak() {
   const user = useAuthStore(s => s.user);
   return useQuery({
-    queryKey: ['complianceStreak', user?.id], enabled: !!user?.id, staleTime: 30 * 1000,
+    queryKey: ['complianceStreak', user?.id], enabled: !!user?.id, staleTime: 30 * 1000, refetchOnMount: 'always',
     queryFn: async () => {
       const { data, error } = await supabase.from('supplement_compliance').select('taken_date, taken').eq('user_id', user!.id).eq('taken', true).order('taken_date', { ascending: false }).limit(60);
       if (error) throw error;
