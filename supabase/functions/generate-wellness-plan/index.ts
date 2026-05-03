@@ -4,7 +4,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { GOAL_LABELS, formatGoals } from '../_shared/goals.ts';
 import { buildRareDiseaseBlocklist, extractRareDiseaseContext } from '../_shared/rareDiseaseGate.ts';
 import { buildUniversalTestInjections } from '../_shared/testInjectors.ts';
-import { hasCondition } from '../_shared/conditionAliases.ts';
+import { hasCondition, detectConditions } from '../_shared/conditionAliases.ts';
 import { isOnMed } from '../_shared/medicationAliases.ts';
 import { classifyPatient } from '../_shared/patientClassifier.ts';
 import { runAdequacyChecks, runSelfSupplementChecks } from '../_shared/replacementTherapyChecks.ts';
@@ -14,6 +14,7 @@ import { detectAlreadyOptimal, applyAlreadyOptimalScrub } from '../_shared/alrea
 import { detectTestQualityIssues } from '../_shared/testQualityFlagger.ts';
 import { buildCausalChain, renderChainForPrompt } from '../_shared/causalChainBuilder.ts';
 import { buildPredictedChanges, renderPredictionsForPrompt } from '../_shared/predictiveOutcomes.ts';
+import { synthesizeAcrossSpecialties, renderSynthesisForPrompt } from '../_shared/specialtySynthesizer.ts';
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -248,6 +249,18 @@ serve(async (req) => {
       supplementKeys: [],   // pathway engine fills these post-AI; we re-run after for completeness
     });
     console.log(`[wellness-plan] predicted changes: ${predictions.length} markers projected`);
+
+    // ── Cross-specialty synthesis (Layer F) ───────────────────────────────
+    // Tag every finding with its specialty silo and surface what no single
+    // specialist would catch. Universal — adding a specialty mapping for a
+    // new condition is one line.
+    const detectedConditionKeys = detectConditions((condStr ?? '').toLowerCase());
+    const synthesis = synthesizeAcrossSpecialties({
+      adequacyFlags,
+      causalChain,
+      conditionKeys: detectedConditionKeys,
+    });
+    console.log(`[wellness-plan] specialty synthesis: ${synthesis.specialtyCount} specialties (${synthesis.specialties.join(',')})`);
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -502,6 +515,7 @@ ${qualityFlags.map(f => `  - ${f.title} — ${f.detail} (you saw: ${f.evidence})
 ` : ''}
 ${causalChain.nodes.length > 0 ? renderChainForPrompt(causalChain) + '\n' : ''}
 ${predictions.length > 0 ? renderPredictionsForPrompt(predictions) + '\n' : ''}
+${synthesis.specialtyCount >= 2 ? renderSynthesisForPrompt(synthesis) + '\n' : ''}
 ${isOptimizationMode ? `OPTIMIZATION CONTEXT: Patient labs are mostly healthy. Frame the plan around longevity optimization, not disease treatment. Phase names: "Build Foundation (Months 1-2)", "Optimize (Months 3-4)", "Sustain & Track (Months 5-6)". Retest cadence is 6 months, set retest_at: "6 months". Lifestyle interventions focus on longevity science: zone 2 cardio, resistance training, sleep optimization, cold/heat exposure, stress resilience, metabolic health.
 
 CRITICAL — optimization mode does NOT relax the strict triage rule. For healthy patients with limited tested markers, retest_timeline should fill STANDARD-OF-CARE BASELINE GAPS — tests the doctor SHOULD have ordered for someone this age/sex but didn't:
@@ -855,6 +869,7 @@ CRITICAL OUTPUT RULES:
       causalRootKeys: causalChain.topInterventions.map(n => n.key),
       supplementKeys: plan.supplement_stack.map((s: any) => s?._key).filter(Boolean),
     });
+    plan.specialty_synthesis = synthesis;
 
     // (Pivot May 2026: meal scrubber + meal padder + meal-related validators
     // removed alongside meals[] in the output. App is no longer a meal planner.)
