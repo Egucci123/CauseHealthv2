@@ -13,6 +13,7 @@ import { pushRetestByKey, finalizeRetestTimeline } from '../_shared/retestRegist
 import { detectAlreadyOptimal, applyAlreadyOptimalScrub } from '../_shared/alreadyOptimalFilter.ts';
 import { detectTestQualityIssues } from '../_shared/testQualityFlagger.ts';
 import { buildCausalChain, renderChainForPrompt } from '../_shared/causalChainBuilder.ts';
+import { buildPredictedChanges, renderPredictionsForPrompt } from '../_shared/predictiveOutcomes.ts';
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -236,6 +237,17 @@ serve(async (req) => {
       sleepHours: (profile?.lifestyle as any)?.sleepHours ?? null,
     });
     console.log(`[wellness-plan] causal chain: ${causalChain.nodes.length} nodes, ${causalChain.edges.length} edges, top=[${causalChain.topInterventions.map(n => n.key).join(',')}]`);
+
+    // ── Predicted outcomes (Layer E) ──────────────────────────────────────
+    // Falsifiable forecasts. Computed pre-AI from adequacy flags + causal
+    // chain roots so the AI can reference them in the summary. Universal —
+    // adding a new effect = pushing one row to EFFECTS in predictiveOutcomes.
+    const predictions = buildPredictedChanges({
+      adequacyKeys: adequacyFlags.map(f => f.key),
+      causalRootKeys: causalChain.topInterventions.map(n => n.key),
+      supplementKeys: [],   // pathway engine fills these post-AI; we re-run after for completeness
+    });
+    console.log(`[wellness-plan] predicted changes: ${predictions.length} markers projected`);
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -489,6 +501,7 @@ ${qualityFlags.length > 0 ? `TEST-QUALITY CAVEATS — these tests appear "in ran
 ${qualityFlags.map(f => `  - ${f.title} — ${f.detail} (you saw: ${f.evidence})`).join('\n')}
 ` : ''}
 ${causalChain.nodes.length > 0 ? renderChainForPrompt(causalChain) + '\n' : ''}
+${predictions.length > 0 ? renderPredictionsForPrompt(predictions) + '\n' : ''}
 ${isOptimizationMode ? `OPTIMIZATION CONTEXT: Patient labs are mostly healthy. Frame the plan around longevity optimization, not disease treatment. Phase names: "Build Foundation (Months 1-2)", "Optimize (Months 3-4)", "Sustain & Track (Months 5-6)". Retest cadence is 6 months, set retest_at: "6 months". Lifestyle interventions focus on longevity science: zone 2 cardio, resistance training, sleep optimization, cold/heat exposure, stress resilience, metabolic health.
 
 CRITICAL — optimization mode does NOT relax the strict triage rule. For healthy patients with limited tested markers, retest_timeline should fill STANDARD-OF-CARE BASELINE GAPS — tests the doctor SHOULD have ordered for someone this age/sex but didn't:
@@ -836,6 +849,12 @@ CRITICAL OUTPUT RULES:
     };
     plan.already_at_goal = alreadyOptimal.audit;     // shown in UI as "What's already working"
     plan.causal_chain = causalChain;                  // Layer A render data for the cascade view
+    // Re-build predictions post-pathway-engine so injected supplements are included.
+    plan.predicted_changes = buildPredictedChanges({
+      adequacyKeys: adequacyFlags.map(f => f.key),
+      causalRootKeys: causalChain.topInterventions.map(n => n.key),
+      supplementKeys: plan.supplement_stack.map((s: any) => s?._key).filter(Boolean),
+    });
 
     // (Pivot May 2026: meal scrubber + meal padder + meal-related validators
     // removed alongside meals[] in the output. App is no longer a meal planner.)
