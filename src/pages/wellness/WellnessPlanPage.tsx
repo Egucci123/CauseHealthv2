@@ -256,6 +256,24 @@ const RECIPE_LINKS: { label: string; subtitle: string; url: string }[] = [
   { label: 'Budget Bytes',         subtitle: 'Cheap, simple, real-life recipes — cost per serving', url: 'https://www.budgetbytes.com/' },
 ];
 
+// Fast-food smart-orders + drive-thru hacks. Different audience than the
+// recipe sites — for "I'm at the drive-thru, what do I order?" not
+// "what should I cook tonight?". CauseHealth doesn't curate these
+// either; Eat This, Not That has been the dedicated brand for this since
+// 2007 with per-chain smart-order guides. CalorieKing is the lookup tool
+// for exact macros at any chain item.
+const FAST_FOOD_LINKS: { label: string; subtitle: string; url: string }[] = [
+  { label: 'Eat This, Not That!',
+    subtitle: 'The dedicated site for fast-food swaps + smart orders. Per-chain guides for Chick-fil-A, McDonald\'s, Wendy\'s, Wawa, Subway, Chipotle, Taco Bell, Starbucks, etc.',
+    url: 'https://www.eatthis.com/category/restaurants/' },
+  { label: 'CalorieKing — Restaurant Nutrition',
+    subtitle: 'Look up exact calories, protein, carbs, and sodium for any item at any chain before you order.',
+    url: 'https://www.calorieking.com/us/en/foods/restaurants/' },
+  { label: 'Healthline — Healthy Fast Food Guide',
+    subtitle: 'Medically reviewed best orders at 30+ chains (good when you want a single article instead of browsing).',
+    url: 'https://www.healthline.com/nutrition/healthiest-fast-food' },
+];
+
 const EatTab = ({ plan }: { plan: any }) => {
   const pattern = plan.eating_pattern ?? null;
   const hasPattern = pattern && (pattern.name || (Array.isArray(pattern.emphasize) && pattern.emphasize.length > 0));
@@ -272,6 +290,21 @@ const EatTab = ({ plan }: { plan: any }) => {
                 <div className="flex-1 min-w-0">
                   <p className="text-body text-clinical-charcoal text-sm font-semibold">{l.label}</p>
                   <p className="text-precision text-[0.65rem] text-clinical-stone">{l.subtitle}</p>
+                </div>
+                <span className="material-symbols-outlined text-clinical-stone text-[14px]">open_in_new</span>
+              </a>
+            ))}
+          </div>
+        </div>
+        <div className="bg-clinical-white rounded-[10px] shadow-card border-t-[3px] border-[#E8922A] p-5">
+          <p className="text-precision text-[0.65rem] font-bold tracking-widest uppercase text-clinical-stone mb-3">Fast-food smart orders + hacks</p>
+          <div className="space-y-2">
+            {FAST_FOOD_LINKS.map(l => (
+              <a key={l.url} href={l.url} target="_blank" rel="noopener noreferrer" className="flex items-start gap-3 p-3 rounded-[8px] hover:bg-clinical-cream transition-colors">
+                <span className="material-symbols-outlined text-[#E8922A] text-[18px] mt-0.5">fastfood</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-body text-clinical-charcoal text-sm font-semibold">{l.label}</p>
+                  <p className="text-precision text-[0.65rem] text-clinical-stone leading-snug">{l.subtitle}</p>
                 </div>
                 <span className="material-symbols-outlined text-clinical-stone text-[14px]">open_in_new</span>
               </a>
@@ -336,7 +369,7 @@ const EatTab = ({ plan }: { plan: any }) => {
       <div className="bg-clinical-white rounded-[10px] shadow-card border-t-[3px] border-[#D4A574] p-5">
         <div className="flex items-center gap-2 mb-1">
           <span className="material-symbols-outlined text-[#D4A574] text-[20px]">menu_book</span>
-          <p className="text-precision text-[0.65rem] font-bold tracking-widest uppercase text-clinical-charcoal">Find Recipes</p>
+          <p className="text-precision text-[0.65rem] font-bold tracking-widest uppercase text-clinical-charcoal">Find Recipes (when you're cooking)</p>
         </div>
         <p className="text-body text-clinical-stone text-xs mb-4 leading-relaxed">CauseHealth tells you the diet pattern. These trusted recipe sites do recipes better than any app could.</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -346,6 +379,27 @@ const EatTab = ({ plan }: { plan: any }) => {
               <div className="flex-1 min-w-0">
                 <p className="text-body text-clinical-charcoal text-sm font-semibold">{l.label}</p>
                 <p className="text-precision text-[0.65rem] text-clinical-stone">{l.subtitle}</p>
+              </div>
+              <span className="material-symbols-outlined text-clinical-stone text-[14px]">open_in_new</span>
+            </a>
+          ))}
+        </div>
+      </div>
+
+      {/* Fast-food smart orders + hacks — separate audience: drive-thru / convenience-store moments */}
+      <div className="bg-clinical-white rounded-[10px] shadow-card border-t-[3px] border-[#E8922A] p-5">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="material-symbols-outlined text-[#E8922A] text-[20px]">fastfood</span>
+          <p className="text-precision text-[0.65rem] font-bold tracking-widest uppercase text-clinical-charcoal">Fast-Food Smart Orders + Hacks (when you're not cooking)</p>
+        </div>
+        <p className="text-body text-clinical-stone text-xs mb-4 leading-relaxed">For when you're at a drive-thru, gas station, or convenience store. These sites have per-chain smart-order guides + macro lookups so you can pick the order that fits your eating pattern without guessing.</p>
+        <div className="space-y-2">
+          {FAST_FOOD_LINKS.map(l => (
+            <a key={l.url} href={l.url} target="_blank" rel="noopener noreferrer" className="flex items-start gap-3 p-3 rounded-[8px] bg-clinical-cream/50 hover:bg-clinical-cream transition-colors border border-outline-variant/10">
+              <span className="material-symbols-outlined text-[#E8922A] text-[18px] mt-0.5">fastfood</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-body text-clinical-charcoal text-sm font-semibold">{l.label}</p>
+                <p className="text-precision text-[0.65rem] text-clinical-stone leading-snug">{l.subtitle}</p>
               </div>
               <span className="material-symbols-outlined text-clinical-stone text-[14px]">open_in_new</span>
             </a>
