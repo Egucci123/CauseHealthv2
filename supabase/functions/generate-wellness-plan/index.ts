@@ -1,12 +1,15 @@
 // supabase/functions/generate-wellness-plan/index.ts
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { isHealthyMode } from '../_shared/healthMode.ts';
 import { GOAL_LABELS, formatGoals } from '../_shared/goals.ts';
 import { buildRareDiseaseBlocklist, extractRareDiseaseContext } from '../_shared/rareDiseaseGate.ts';
 import { buildUniversalTestInjections } from '../_shared/testInjectors.ts';
 import { hasCondition } from '../_shared/conditionAliases.ts';
 import { isOnMed } from '../_shared/medicationAliases.ts';
+import { classifyPatient } from '../_shared/patientClassifier.ts';
+import { runAdequacyChecks, runSelfSupplementChecks } from '../_shared/replacementTherapyChecks.ts';
+import { runPathways } from '../_shared/pathwayEngine.ts';
+import { pushRetestByKey, finalizeRetestTimeline } from '../_shared/retestRegistry.ts';
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -147,10 +150,37 @@ serve(async (req) => {
       .filter(n => !testedNames.some(t => t.includes(n.toLowerCase().split(' ')[0])));
     const notTestedStr = notTested.join(', ');
 
-    // Determine optimization mode: if mostly healthy markers, switch to longevity protocol.
-    // Threshold + flag set live in _shared/healthMode.ts.
-    const isOptimizationMode = isHealthyMode(labValues);
     const age = profile?.date_of_birth ? Math.floor((Date.now() - new Date(profile.date_of_birth).getTime()) / 31557600000) : null;
+
+    // ── Severity-aware patient classification ─────────────────────────────
+    // Replaces the old `isHealthyMode` which counted out-of-range markers as
+    // a percentage. Nona Lynn had 4 critical-tier flags out of 81 markers
+    // (~5%) and was classified "healthy" — wrong. New rule: ANY critical
+    // flag → critical_treatment regardless of percentage. Universal across
+    // every condition because we count critical flags + ANY Tier-1 dx.
+    const classification = classifyPatient({
+      labValues,
+      symptoms: symptoms as any,
+      conditionsLower: (condStr ?? '').toLowerCase(),
+      symptomsLower: (sympStr ?? '').toLowerCase(),
+    });
+    const isOptimizationMode = classification.isOptimization;
+    console.log(`[wellness-plan] mode=${classification.mode} reasons="${classification.reasons.join(' | ')}" flags=${JSON.stringify(classification.flags)}`);
+
+    // ── Replacement-therapy adequacy (universal, data-driven) ─────────────
+    // 7 rules covering thyroid replacement, TRT, insulin/sulfonylurea,
+    // metformin/SGLT2/GLP1, ACE/ARB, diuretics, statin. Adding a new drug
+    // class adequacy check is editing the RULES array — universal coverage
+    // for every patient on the matching class.
+    const adequacyFlags = runAdequacyChecks({
+      medsLower: (medsStr ?? '').toLowerCase(),
+      labValues,
+      age,
+      sex: profile?.sex ?? null,
+    });
+    const userSuppText = (supps ?? []).map((s: any) => `${s.name ?? ''} ${s.dose ?? ''}`).join(' ');
+    adequacyFlags.push(...runSelfSupplementChecks(userSuppText, labValues, age, profile?.sex ?? null));
+    console.log(`[wellness-plan] adequacy flags: ${adequacyFlags.map(f => `${f.key}(${f.severity})`).join(', ') || 'none'}`);
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -389,7 +419,14 @@ HARD RULES — FOLLOW EXACTLY:
 PATIENT: ${age ? `${age}yo` : 'age unknown'} ${profile?.sex ?? ''}
 USER'S PRIMARY GOAL (the structural anchor for the plan — branch around this per rule 10): ${userGoals[0] ? (GOAL_LABELS[userGoals[0]] ?? userGoals[0]) : 'understand bloodwork'}
 USER'S OTHER GOALS (secondary): ${goalsStr}
-MODE: ${isOptimizationMode ? 'optimization' : 'treatment'}
+MODE: ${classification.mode} (reasons: ${classification.reasons.join('; ')})
+RETEST_CADENCE: ${classification.retestCadence}
+
+${adequacyFlags.length > 0 ? `REPLACEMENT-THERAPY / SELF-SUPPLEMENT ADEQUACY FLAGS — these MUST appear in your headline + summary + today_actions. The user pays $20 for the app to catch what their doctor missed; do not bury these:
+${adequacyFlags.map(f => `  - [${f.severity.toUpperCase()}] ${f.title} — ${f.evidence}. ${f.detail}`).join('\n')}
+HEADLINE MUST MENTION: ${adequacyFlags.filter(f => f.headlineMustMention).map(f => f.headlineMustMention).join(' AND ') || '(none)'}
+TODAY_ACTIONS MUST INCLUDE: ${adequacyFlags.map(f => `"${f.todayAction}"`).filter(Boolean).join(' AND ') || '(none)'}
+` : ''}
 ${isOptimizationMode ? `OPTIMIZATION CONTEXT: Patient labs are mostly healthy. Frame the plan around longevity optimization, not disease treatment. Phase names: "Build Foundation (Months 1-2)", "Optimize (Months 3-4)", "Sustain & Track (Months 5-6)". Retest cadence is 6 months, set retest_at: "6 months". Lifestyle interventions focus on longevity science: zone 2 cardio, resistance training, sleep optimization, cold/heat exposure, stress resilience, metabolic health.
 
 CRITICAL — optimization mode does NOT relax the strict triage rule. For healthy patients with limited tested markers, retest_timeline should fill STANDARD-OF-CARE BASELINE GAPS — tests the doctor SHOULD have ordered for someone this age/sex but didn't:
@@ -635,8 +672,8 @@ CRITICAL OUTPUT RULES:
       plan = walkJ(plan);
     } catch (e) { console.error('[wellness-plan] jargon-scrub error:', e); }
 
-    // Tag plan mode for frontend display
-    plan.plan_mode = isOptimizationMode ? 'optimization' : 'treatment';
+    // (plan.plan_mode is set after the post-flight adequacy block below
+    // using the severity-aware classifier — replaces the old binary mode.)
 
     // Normalize supplement_stack: cap at 7, sort by rank, renumber 1..N.
     // Many users take only top 2-3 — rank ordering must be reliable.
@@ -684,6 +721,57 @@ CRITICAL OUTPUT RULES:
     }
     if (!Array.isArray(plan.supplement_stack)) plan.supplement_stack = [];
     if (!Array.isArray(plan.today_actions)) plan.today_actions = [];
+    if (!Array.isArray(plan.retest_timeline)) plan.retest_timeline = [];
+
+    // ── Adequacy flags: post-flight injection (universal) ────────────────
+    // Surface every adequacy flag (thyroid under-replaced, TRT polycythemia,
+    // glycemic uncontrolled, BP-med electrolyte issues, statin liver, DHEA
+    // not converting, etc.) as: top-level `adequacy_flags`, today_actions,
+    // and required retest entries via the canonical registry.
+    if (adequacyFlags.length > 0) {
+      plan.adequacy_flags = adequacyFlags.map(f => ({
+        key: f.key, severity: f.severity, title: f.title,
+        detail: f.detail, evidence: f.evidence,
+      }));
+      const existingActionsLower = plan.today_actions.map((a: any) => String(a?.action ?? '').toLowerCase()).join(' | ');
+      for (const f of adequacyFlags) {
+        if (!f.todayAction) continue;
+        const topicHook = f.key.toLowerCase().split('_')[0];
+        if (existingActionsLower.includes(topicHook)) continue;
+        plan.today_actions.unshift({
+          emoji: f.severity === 'critical' ? '🚨' : '⚠️',
+          action: f.todayAction,
+          why: `${f.title} — ${f.evidence}.`,
+          category: 'take',
+          _adequacy_key: f.key,
+        });
+        console.log(`[wellness-plan] Adequacy: injected today_action for ${f.key}`);
+      }
+      if (plan.today_actions.length > 3) plan.today_actions = plan.today_actions.slice(0, 3);
+
+      for (const f of adequacyFlags) {
+        for (const testKey of f.retestKeysToInject) {
+          const inserted = pushRetestByKey(
+            plan.retest_timeline,
+            testKey,
+            `${f.title} (${f.evidence}) — confirm response in 6-12 weeks`,
+            'b',
+            classification.retestCadence,
+          );
+          if (inserted) console.log(`[wellness-plan] Adequacy: injected ${testKey} for ${f.key}`);
+        }
+      }
+    }
+
+    // Stamp the plan with classification for client + audit.
+    plan.plan_mode = classification.mode;
+    plan._classification = {
+      mode: classification.mode,
+      reasons: classification.reasons,
+      flags: classification.flags,
+      retest_cap: classification.retestCap,
+      retest_cadence: classification.retestCadence,
+    };
 
     // (Pivot May 2026: meal scrubber + meal padder + meal-related validators
     // removed alongside meals[] in the output. App is no longer a meal planner.)
@@ -886,182 +974,54 @@ CRITICAL OUTPUT RULES:
       const symptomsLower = (sympStr ?? '').toLowerCase();
       const labsLower = (allLabsStr ?? '').toLowerCase();
 
-      // Conditions/meds delegated to canonical registries (May 2026 refactor).
-      // "Hypothyroidism" now correctly matches the Hashimoto's path (Nona fix).
-      const hasUC = hasCondition(conditionsLower, 'ibd');
-      const hasAutoimmune = hasUC
-        || hasCondition(conditionsLower, 'hashimotos')
-        || hasCondition(conditionsLower, 'graves')
-        || hasCondition(conditionsLower, 'lupus')
-        || hasCondition(conditionsLower, 'ra')
-        || hasCondition(conditionsLower, 'psoriasis')
-        || hasCondition(conditionsLower, 'ms')
-        || hasCondition(conditionsLower, 'celiac')
-        || hasCondition(conditionsLower, 'sjogrens')
-        || hasCondition(conditionsLower, 'long_covid');
-      const hasJointPain = /\b(joint pain|joint stiffness|arthralg|stiff)/.test(symptomsLower);
-      const hasFatigueOrInflam = /\b(fatigue|tired|exhaust|low energy|brain fog|hair loss|hair thin|joint)/.test(symptomsLower);
-
-      const cbcAbnormal = /\b(rbc|hematocrit|hct|hemoglobin|hgb|wbc|white blood|platelet|mcv|mch|rdw)\b[^\n]*\[(low|high|critical)/i.test(labsLower);
-
-      if ((hasAutoimmune || hasJointPain || hasFatigueOrInflam) && !has(/\b(hs[- ]?crp|c[- ]?reactive protein|inflammation marker)\b/i)) {
-        const trigger = hasUC ? 'UC inflammation tracking + CV risk'
-          : hasAutoimmune ? 'autoimmune inflammation tracking'
-          : 'symptom-driven inflammation marker';
-        plan.retest_timeline.push({
-          marker: 'High-Sensitivity C-Reactive Protein (hs-CRP)',
-          retest_at: '12 weeks',
-          why: `(a)/(e) ${trigger} — standard inflammation marker for autoimmune activity and CV risk. Universally covered; routine for UC/IBD monitoring.`,
-        });
-        console.log('[wellness-plan] Injected hs-CRP retest — missed by AI');
-      }
-
-      if (cbcAbnormal && !has(/\bcbc\b|complete blood count|differential/i)) {
-        plan.retest_timeline.push({
-          marker: 'Complete Blood Count (CBC) with Differential',
-          retest_at: '12 weeks',
-          why: '(c) Existing draw shows abnormal CBC values — re-measure to confirm trend and rule out hemoconcentration. Routine standard of care.',
-        });
-        console.log('[wellness-plan] Injected CBC retest — missed by AI');
-      }
-
-      // Medication-depletion test injections — these are required tests the AI
-      // sometimes drops despite the universal triage rule (b). Documented
-      // pharmacology + universal insurance coverage = no excuse to miss them.
       const medsLower = (medsStr ?? '').toLowerCase();
-      // Med-class detection via registry. New brand names → add to registry once.
-      const onMesalamine = isOnMed(medsLower, 'mesalamine_5asa');
-      const onMetformin = isOnMed(medsLower, 'metformin');
-      const onPPI = isOnMed(medsLower, 'ppi');
-      const onStatin = isOnMed(medsLower, 'statin');
 
-      if ((onMesalamine || onMetformin || onPPI) && !has(/\bb[\s-]?12\b|cobalamin|methylmalonic|\bmma\b|homocysteine/i)) {
-        const med = onMesalamine ? 'mesalamine' : onMetformin ? 'metformin' : 'PPI';
-        plan.retest_timeline.push({
-          marker: 'Vitamin B12 Workup (Serum B12 + MMA + Homocysteine)',
-          retest_at: '12 weeks',
-          why: `(b) On ${med} — known to impair B12 absorption over time. Serum B12 alone misses tissue deficiency; MMA and homocysteine are the sensitive markers. Add to retest, treat if confirmed low.`,
-        });
-        console.log(`[wellness-plan] Injected B12 workup — ${med} depletion missed by AI`);
+      // ── Lab-pattern injectors (truly universal — driven by lab values, not condition keys) ──
+      // The two lab-driven injections that don't fit a condition/med/symptom
+      // pathway: any abnormal CBC marker → re-test the CBC; demographic iron-panel
+      // for menstruating women regardless of stated condition. Everything else
+      // (condition-specific, med-specific, symptom-specific) is handled by the
+      // universal pathway engine below.
+      const cbcAbnormal = /\b(rbc|hematocrit|hct|hemoglobin|hgb|wbc|white blood|platelet|mcv|mch|rdw)\b[^\n]*\[(low|high|critical)/i.test(labsLower);
+      if (cbcAbnormal) {
+        pushRetestByKey(plan.retest_timeline, 'cbc',
+          'Existing draw shows abnormal CBC values — re-measure to confirm trend',
+          'c', classification.retestCadence);
       }
-
-      if (onMesalamine && !has(/\bfolate\b|folic\s*acid|methylfolate|5-mthf/i)) {
-        plan.retest_timeline.push({
-          marker: 'Folate Workup (Serum + RBC Folate)',
-          retest_at: '12 weeks',
-          why: '(b) Mesalamine + UC inflammation impair folate absorption. Serum folate reflects recent intake; RBC folate reflects 3-month stores (gold standard). Confirm methylfolate dosing is adequate.',
-        });
-        console.log('[wellness-plan] Injected folate workup — mesalamine depletion missed by AI');
-      }
-
-      if (onStatin && /\b(muscle|aches|cramp|weakness|myalg)/.test(symptomsLower) && !has(/creatine kinase|\bck\b|^ck\b/i)) {
-        plan.retest_timeline.push({
-          marker: 'Creatine Kinase (CK)',
-          retest_at: '12 weeks',
-          why: '(b) On a statin + reports muscle/aches symptoms — CK rules out statin-induced myopathy/rhabdomyolysis. Standard monitoring; <$15 covered.',
-        });
-        console.log('[wellness-plan] Injected CK — statin + muscle symptoms missed by AI');
-      }
-
-      // Iron panel injection: hair loss + UC/IBD/menstruating women combo
-      const hasHairLoss = /\bhair (loss|thin|fall)/.test(symptomsLower);
+      // Menstruating-female iron-panel demographic injection (universal).
       const sex = (profile?.sex ?? '').toLowerCase();
       const ageNum = age ?? 99;
       const isMenstruatingFemale = sex === 'female' && ageNum >= 12 && ageNum <= 55;
-      if ((hasHairLoss || hasUC || isMenstruatingFemale) && !has(/iron panel|ferritin|tibc|transferrin sat/i)) {
-        const trigger = hasHairLoss && hasUC ? 'hair loss + UC malabsorption'
-          : hasHairLoss ? 'hair loss'
-          : hasUC ? 'UC malabsorption'
-          : 'menstruating + symptoms';
-        plan.retest_timeline.push({
-          marker: 'Iron Panel (Serum Iron, TIBC, Ferritin, Transferrin Saturation)',
-          retest_at: '12 weeks',
-          why: `(a)/(b) ${trigger} — full iron panel rules out functional iron deficiency that ferritin alone may miss. Standard of care for hair loss workup; $15 covered.`,
-        });
-        console.log(`[wellness-plan] Injected iron panel — ${trigger} missed by AI`);
+      if (isMenstruatingFemale) {
+        pushRetestByKey(plan.retest_timeline, 'iron_panel',
+          'Menstruating-female demographic — iron panel rules out functional deficiency that ferritin alone may miss',
+          'd', classification.retestCadence);
       }
 
-      // ── Universal condition-specific injectors ────────────────────────
-      // Apply to ANY chronic condition, not just UC. Each fires when the
-      // matching diagnosis is in the conditions list. Standard-of-care
-      // tests for that condition that the AI sometimes drops.
-      // Detection delegated to canonical registry — alias additions are
-      // a one-line edit there and propagate everywhere automatically.
-      const hasIBD = hasCondition(conditionsLower, 'ibd');
-      const hasHashimotos = hasCondition(conditionsLower, 'hashimotos');
-      const hasGraves = hasCondition(conditionsLower, 'graves');
-      const hasT2D = hasCondition(conditionsLower, 't2d');
-      const hasPCOS = hasCondition(conditionsLower, 'pcos');
-      const hasHTN = hasCondition(conditionsLower, 'hypertension');
-      const hasCKD = hasCondition(conditionsLower, 'ckd');
-      const hasCAD = hasCondition(conditionsLower, 'cad');
-      const hasLupus = hasCondition(conditionsLower, 'lupus');
-      const hasRA = hasCondition(conditionsLower, 'ra');
-      const hasOsteo = hasCondition(conditionsLower, 'osteoporosis');
-
-      if (hasIBD && !has(/calprotectin/i)) {
-        plan.retest_timeline.push({
-          marker: 'Fecal Calprotectin',
-          retest_at: '12 weeks',
-          why: '(c) IBD disease-activity marker. Standard care for any UC/Crohn\'s patient — gastros order this every 3-6 months. Universally covered.',
-        });
-      }
-      if (hasIBD && !has(/celiac|tissue transglutaminase|tTG/i)) {
-        plan.retest_timeline.push({
-          marker: 'Celiac Serology (tTG-IgA + Total IgA)',
-          retest_at: '12 weeks',
-          why: '(d) IBD patients have ~3x higher celiac risk. Standard rule-out at baseline. Covered with K90.0.',
-        });
-      }
-      if ((hasHashimotos || hasGraves) && !has(/free t[34]|tsh|thyroid panel/i)) {
-        plan.retest_timeline.push({
-          marker: 'Thyroid Panel (TSH + Free T3 + Free T4)',
-          retest_at: '12 weeks',
-          why: '(c) Diagnosed thyroid disease — track replacement adequacy or hyperthyroid control. Standard quarterly for any thyroid condition.',
-        });
-      }
-      if (hasT2D && !has(/uacr|albumin\/creatinine|microalbumin/i)) {
-        plan.retest_timeline.push({
-          marker: 'Urine Albumin/Creatinine Ratio (UACR)',
-          retest_at: '12 weeks',
-          why: '(d) Diabetes/prediabetes — early kidney impact marker. ADA recommends annually; catches kidney damage before serum creatinine moves.',
-        });
-      }
-      if (hasPCOS && !has(/dhea-s|dhea sulfate/i)) {
-        plan.retest_timeline.push({
-          marker: 'PCOS Hormone Panel (Total T + Free T + DHEA-S + LH:FSH + SHBG + Fasting Insulin)',
-          retest_at: '12 weeks',
-          why: '(c) Diagnosed PCOS — track androgen + insulin sensitivity response to protocol. Standard quarterly monitoring.',
-        });
-      }
-      if ((hasHTN || hasT2D || hasCAD) && !has(/uacr|microalbumin/i) && !hasT2D) {
-        plan.retest_timeline.push({
-          marker: 'Urine Albumin/Creatinine Ratio (UACR)',
-          retest_at: '12 weeks',
-          why: '(d) Hypertension or CV disease — early kidney impact screening. Standard annual care.',
-        });
-      }
-      if (hasCKD && !has(/cystatin/i)) {
-        plan.retest_timeline.push({
-          marker: 'Cystatin C + eGFR',
-          retest_at: '12 weeks',
-          why: '(c) Diagnosed CKD — Cystatin C is more sensitive than creatinine for kidney function tracking, especially in muscular patients.',
-        });
-      }
-      if ((hasLupus || hasRA) && !has(/esr/i)) {
-        plan.retest_timeline.push({
-          marker: 'ESR (Sedimentation Rate)',
-          retest_at: '12 weeks',
-          why: '(c) Diagnosed lupus/RA — ESR + hs-CRP together track autoimmune disease activity. Standard quarterly.',
-        });
-      }
-      if (hasOsteo && !has(/\bpth\b|parathyroid/i)) {
-        plan.retest_timeline.push({
-          marker: 'PTH (Parathyroid Hormone) + Ionized Calcium',
-          retest_at: '12 weeks',
-          why: '(c) Diagnosed osteoporosis/osteopenia — rule out hyperparathyroidism as bone-loss cause. Standard workup.',
-        });
-      }
+      // ── UNIVERSAL PATHWAY ENGINE ──────────────────────────────────────
+      // Replaces ~80 lines of hardcoded `if (hasIBD) ... if (hasT2D) ...`
+      // blocks. Single function loops every Tier-1 condition the user has,
+      // every drug class they're on, every reported symptom — and fires
+      // their declared pathway tests + supplements via canonical registries.
+      //
+      // Adding a new condition / drug class / symptom = one registry edit,
+      // no edge-function code change. Universal coverage flows from
+      // declarative data, not bespoke if-blocks.
+      const alreadyTakingForEngine = [
+        ...plan.supplement_stack.map((s: any) => `${s?.nutrient ?? ''} ${s?.form ?? ''}`),
+        ...((supps ?? []).map((s: any) => s?.name ?? '')),
+      ].join(' ').toLowerCase();
+      const pathwayResult = runPathways({
+        conditionsLower,
+        medsLower,
+        symptomsTextWithSeverity: symptomsLower,
+        symptomsArray: (symptoms ?? []) as any,
+        sex: profile?.sex ?? null,
+        retestCadence: classification.retestCadence,
+        plan: { retest_timeline: plan.retest_timeline, supplement_stack: plan.supplement_stack },
+        alreadyTakingText: alreadyTakingForEngine,
+      });
+      console.log(`[wellness-plan] pathway engine fired: conditions=[${pathwayResult.conditionsMatched.join(',')}] meds=[${pathwayResult.medClassesMatched.join(',')}] symptoms=[${pathwayResult.symptomsMatched.join(',')}]`);
 
       // ── UNIVERSAL TEST PAIRINGS (shared module — same rules in doctor-prep) ──
       const universalTests = buildUniversalTestInjections({
@@ -1110,229 +1070,13 @@ CRITICAL OUTPUT RULES:
         plan.retest_timeline = plan.retest_timeline.slice(0, 20);
       }
     } catch (e) { console.error('[wellness-plan] retest-injector error:', e); }
-    // Differential cap by mode:
-    //   Treatment mode (any out-of-range, chronic condition, multi-system) → 20
-    //   Optimization mode (mostly healthy) → 10
-    // Higher ceiling for treatment lets UC/IBD/Hashimoto's/CKD/etc. patients
-    // get the full standard-of-care comprehensive panel. Lower ceiling for
-    // healthy patients prevents longevity wishlist drift.
-    const isOptMode = plan.plan_mode === 'optimization' || isOptimizationMode;
-    const retestCap = isOptMode ? 10 : 20;
-    if (plan.retest_timeline.length > retestCap) {
-      console.log(`[wellness-plan] capping retest_timeline ${plan.retest_timeline.length} -> ${retestCap} (${isOptMode ? 'optimization' : 'treatment'} mode)`);
-      plan.retest_timeline = plan.retest_timeline.slice(0, retestCap);
-    }
+    // Cap retest_timeline using the severity-aware classifier output.
+    // critical_treatment / treatment → 20, symptomatic → 14, optimization →
+    // 10, pristine → 6. finalizeRetestTimeline() also dedups by canonical
+    // key (so DHEA-S can't appear twice).
+    plan.retest_timeline = finalizeRetestTimeline(plan.retest_timeline, classification.retestCap);
+    console.log(`[wellness-plan] retest_timeline finalized to ${plan.retest_timeline.length} entries (cap=${classification.retestCap}, mode=${classification.mode})`);
     if (!plan.generated_at) plan.generated_at = new Date().toISOString();
-
-    // ── Deterministic medication-depletion injector ──────────────────────
-    // The AI ignores the prompt rule sometimes (it dropped CoQ10 even when
-    // the user is on a statin). Don't trust the AI for this — scan the
-    // medications list and force-inject any missing depletion supplements.
-    //
-    // May 2026 refactor: each rule now identifies its drug by `medClass` (a
-    // canonical key from medicationAliases.ts) instead of inlined regex.
-    // New brand names → add to the registry once, every rule benefits.
-    type DepletionRule = { medClasses: string[]; nutrient: string; matchInStack: RegExp; entry: any };
-    const userSuppNames = (supps ?? []).map((s: any) => (s.name ?? '').toLowerCase()).join(' ');
-    const depletionRules: DepletionRule[] = [
-      {
-        medClasses: ['statin'],
-        nutrient: 'CoQ10',
-        matchInStack: /\b(coq[\s-]?10|ubiquinol|ubiquinone|coenzyme\s*q)\b/i,
-        entry: { emoji: '💊', nutrient: 'CoQ10 (Ubiquinol)', form: 'Softgel', dose: '100-200mg', timing: 'With breakfast (take with fat)', why_short: 'Statins block your body from making CoQ10', why: 'Statins (like atorvastatin) inhibit the same pathway your body uses to make CoQ10 — the energy molecule muscle and heart cells depend on. Replacing it cuts statin-related fatigue and muscle aches.', practical_note: 'Take with the fattiest meal of the day — CoQ10 is fat-soluble and absorption drops 50%+ on an empty stomach. Ubiquinol is the absorbable form (vs. ubiquinone). Safe alongside atorvastatin.', category: 'liver_metabolic', alternatives: [{ name: 'CoQ10 (Ubiquinone)', form: 'Capsule', note: 'Cheaper but ~50% less bioavailable; needs higher dose (200-400mg)' }, { name: 'PQQ + CoQ10 combo', form: 'Capsule', note: 'PQQ supports mitochondrial production; pricier' }], priority: 'high', sourced_from: 'medication_depletion', evidence_note: 'Multiple RCTs support 100-200mg ubiquinol daily for statin users.' },
-      },
-      {
-        medClasses: ['metformin'],
-        nutrient: 'Vitamin B12',
-        matchInStack: /\b(b[\s-]?12|cobalamin|methylcobalamin)\b/i,
-        entry: { emoji: '💊', nutrient: 'Vitamin B12 (Methylcobalamin)', form: 'Sublingual', dose: '500-1000mcg', timing: 'Morning, away from food', why_short: 'Metformin blocks B12 absorption over time', why: 'Metformin reduces B12 absorption in the gut. Subclinical B12 deficiency causes fatigue, brain fog, and nerve symptoms before serum levels drop. Methylcobalamin bypasses the absorption block.', practical_note: 'Sublingual (under the tongue) absorbs through cheek tissue — bypasses the metformin blockade in the gut. Take in the morning, away from food and coffee. Energizing for some people, so avoid late evening.', category: 'nutrient_repletion', alternatives: [{ name: 'Adenosylcobalamin (B12)', form: 'Sublingual', note: 'Active mitochondrial form; some prefer for energy' }, { name: 'B12 Liquid drops', form: 'Liquid', note: 'Easier to titrate dose; same absorption' }], priority: 'high', sourced_from: 'medication_depletion', evidence_note: 'Studies show 10-30% of long-term metformin users develop B12 deficiency.' },
-      },
-      {
-        medClasses: ['ppi'],
-        nutrient: 'Vitamin B12 + Magnesium',
-        matchInStack: /\b(b[\s-]?12|magnesium)\b/i,
-        entry: { emoji: '💊', nutrient: 'Magnesium Glycinate', form: 'Capsule', dose: '200-400mg', timing: 'Evening', why_short: 'PPIs deplete magnesium and B12', why: 'PPIs (like omeprazole) suppress stomach acid, reducing absorption of magnesium, B12, calcium, and iron. Glycinate form is gentle on the gut.', practical_note: 'Bedtime — activates GABA pathways for calming sleep. Take 2hrs apart from any antibiotic (cipro, doxy) and 4hrs apart from levothyroxine if on it. Glycinate form avoids the laxative effect of magnesium oxide/citrate.', category: 'sleep_stress', alternatives: [{ name: 'Magnesium Threonate', form: 'Capsule', note: 'Crosses blood-brain barrier; better for cognition + sleep' }, { name: 'Magnesium Citrate', form: 'Powder', note: 'Cheaper; has mild laxative effect (avoid if loose stools)' }], priority: 'high', sourced_from: 'medication_depletion', evidence_note: 'FDA black-box warning on PPI-induced hypomagnesemia.' },
-      },
-      // Mesalamine/sulfasalazine → folate testing (TEST-FIRST). The supplement
-      // does NOT auto-inject; instead we ensure a folate panel is in
-      // retest_timeline (handled by retest-injector below). This satisfies
-      // the test-first rule: serum folate + RBC folate are cheap and standard.
-      // Universal: applies to ANY 5-ASA user.
-      // ALT > 60 OR hepatotoxic medication → Milk Thistle (silymarin) — empirical
-      // exception (30+ years safety data, no significant interactions, broad
-      // hepatoprotective evidence). Universal across patient profiles.
-      {
-        // Statin OR other hepatotoxic meds (methotrexate / isoniazid /
-        // valproate / amiodarone / azathioprine) — covered by two registry
-        // classes. Either one fires this rule.
-        medClasses: ['statin', 'hepatotoxic_other'],
-        nutrient: 'Milk Thistle',
-        matchInStack: /\b(milk\s*thistle|silymarin|silybin)\b/i,
-        entry: { emoji: '🌿', nutrient: 'Milk Thistle (Silymarin)', form: 'Capsule (standardized 80% silymarin)', dose: '200-400mg daily', timing: 'With breakfast (with food for absorption)', why_short: 'Liver protection on hepatotoxic meds', why: 'Hepatotoxic medications (statins, methotrexate, isoniazid) stress the liver over time. Silymarin protects hepatocytes and supports detox pathways with 30+ years of safety evidence.', practical_note: 'With breakfast or any meal containing fat. Standardized to 80% silymarin is the studied form. Safe long-term — no significant drug interactions even alongside multiple liver-processed meds. May mildly lower blood sugar; monitor if diabetic.', category: 'liver_metabolic', alternatives: [{ name: 'NAC (N-Acetyl-Cysteine)', form: 'Capsule', note: 'Glutathione precursor; complementary liver support; can stack with milk thistle' }, { name: 'TUDCA', form: 'Capsule', note: 'Bile-acid liver protective; targets bile-flow issues; pricier' }], priority: 'high', sourced_from: 'medication_depletion', evidence_note: 'Multiple meta-analyses support silymarin for drug-induced and chronic liver injury.' },
-      },
-      {
-        medClasses: ['steroid_oral'],
-        nutrient: 'Vitamin D + Calcium',
-        matchInStack: /\b(vitamin\s*d|calcium)\b/i,
-        entry: { emoji: '💊', nutrient: 'Calcium + Vitamin D3', form: 'Tablet', dose: '500mg Ca + 2000 IU D3', timing: 'With dinner', why_short: 'Steroids leach bone minerals', why: 'Oral corticosteroids reduce calcium absorption and accelerate bone loss. Pairing calcium with D3 maintains bone density during treatment.', practical_note: 'With dinner so the fat helps D3 absorb. CRITICAL: take 4hrs apart from any thyroid medication (levothyroxine) and iron supplement — calcium blocks both. Citrate form absorbs better than carbonate if you have low stomach acid.', priority: 'critical', sourced_from: 'medication_depletion', evidence_note: 'ACR guidelines recommend Ca+D for any patient on >5mg prednisone for >3 months.' },
-      },
-      {
-        medClasses: ['diuretic_loop', 'diuretic_thiazide', 'diuretic_potassium_sparing'],
-        nutrient: 'Magnesium',
-        matchInStack: /\bmagnesium\b/i,
-        entry: { emoji: '💊', nutrient: 'Magnesium Glycinate', form: 'Capsule', dose: '300-400mg', timing: 'Evening', why_short: 'Diuretics flush magnesium out', why: 'Loop and thiazide diuretics increase urinary magnesium loss, often causing subclinical deficiency that worsens fatigue and BP control.', practical_note: 'Bedtime — activates GABA pathways for calming sleep. Take 2hrs apart from antibiotics. Glycinate is gentle on the gut; oxide/citrate forms cause loose stools.', priority: 'high', sourced_from: 'medication_depletion', evidence_note: 'Routine supplementation recommended in cardiology guidelines.' },
-      },
-    ];
-
-    if (Array.isArray(plan.supplement_stack)) {
-      const stackText = plan.supplement_stack.map((s: any) => `${s.nutrient ?? ''} ${s.form ?? ''}`).join(' ').toLowerCase();
-      const medsLowerForDepletion = (medsStr ?? '').toLowerCase();
-      for (const rule of depletionRules) {
-        // ANY of the rule's medClasses matching is enough to fire (logical OR).
-        const triggers = rule.medClasses.some(mc => isOnMed(medsLowerForDepletion, mc));
-        if (!triggers) continue;
-        if (rule.matchInStack.test(stackText)) continue;
-        if (rule.matchInStack.test(userSuppNames)) continue; // user already takes it
-        plan.supplement_stack.push(rule.entry);
-        console.log(`[wellness-plan] Injected ${rule.nutrient} for medClasses=[${rule.medClasses.join(',')}]`);
-      }
-
-      // ── DISEASE-MECHANISM SUPPLEMENT INJECTOR ──────────────────────────
-      // Backstop for the AI dropping evidence-based condition-specific
-      // supplements (UC → L-glutamine + S. boulardii + butyrate; Hashimoto's
-      // → selenium; T2D → berberine; PCOS → inositol; etc.). Each entry
-      // includes practical_note timing + interaction guidance.
-      type DiseaseRule = { conditionKey: string; matchInStack: RegExp; entry: any };
-      // Conditions sourced ONLY from explicit onboarding input. No inference
-      // from medications — if the user didn't enter their condition in Step 2,
-      // the disease-mechanism injector won't fire.
-      // Each rule references a canonical condition key — alias edits are made
-      // in conditionAliases.ts and benefit every injector at once.
-      const conditionsLowerForInjector = (condStr ?? '').toLowerCase();
-      const diseaseMechanismRules: DiseaseRule[] = [
-        // ── IBD: gut-barrier repair triad ──────────────────────────────
-        {
-          conditionKey: 'ibd',
-          matchInStack: /\bl[\s-]?glutamine\b/i,
-          entry: { emoji: '🛡️', nutrient: 'L-Glutamine', form: 'Powder (mix in water)', dose: '5g daily', timing: 'Morning, empty stomach', why_short: 'Gut barrier repair for UC', why: 'L-glutamine is the primary fuel for intestinal cells; well-evidenced for IBD mucosal healing.', practical_note: 'Morning on empty stomach with water — competes with food for absorption. Tasteless powder, easy to dose. Safe long-term; no interactions with mesalamine/ustekinumab.', category: 'gut_healing', alternatives: [{ name: 'L-Glutamine capsules', form: 'Capsule', note: 'Convenient travel/work option; slightly more expensive per gram' }, { name: 'GI Restore powder (glutamine + zinc carnosine + DGL)', form: 'Powder blend', note: 'Combo product; saves on stack count if budget allows' }], priority: 'high', sourced_from: 'disease_mechanism', evidence_note: 'Multiple clinical trials show benefit in UC mucosal healing.' },
-        },
-        {
-          conditionKey: 'ibd',
-          matchInStack: /\bs\.?\s*boulardii|saccharomyces|probiotic|visbiome|vsl/i,
-          entry: { emoji: '🦠', nutrient: 'Saccharomyces boulardii (Probiotic)', form: 'Capsule, refrigerated or shelf-stable', dose: '500mg (5 billion CFU) twice daily', timing: 'With breakfast and dinner', why_short: 'Strain-specific UC remission support', why: 'S. boulardii is the most-studied probiotic for IBD remission maintenance; reduces flare frequency.', practical_note: 'With meals — survives stomach acid better. Safe with ustekinumab (yeast-based, not bacteria, so no immunosuppression concern). If on antibiotic, take 2hrs apart. Discontinue if severe immunocompromise (rare).', category: 'gut_healing', alternatives: [{ name: 'Visbiome (multi-strain)', form: 'Capsule, refrigerated', note: 'Most-studied multi-strain UC probiotic; pricier; needs refrigeration' }, { name: 'VSL#3', form: 'Sachets', note: 'Higher CFU count (450 billion); used in clinical UC trials' }], priority: 'high', sourced_from: 'disease_mechanism', evidence_note: 'Multiple RCTs in UC and Crohn\'s remission maintenance.' },
-        },
-        {
-          conditionKey: 'ibd',
-          matchInStack: /\bbutyrate|tributyrin\b/i,
-          entry: { emoji: '⚡', nutrient: 'Butyrate (Tributyrin SR)', form: 'Capsule (sustained-release)', dose: '500-1000mg twice daily', timing: 'With breakfast and dinner', why_short: 'Colonocyte fuel + barrier repair', why: 'Butyrate is the primary energy source for colon cells; sustained-release form delivers to lower GI where UC inflammation sits.', practical_note: 'With meals — fat aids absorption. Tributyrin SR > sodium butyrate (less odor, better delivery). Safe with all UC meds. May cause mild flatulence first 1-2 weeks.', category: 'gut_healing', alternatives: [{ name: 'Sodium Butyrate', form: 'Capsule', note: 'Cheaper but smelly; less targeted to lower GI' }, { name: 'Calcium-Magnesium Butyrate', form: 'Capsule', note: 'Buffered form; gentler on stomach but lower absorption' }], priority: 'high', sourced_from: 'disease_mechanism', evidence_note: 'Direct mucosal energy substrate; supported in UC remission protocols.' },
-        },
-        // ── Hashimoto's: selenium for TPO reduction ─────────────────────
-        {
-          // Was inline /\b(hashimoto|autoimmune thyroid|chronic thyroiditis)\b/i
-          // — that regex MISSED users who typed "Hypothyroidism" (Nona Lynn).
-          // Registry now correctly catches both. THE bug fix this whole pivot
-          // turns into a structural cure: alias edits flow to every consumer.
-          conditionKey: 'hashimotos',
-          matchInStack: /\bselenium\b/i,
-          entry: { emoji: '🦋', nutrient: 'Selenium (Selenomethionine)', form: 'Capsule', dose: '200mcg daily', timing: 'With breakfast', why_short: 'Lowers TPO antibodies in Hashimoto\'s', why: 'Selenomethionine reduces thyroid peroxidase antibodies and supports T4-to-T3 conversion.', practical_note: 'With breakfast — selenomethionine absorbs better than other forms. Do NOT exceed 400mcg/day (toxicity). Safe with levothyroxine.', category: 'condition_therapy', alternatives: [{ name: 'Brazil nuts (1-2 daily)', form: 'Whole food', note: 'Each nut has ~70-100mcg selenium; cheapest option' }, { name: 'Selenium Yeast', form: 'Capsule', note: 'Multiple forms blended; some prefer for absorption' }], priority: 'high', sourced_from: 'disease_mechanism', evidence_note: 'Meta-analyses show TPO Ab reduction with 200mcg selenium for 3-6 months.' },
-        },
-        // ── T2D / prediabetes: berberine ────────────────────────────────
-        {
-          conditionKey: 't2d',
-          matchInStack: /\bberberine\b/i,
-          entry: { emoji: '🌿', nutrient: 'Berberine HCl', form: 'Capsule', dose: '500mg three times daily with meals', timing: 'With breakfast, lunch, dinner', why_short: 'Comparable to metformin for glucose control', why: 'Berberine activates AMPK, lowers fasting glucose, A1c, triglycerides, and LDL. Comparable to metformin in head-to-head studies.', practical_note: 'With each meal — short half-life requires 3x/day dosing. Can cause GI upset first 1-2 weeks; start at 500mg once daily and ramp. AVOID with statin if liver enzymes elevated (both processed by liver — discuss with doctor). Pregnancy: do not take.', category: 'condition_therapy', alternatives: [{ name: 'Berberine Phytosome (sustained release)', form: 'Capsule', note: 'Once-daily dosing; 5x more bioavailable; pricier' }, { name: 'Dihydroberberine', form: 'Capsule', note: 'Better absorbed metabolite of berberine; gentler on GI' }], priority: 'high', sourced_from: 'disease_mechanism', evidence_note: 'Multiple RCTs show comparable efficacy to metformin for fasting glucose and A1c.' },
-        },
-        // ── PCOS: inositol ──────────────────────────────────────────────
-        {
-          conditionKey: 'pcos',
-          matchInStack: /\binositol\b/i,
-          entry: { emoji: '🌸', nutrient: 'Myo-inositol + D-chiro-inositol (40:1 ratio)', form: 'Powder or capsule', dose: '4g myo-inositol + 100mg D-chiro daily, split into 2 doses', timing: 'Morning and evening with meals', why_short: 'PCOS-specific insulin sensitization', why: 'The 40:1 myo:D-chiro ratio mimics the natural ratio in healthy ovarian tissue; restores ovulation and insulin sensitivity in PCOS.', practical_note: 'Split into 2 doses with meals. Effects build over 3 months. Safe in pregnancy (commonly recommended for PCOS-related fertility). No interactions with metformin.', category: 'condition_therapy', alternatives: [{ name: 'Myo-inositol only (4g)', form: 'Powder', note: 'Cheaper; nearly as effective for most PCOS cases' }, { name: 'Ovasitol packets (40:1)', form: 'Single-serve packets', note: 'Pre-measured doses; convenient; pricier per gram' }], priority: 'high', sourced_from: 'disease_mechanism', evidence_note: 'Multiple RCTs for PCOS insulin sensitivity and ovulation.' },
-        },
-        // ── Osteoporosis: vitamin K2 routing ────────────────────────────
-        {
-          conditionKey: 'osteoporosis',
-          matchInStack: /\bvitamin\s*k2|menaquinone|mk-?7/i,
-          entry: { emoji: '🦴', nutrient: 'Vitamin K2 (MK-7)', form: 'Softgel', dose: '180mcg daily', timing: 'With dinner (pair with vitamin D + fatty meal)', why_short: 'Routes calcium to bone, away from arteries', why: 'K2 activates osteocalcin (binds calcium to bone) and matrix-Gla protein (prevents arterial calcification). Standard pairing with vitamin D and calcium.', practical_note: 'With dinner alongside vitamin D — fat-soluble. CRITICAL: do NOT take if on warfarin (affects INR; check with doctor). Safe with NOACs (apixaban, rivaroxaban) but inform doctor.', category: 'condition_therapy', alternatives: [{ name: 'Vitamin K2 (MK-4)', form: 'Capsule', note: 'Shorter-acting; usually 3x/day dosing; more research backing for bone' }, { name: 'D3 + K2 combo softgel', form: 'Softgel', note: 'Combines two daily supps into one; saves stack count' }], priority: 'high', sourced_from: 'disease_mechanism', evidence_note: 'Strong evidence for bone density and arterial calcification reduction.' },
-        },
-      ];
-
-      for (const rule of diseaseMechanismRules) {
-        if (!hasCondition(conditionsLowerForInjector, rule.conditionKey)) continue;
-        if (rule.matchInStack.test(stackText)) continue;
-        if (rule.matchInStack.test(userSuppNames)) continue;
-        plan.supplement_stack.push(rule.entry);
-        console.log(`[wellness-plan] Injected disease-mechanism: ${rule.entry.nutrient} for condition=${rule.conditionKey}`);
-      }
-
-      // ── Goal-stack injector (optimization mode only) ───────────────────
-      // For users in optimization mode (mostly healthy), make sure the
-      // canonical longevity / goal-tuned stack is present even if the AI
-      // didn't include it. Same skip rule: if user already supplements it,
-      // don't re-add. These are 'optimization' tier — always rank below
-      // lab_finding / medication_depletion / disease_mechanism entries.
-      type GoalStackEntry = { matchInStack: RegExp; entry: any };
-      const baseLongevityStack: GoalStackEntry[] = [
-        {
-          matchInStack: /\bcreatine\b/i,
-          entry: { emoji: '💪', nutrient: 'Creatine Monohydrate', form: 'Powder', dose: '5g', timing: 'Any time daily', why_short: 'Universal — strength, cognition, bone density', why: 'Creatine is one of the most studied supplements. Daily 5g supports muscle strength, cognitive function, and bone density. No loading required.', priority: 'optimize', sourced_from: 'optimization', evidence_note: '500+ RCTs across decades support 3-5g daily for healthy adults.' },
-        },
-        {
-          matchInStack: /\b(omega[- ]?3|fish oil|epa|dha)\b/i,
-          entry: { emoji: '🐟', nutrient: 'Omega-3 (EPA + DHA)', form: 'Softgel', dose: '2g combined EPA+DHA', timing: 'With food', why_short: 'CV protection, brain, anti-inflammatory', why: 'Omega-3s lower triglycerides, hs-CRP, and CV risk. Aim for 2g combined EPA+DHA daily from a third-party-tested fish oil or algal source.', priority: 'optimize', sourced_from: 'optimization', evidence_note: 'AHA recommends 1g+/day; longevity protocols target 2g+.' },
-        },
-        {
-          matchInStack: /\bvitamin\s*d\b|cholecalciferol|d3/i,
-          entry: { emoji: '☀️', nutrient: 'Vitamin D3 + K2', form: 'Softgel', dose: '2000-5000 IU D3 + 100mcg K2 MK-7', timing: 'With breakfast (fat-soluble)', why_short: 'Bone, immune, mood — most people are low', why: 'Vitamin D3 with K2 directs calcium to bones, not arteries. Target a blood level of 50-70 ng/mL with retesting after 8-12 weeks.', priority: 'optimize', sourced_from: 'optimization', evidence_note: 'Endocrine Society recommends 1500-2000 IU/day baseline.' },
-        },
-        {
-          matchInStack: /\bmagnesium\b/i,
-          entry: { emoji: '🌙', nutrient: 'Magnesium Glycinate', form: 'Capsule', dose: '300-400mg elemental', timing: 'Evening (sleep aid)', why_short: 'Sleep, muscle, BP, blood sugar', why: 'Glycinate form is well-tolerated and supports sleep, muscle relaxation, blood pressure, and insulin sensitivity. Most adults are mildly deficient.', priority: 'optimize', sourced_from: 'optimization', evidence_note: 'NHANES data: ~50% of US adults below RDA.' },
-        },
-      ];
-      const energyExtras: GoalStackEntry[] = [
-        {
-          matchInStack: /\b(b[\s-]?complex|methylated b)\b/i,
-          entry: { emoji: '⚡', nutrient: 'Methylated B-Complex', form: 'Capsule', dose: '1 capsule', timing: 'Breakfast', why_short: 'Energy production + methylation', why: 'B-vitamins (especially methylfolate, methylcobalamin) drive cellular energy and one-carbon metabolism. The methylated form is more bioavailable.', practical_note: 'Morning with breakfast — energizing, taking late causes insomnia. Bright yellow urine for 24hrs is normal (riboflavin/B2 excretion). Take 2hrs apart from levothyroxine if applicable.', priority: 'optimize', sourced_from: 'optimization', evidence_note: 'Standard for energy + cognitive optimization protocols.' },
-        },
-      ];
-      const performanceExtras: GoalStackEntry[] = [
-        {
-          matchInStack: /\bashwagandha|withania/i,
-          entry: { emoji: '🪨', nutrient: 'Ashwagandha (KSM-66)', form: 'Capsule', dose: '600mg', timing: 'Evening', why_short: 'Cortisol, recovery, sleep', why: 'KSM-66 ashwagandha lowers cortisol, improves sleep quality, and supports testosterone in men. Take 8-12 weeks for full effect.', practical_note: 'Evening — lowers cortisol for sleep. AVOID if on thyroid medication or hyperthyroid (can raise T4). Pause 2 weeks before any surgery (mildly affects bleeding). Pregnancy / breastfeeding: do not take.', priority: 'optimize', sourced_from: 'optimization', evidence_note: 'RCTs show 14-22% cortisol reduction and modest T improvements.' },
-        },
-      ];
-      const heartExtras: GoalStackEntry[] = [
-        {
-          matchInStack: /\b(coq10|ubiquinol|coenzyme\s*q)\b/i,
-          entry: { emoji: '❤️', nutrient: 'CoQ10 (Ubiquinol)', form: 'Softgel', dose: '100mg', timing: 'Breakfast', why_short: 'Mitochondrial energy + heart support', why: 'CoQ10 supports cardiac muscle energy production. Especially relevant if on a statin or if heart-health is the goal.', priority: 'optimize', sourced_from: 'optimization', evidence_note: 'CV outcomes literature supports 100-200mg/day.' },
-        },
-      ];
-
-      const primaryGoal = userGoals[0] ?? '';
-      let goalStack: GoalStackEntry[] = [];
-      if (isOptimizationMode || ['longevity', 'energy', 'heart_health', 'weight'].includes(primaryGoal)) {
-        // Base longevity stack runs for all optimization-leaning paths
-        goalStack = [...baseLongevityStack];
-        if (primaryGoal === 'energy') goalStack.push(...energyExtras);
-        if (primaryGoal === 'heart_health') goalStack.push(...heartExtras);
-        if (['longevity', 'weight'].includes(primaryGoal)) goalStack.push(...performanceExtras);
-      }
-
-      const stackTextNow = () => plan.supplement_stack.map((s: any) => `${s.nutrient ?? ''} ${s.form ?? ''}`).join(' ').toLowerCase();
-      for (const item of goalStack) {
-        if (plan.supplement_stack.length >= 5) break;
-        if (item.matchInStack.test(stackTextNow())) continue;
-        if (item.matchInStack.test(userSuppNames)) continue; // already supplementing
-        plan.supplement_stack.push(item.entry);
-        console.log(`[wellness-plan] Goal-stack injected ${item.entry.nutrient} for primary goal "${primaryGoal}"`);
-      }
-
-      // No legacy slice here — the final 1-per-category dedup below handles
-      // the cap. Removing the old slice(0,5) was critical: it sorted by AI-
-      // assigned rank (which heavily favored critical-priority lab findings)
-      // and cut off disease-mechanism injectors like UC gut-healing
-      // (L-glutamine, S. boulardii) that legitimately belonged in the stack.
-    }
 
     // Final dedup: ONE supplement per category. The UI groups by category, so
     // duplicates within a category overwhelm the user (statin patient ended
