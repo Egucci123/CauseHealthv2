@@ -176,10 +176,10 @@ export const AppendToDrawModal = ({ drawId, drawDate, open, onClose }: Props) =>
                   )}
                   <div className="flex flex-wrap gap-1.5 justify-center mb-4">
                     {result.newMarkerNames.slice(0, 6).map(m => (
-                      <span key={m} className="text-precision text-[0.55rem] text-clinical-charcoal bg-clinical-cream px-2 py-1" style={{ borderRadius: '3px' }}>{m}</span>
+                      <span key={m} className="text-precision text-[0.7rem] text-clinical-charcoal bg-clinical-cream px-2 py-1" style={{ borderRadius: '3px' }}>{m}</span>
                     ))}
                     {result.newMarkerNames.length > 6 && (
-                      <span className="text-precision text-[0.55rem] text-clinical-stone px-2 py-1">+{result.newMarkerNames.length - 6} more</span>
+                      <span className="text-precision text-[0.7rem] text-clinical-stone px-2 py-1">+{result.newMarkerNames.length - 6} more</span>
                     )}
                   </div>
                   <p className="text-body text-clinical-stone text-xs leading-relaxed">Re-analysis is running. Refresh the lab page in ~30 seconds to see the updated picture.</p>

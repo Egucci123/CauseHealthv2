@@ -1,4 +1,5 @@
 // src/components/onboarding/OnboardingShell.tsx
+import { useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useOnboardingStore } from '../../store/onboardingStore';
 import { Button } from '../ui/Button';
@@ -29,6 +30,13 @@ export const OnboardingShell = ({
   showBack = true, showSkip = false, onSkip, hideNav = false,
 }: OnboardingShellProps) => {
   const { currentStep, totalSteps, prevStep, loading } = useOnboardingStore();
+
+  // Scroll to top on every step change. Older users hit Continue and the new
+  // step's title was BELOW the fold because the browser kept the previous
+  // step's scroll position — they thought the page was empty or broken.
+  useEffect(() => {
+    queueMicrotask(() => window.scrollTo({ top: 0, left: 0, behavior: 'instant' }));
+  }, [stepKey]);
 
   return (
     <div className="min-h-screen bg-clinical-cream flex flex-col">
@@ -85,22 +93,33 @@ export const OnboardingShell = ({
         </AnimatePresence>
       </div>
 
-      {/* Navigation bar */}
+      {/* Navigation bar — 56px min height, big tap targets, safe-area-bottom on iOS */}
       {!hideNav && (
-        <div className="flex-shrink-0 border-t border-outline-variant/10 bg-clinical-cream px-6 py-4 md:py-5">
-          <div className="max-w-2xl mx-auto flex items-center justify-between gap-4">
+        <div
+          className="flex-shrink-0 border-t border-outline-variant/10 bg-clinical-cream px-4 md:px-6 py-3 md:py-5"
+          style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
+        >
+          <div className="max-w-2xl mx-auto flex items-center justify-between gap-3">
             {showBack && currentStep > 1 ? (
-              <button onClick={prevStep} className="flex items-center gap-2 text-precision text-[0.68rem] text-clinical-stone tracking-widest uppercase font-bold hover:text-clinical-charcoal transition-colors">
-                <span className="material-symbols-outlined text-[16px]">arrow_back</span> Back
+              <button
+                onClick={prevStep}
+                className="flex items-center gap-1.5 min-h-[48px] px-4 rounded-[8px] text-precision text-[0.75rem] text-clinical-charcoal tracking-wider uppercase font-bold hover:bg-clinical-stone/10 transition-colors"
+                aria-label="Go back to previous step"
+              >
+                <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+                <span className="hidden sm:inline">Back</span>
               </button>
             ) : <div />}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               {showSkip && onSkip && (
-                <button onClick={onSkip} className="text-precision text-[0.68rem] text-clinical-stone tracking-widest uppercase font-bold hover:text-clinical-charcoal transition-colors">
+                <button
+                  onClick={onSkip}
+                  className="min-h-[48px] px-4 rounded-[8px] text-precision text-[0.7rem] text-clinical-stone tracking-wider uppercase font-bold hover:bg-clinical-stone/10 transition-colors"
+                >
                   Skip
                 </button>
               )}
-              <Button variant="primary" size="md" onClick={onNext} loading={loading} disabled={nextDisabled || loading} icon="arrow_forward" iconPosition="right">
+              <Button variant="primary" size="lg" onClick={onNext} loading={loading} disabled={nextDisabled || loading} icon="arrow_forward" iconPosition="right">
                 {nextLabel}
               </Button>
             </div>

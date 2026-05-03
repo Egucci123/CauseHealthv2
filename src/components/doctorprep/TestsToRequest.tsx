@@ -17,7 +17,7 @@ const TestCard = ({ test, advanced = false }: { test: TestToRequest; advanced?: 
     <div className={`bg-clinical-white rounded-[10px] shadow-card ${border} p-6`}>
       <div className="flex justify-between items-start mb-4">
         <div>
-          <span className={`${badgeClass} text-precision text-[0.55rem] font-bold px-2 py-0.5`} style={{ borderRadius: '2px' }}>{badgeText}</span>
+          <span className={`${badgeClass} text-precision text-[0.7rem] font-bold px-2 py-0.5`} style={{ borderRadius: '2px' }}>{badgeText}</span>
           <h4 className="text-authority text-xl text-clinical-charcoal font-semibold mt-2">{test.test_name}</h4>
         </div>
       </div>

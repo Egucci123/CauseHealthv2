@@ -106,7 +106,7 @@ export const SupplementSearch = ({ supplements, onAdd, onRemove, onUpdateField }
                       {alreadyAdded ? (
                         <span className="text-precision text-[0.6rem] text-primary-container font-bold tracking-wider">ADDED</span>
                       ) : hasLabInteractions ? (
-                        <span className="text-precision text-[0.55rem] text-[#E8922A] font-bold tracking-wider">AFFECTS LABS</span>
+                        <span className="text-precision text-[0.7rem] text-[#E8922A] font-bold tracking-wider">AFFECTS LABS</span>
                       ) : null}
                     </button>
                   );
@@ -169,7 +169,7 @@ const SupplementCard = ({ supplement, labInteractions, onRemove, onUpdateField }
             {hasLabFlags && (
               <div className="flex items-center gap-1.5 mt-1">
                 <span className="material-symbols-outlined text-[#E8922A] text-[14px]">science</span>
-                <span className="text-precision text-[0.55rem] text-[#E8922A] tracking-widest uppercase font-bold">
+                <span className="text-precision text-[0.7rem] text-[#E8922A] tracking-widest uppercase font-bold">
                   Affects {labInteractions.length} lab marker{labInteractions.length !== 1 ? 's' : ''}
                 </span>
               </div>
@@ -219,7 +219,7 @@ const SupplementCard = ({ supplement, labInteractions, onRemove, onUpdateField }
                   <div key={i} className="bg-[#E8922A]/5 border-l-2 border-[#E8922A] rounded-r px-3 py-2">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-precision text-xs text-clinical-charcoal font-bold">{interaction.marker}</span>
-                      <span className="text-precision text-[0.55rem] text-[#E8922A] tracking-widest uppercase">{interaction.effect.replace('_', ' ')}</span>
+                      <span className="text-precision text-[0.7rem] text-[#E8922A] tracking-widest uppercase">{interaction.effect.replace('_', ' ')}</span>
                     </div>
                     <p className="text-body text-clinical-stone text-xs leading-relaxed">{interaction.note}</p>
                   </div>

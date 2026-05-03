@@ -101,33 +101,33 @@ export const Glossary = () => {
                     {entry.aliases.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 mb-3">
                         {entry.aliases.slice(0, 5).map(a => (
-                          <span key={a} className="text-precision text-[0.55rem] text-clinical-stone bg-white px-1.5 py-0.5" style={{ borderRadius: '2px' }}>{a}</span>
+                          <span key={a} className="text-precision text-[0.7rem] text-clinical-stone bg-white px-1.5 py-0.5" style={{ borderRadius: '2px' }}>{a}</span>
                         ))}
                       </div>
                     )}
 
                     <div className="space-y-2.5">
                       <div>
-                        <p className="text-precision text-[0.55rem] text-clinical-stone tracking-widest uppercase mb-0.5">What it is</p>
+                        <p className="text-precision text-[0.7rem] text-clinical-stone tracking-widest uppercase mb-0.5">What it is</p>
                         <p className="text-body text-clinical-charcoal text-sm leading-relaxed">{entry.whatItIs}</p>
                       </div>
                       <div>
-                        <p className="text-precision text-[0.55rem] text-clinical-stone tracking-widest uppercase mb-0.5">Why it matters</p>
+                        <p className="text-precision text-[0.7rem] text-clinical-stone tracking-widest uppercase mb-0.5">Why it matters</p>
                         <p className="text-body text-clinical-charcoal text-sm leading-relaxed">{entry.whyItMatters}</p>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <div className="bg-[#C94F4F]/5 border-l-2 border-[#C94F4F] rounded-r px-3 py-2">
-                          <p className="text-precision text-[0.55rem] text-[#C94F4F] tracking-widest uppercase mb-0.5">If high</p>
+                          <p className="text-precision text-[0.7rem] text-[#C94F4F] tracking-widest uppercase mb-0.5">If high</p>
                           <p className="text-body text-clinical-charcoal text-xs leading-relaxed">{entry.highMeans}</p>
                         </div>
                         <div className="bg-[#E8922A]/5 border-l-2 border-[#E8922A] rounded-r px-3 py-2">
-                          <p className="text-precision text-[0.55rem] text-[#E8922A] tracking-widest uppercase mb-0.5">If low</p>
+                          <p className="text-precision text-[0.7rem] text-[#E8922A] tracking-widest uppercase mb-0.5">If low</p>
                           <p className="text-body text-clinical-charcoal text-xs leading-relaxed">{entry.lowMeans}</p>
                         </div>
                       </div>
                       {entry.optimalNote && (
                         <div className="bg-primary-container/5 border-l-2 border-primary-container rounded-r px-3 py-2">
-                          <p className="text-precision text-[0.55rem] text-primary-container tracking-widest uppercase mb-0.5">Optimal vs Standard</p>
+                          <p className="text-precision text-[0.7rem] text-primary-container tracking-widest uppercase mb-0.5">Optimal vs Standard</p>
                           <p className="text-body text-clinical-charcoal text-xs leading-relaxed">{entry.optimalNote}</p>
                         </div>
                       )}

@@ -464,7 +464,7 @@ export const LabDetail = () => {
               className={`bg-white/5 hover:bg-white/10 rounded-[10px] p-3 border transition-all ${activeTab === tab ? 'border-white/30' : 'border-white/5'}`}
             >
               <div className="text-authority text-2xl font-bold" style={{ color }}>{count}</div>
-              <div className="text-precision text-[0.55rem] text-on-surface-variant tracking-widest uppercase mt-0.5">{label}</div>
+              <div className="text-precision text-[0.7rem] text-on-surface-variant tracking-widest uppercase mt-0.5">{label}</div>
             </button>
           ))}
         </div>
@@ -523,7 +523,7 @@ export const LabDetail = () => {
                 Unlock the full breakdown — what every abnormal value means, the patterns it reveals, the exact tests to ask your doctor for, and a 90-day plan to fix what's wrong.
               </p>
               <div className="inline-flex items-center gap-2 text-precision text-[0.65rem] font-bold tracking-widest uppercase text-primary-container">
-                Unlock with Pro · $7.67/month
+                Unlock with Pro · $12/month
                 <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
               </div>
             </div>

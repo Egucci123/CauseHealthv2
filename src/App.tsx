@@ -1,5 +1,6 @@
 // src/App.tsx
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { ScrollToTop } from './components/ScrollToTop';
 
 // Public pages
 import { Landing } from './pages/Landing';
@@ -45,9 +46,6 @@ import { DoctorPrepPage } from './pages/doctorprep/DoctorPrep';
 // Chat
 import { HealthChat } from './pages/chat/HealthChat';
 
-// Progress
-import { ProgressTracking } from './pages/progress/ProgressTracking';
-
 // Settings
 import { Settings } from './pages/settings/Settings';
 
@@ -88,6 +86,7 @@ function App() {
   return (
     <>
     <StagingBanner />
+    <ScrollToTop />
     <Routes>
       {/* Public */}
       <Route path="/" element={<Landing />} />
@@ -126,7 +125,7 @@ function App() {
       <Route path="/symptoms" element={<Navigate to="/wellness" replace />} />
       <Route path="/doctor-prep" element={<ProtectedRoute><DoctorPrepPage /></ProtectedRoute>} />
       <Route path="/chat" element={<ProtectedRoute><HealthChat /></ProtectedRoute>} />
-      <Route path="/progress" element={<ProtectedRoute><ProgressTracking /></ProtectedRoute>} />
+      <Route path="/progress" element={<Navigate to="/wellness" replace />} />
       <Route path="/insurance" element={<ProtectedRoute><PageStub title="Insurance Guide" /></ProtectedRoute>} />
       <Route path="/glossary" element={<ProtectedRoute><Glossary /></ProtectedRoute>} />
 

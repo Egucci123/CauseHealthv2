@@ -115,7 +115,7 @@ export const HealthChat = () => {
                   : 'bg-clinical-white border border-outline-variant/15 text-clinical-charcoal rounded-[16px] rounded-bl-[4px]'
                 }`}>
                   <p className="text-body text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
-                  <p className={`text-precision text-[0.5rem] mt-1 ${msg.role === 'user' ? 'text-white/50' : 'text-clinical-stone/50'}`}>
+                  <p className={`text-precision text-[0.7rem] mt-1 ${msg.role === 'user' ? 'text-white/50' : 'text-clinical-stone/50'}`}>
                     {msg.timestamp.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                   </p>
                 </div>
@@ -162,7 +162,7 @@ export const HealthChat = () => {
             <Button variant="primary" size="md" onClick={() => sendMessage(input)} loading={loading} disabled={!input.trim()} icon="send"
               className="rounded-full w-12 h-12 flex items-center justify-center p-0" />
           </div>
-          <p className="text-precision text-[0.5rem] text-clinical-stone/40 text-center mt-2">Educational only — not medical advice. Discuss all findings with your doctor.</p>
+          <p className="text-precision text-[0.7rem] text-clinical-stone/40 text-center mt-2">Educational only — not medical advice. Discuss all findings with your doctor.</p>
         </div>
       </div>
     </AppShell>

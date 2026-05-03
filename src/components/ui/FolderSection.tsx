@@ -64,7 +64,7 @@ export const FolderSection = ({
                 className="rounded-lg p-4 mb-5 border-l-4"
                 style={{ backgroundColor: `${accentColor}08`, borderLeftColor: accentColor }}
               >
-                <p className="text-precision text-[0.55rem] font-bold tracking-widest uppercase mb-1.5" style={{ color: accentColor }}>
+                <p className="text-precision text-[0.7rem] font-bold tracking-widest uppercase mb-1.5" style={{ color: accentColor }}>
                   What this is
                 </p>
                 <p className="text-body text-clinical-charcoal text-sm leading-relaxed">{explanation}</p>

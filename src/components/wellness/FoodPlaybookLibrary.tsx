@@ -228,7 +228,7 @@ export const FoodPlaybookLibrary = ({ open, onClose }: Props) => {
                         <p className="text-precision text-[0.65rem] font-bold tracking-widest uppercase text-clinical-charcoal">{meta.label}</p>
                         <p className="text-precision text-[0.6rem] text-clinical-stone">{meta.sub}</p>
                       </div>
-                      <span className="text-precision text-[0.55rem] text-clinical-stone tracking-widest">{g.meals.length}</span>
+                      <span className="text-precision text-[0.7rem] text-clinical-stone tracking-widest">{g.meals.length}</span>
                     </div>
                     <div className="space-y-2">
                       {g.meals.map(m => (
@@ -239,9 +239,9 @@ export const FoodPlaybookLibrary = ({ open, onClose }: Props) => {
                               <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
                                 <p className="text-body text-clinical-charcoal font-semibold leading-snug">{m.name}</p>
                                 <div className="flex items-center gap-1.5 flex-shrink-0">
-                                  <span className="text-precision text-[0.55rem] font-bold tracking-widest uppercase text-primary-container">{m.when}</span>
+                                  <span className="text-precision text-[0.7rem] font-bold tracking-widest uppercase text-primary-container">{m.when}</span>
                                   {m.prepMinutes > 0 && (
-                                    <span className="text-precision text-[0.55rem] text-clinical-stone tracking-wide">{m.prepMinutes}min</span>
+                                    <span className="text-precision text-[0.7rem] text-clinical-stone tracking-wide">{m.prepMinutes}min</span>
                                   )}
                                 </div>
                               </div>

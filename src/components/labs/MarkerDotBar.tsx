@@ -64,7 +64,7 @@ export const MarkerDotBar = ({ value, standardLow, standardHigh, flag }: Props) 
           style={{ left: `${layout.dotPct}%`, backgroundColor: dotColor }}
         />
       </div>
-      <div className="flex justify-between mt-1.5 text-precision text-[0.55rem] text-clinical-stone tracking-wide">
+      <div className="flex justify-between mt-1.5 text-precision text-[0.7rem] text-clinical-stone tracking-wide">
         <span>Low</span>
         <span className="font-bold" style={{ color: dotColor }}>
           {value}

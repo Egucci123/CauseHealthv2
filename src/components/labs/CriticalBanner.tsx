@@ -65,7 +65,7 @@ export const CriticalBanner = ({ findings }: Props) => {
               </a>
             )}
           </div>
-          <p className="text-precision text-[0.55rem] text-white/60 mt-3 leading-relaxed">
+          <p className="text-precision text-[0.7rem] text-white/60 mt-3 leading-relaxed">
             This is automated detection of clinical panic values, not a diagnosis. Your doctor's evaluation determines the cause and treatment.
           </p>
         </div>

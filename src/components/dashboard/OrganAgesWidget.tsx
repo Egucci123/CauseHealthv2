@@ -86,7 +86,7 @@ export const OrganAgesWidget = ({ darkMode = false }: Props) => {
                 </div>
                 <div className="flex items-baseline gap-1">
                   <span className="text-precision text-lg font-bold" style={{ color }}>{a.age}</span>
-                  <span className={`text-precision text-[0.55rem] ${t.muted}`}>
+                  <span className={`text-precision text-[0.7rem] ${t.muted}`}>
                     {a.delta > 0 ? `+${a.delta}` : a.delta} vs. you
                   </span>
                 </div>

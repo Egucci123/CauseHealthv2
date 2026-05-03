@@ -59,12 +59,12 @@ export const PricingSection = () => {
               </p>
               <div className="flex items-baseline justify-center gap-1">
                 <span className="text-authority text-5xl text-clinical-charcoal font-bold">
-                  $7.67
+                  $12
                 </span>
                 <span className="text-body text-clinical-stone text-sm">/month</span>
               </div>
               <p className="text-precision text-[0.6rem] text-clinical-stone tracking-wide mt-2">
-                Less than your morning coffee · $92/year
+                Less than your morning coffee · $144/year
               </p>
             </div>
 

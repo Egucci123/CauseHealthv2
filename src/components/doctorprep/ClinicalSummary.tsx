@@ -131,7 +131,7 @@ export const ClinicalSummary = ({ doc }: { doc: DoctorPrepDocument }) => {
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-body text-clinical-charcoal font-semibold text-sm">{f.marker}</span>
                         <span className="text-precision text-sm font-bold" style={{ color: flagColor(f.flag) }}>{f.value}</span>
-                        <span className="text-precision text-[0.55rem] font-bold px-1.5 py-0.5 text-white" style={{ borderRadius: '2px', backgroundColor: flagColor(f.flag) }}>{f.flag.toUpperCase()}</span>
+                        <span className="text-precision text-[0.7rem] font-bold px-1.5 py-0.5 text-white" style={{ borderRadius: '2px', backgroundColor: flagColor(f.flag) }}>{f.flag.toUpperCase()}</span>
                       </div>
                       <p className="text-body text-clinical-stone text-xs mt-0.5">{renderText(f.clinical_note)}</p>
                     </div>

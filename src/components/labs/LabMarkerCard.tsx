@@ -124,7 +124,7 @@ export const LabMarkerCard = ({ value, analysis, onAddToPrep }: LabMarkerCardPro
                 width={100}
                 height={32}
               />
-              <p className="text-precision text-[0.5rem] text-clinical-stone tracking-wider uppercase">{history.length} draws</p>
+              <p className="text-precision text-[0.7rem] text-clinical-stone tracking-wider uppercase">{history.length} draws</p>
             </div>
           )}
         </div>
@@ -154,7 +154,7 @@ export const LabMarkerCard = ({ value, analysis, onAddToPrep }: LabMarkerCardPro
             </div>
             {comparison.deltaPct != null && Math.abs(comparison.deltaPct) >= 1 && (
               <span
-                className="text-precision text-[0.55rem] font-bold tracking-wider px-1.5 py-0.5 ml-auto"
+                className="text-precision text-[0.7rem] font-bold tracking-wider px-1.5 py-0.5 ml-auto"
                 style={{
                   borderRadius: '2px',
                   backgroundColor: dirCfg ? `${dirCfg.color}15` : '#0001',
@@ -188,7 +188,7 @@ export const LabMarkerCard = ({ value, analysis, onAddToPrep }: LabMarkerCardPro
             <span className="material-symbols-outlined text-[#D4A574] text-[18px] flex-shrink-0">lock</span>
             <div className="flex-1 min-w-0">
               <p className="text-body text-clinical-charcoal text-sm font-semibold">What does this mean?</p>
-              <p className="text-precision text-[0.6rem] text-clinical-stone">Unlock AI analysis with Pro · $7.67/mo</p>
+              <p className="text-precision text-[0.6rem] text-clinical-stone">Unlock AI analysis with Pro · $12/mo</p>
             </div>
             <span className="material-symbols-outlined text-[#D4A574] text-[18px]">arrow_forward</span>
           </Link>
@@ -209,7 +209,7 @@ export const LabMarkerCard = ({ value, analysis, onAddToPrep }: LabMarkerCardPro
                 <p className="text-body text-clinical-stone text-sm leading-relaxed">{analysis.explanation}</p>
                 {analysis.what_to_do && (
                   <div className="bg-primary-container/5 border-l-2 border-primary-container rounded-r px-3 py-2">
-                    <p className="text-precision text-[0.55rem] font-bold text-primary-container tracking-widest uppercase mb-1">Do this</p>
+                    <p className="text-precision text-[0.7rem] font-bold text-primary-container tracking-widest uppercase mb-1">Do this</p>
                     <p className="text-body text-clinical-charcoal text-sm">{analysis.what_to_do}</p>
                   </div>
                 )}

@@ -68,7 +68,7 @@ const AppMockup = () => (
             <div className="w-[35%] bg-[#C94F4F]" />
           </div>
           <div className="flex gap-3">
-            <p className="text-precision text-[0.55rem] text-clinical-stone">
+            <p className="text-precision text-[0.7rem] text-clinical-stone">
               <span className="text-clinical-charcoal">97 IU/L</span> · Optimal: 0–25
             </p>
           </div>
@@ -83,7 +83,7 @@ const AppMockup = () => (
               <p className="text-body text-clinical-charcoal text-xs font-bold">CoQ10</p>
               <p className="text-body text-clinical-stone text-[0.65rem]">Muscle pain, fatigue</p>
             </div>
-            <span className="inline-block bg-[#C94F4F] text-white text-precision text-[0.55rem] px-1.5 py-0.5 font-bold">
+            <span className="inline-block bg-[#C94F4F] text-white text-precision text-[0.7rem] px-1.5 py-0.5 font-bold">
               CRITICAL
             </span>
           </div>
@@ -175,7 +175,7 @@ export const HeroSection = () => (
           </p>
           <p className="text-body text-clinical-stone text-base leading-relaxed mb-10 max-w-lg">
             Built for nurses, truckers, parents, shift workers — the patients doctors rush
-            through. <strong className="text-clinical-charcoal">$7.67 a month.</strong> Less than your morning coffee.
+            through. <strong className="text-clinical-charcoal">$12 a month.</strong> Less than your morning coffee.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 mb-8">
@@ -199,7 +199,7 @@ export const HeroSection = () => (
           </div>
 
           <p className="text-precision text-[0.68rem] text-clinical-stone tracking-wide">
-            Free to upload · $7.67/month for full plan · Cancel anytime · Master codes for friends
+            Free to upload · $12/month for full plan · Cancel anytime · Master codes for friends
           </p>
 
           <div className="flex flex-wrap gap-3 mt-10">

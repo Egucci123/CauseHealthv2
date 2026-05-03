@@ -205,7 +205,7 @@ const TodayTab = ({ plan, uid }: { plan: any; uid: string }) => {
             </div>
             <div>
               <p className="text-authority text-2xl font-bold text-[#D4A574] leading-none">{streak}</p>
-              <p className="text-precision text-[0.55rem] text-on-surface-variant tracking-widest uppercase mt-1">{streak === 1 ? 'day' : 'days'} in a row</p>
+              <p className="text-precision text-[0.7rem] text-on-surface-variant tracking-widest uppercase mt-1">{streak === 1 ? 'day' : 'days'} in a row</p>
             </div>
           </div>
           <div className="bg-clinical-cream rounded-[10px] p-4 flex items-center gap-3">
@@ -214,7 +214,7 @@ const TodayTab = ({ plan, uid }: { plan: any; uid: string }) => {
             </div>
             <div>
               <p className="text-authority text-2xl font-bold text-clinical-charcoal leading-none">{week.done}<span className="text-precision text-sm text-clinical-stone">/{week.total}</span></p>
-              <p className="text-precision text-[0.55rem] text-clinical-stone tracking-widest uppercase mt-1">this week</p>
+              <p className="text-precision text-[0.7rem] text-clinical-stone tracking-widest uppercase mt-1">this week</p>
             </div>
           </div>
         </div>
@@ -253,7 +253,7 @@ const TodayTab = ({ plan, uid }: { plan: any; uid: string }) => {
                 <div key={i} className="bg-clinical-cream rounded-lg p-4 border-l-4 border-primary-container">
                   <div className="flex justify-between items-start gap-3 mb-1.5">
                     <p className="text-body text-clinical-charcoal font-semibold text-sm">{r.marker}</p>
-                    <span className="text-precision text-[0.55rem] font-bold tracking-widest uppercase text-primary-container flex-shrink-0">{r.retest_at}</span>
+                    <span className="text-precision text-[0.7rem] font-bold tracking-widest uppercase text-primary-container flex-shrink-0">{r.retest_at}</span>
                   </div>
                   <p className="text-body text-clinical-stone text-xs leading-relaxed">{r.why}</p>
                 </div>
@@ -501,7 +501,7 @@ const EatTab = ({ plan }: { plan: any }) => {
                   <p className="text-precision text-[0.65rem] font-bold tracking-widest uppercase text-clinical-charcoal">{meta.label}</p>
                   <p className="text-precision text-[0.6rem] text-clinical-stone">{meta.sub}</p>
                 </div>
-                <span className="text-precision text-[0.55rem] text-clinical-stone tracking-widest">{meals.length}</span>
+                <span className="text-precision text-[0.7rem] text-clinical-stone tracking-widest">{meals.length}</span>
               </div>
               {meals.map((m: any, i: number) => {
                 const badge = PHASE_BADGE[m.phase as number] ?? null;
@@ -514,9 +514,9 @@ const EatTab = ({ plan }: { plan: any }) => {
                           <p className="text-body text-clinical-charcoal font-semibold">{m.name}</p>
                           <div className="flex items-center gap-1.5 flex-shrink-0">
                             {badge && (
-                              <span className="text-precision text-[0.5rem] font-bold tracking-widest uppercase px-1.5 py-0.5 rounded" style={{ backgroundColor: `${badge.color}20`, color: badge.color }}>{badge.label}</span>
+                              <span className="text-precision text-[0.7rem] font-bold tracking-widest uppercase px-1.5 py-0.5 rounded" style={{ backgroundColor: `${badge.color}20`, color: badge.color }}>{badge.label}</span>
                             )}
-                            {m.when && <span className="text-precision text-[0.55rem] font-bold tracking-widest uppercase text-primary-container">{m.when}</span>}
+                            {m.when && <span className="text-precision text-[0.7rem] font-bold tracking-widest uppercase text-primary-container">{m.when}</span>}
                           </div>
                         </div>
                         {m.ingredients?.length > 0 && <p className="text-body text-clinical-stone text-sm">{m.ingredients.join(' · ')}</p>}
@@ -550,8 +550,8 @@ const MoveTab = ({ plan }: { plan: any }) => {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1 flex-wrap">
                 <p className="text-body text-clinical-charcoal font-semibold">{w.title}</p>
-                <span className="text-precision text-[0.55rem] font-bold tracking-widest uppercase text-primary-container">{w.day}</span>
-                {w.duration_min && <span className="text-precision text-[0.55rem] text-clinical-stone">· {w.duration_min} min</span>}
+                <span className="text-precision text-[0.7rem] font-bold tracking-widest uppercase text-primary-container">{w.day}</span>
+                {w.duration_min && <span className="text-precision text-[0.7rem] text-clinical-stone">· {w.duration_min} min</span>}
               </div>
               <p className="text-body text-clinical-stone text-sm">{w.description}</p>
               {w.why && <p className="text-precision text-[0.65rem] text-clinical-stone mt-2 italic">{w.why}</p>}
@@ -642,7 +642,7 @@ const TakeTab = ({ plan }: { plan: any }) => {
                     <p className="text-body text-clinical-charcoal font-semibold leading-tight">{s.nutrient}</p>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
                       {s.priority && (
-                        <span className="text-precision text-[0.55rem] font-bold tracking-widest uppercase px-2 py-0.5 rounded" style={{ backgroundColor: `${priorityColor}20`, color: priorityColor }}>
+                        <span className="text-precision text-[0.7rem] font-bold tracking-widest uppercase px-2 py-0.5 rounded" style={{ backgroundColor: `${priorityColor}20`, color: priorityColor }}>
                           {s.priority}
                         </span>
                       )}
@@ -663,11 +663,11 @@ const TakeTab = ({ plan }: { plan: any }) => {
               </div>
               <div className="grid grid-cols-2 gap-2 mt-4">
                 <div className="bg-clinical-cream rounded-lg p-3">
-                  <p className="text-precision text-[0.55rem] text-clinical-stone uppercase tracking-widest mb-0.5">Dose</p>
+                  <p className="text-precision text-[0.7rem] text-clinical-stone uppercase tracking-widest mb-0.5">Dose</p>
                   <p className="text-body text-clinical-charcoal text-sm font-medium break-words">{s.dose}</p>
                 </div>
                 <div className="bg-clinical-cream rounded-lg p-3">
-                  <p className="text-precision text-[0.55rem] text-clinical-stone uppercase tracking-widest mb-0.5">When</p>
+                  <p className="text-precision text-[0.7rem] text-clinical-stone uppercase tracking-widest mb-0.5">When</p>
                   <p className="text-body text-clinical-charcoal text-sm font-medium break-words">{s.timing}</p>
                 </div>
               </div>
@@ -689,7 +689,7 @@ const TakeTab = ({ plan }: { plan: any }) => {
                       <div key={ai} className="bg-clinical-cream/40 rounded-md px-3 py-2">
                         <div className="flex items-center gap-2 mb-0.5">
                           <span className="text-body text-clinical-charcoal text-xs font-semibold">{alt.name}</span>
-                          {alt.form && <span className="text-precision text-[0.55rem] text-clinical-stone tracking-wide">· {alt.form}</span>}
+                          {alt.form && <span className="text-precision text-[0.7rem] text-clinical-stone tracking-wide">· {alt.form}</span>}
                         </div>
                         {alt.note && <p className="text-body text-clinical-stone text-xs leading-snug">{alt.note}</p>}
                       </div>
@@ -769,7 +769,7 @@ export const WellnessPlanPage = () => {
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 {plan.plan_mode === 'optimization' && (
-                  <span className="text-precision text-[0.55rem] font-bold px-2 py-0.5 bg-[#2A9D8F] text-white rounded">LONGEVITY</span>
+                  <span className="text-precision text-[0.7rem] font-bold px-2 py-0.5 bg-[#2A9D8F] text-white rounded">LONGEVITY</span>
                 )}
                 <button
                   onClick={handleExportPDF}
@@ -788,7 +788,7 @@ export const WellnessPlanPage = () => {
               </div>
             </div>
             <p className="text-body text-on-surface-variant text-sm leading-relaxed">{plan.summary}</p>
-            <p className="text-precision text-[0.55rem] text-on-surface-variant/60 mt-3">Generated {plan.generated_at ? format(new Date(plan.generated_at), 'MMM d, yyyy') : 'recently'}</p>
+            <p className="text-precision text-[0.7rem] text-on-surface-variant/60 mt-3">Generated {plan.generated_at ? format(new Date(plan.generated_at), 'MMM d, yyyy') : 'recently'}</p>
             {genError && (
               <div className="mt-4 bg-[#C94F4F]/15 border border-[#C94F4F]/40 rounded-[8px] p-3 flex items-start gap-2">
                 <span className="material-symbols-outlined text-[#FF8A8A] text-[18px] flex-shrink-0 mt-0.5">error</span>

@@ -236,7 +236,7 @@ const MealMultiPick = ({ label, options, selected, onChange, max }: {
     <div>
       <div className="flex justify-between items-baseline mb-2">
         <SectionLabel className="mb-0">{label}</SectionLabel>
-        <span className="text-precision text-[0.55rem] text-clinical-stone tracking-widest">{selected.length}/{max}</span>
+        <span className="text-precision text-[0.7rem] text-clinical-stone tracking-widest">{selected.length}/{max}</span>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
         {options.map(opt => {

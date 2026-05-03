@@ -6,7 +6,6 @@ import { useProfile } from '../../hooks/useProfile';
 import { useLabDraws } from '../../hooks/useLabData';
 import { useMedications } from '../../hooks/useMedications';
 import { useSymptoms } from '../../hooks/useSymptoms';
-import { useProgressEntries } from '../../hooks/useProgress';
 
 export const DataManagement = () => {
   const user = useAuthStore(s => s.user);
@@ -14,7 +13,6 @@ export const DataManagement = () => {
   const { data: labDraws = [] } = useLabDraws();
   const { data: meds = [] } = useMedications();
   const { data: symptoms = [] } = useSymptoms();
-  const { data: entries = [] } = useProgressEntries(365);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -22,12 +20,11 @@ export const DataManagement = () => {
     const userId = user?.id;
     if (!userId) return;
     // Fetch ALL user data for complete export
-    const [condRes, wpRes, dpRes, lvRes, scRes, paRes, detRes] = await Promise.allSettled([
+    const [condRes, wpRes, dpRes, lvRes, paRes, detRes] = await Promise.allSettled([
       supabase.from('conditions').select('*').eq('user_id', userId),
       supabase.from('wellness_plans').select('*').eq('user_id', userId),
       supabase.from('doctor_prep_documents').select('*').eq('user_id', userId),
       supabase.from('lab_values').select('*').eq('user_id', userId),
-      supabase.from('supplement_compliance').select('*').eq('user_id', userId),
       supabase.from('priority_alerts').select('*').eq('user_id', userId),
       supabase.from('detections').select('*').eq('user_id', userId),
     ]);
@@ -42,8 +39,6 @@ export const DataManagement = () => {
       lab_values: getData(lvRes),
       wellness_plans: getData(wpRes),
       doctor_prep_documents: getData(dpRes),
-      progress_entries: entries,
-      supplement_compliance: getData(scRes),
       priority_alerts: getData(paRes),
       detections: getData(detRes),
     };
@@ -56,7 +51,7 @@ export const DataManagement = () => {
   const handleDelete = async () => {
     if (!confirmDelete) { setConfirmDelete(true); return; }
     setDeleting(true);
-    for (const table of ['detections', 'priority_alerts', 'conditions', 'progress_entries', 'supplement_compliance', 'doctor_prep_documents', 'wellness_plans', 'lab_values', 'lab_draws', 'symptoms', 'medications']) {
+    for (const table of ['detections', 'priority_alerts', 'conditions', 'doctor_prep_documents', 'wellness_plans', 'lab_values', 'lab_draws', 'symptoms', 'medications']) {
       await supabase.from(table).delete().eq('user_id', user!.id);
     }
     await useAuthStore.getState().signOut();
@@ -66,8 +61,8 @@ export const DataManagement = () => {
     <div className="bg-clinical-white rounded-[10px] border-t-[3px] border-[#C94F4F] shadow-card p-6">
       <div className="mb-6"><p className="text-precision text-[0.68rem] uppercase tracking-widest text-[#C94F4F] mb-0.5">Privacy</p><h3 className="text-authority text-xl text-clinical-charcoal">Your Data</h3></div>
 
-      <div className="grid grid-cols-2 gap-3 mb-6">
-        {[{ label: 'Lab Draws', value: labDraws.length }, { label: 'Medications', value: meds.length }, { label: 'Symptoms', value: symptoms.length }, { label: 'Check-Ins', value: entries.length }].map(item => (
+      <div className="grid grid-cols-3 gap-3 mb-6">
+        {[{ label: 'Lab Draws', value: labDraws.length }, { label: 'Medications', value: meds.length }, { label: 'Symptoms', value: symptoms.length }].map(item => (
           <div key={item.label} className="bg-clinical-cream rounded-lg p-3 text-center">
             <span className="text-precision text-xl font-bold text-clinical-charcoal block">{item.value}</span>
             <span className="text-precision text-[0.6rem] uppercase tracking-wider text-clinical-stone">{item.label}</span>

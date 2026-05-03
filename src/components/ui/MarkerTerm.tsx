@@ -63,31 +63,31 @@ export const MarkerTerm = ({ name, className = '', showIcon = true, children }: 
               <span className="material-symbols-outlined text-[18px]">close</span>
             </button>
 
-            <p className="text-precision text-[0.55rem] text-primary-container font-bold tracking-widest uppercase mb-1">{entry.category}</p>
+            <p className="text-precision text-[0.7rem] text-primary-container font-bold tracking-widest uppercase mb-1">{entry.category}</p>
             <h4 className="text-authority text-base text-clinical-charcoal font-semibold mb-3 pr-6">{entry.name}</h4>
 
             <div className="space-y-3">
               <div>
-                <p className="text-precision text-[0.55rem] text-clinical-stone tracking-widest uppercase mb-0.5">What it is</p>
+                <p className="text-precision text-[0.7rem] text-clinical-stone tracking-widest uppercase mb-0.5">What it is</p>
                 <p className="text-body text-clinical-charcoal text-xs leading-relaxed">{entry.whatItIs}</p>
               </div>
               <div>
-                <p className="text-precision text-[0.55rem] text-clinical-stone tracking-widest uppercase mb-0.5">Why it matters</p>
+                <p className="text-precision text-[0.7rem] text-clinical-stone tracking-widest uppercase mb-0.5">Why it matters</p>
                 <p className="text-body text-clinical-charcoal text-xs leading-relaxed">{entry.whyItMatters}</p>
               </div>
               <div className="grid grid-cols-1 gap-2">
                 <div className="bg-[#C94F4F]/5 border-l-2 border-[#C94F4F] rounded-r px-2.5 py-1.5">
-                  <p className="text-precision text-[0.55rem] text-[#C94F4F] tracking-widest uppercase mb-0.5">If high</p>
+                  <p className="text-precision text-[0.7rem] text-[#C94F4F] tracking-widest uppercase mb-0.5">If high</p>
                   <p className="text-body text-clinical-charcoal text-xs leading-relaxed">{entry.highMeans}</p>
                 </div>
                 <div className="bg-[#E8922A]/5 border-l-2 border-[#E8922A] rounded-r px-2.5 py-1.5">
-                  <p className="text-precision text-[0.55rem] text-[#E8922A] tracking-widest uppercase mb-0.5">If low</p>
+                  <p className="text-precision text-[0.7rem] text-[#E8922A] tracking-widest uppercase mb-0.5">If low</p>
                   <p className="text-body text-clinical-charcoal text-xs leading-relaxed">{entry.lowMeans}</p>
                 </div>
               </div>
               {entry.optimalNote && (
                 <div className="bg-primary-container/5 border-l-2 border-primary-container rounded-r px-2.5 py-1.5">
-                  <p className="text-precision text-[0.55rem] text-primary-container tracking-widest uppercase mb-0.5">Optimal vs Standard</p>
+                  <p className="text-precision text-[0.7rem] text-primary-container tracking-widest uppercase mb-0.5">Optimal vs Standard</p>
                   <p className="text-body text-clinical-charcoal text-xs leading-relaxed">{entry.optimalNote}</p>
                 </div>
               )}

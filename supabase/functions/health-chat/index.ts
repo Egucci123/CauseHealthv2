@@ -177,10 +177,19 @@ RULES:
     }
     messages.push({ role: 'user', content: message });
 
+    // Wrap system prompt as a cached content block. The patient context block
+    // changes between users (no benefit) but within a single user's session
+    // the same system prompt is sent on every message — cache it on first
+    // call and read from cache for follow-ups (5-min TTL, 0.1× input cost).
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 600, system: systemPrompt, messages }),
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 600,
+        system: [{ type: 'text', cache_control: { type: 'ephemeral' }, text: systemPrompt }],
+        messages,
+      }),
     });
 
     if (!response.ok) throw new Error(`API error: ${response.status}`);

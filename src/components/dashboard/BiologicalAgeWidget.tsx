@@ -89,10 +89,10 @@ export const BiologicalAgeWidget = () => {
         </p>
         <div className="flex flex-wrap gap-1.5 mb-3">
           {result.missing.slice(0, 4).map(m => (
-            <span key={m} className="text-precision text-[0.55rem] text-clinical-charcoal bg-clinical-cream px-2 py-1" style={{ borderRadius: '3px' }}>{m}</span>
+            <span key={m} className="text-precision text-[0.7rem] text-clinical-charcoal bg-clinical-cream px-2 py-1" style={{ borderRadius: '3px' }}>{m}</span>
           ))}
           {result.missing.length > 4 && (
-            <span className="text-precision text-[0.55rem] text-clinical-stone px-2 py-1">+{result.missing.length - 4} more</span>
+            <span className="text-precision text-[0.7rem] text-clinical-stone px-2 py-1">+{result.missing.length - 4} more</span>
           )}
         </div>
         <p className="text-precision text-[0.6rem] text-clinical-stone leading-relaxed">A standard CBC + CMP + hs-CRP covers all 9 markers needed.</p>
@@ -117,7 +117,7 @@ export const BiologicalAgeWidget = () => {
     <div>
       <div className="flex items-center justify-between mb-4">
         <p className="text-precision text-[0.68rem] font-bold text-clinical-stone tracking-widest uppercase">Biological Age</p>
-        <span className="text-precision text-[0.55rem] text-clinical-stone tracking-wider">PhenoAge</span>
+        <span className="text-precision text-[0.7rem] text-clinical-stone tracking-wider">PhenoAge</span>
       </div>
 
       <motion.div
@@ -149,7 +149,7 @@ export const BiologicalAgeWidget = () => {
           ? 'Your blood biomarkers suggest accelerated biological aging. Your wellness plan and clinical prep have specific actions to slow this.'
           : 'Your biological age matches your chronological age — a healthy baseline.'}
       </p>
-      <p className="text-precision text-[0.55rem] text-clinical-stone/70 leading-relaxed mb-3 italic">
+      <p className="text-precision text-[0.7rem] text-clinical-stone/70 leading-relaxed mb-3 italic">
         PhenoAge uses 9 specific markers (albumin, creatinine, glucose, CRP, lymphocytes, MCV, RDW, ALP, WBC). It does not include lipids, liver enzymes, or vitamin status.
       </p>
 
@@ -164,7 +164,7 @@ export const BiologicalAgeWidget = () => {
           <div className="mt-4 pt-4 border-t border-outline-variant/15">
             <div className="flex items-center justify-between mb-2">
               <p className="text-precision text-[0.6rem] font-bold text-clinical-stone tracking-widest uppercase">Cardiometabolic Age</p>
-              <span className="text-precision text-[0.55rem] text-clinical-stone tracking-wider">CauseHealth model</span>
+              <span className="text-precision text-[0.7rem] text-clinical-stone tracking-wider">CauseHealth model</span>
             </div>
             <div className="flex items-baseline gap-3 mb-2">
               <span className="text-authority text-3xl font-bold leading-none" style={{ color: cardioColor }}>
@@ -172,13 +172,13 @@ export const BiologicalAgeWidget = () => {
               </span>
               <span className="text-body text-clinical-stone text-xs">years</span>
               <span
-                className="text-precision text-[0.55rem] font-bold tracking-widest uppercase px-2 py-0.5"
+                className="text-precision text-[0.7rem] font-bold tracking-widest uppercase px-2 py-0.5"
                 style={{ borderRadius: '3px', backgroundColor: `${cardioColor}15`, color: cardioColor }}
               >
                 {cardioLabel}
               </span>
             </div>
-            <p className="text-precision text-[0.55rem] text-clinical-stone/70 leading-relaxed italic">
+            <p className="text-precision text-[0.7rem] text-clinical-stone/70 leading-relaxed italic">
               Lipids, liver enzymes, glucose control, and vitamin D — the markers PhenoAge skips. Not a peer-reviewed score; a transparent CauseHealth composite.
             </p>
           </div>

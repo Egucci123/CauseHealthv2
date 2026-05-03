@@ -43,8 +43,8 @@ const WatchListVisual = () => (
     <div className="flex items-baseline justify-between mb-2">
       <span className="text-authority text-3xl text-clinical-charcoal font-bold leading-none">5.5</span>
       <div>
-        <span className="inline-block bg-[#E8922A] text-white text-precision text-[0.55rem] px-1.5 py-0.5 font-bold tracking-wider">WATCH</span>
-        <p className="text-precision text-[0.55rem] text-clinical-stone mt-1">Lab said: Normal</p>
+        <span className="inline-block bg-[#E8922A] text-white text-precision text-[0.7rem] px-1.5 py-0.5 font-bold tracking-wider">WATCH</span>
+        <p className="text-precision text-[0.7rem] text-clinical-stone mt-1">Lab said: Normal</p>
       </div>
     </div>
     <div className="w-full h-2 flex rounded-sm overflow-hidden mb-1.5">
@@ -54,7 +54,7 @@ const WatchListVisual = () => (
       <div className="w-[15%] bg-[#C94F4F]" />
       <div className="w-[10%] bg-[#A53A3A]" />
     </div>
-    <p className="text-precision text-[0.55rem] text-clinical-stone mb-3">
+    <p className="text-precision text-[0.7rem] text-clinical-stone mb-3">
       Standard: 4.0–5.6% · Watch threshold: ≥5.4%
     </p>
 
@@ -104,7 +104,7 @@ const WellnessPlanVisual = () => (
       <p className="text-precision text-[0.6rem] text-clinical-stone tracking-widest uppercase">
         This Week's Focus · Week 1 of 12
       </p>
-      <span className="inline-block bg-[#1B4332] text-white text-precision text-[0.55rem] px-1.5 py-0.5 font-bold tracking-wider">
+      <span className="inline-block bg-[#1B4332] text-white text-precision text-[0.7rem] px-1.5 py-0.5 font-bold tracking-wider">
         EASY MODE
       </span>
     </div>
@@ -115,21 +115,21 @@ const WellnessPlanVisual = () => (
         <span className="text-base">🌯</span>
         <div className="flex-1 min-w-0">
           <p className="text-body text-clinical-charcoal text-xs font-semibold leading-tight">Wawa egg white wrap + spinach</p>
-          <p className="text-precision text-[0.55rem] text-clinical-stone">30g protein · breakfast · Phase 1</p>
+          <p className="text-precision text-[0.7rem] text-clinical-stone">30g protein · breakfast · Phase 1</p>
         </div>
       </div>
       <div className="bg-clinical-cream/60 rounded-lg px-3 py-2 flex items-center gap-2">
         <span className="text-base">🍚</span>
         <div className="flex-1 min-w-0">
           <p className="text-body text-clinical-charcoal text-xs font-semibold leading-tight">Chipotle bowl · double chicken</p>
-          <p className="text-precision text-[0.55rem] text-clinical-stone">65g protein · lunch · Phase 1</p>
+          <p className="text-precision text-[0.7rem] text-clinical-stone">65g protein · lunch · Phase 1</p>
         </div>
       </div>
       <div className="bg-clinical-cream/60 rounded-lg px-3 py-2 flex items-center gap-2">
         <span className="text-base">🐟</span>
         <div className="flex-1 min-w-0">
           <p className="text-body text-clinical-charcoal text-xs font-semibold leading-tight">Air-fryer salmon + frozen broccoli</p>
-          <p className="text-precision text-[0.55rem] text-clinical-stone">38g protein · dinner · Phase 2</p>
+          <p className="text-precision text-[0.7rem] text-clinical-stone">38g protein · dinner · Phase 2</p>
         </div>
       </div>
     </div>
@@ -163,19 +163,19 @@ const BioAgeVisual = () => (
         <p className="text-precision text-[0.6rem] text-clinical-stone tracking-widest uppercase font-bold">
           Biological Age
         </p>
-        <span className="text-precision text-[0.55rem] text-clinical-stone tracking-wide">PhenoAge · Levine 2018</span>
+        <span className="text-precision text-[0.7rem] text-clinical-stone tracking-wide">PhenoAge · Levine 2018</span>
       </div>
       <div className="flex items-baseline gap-2 mb-1">
         <span className="text-authority text-4xl font-bold leading-none" style={{ color: '#1B4332' }}>22.8</span>
         <span className="text-body text-clinical-stone text-xs">years</span>
         <span
-          className="ml-auto text-precision text-[0.55rem] font-bold tracking-widest uppercase px-2 py-0.5"
+          className="ml-auto text-precision text-[0.7rem] font-bold tracking-widest uppercase px-2 py-0.5"
           style={{ borderRadius: '3px', backgroundColor: '#1B433215', color: '#1B4332' }}
         >
           5.4 yrs younger
         </span>
       </div>
-      <p className="text-precision text-[0.55rem] text-clinical-stone leading-relaxed italic">
+      <p className="text-precision text-[0.7rem] text-clinical-stone leading-relaxed italic">
         9-marker peer-reviewed mortality biomarker (albumin, creatinine, glucose, CRP, lymphocytes, MCV, RDW, ALP, WBC).
       </p>
     </div>
@@ -185,19 +185,19 @@ const BioAgeVisual = () => (
         <p className="text-precision text-[0.6rem] text-clinical-stone tracking-widest uppercase font-bold">
           Cardiometabolic Age
         </p>
-        <span className="text-precision text-[0.55rem] text-clinical-stone tracking-wide">CauseHealth model</span>
+        <span className="text-precision text-[0.7rem] text-clinical-stone tracking-wide">CauseHealth model</span>
       </div>
       <div className="flex items-baseline gap-2 mb-1">
         <span className="text-authority text-4xl font-bold leading-none" style={{ color: '#C94F4F' }}>42</span>
         <span className="text-body text-clinical-stone text-xs">years</span>
         <span
-          className="ml-auto text-precision text-[0.55rem] font-bold tracking-widest uppercase px-2 py-0.5"
+          className="ml-auto text-precision text-[0.7rem] font-bold tracking-widest uppercase px-2 py-0.5"
           style={{ borderRadius: '3px', backgroundColor: '#C94F4F15', color: '#C94F4F' }}
         >
           14 yrs older
         </span>
       </div>
-      <p className="text-precision text-[0.55rem] text-clinical-stone leading-relaxed italic">
+      <p className="text-precision text-[0.7rem] text-clinical-stone leading-relaxed italic">
         Lipids, liver enzymes, glucose, vitamin D — the metabolic markers PhenoAge skips.
       </p>
     </div>
@@ -257,7 +257,7 @@ const ChatCheckInVisual = () => (
       </div>
     </div>
 
-    <p className="text-precision text-[0.55rem] text-clinical-stone italic">
+    <p className="text-precision text-[0.7rem] text-clinical-stone italic">
       AI chat reads your actual labs, conditions, and meds — not generic answers.
     </p>
   </div>
@@ -281,10 +281,10 @@ const DoctorPrepVisual = () => (
           <div key={row.test} className="flex items-center justify-between py-2 border-b border-outline-variant/5">
             <div>
               <p className="text-body text-clinical-charcoal text-xs font-medium">{row.test}</p>
-              <p className="text-precision text-[0.55rem] text-clinical-stone">{row.icd}</p>
+              <p className="text-precision text-[0.7rem] text-clinical-stone">{row.icd}</p>
             </div>
             <span
-              className="text-precision text-[0.55rem] px-1.5 py-0.5 font-bold text-white flex-shrink-0"
+              className="text-precision text-[0.7rem] px-1.5 py-0.5 font-bold text-white flex-shrink-0"
               style={{ background: row.color }}
             >
               {row.coverage}

@@ -10,11 +10,10 @@ export const QuickActions = () => {
     { label: 'Upload Labs', description: 'Add new bloodwork results', icon: 'upload_file', path: '/labs/upload', primary: !latestDraw },
     { label: 'Doctor Prep', description: 'Generate your prep document', icon: 'description', path: '/doctor-prep', primary: false },
     { label: 'Wellness Plan', description: 'View your 90-day protocol', icon: 'favorite', path: '/wellness', primary: false },
-    { label: 'Log Today', description: 'Daily check-in', icon: 'edit_note', path: '/progress', primary: false },
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
       {actions.map(action => (
         <button key={action.path} onClick={() => navigate(action.path)}
           className={`flex flex-col items-start gap-2 p-4 rounded-[10px] border transition-all text-left hover:shadow-card-md ${action.primary ? 'bg-primary-container text-white border-primary-container hover:bg-[#2D6A4F]' : 'bg-clinical-white border-outline-variant/10 hover:border-primary-container/30'}`}>

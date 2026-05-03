@@ -31,34 +31,34 @@ export const TransformationForecast = ({ forecasts }: Props) => {
           >
             <div className="flex items-center gap-1.5 mb-2">
               <span className="text-lg leading-none">{f.emoji}</span>
-              <p className="text-precision text-[0.55rem] font-bold tracking-wide text-on-surface-variant truncate">{f.marker.split(',')[0].split('(')[0].trim()}</p>
+              <p className="text-precision text-[0.7rem] font-bold tracking-wide text-on-surface-variant truncate">{f.marker.split(',')[0].split('(')[0].trim()}</p>
             </div>
 
             {/* Two-column today vs goal — labeled so it's never ambiguous */}
             <div className="grid grid-cols-2 gap-2 items-end">
               <div>
-                <p className="text-precision text-[0.5rem] tracking-widest uppercase text-on-surface-variant/60 mb-0.5">Today</p>
+                <p className="text-precision text-[0.7rem] tracking-widest uppercase text-on-surface-variant/60 mb-0.5">Today</p>
                 <p className="text-precision text-clinical-stone text-base font-medium">{f.current}</p>
               </div>
               <div>
-                <p className="text-precision text-[0.5rem] tracking-widest uppercase text-[#D4A574] mb-0.5">Goal</p>
+                <p className="text-precision text-[0.7rem] tracking-widest uppercase text-[#D4A574] mb-0.5">Goal</p>
                 <p className="text-precision text-on-surface text-2xl font-bold leading-none">{f.projected}</p>
               </div>
             </div>
             <div className="flex items-center justify-between gap-1 mt-2 pt-2 border-t border-white/10">
-              <span className="text-precision text-[0.5rem] text-on-surface-variant">{f.unit}</span>
+              <span className="text-precision text-[0.7rem] text-on-surface-variant">{f.unit}</span>
               <div className="flex items-center gap-1">
-                <span className="text-precision text-[0.55rem] font-bold tracking-wide text-[#D4A574]">{f.delta}</span>
-                {f.confidence === 'high' && <span className="text-[0.55rem]">●●●</span>}
-                {f.confidence === 'moderate' && <span className="text-[0.55rem] text-on-surface-variant">●●○</span>}
-                {f.confidence === 'lower' && <span className="text-[0.55rem] text-on-surface-variant">●○○</span>}
+                <span className="text-precision text-[0.7rem] font-bold tracking-wide text-[#D4A574]">{f.delta}</span>
+                {f.confidence === 'high' && <span className="text-[0.7rem]">●●●</span>}
+                {f.confidence === 'moderate' && <span className="text-[0.7rem] text-on-surface-variant">●●○</span>}
+                {f.confidence === 'lower' && <span className="text-[0.7rem] text-on-surface-variant">●○○</span>}
               </div>
             </div>
           </motion.div>
         ))}
       </div>
 
-      <p className="text-precision text-[0.55rem] text-on-surface-variant/60 mt-4 leading-relaxed">
+      <p className="text-precision text-[0.7rem] text-on-surface-variant/60 mt-4 leading-relaxed">
         Estimates based on average response in adherent patients. Real change tracks adherence.
       </p>
     </div>

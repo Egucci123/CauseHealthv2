@@ -110,7 +110,7 @@ export const Step6_Goals = () => {
                       {goal.label}
                     </p>
                     {order && (
-                      <span className="text-precision text-[0.55rem] font-bold tracking-widest text-primary-container">
+                      <span className="text-precision text-[0.7rem] font-bold tracking-widest text-primary-container">
                         #{order}
                       </span>
                     )}

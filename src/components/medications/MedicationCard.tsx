@@ -18,7 +18,7 @@ const DepletionRow = ({ dep, index }: { dep: DepletionEntry; index: number }) =>
     <div className={`bg-clinical-white rounded-lg overflow-hidden ${cfg.border}`}>
       <button onClick={() => setExpanded(!expanded)} className="w-full flex items-center justify-between p-4 text-left hover:bg-clinical-cream/30 transition-colors">
         <div className="flex items-center gap-3">
-          <span className={`${cfg.badge} text-precision text-[0.55rem] font-bold px-2 py-0.5`} style={{ borderRadius: '2px' }}>{cfg.text}</span>
+          <span className={`${cfg.badge} text-precision text-[0.7rem] font-bold px-2 py-0.5`} style={{ borderRadius: '2px' }}>{cfg.text}</span>
           <p className="text-body text-clinical-charcoal font-semibold text-sm">{dep.nutrient}</p>
         </div>
         <span className="material-symbols-outlined text-clinical-stone text-[18px] transition-transform duration-200 flex-shrink-0" style={{ transform: expanded ? 'rotate(180deg)' : 'rotate(0)' }}>expand_more</span>
@@ -35,13 +35,13 @@ const DepletionRow = ({ dep, index }: { dep: DepletionEntry; index: number }) =>
                 <p className="text-precision text-[0.6rem] text-primary-container uppercase tracking-widest font-bold mb-2">Recommended Intervention</p>
                 <p className="text-body text-clinical-charcoal text-sm font-semibold mb-3">{dep.intervention}</p>
                 <div className="grid grid-cols-3 gap-2">
-                  <div><p className="text-precision text-[0.55rem] text-clinical-stone uppercase tracking-wider mb-0.5">Dose</p><p className="text-body text-clinical-charcoal text-xs">{dep.dose}</p></div>
-                  <div><p className="text-precision text-[0.55rem] text-clinical-stone uppercase tracking-wider mb-0.5">Form</p><p className="text-body text-clinical-charcoal text-xs font-medium">{dep.form}</p></div>
-                  <div><p className="text-precision text-[0.55rem] text-clinical-stone uppercase tracking-wider mb-0.5">Timing</p><p className="text-body text-clinical-charcoal text-xs">{dep.timing}</p></div>
+                  <div><p className="text-precision text-[0.7rem] text-clinical-stone uppercase tracking-wider mb-0.5">Dose</p><p className="text-body text-clinical-charcoal text-xs">{dep.dose}</p></div>
+                  <div><p className="text-precision text-[0.7rem] text-clinical-stone uppercase tracking-wider mb-0.5">Form</p><p className="text-body text-clinical-charcoal text-xs font-medium">{dep.form}</p></div>
+                  <div><p className="text-precision text-[0.7rem] text-clinical-stone uppercase tracking-wider mb-0.5">Timing</p><p className="text-body text-clinical-charcoal text-xs">{dep.timing}</p></div>
                 </div>
                 {dep.contraindications?.length && (
                   <div className="mt-3 pt-3 border-t border-primary-container/10">
-                    <p className="text-precision text-[0.55rem] text-[#C94F4F] uppercase tracking-wider font-bold mb-1">Caution</p>
+                    <p className="text-precision text-[0.7rem] text-[#C94F4F] uppercase tracking-wider font-bold mb-1">Caution</p>
                     {dep.contraindications.map((c, i) => <p key={i} className="text-body text-[#C94F4F] text-xs">{c}</p>)}
                   </div>
                 )}
@@ -140,7 +140,7 @@ export const MedicationCard = ({ medication, index }: MedicationCardProps) => {
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-center gap-2 flex-wrap mb-1">
                                         <p className="text-body text-clinical-charcoal text-sm font-semibold">{alt.name}</p>
-                                        <span className="text-precision text-[0.5rem] font-bold px-1.5 py-0.5 tracking-widest" style={{ borderRadius: '2px', backgroundColor: `${cfg.color}15`, color: cfg.color }}>{cfg.label}</span>
+                                        <span className="text-precision text-[0.7rem] font-bold px-1.5 py-0.5 tracking-widest" style={{ borderRadius: '2px', backgroundColor: `${cfg.color}15`, color: cfg.color }}>{cfg.label}</span>
                                       </div>
                                       <p className="text-body text-clinical-stone text-xs leading-relaxed">{alt.reason}</p>
                                       {alt.caution && (

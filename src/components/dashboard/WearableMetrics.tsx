@@ -76,7 +76,7 @@ export const WearableMetrics = ({ userId }: { userId: string }) => {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-body text-clinical-charcoal text-sm font-semibold leading-tight">{m.label}</p>
-                  <p className="text-precision text-[0.55rem] text-clinical-stone tracking-wide mt-0.5">{m.ranges.good}</p>
+                  <p className="text-precision text-[0.7rem] text-clinical-stone tracking-wide mt-0.5">{m.ranges.good}</p>
                 </div>
               </div>
 
@@ -124,7 +124,7 @@ export const WearableMetrics = ({ userId }: { userId: string }) => {
                     <span className="text-authority text-2xl text-clinical-charcoal font-bold">{entry.value}</span>
                     <span className="text-precision text-[0.7rem] text-clinical-stone ml-1">{m.unit}</span>
                   </div>
-                  <span className="text-precision text-[0.55rem] text-clinical-stone">
+                  <span className="text-precision text-[0.7rem] text-clinical-stone">
                     {formatDistanceToNow(new Date(entry.updatedAt), { addSuffix: true })}
                   </span>
                 </button>
@@ -138,7 +138,7 @@ export const WearableMetrics = ({ userId }: { userId: string }) => {
               )}
 
               {!isEditing && (
-                <p className="text-precision text-[0.55rem] text-clinical-stone tracking-wide leading-relaxed mt-2">{m.helper}</p>
+                <p className="text-precision text-[0.7rem] text-clinical-stone tracking-wide leading-relaxed mt-2">{m.helper}</p>
               )}
             </div>
           );

@@ -44,7 +44,7 @@ export const ResearchDigest = ({ userId }: { userId: string }) => {
         </div>
         <div className="flex-1 min-w-0">
           <SectionLabel light className="mb-1 text-on-surface-variant">What's New In Research</SectionLabel>
-          <p className="text-precision text-[0.55rem] text-on-surface-variant/60 tracking-widest uppercase">{format(new Date(digest.publishedAt), 'MMM d, yyyy')}</p>
+          <p className="text-precision text-[0.7rem] text-on-surface-variant/60 tracking-widest uppercase">{format(new Date(digest.publishedAt), 'MMM d, yyyy')}</p>
         </div>
       </div>
 
@@ -66,7 +66,7 @@ export const ResearchDigest = ({ userId }: { userId: string }) => {
         )}
         <div className="flex flex-wrap gap-1.5">
           {digest.tags.map(t => (
-            <span key={t} className="text-precision text-[0.55rem] font-bold tracking-wider uppercase text-[#D4A574] bg-[#D4A574]/10 px-2 py-0.5 rounded">{t}</span>
+            <span key={t} className="text-precision text-[0.7rem] font-bold tracking-wider uppercase text-[#D4A574] bg-[#D4A574]/10 px-2 py-0.5 rounded">{t}</span>
           ))}
         </div>
       </div>

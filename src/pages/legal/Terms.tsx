@@ -44,7 +44,7 @@ export const Terms = () => (
         </Section>
 
         <Section title="6. Subscription and Payment">
-          CauseHealth Pro is a monthly subscription at $7.67/month ($92/year). You may cancel at any time through your account settings. Cancellation takes effect at the end of your current billing period. No refunds are provided for partial months. Payment is processed securely through Stripe. CauseHealth does not store your credit card information.
+          CauseHealth Pro is a monthly subscription at $12/month ($144/year). You may cancel at any time through your account settings. Cancellation takes effect at the end of your current billing period. No refunds are provided for partial months. Payment is processed securely through Stripe. CauseHealth does not store your credit card information.
         </Section>
 
         <Section title="7. Your Data">

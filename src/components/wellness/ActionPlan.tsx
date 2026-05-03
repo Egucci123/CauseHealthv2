@@ -93,7 +93,7 @@ export const ActionPlan = ({ actionPlan, retestTimeline, planKey = 'default' }: 
                   <span className="text-precision text-[0.6rem] font-bold tracking-widest" style={{ color: color.dot }}>PHASE {i + 1}</span>
                 </div>
                 {stats.total > 0 && (
-                  <span className="text-precision text-[0.55rem] text-clinical-stone tracking-wider">{stats.done}/{stats.total}</span>
+                  <span className="text-precision text-[0.7rem] text-clinical-stone tracking-wider">{stats.done}/{stats.total}</span>
                 )}
               </div>
               <h4 className="text-authority text-lg text-clinical-charcoal font-semibold mb-2">{phase.name}</h4>

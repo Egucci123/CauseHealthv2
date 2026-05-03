@@ -31,7 +31,7 @@ const SupplementCard = ({ item, index }: { item: SupplementItem; index: number }
               <p className="text-precision text-[0.6rem] text-clinical-stone tracking-wide break-words mt-0.5">{item.form}</p>
             </div>
           </div>
-          <span className={`${cfg.badge} text-precision text-[0.55rem] font-bold px-2 py-0.5 flex-shrink-0`} style={{ borderRadius: '2px' }}>{cfg.text}</span>
+          <span className={`${cfg.badge} text-precision text-[0.7rem] font-bold px-2 py-0.5 flex-shrink-0`} style={{ borderRadius: '2px' }}>{cfg.text}</span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">

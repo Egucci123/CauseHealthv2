@@ -172,7 +172,7 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
           if ((count ?? 0) >= 1) {
             set({
               phase: 'error', isRunning: false,
-              errorMessage: 'Free plan includes 1 lab upload per month. Upgrade to Pro ($7.67/mo) for unlimited uploads, or redeem a code in Settings.',
+              errorMessage: 'Free plan includes 1 lab upload per month. Upgrade to Pro ($12/mo) for unlimited uploads, or redeem a code in Settings.',
             });
             return;
           }

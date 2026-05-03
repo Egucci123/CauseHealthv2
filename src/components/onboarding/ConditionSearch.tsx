@@ -124,7 +124,7 @@ export const ConditionSearch = ({ conditions, onAdd, onRemove }: Props) => {
                         <p className="text-body text-clinical-charcoal text-sm">{cond.name}</p>
                         <p className="text-precision text-[0.6rem] text-clinical-stone tracking-wide">{cond.category}{cond.icd10 ? ` · ${cond.icd10}` : ''}</p>
                       </div>
-                      {added && <span className="text-precision text-[0.55rem] text-primary-container font-bold tracking-wider">ADDED</span>}
+                      {added && <span className="text-precision text-[0.7rem] text-primary-container font-bold tracking-wider">ADDED</span>}
                     </div>
                   </button>
                 );

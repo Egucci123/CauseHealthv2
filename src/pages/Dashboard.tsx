@@ -5,7 +5,6 @@ import { BiologicalAgeWidget } from '../components/dashboard/BiologicalAgeWidget
 import { TodayCard } from '../components/dashboard/TodayCard';
 import { OrganAgesWidget } from '../components/dashboard/OrganAgesWidget';
 import { PriorityAlerts } from '../components/dashboard/PriorityAlerts';
-import { SupplementChecklist } from '../components/dashboard/SupplementChecklist';
 import { LabSummary } from '../components/dashboard/LabSummary';
 import { MedicationSnapshot } from '../components/dashboard/MedicationSnapshot';
 import { QuickActions } from '../components/dashboard/QuickActions';
@@ -93,15 +92,10 @@ export const Dashboard = () => {
         <PriorityAlerts />
       </PrimaryCard>
 
-      {/* Lab + supplement context */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <PrimaryCard status="brand" padding="lg">
-          <LabSummary />
-        </PrimaryCard>
-        <PrimaryCard status="brand" padding="lg">
-          <SupplementChecklist />
-        </PrimaryCard>
-      </div>
+      {/* Lab summary — full width since the supplement check-off card is gone */}
+      <PrimaryCard status="brand" padding="lg">
+        <LabSummary />
+      </PrimaryCard>
 
       {/* Wearable vitals removed from dashboard until we ship native device
           integrations (Apple Health, Google Fit, Whoop, Oura, etc.). Manual

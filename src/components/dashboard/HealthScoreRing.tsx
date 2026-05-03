@@ -75,7 +75,7 @@ export const HealthScoreRing = ({ score, analyzing }: HealthScoreRingProps) => {
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className="text-authority text-3xl font-bold text-clinical-charcoal leading-none">{animatedScore}</span>
-          <span className="text-precision text-[0.55rem] text-clinical-stone tracking-wider uppercase">/100</span>
+          <span className="text-precision text-[0.7rem] text-clinical-stone tracking-wider uppercase">/100</span>
         </div>
       </div>
       <div className="text-center">
@@ -88,11 +88,11 @@ export const HealthScoreRing = ({ score, analyzing }: HealthScoreRingProps) => {
         </div>
       </div>
       <div className="flex gap-4 mt-1">
-        <div className="text-center"><p className="text-precision text-[0.68rem] font-bold text-primary-container">{score.optimalCount}</p><p className="text-precision text-[0.55rem] text-clinical-stone uppercase tracking-wider">Healthy</p></div>
+        <div className="text-center"><p className="text-precision text-[0.68rem] font-bold text-primary-container">{score.optimalCount}</p><p className="text-precision text-[0.7rem] text-clinical-stone uppercase tracking-wider">Healthy</p></div>
         <div className="w-px bg-outline-variant/20" />
-        <div className="text-center"><p className="text-precision text-[0.68rem] font-bold text-[#E8922A]">{score.monitorCount}</p><p className="text-precision text-[0.55rem] text-clinical-stone uppercase tracking-wider">Watch</p></div>
+        <div className="text-center"><p className="text-precision text-[0.68rem] font-bold text-[#E8922A]">{score.monitorCount}</p><p className="text-precision text-[0.7rem] text-clinical-stone uppercase tracking-wider">Watch</p></div>
         <div className="w-px bg-outline-variant/20" />
-        <div className="text-center"><p className="text-precision text-[0.68rem] font-bold text-[#C94F4F]">{score.urgentCount}</p><p className="text-precision text-[0.55rem] text-clinical-stone uppercase tracking-wider">Out of Range</p></div>
+        <div className="text-center"><p className="text-precision text-[0.68rem] font-bold text-[#C94F4F]">{score.urgentCount}</p><p className="text-precision text-[0.7rem] text-clinical-stone uppercase tracking-wider">Out of Range</p></div>
       </div>
     </div>
   );

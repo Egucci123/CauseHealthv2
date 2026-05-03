@@ -120,7 +120,7 @@ export const DoctorPrep = () => {
                 {doc.advanced_screening.length} early detection
               </span>
             )}
-            <span className="text-precision text-[0.55rem] text-on-surface-variant tracking-wide ml-auto">
+            <span className="text-precision text-[0.7rem] text-on-surface-variant tracking-wide ml-auto">
               Generated {doc.generated_at ? format(new Date(doc.generated_at), 'MMM d, yyyy') : 'recently'}
             </span>
           </div>
@@ -199,7 +199,7 @@ export const DoctorPrep = () => {
                         <div className="flex items-baseline gap-2 mb-1.5 flex-wrap">
                           <span className="text-precision text-sm font-bold text-clinical-charcoal">{f.marker}</span>
                           <span className="text-precision text-base font-bold text-[#9A3A20]">{f.value}{f.unit ? ` ${f.unit}` : ''}</span>
-                          <span className="text-precision text-[0.55rem] font-bold tracking-widest uppercase text-[#9A3A20] bg-[#9A3A20]/10 px-2 py-0.5 rounded">
+                          <span className="text-precision text-[0.7rem] font-bold tracking-widest uppercase text-[#9A3A20] bg-[#9A3A20]/10 px-2 py-0.5 rounded">
                             {f.severity}
                           </span>
                         </div>
