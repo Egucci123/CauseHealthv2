@@ -5,6 +5,8 @@ import { isHealthyMode } from '../_shared/healthMode.ts';
 import { GOAL_LABELS, formatGoals } from '../_shared/goals.ts';
 import { buildRareDiseaseBlocklist, extractRareDiseaseContext } from '../_shared/rareDiseaseGate.ts';
 import { buildUniversalTestInjections } from '../_shared/testInjectors.ts';
+import { hasCondition } from '../_shared/conditionAliases.ts';
+import { isOnMed } from '../_shared/medicationAliases.ts';
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -884,8 +886,19 @@ CRITICAL OUTPUT RULES:
       const symptomsLower = (sympStr ?? '').toLowerCase();
       const labsLower = (allLabsStr ?? '').toLowerCase();
 
-      const hasUC = /\b(ulcerative colitis|crohn|ibd|inflammatory bowel)\b/.test(conditionsLower);
-      const hasAutoimmune = hasUC || /\b(hashimoto|graves|lupus|sle|ra|rheumatoid|psoriasis|ms|multiple sclerosis|celiac|t1d|type 1 diabetes)\b/.test(conditionsLower);
+      // Conditions/meds delegated to canonical registries (May 2026 refactor).
+      // "Hypothyroidism" now correctly matches the Hashimoto's path (Nona fix).
+      const hasUC = hasCondition(conditionsLower, 'ibd');
+      const hasAutoimmune = hasUC
+        || hasCondition(conditionsLower, 'hashimotos')
+        || hasCondition(conditionsLower, 'graves')
+        || hasCondition(conditionsLower, 'lupus')
+        || hasCondition(conditionsLower, 'ra')
+        || hasCondition(conditionsLower, 'psoriasis')
+        || hasCondition(conditionsLower, 'ms')
+        || hasCondition(conditionsLower, 'celiac')
+        || hasCondition(conditionsLower, 'sjogrens')
+        || hasCondition(conditionsLower, 'long_covid');
       const hasJointPain = /\b(joint pain|joint stiffness|arthralg|stiff)/.test(symptomsLower);
       const hasFatigueOrInflam = /\b(fatigue|tired|exhaust|low energy|brain fog|hair loss|hair thin|joint)/.test(symptomsLower);
 
@@ -916,10 +929,11 @@ CRITICAL OUTPUT RULES:
       // sometimes drops despite the universal triage rule (b). Documented
       // pharmacology + universal insurance coverage = no excuse to miss them.
       const medsLower = (medsStr ?? '').toLowerCase();
-      const onMesalamine = /\b(mesalamine|sulfasalazine|asacol|pentasa|lialda|apriso)\b/.test(medsLower);
-      const onMetformin = /\b(metformin|glucophage)\b/.test(medsLower);
-      const onPPI = /\b(omeprazole|pantoprazole|esomeprazole|lansoprazole|rabeprazole|prilosec|nexium|protonix)\b/.test(medsLower);
-      const onStatin = /\b(atorvastatin|rosuvastatin|simvastatin|pravastatin|lovastatin|pitavastatin|fluvastatin|crestor|lipitor|zocor)\b/.test(medsLower);
+      // Med-class detection via registry. New brand names → add to registry once.
+      const onMesalamine = isOnMed(medsLower, 'mesalamine_5asa');
+      const onMetformin = isOnMed(medsLower, 'metformin');
+      const onPPI = isOnMed(medsLower, 'ppi');
+      const onStatin = isOnMed(medsLower, 'statin');
 
       if ((onMesalamine || onMetformin || onPPI) && !has(/\bb[\s-]?12\b|cobalamin|methylmalonic|\bmma\b|homocysteine/i)) {
         const med = onMesalamine ? 'mesalamine' : onMetformin ? 'metformin' : 'PPI';
@@ -971,17 +985,19 @@ CRITICAL OUTPUT RULES:
       // Apply to ANY chronic condition, not just UC. Each fires when the
       // matching diagnosis is in the conditions list. Standard-of-care
       // tests for that condition that the AI sometimes drops.
-      const hasIBD = /\b(ulcerative colitis|crohn|ibd|inflammatory bowel|indeterminate colitis)\b/.test(conditionsLower);
-      const hasHashimotos = /\b(hashimoto|autoimmune thyroid|chronic thyroiditis)\b/.test(conditionsLower);
-      const hasGraves = /\b(graves|hyperthyroid)\b/.test(conditionsLower);
-      const hasT2D = /\b(type 2 diabet|t2d|t2dm|diabetes mellitus type 2|prediabet)\b/.test(conditionsLower);
-      const hasPCOS = /\b(pcos|polycystic ovar)\b/.test(conditionsLower);
-      const hasHTN = /\b(hypertension|htn|high blood pressure)\b/.test(conditionsLower);
-      const hasCKD = /\b(ckd|chronic kidney|kidney disease|renal disease)\b/.test(conditionsLower);
-      const hasCAD = /\b(cad|coronary|heart failure|chf|heart disease|atherosclerosis)\b/.test(conditionsLower);
-      const hasLupus = /\b(lupus|sle|systemic lupus)\b/.test(conditionsLower);
-      const hasRA = /\b(\bra\b|rheumatoid|psoriatic arthritis)\b/.test(conditionsLower);
-      const hasOsteo = /\b(osteoporosis|osteopenia)\b/.test(conditionsLower);
+      // Detection delegated to canonical registry — alias additions are
+      // a one-line edit there and propagate everywhere automatically.
+      const hasIBD = hasCondition(conditionsLower, 'ibd');
+      const hasHashimotos = hasCondition(conditionsLower, 'hashimotos');
+      const hasGraves = hasCondition(conditionsLower, 'graves');
+      const hasT2D = hasCondition(conditionsLower, 't2d');
+      const hasPCOS = hasCondition(conditionsLower, 'pcos');
+      const hasHTN = hasCondition(conditionsLower, 'hypertension');
+      const hasCKD = hasCondition(conditionsLower, 'ckd');
+      const hasCAD = hasCondition(conditionsLower, 'cad');
+      const hasLupus = hasCondition(conditionsLower, 'lupus');
+      const hasRA = hasCondition(conditionsLower, 'ra');
+      const hasOsteo = hasCondition(conditionsLower, 'osteoporosis');
 
       if (hasIBD && !has(/calprotectin/i)) {
         plan.retest_timeline.push({
@@ -1112,23 +1128,27 @@ CRITICAL OUTPUT RULES:
     // The AI ignores the prompt rule sometimes (it dropped CoQ10 even when
     // the user is on a statin). Don't trust the AI for this — scan the
     // medications list and force-inject any missing depletion supplements.
-    type DepletionRule = { regex: RegExp; nutrient: string; matchInStack: RegExp; entry: any };
+    //
+    // May 2026 refactor: each rule now identifies its drug by `medClass` (a
+    // canonical key from medicationAliases.ts) instead of inlined regex.
+    // New brand names → add to the registry once, every rule benefits.
+    type DepletionRule = { medClasses: string[]; nutrient: string; matchInStack: RegExp; entry: any };
     const userSuppNames = (supps ?? []).map((s: any) => (s.name ?? '').toLowerCase()).join(' ');
     const depletionRules: DepletionRule[] = [
       {
-        regex: /\b(atorvastatin|rosuvastatin|simvastatin|pravastatin|lovastatin|pitavastatin|fluvastatin|crestor|lipitor|zocor)\b/i,
+        medClasses: ['statin'],
         nutrient: 'CoQ10',
         matchInStack: /\b(coq[\s-]?10|ubiquinol|ubiquinone|coenzyme\s*q)\b/i,
         entry: { emoji: '💊', nutrient: 'CoQ10 (Ubiquinol)', form: 'Softgel', dose: '100-200mg', timing: 'With breakfast (take with fat)', why_short: 'Statins block your body from making CoQ10', why: 'Statins (like atorvastatin) inhibit the same pathway your body uses to make CoQ10 — the energy molecule muscle and heart cells depend on. Replacing it cuts statin-related fatigue and muscle aches.', practical_note: 'Take with the fattiest meal of the day — CoQ10 is fat-soluble and absorption drops 50%+ on an empty stomach. Ubiquinol is the absorbable form (vs. ubiquinone). Safe alongside atorvastatin.', category: 'liver_metabolic', alternatives: [{ name: 'CoQ10 (Ubiquinone)', form: 'Capsule', note: 'Cheaper but ~50% less bioavailable; needs higher dose (200-400mg)' }, { name: 'PQQ + CoQ10 combo', form: 'Capsule', note: 'PQQ supports mitochondrial production; pricier' }], priority: 'high', sourced_from: 'medication_depletion', evidence_note: 'Multiple RCTs support 100-200mg ubiquinol daily for statin users.' },
       },
       {
-        regex: /\b(metformin|glucophage)\b/i,
+        medClasses: ['metformin'],
         nutrient: 'Vitamin B12',
         matchInStack: /\b(b[\s-]?12|cobalamin|methylcobalamin)\b/i,
         entry: { emoji: '💊', nutrient: 'Vitamin B12 (Methylcobalamin)', form: 'Sublingual', dose: '500-1000mcg', timing: 'Morning, away from food', why_short: 'Metformin blocks B12 absorption over time', why: 'Metformin reduces B12 absorption in the gut. Subclinical B12 deficiency causes fatigue, brain fog, and nerve symptoms before serum levels drop. Methylcobalamin bypasses the absorption block.', practical_note: 'Sublingual (under the tongue) absorbs through cheek tissue — bypasses the metformin blockade in the gut. Take in the morning, away from food and coffee. Energizing for some people, so avoid late evening.', category: 'nutrient_repletion', alternatives: [{ name: 'Adenosylcobalamin (B12)', form: 'Sublingual', note: 'Active mitochondrial form; some prefer for energy' }, { name: 'B12 Liquid drops', form: 'Liquid', note: 'Easier to titrate dose; same absorption' }], priority: 'high', sourced_from: 'medication_depletion', evidence_note: 'Studies show 10-30% of long-term metformin users develop B12 deficiency.' },
       },
       {
-        regex: /\b(omeprazole|pantoprazole|esomeprazole|lansoprazole|rabeprazole|prilosec|nexium|protonix)\b/i,
+        medClasses: ['ppi'],
         nutrient: 'Vitamin B12 + Magnesium',
         matchInStack: /\b(b[\s-]?12|magnesium)\b/i,
         entry: { emoji: '💊', nutrient: 'Magnesium Glycinate', form: 'Capsule', dose: '200-400mg', timing: 'Evening', why_short: 'PPIs deplete magnesium and B12', why: 'PPIs (like omeprazole) suppress stomach acid, reducing absorption of magnesium, B12, calcium, and iron. Glycinate form is gentle on the gut.', practical_note: 'Bedtime — activates GABA pathways for calming sleep. Take 2hrs apart from any antibiotic (cipro, doxy) and 4hrs apart from levothyroxine if on it. Glycinate form avoids the laxative effect of magnesium oxide/citrate.', category: 'sleep_stress', alternatives: [{ name: 'Magnesium Threonate', form: 'Capsule', note: 'Crosses blood-brain barrier; better for cognition + sleep' }, { name: 'Magnesium Citrate', form: 'Powder', note: 'Cheaper; has mild laxative effect (avoid if loose stools)' }], priority: 'high', sourced_from: 'medication_depletion', evidence_note: 'FDA black-box warning on PPI-induced hypomagnesemia.' },
@@ -1142,19 +1162,22 @@ CRITICAL OUTPUT RULES:
       // exception (30+ years safety data, no significant interactions, broad
       // hepatoprotective evidence). Universal across patient profiles.
       {
-        regex: /\b(atorvastatin|rosuvastatin|simvastatin|pravastatin|lovastatin|pitavastatin|fluvastatin|methotrexate|isoniazid|valproate|valproic|crestor|lipitor|zocor)\b/i,
+        // Statin OR other hepatotoxic meds (methotrexate / isoniazid /
+        // valproate / amiodarone / azathioprine) — covered by two registry
+        // classes. Either one fires this rule.
+        medClasses: ['statin', 'hepatotoxic_other'],
         nutrient: 'Milk Thistle',
         matchInStack: /\b(milk\s*thistle|silymarin|silybin)\b/i,
         entry: { emoji: '🌿', nutrient: 'Milk Thistle (Silymarin)', form: 'Capsule (standardized 80% silymarin)', dose: '200-400mg daily', timing: 'With breakfast (with food for absorption)', why_short: 'Liver protection on hepatotoxic meds', why: 'Hepatotoxic medications (statins, methotrexate, isoniazid) stress the liver over time. Silymarin protects hepatocytes and supports detox pathways with 30+ years of safety evidence.', practical_note: 'With breakfast or any meal containing fat. Standardized to 80% silymarin is the studied form. Safe long-term — no significant drug interactions even alongside multiple liver-processed meds. May mildly lower blood sugar; monitor if diabetic.', category: 'liver_metabolic', alternatives: [{ name: 'NAC (N-Acetyl-Cysteine)', form: 'Capsule', note: 'Glutathione precursor; complementary liver support; can stack with milk thistle' }, { name: 'TUDCA', form: 'Capsule', note: 'Bile-acid liver protective; targets bile-flow issues; pricier' }], priority: 'high', sourced_from: 'medication_depletion', evidence_note: 'Multiple meta-analyses support silymarin for drug-induced and chronic liver injury.' },
       },
       {
-        regex: /\b(prednisone|prednisolone|methylprednisolone|dexamethasone)\b/i,
+        medClasses: ['steroid_oral'],
         nutrient: 'Vitamin D + Calcium',
         matchInStack: /\b(vitamin\s*d|calcium)\b/i,
         entry: { emoji: '💊', nutrient: 'Calcium + Vitamin D3', form: 'Tablet', dose: '500mg Ca + 2000 IU D3', timing: 'With dinner', why_short: 'Steroids leach bone minerals', why: 'Oral corticosteroids reduce calcium absorption and accelerate bone loss. Pairing calcium with D3 maintains bone density during treatment.', practical_note: 'With dinner so the fat helps D3 absorb. CRITICAL: take 4hrs apart from any thyroid medication (levothyroxine) and iron supplement — calcium blocks both. Citrate form absorbs better than carbonate if you have low stomach acid.', priority: 'critical', sourced_from: 'medication_depletion', evidence_note: 'ACR guidelines recommend Ca+D for any patient on >5mg prednisone for >3 months.' },
       },
       {
-        regex: /\b(furosemide|lasix|torsemide|bumetanide|hydrochlorothiazide|hctz|chlorthalidone|spironolactone)\b/i,
+        medClasses: ['diuretic_loop', 'diuretic_thiazide', 'diuretic_potassium_sparing'],
         nutrient: 'Magnesium',
         matchInStack: /\bmagnesium\b/i,
         entry: { emoji: '💊', nutrient: 'Magnesium Glycinate', form: 'Capsule', dose: '300-400mg', timing: 'Evening', why_short: 'Diuretics flush magnesium out', why: 'Loop and thiazide diuretics increase urinary magnesium loss, often causing subclinical deficiency that worsens fatigue and BP control.', practical_note: 'Bedtime — activates GABA pathways for calming sleep. Take 2hrs apart from antibiotics. Glycinate is gentle on the gut; oxide/citrate forms cause loose stools.', priority: 'high', sourced_from: 'medication_depletion', evidence_note: 'Routine supplementation recommended in cardiology guidelines.' },
@@ -1163,12 +1186,15 @@ CRITICAL OUTPUT RULES:
 
     if (Array.isArray(plan.supplement_stack)) {
       const stackText = plan.supplement_stack.map((s: any) => `${s.nutrient ?? ''} ${s.form ?? ''}`).join(' ').toLowerCase();
+      const medsLowerForDepletion = (medsStr ?? '').toLowerCase();
       for (const rule of depletionRules) {
-        if (!rule.regex.test(medsStr)) continue;
+        // ANY of the rule's medClasses matching is enough to fire (logical OR).
+        const triggers = rule.medClasses.some(mc => isOnMed(medsLowerForDepletion, mc));
+        if (!triggers) continue;
         if (rule.matchInStack.test(stackText)) continue;
         if (rule.matchInStack.test(userSuppNames)) continue; // user already takes it
         plan.supplement_stack.push(rule.entry);
-        console.log(`[wellness-plan] Injected ${rule.nutrient} for ${rule.regex.source} match`);
+        console.log(`[wellness-plan] Injected ${rule.nutrient} for medClasses=[${rule.medClasses.join(',')}]`);
       }
 
       // ── DISEASE-MECHANISM SUPPLEMENT INJECTOR ──────────────────────────
@@ -1176,60 +1202,66 @@ CRITICAL OUTPUT RULES:
       // supplements (UC → L-glutamine + S. boulardii + butyrate; Hashimoto's
       // → selenium; T2D → berberine; PCOS → inositol; etc.). Each entry
       // includes practical_note timing + interaction guidance.
-      type DiseaseRule = { conditionRegex: RegExp; matchInStack: RegExp; entry: any };
+      type DiseaseRule = { conditionKey: string; matchInStack: RegExp; entry: any };
       // Conditions sourced ONLY from explicit onboarding input. No inference
       // from medications — if the user didn't enter their condition in Step 2,
       // the disease-mechanism injector won't fire.
+      // Each rule references a canonical condition key — alias edits are made
+      // in conditionAliases.ts and benefit every injector at once.
       const conditionsLowerForInjector = (condStr ?? '').toLowerCase();
       const diseaseMechanismRules: DiseaseRule[] = [
         // ── IBD: gut-barrier repair triad ──────────────────────────────
         {
-          conditionRegex: /\b(ulcerative colitis|crohn|ibd|inflammatory bowel|indeterminate colitis)\b/i,
+          conditionKey: 'ibd',
           matchInStack: /\bl[\s-]?glutamine\b/i,
           entry: { emoji: '🛡️', nutrient: 'L-Glutamine', form: 'Powder (mix in water)', dose: '5g daily', timing: 'Morning, empty stomach', why_short: 'Gut barrier repair for UC', why: 'L-glutamine is the primary fuel for intestinal cells; well-evidenced for IBD mucosal healing.', practical_note: 'Morning on empty stomach with water — competes with food for absorption. Tasteless powder, easy to dose. Safe long-term; no interactions with mesalamine/ustekinumab.', category: 'gut_healing', alternatives: [{ name: 'L-Glutamine capsules', form: 'Capsule', note: 'Convenient travel/work option; slightly more expensive per gram' }, { name: 'GI Restore powder (glutamine + zinc carnosine + DGL)', form: 'Powder blend', note: 'Combo product; saves on stack count if budget allows' }], priority: 'high', sourced_from: 'disease_mechanism', evidence_note: 'Multiple clinical trials show benefit in UC mucosal healing.' },
         },
         {
-          conditionRegex: /\b(ulcerative colitis|crohn|ibd|inflammatory bowel|indeterminate colitis)\b/i,
+          conditionKey: 'ibd',
           matchInStack: /\bs\.?\s*boulardii|saccharomyces|probiotic|visbiome|vsl/i,
           entry: { emoji: '🦠', nutrient: 'Saccharomyces boulardii (Probiotic)', form: 'Capsule, refrigerated or shelf-stable', dose: '500mg (5 billion CFU) twice daily', timing: 'With breakfast and dinner', why_short: 'Strain-specific UC remission support', why: 'S. boulardii is the most-studied probiotic for IBD remission maintenance; reduces flare frequency.', practical_note: 'With meals — survives stomach acid better. Safe with ustekinumab (yeast-based, not bacteria, so no immunosuppression concern). If on antibiotic, take 2hrs apart. Discontinue if severe immunocompromise (rare).', category: 'gut_healing', alternatives: [{ name: 'Visbiome (multi-strain)', form: 'Capsule, refrigerated', note: 'Most-studied multi-strain UC probiotic; pricier; needs refrigeration' }, { name: 'VSL#3', form: 'Sachets', note: 'Higher CFU count (450 billion); used in clinical UC trials' }], priority: 'high', sourced_from: 'disease_mechanism', evidence_note: 'Multiple RCTs in UC and Crohn\'s remission maintenance.' },
         },
         {
-          conditionRegex: /\b(ulcerative colitis|crohn|ibd|inflammatory bowel|indeterminate colitis)\b/i,
+          conditionKey: 'ibd',
           matchInStack: /\bbutyrate|tributyrin\b/i,
           entry: { emoji: '⚡', nutrient: 'Butyrate (Tributyrin SR)', form: 'Capsule (sustained-release)', dose: '500-1000mg twice daily', timing: 'With breakfast and dinner', why_short: 'Colonocyte fuel + barrier repair', why: 'Butyrate is the primary energy source for colon cells; sustained-release form delivers to lower GI where UC inflammation sits.', practical_note: 'With meals — fat aids absorption. Tributyrin SR > sodium butyrate (less odor, better delivery). Safe with all UC meds. May cause mild flatulence first 1-2 weeks.', category: 'gut_healing', alternatives: [{ name: 'Sodium Butyrate', form: 'Capsule', note: 'Cheaper but smelly; less targeted to lower GI' }, { name: 'Calcium-Magnesium Butyrate', form: 'Capsule', note: 'Buffered form; gentler on stomach but lower absorption' }], priority: 'high', sourced_from: 'disease_mechanism', evidence_note: 'Direct mucosal energy substrate; supported in UC remission protocols.' },
         },
         // ── Hashimoto's: selenium for TPO reduction ─────────────────────
         {
-          conditionRegex: /\b(hashimoto|autoimmune thyroid|chronic thyroiditis)\b/i,
+          // Was inline /\b(hashimoto|autoimmune thyroid|chronic thyroiditis)\b/i
+          // — that regex MISSED users who typed "Hypothyroidism" (Nona Lynn).
+          // Registry now correctly catches both. THE bug fix this whole pivot
+          // turns into a structural cure: alias edits flow to every consumer.
+          conditionKey: 'hashimotos',
           matchInStack: /\bselenium\b/i,
           entry: { emoji: '🦋', nutrient: 'Selenium (Selenomethionine)', form: 'Capsule', dose: '200mcg daily', timing: 'With breakfast', why_short: 'Lowers TPO antibodies in Hashimoto\'s', why: 'Selenomethionine reduces thyroid peroxidase antibodies and supports T4-to-T3 conversion.', practical_note: 'With breakfast — selenomethionine absorbs better than other forms. Do NOT exceed 400mcg/day (toxicity). Safe with levothyroxine.', category: 'condition_therapy', alternatives: [{ name: 'Brazil nuts (1-2 daily)', form: 'Whole food', note: 'Each nut has ~70-100mcg selenium; cheapest option' }, { name: 'Selenium Yeast', form: 'Capsule', note: 'Multiple forms blended; some prefer for absorption' }], priority: 'high', sourced_from: 'disease_mechanism', evidence_note: 'Meta-analyses show TPO Ab reduction with 200mcg selenium for 3-6 months.' },
         },
         // ── T2D / prediabetes: berberine ────────────────────────────────
         {
-          conditionRegex: /\b(type 2 diabet|t2d|t2dm|diabetes mellitus type 2|prediabet|insulin resistance)\b/i,
+          conditionKey: 't2d',
           matchInStack: /\bberberine\b/i,
           entry: { emoji: '🌿', nutrient: 'Berberine HCl', form: 'Capsule', dose: '500mg three times daily with meals', timing: 'With breakfast, lunch, dinner', why_short: 'Comparable to metformin for glucose control', why: 'Berberine activates AMPK, lowers fasting glucose, A1c, triglycerides, and LDL. Comparable to metformin in head-to-head studies.', practical_note: 'With each meal — short half-life requires 3x/day dosing. Can cause GI upset first 1-2 weeks; start at 500mg once daily and ramp. AVOID with statin if liver enzymes elevated (both processed by liver — discuss with doctor). Pregnancy: do not take.', category: 'condition_therapy', alternatives: [{ name: 'Berberine Phytosome (sustained release)', form: 'Capsule', note: 'Once-daily dosing; 5x more bioavailable; pricier' }, { name: 'Dihydroberberine', form: 'Capsule', note: 'Better absorbed metabolite of berberine; gentler on GI' }], priority: 'high', sourced_from: 'disease_mechanism', evidence_note: 'Multiple RCTs show comparable efficacy to metformin for fasting glucose and A1c.' },
         },
         // ── PCOS: inositol ──────────────────────────────────────────────
         {
-          conditionRegex: /\b(pcos|polycystic ovar)\b/i,
+          conditionKey: 'pcos',
           matchInStack: /\binositol\b/i,
           entry: { emoji: '🌸', nutrient: 'Myo-inositol + D-chiro-inositol (40:1 ratio)', form: 'Powder or capsule', dose: '4g myo-inositol + 100mg D-chiro daily, split into 2 doses', timing: 'Morning and evening with meals', why_short: 'PCOS-specific insulin sensitization', why: 'The 40:1 myo:D-chiro ratio mimics the natural ratio in healthy ovarian tissue; restores ovulation and insulin sensitivity in PCOS.', practical_note: 'Split into 2 doses with meals. Effects build over 3 months. Safe in pregnancy (commonly recommended for PCOS-related fertility). No interactions with metformin.', category: 'condition_therapy', alternatives: [{ name: 'Myo-inositol only (4g)', form: 'Powder', note: 'Cheaper; nearly as effective for most PCOS cases' }, { name: 'Ovasitol packets (40:1)', form: 'Single-serve packets', note: 'Pre-measured doses; convenient; pricier per gram' }], priority: 'high', sourced_from: 'disease_mechanism', evidence_note: 'Multiple RCTs for PCOS insulin sensitivity and ovulation.' },
         },
         // ── Osteoporosis: vitamin K2 routing ────────────────────────────
         {
-          conditionRegex: /\b(osteoporosis|osteopenia)\b/i,
+          conditionKey: 'osteoporosis',
           matchInStack: /\bvitamin\s*k2|menaquinone|mk-?7/i,
           entry: { emoji: '🦴', nutrient: 'Vitamin K2 (MK-7)', form: 'Softgel', dose: '180mcg daily', timing: 'With dinner (pair with vitamin D + fatty meal)', why_short: 'Routes calcium to bone, away from arteries', why: 'K2 activates osteocalcin (binds calcium to bone) and matrix-Gla protein (prevents arterial calcification). Standard pairing with vitamin D and calcium.', practical_note: 'With dinner alongside vitamin D — fat-soluble. CRITICAL: do NOT take if on warfarin (affects INR; check with doctor). Safe with NOACs (apixaban, rivaroxaban) but inform doctor.', category: 'condition_therapy', alternatives: [{ name: 'Vitamin K2 (MK-4)', form: 'Capsule', note: 'Shorter-acting; usually 3x/day dosing; more research backing for bone' }, { name: 'D3 + K2 combo softgel', form: 'Softgel', note: 'Combines two daily supps into one; saves stack count' }], priority: 'high', sourced_from: 'disease_mechanism', evidence_note: 'Strong evidence for bone density and arterial calcification reduction.' },
         },
       ];
 
       for (const rule of diseaseMechanismRules) {
-        if (!rule.conditionRegex.test(conditionsLowerForInjector)) continue;
+        if (!hasCondition(conditionsLowerForInjector, rule.conditionKey)) continue;
         if (rule.matchInStack.test(stackText)) continue;
         if (rule.matchInStack.test(userSuppNames)) continue;
         plan.supplement_stack.push(rule.entry);
-        console.log(`[wellness-plan] Injected disease-mechanism: ${rule.entry.nutrient}`);
+        console.log(`[wellness-plan] Injected disease-mechanism: ${rule.entry.nutrient} for condition=${rule.conditionKey}`);
       }
 
       // ── Goal-stack injector (optimization mode only) ───────────────────

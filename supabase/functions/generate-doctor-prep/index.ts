@@ -5,6 +5,8 @@ import { buildRareDiseaseBlocklist, extractRareDiseaseContext } from '../_shared
 import { buildUniversalTestInjections } from '../_shared/testInjectors.ts';
 import { isHealthyMode } from '../_shared/healthMode.ts';
 import { GOAL_LABELS, formatGoals } from '../_shared/goals.ts';
+import { hasCondition } from '../_shared/conditionAliases.ts';
+import { isOnMed } from '../_shared/medicationAliases.ts';
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -611,8 +613,19 @@ CRITICAL OUTPUT RULES (for the new card-stack UI):
       const symptomsLower = sympStr.toLowerCase();
       const labsLower = allLabsStr.toLowerCase();
 
-      const hasUC = /\b(ulcerative colitis|crohn|ibd|inflammatory bowel)\b/.test(conditionsLower);
-      const hasAutoimmune = hasUC || /\b(hashimoto|graves|lupus|sle|ra|rheumatoid|psoriasis|ms|multiple sclerosis|celiac|t1d|type 1 diabetes)\b/.test(conditionsLower);
+      // Conditions/meds delegated to canonical registry (May 2026 refactor).
+      // "Hypothyroidism" now matches the Hashimoto's path (Nona fix flows through here too).
+      const hasUC = hasCondition(conditionsLower, 'ibd');
+      const hasAutoimmune = hasUC
+        || hasCondition(conditionsLower, 'hashimotos')
+        || hasCondition(conditionsLower, 'graves')
+        || hasCondition(conditionsLower, 'lupus')
+        || hasCondition(conditionsLower, 'ra')
+        || hasCondition(conditionsLower, 'psoriasis')
+        || hasCondition(conditionsLower, 'ms')
+        || hasCondition(conditionsLower, 'celiac')
+        || hasCondition(conditionsLower, 'sjogrens')
+        || hasCondition(conditionsLower, 'long_covid');
       const hasJointPain = /\b(joint pain|joint stiffness|arthralg|stiff)/.test(symptomsLower);
       const hasFatigueOrInflam = /\b(fatigue|tired|exhaust|low energy|brain fog|hair loss|hair thin|joint)/.test(symptomsLower);
 
@@ -656,10 +669,10 @@ CRITICAL OUTPUT RULES (for the new card-stack UI):
       // Medication-depletion test injectors — mirror wellness-plan exactly
       // so both pages produce the same list for the same patient.
       const medsLower = (medsStr ?? '').toLowerCase();
-      const onMesalamine = /\b(mesalamine|sulfasalazine|asacol|pentasa|lialda|apriso)\b/.test(medsLower);
-      const onMetformin = /\b(metformin|glucophage)\b/.test(medsLower);
-      const onPPI = /\b(omeprazole|pantoprazole|esomeprazole|lansoprazole|rabeprazole|prilosec|nexium|protonix)\b/.test(medsLower);
-      const onStatin = /\b(atorvastatin|rosuvastatin|simvastatin|pravastatin|lovastatin|pitavastatin|fluvastatin|crestor|lipitor|zocor)\b/.test(medsLower);
+      const onMesalamine = isOnMed(medsLower, 'mesalamine_5asa');
+      const onMetformin = isOnMed(medsLower, 'metformin');
+      const onPPI = isOnMed(medsLower, 'ppi');
+      const onStatin = isOnMed(medsLower, 'statin');
 
       if ((onMesalamine || onMetformin || onPPI) && !has(/\bb[\s-]?12\b|cobalamin|methylmalonic|\bmma\b|homocysteine/i)) {
         const med = onMesalamine ? 'mesalamine' : onMetformin ? 'metformin' : 'PPI';
@@ -728,13 +741,14 @@ CRITICAL OUTPUT RULES (for the new card-stack UI):
       }
 
       // ── Universal condition-aware injectors (any chronic dx) ─────────
-      const hasIBD = /\b(ulcerative colitis|crohn|ibd|inflammatory bowel|indeterminate colitis)\b/.test(conditionsLower);
-      const hasHashimotos = /\b(hashimoto|autoimmune thyroid|chronic thyroiditis)\b/.test(conditionsLower);
-      const hasGraves = /\b(graves|hyperthyroid)\b/.test(conditionsLower);
-      const hasT2D = /\b(type 2 diabet|t2d|t2dm|diabetes mellitus type 2|prediabet)\b/.test(conditionsLower);
-      const hasPCOS = /\b(pcos|polycystic ovar)\b/.test(conditionsLower);
-      const hasHTN = /\b(hypertension|htn|high blood pressure)\b/.test(conditionsLower);
-      const hasCKD = /\b(ckd|chronic kidney|kidney disease|renal disease)\b/.test(conditionsLower);
+      // All delegated to canonical registry — alias edits propagate everywhere.
+      const hasIBD = hasCondition(conditionsLower, 'ibd');
+      const hasHashimotos = hasCondition(conditionsLower, 'hashimotos');
+      const hasGraves = hasCondition(conditionsLower, 'graves');
+      const hasT2D = hasCondition(conditionsLower, 't2d');
+      const hasPCOS = hasCondition(conditionsLower, 'pcos');
+      const hasHTN = hasCondition(conditionsLower, 'hypertension');
+      const hasCKD = hasCondition(conditionsLower, 'ckd');
       const hasCAD = /\b(cad|coronary|heart failure|chf|heart disease|atherosclerosis)\b/.test(conditionsLower);
       const hasLupus = /\b(lupus|sle|systemic lupus)\b/.test(conditionsLower);
       const hasRA = /\b(\bra\b|rheumatoid|psoriatic arthritis)\b/.test(conditionsLower);

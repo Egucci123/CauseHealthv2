@@ -9,6 +9,16 @@
 // pairings any clinician would order — universally applicable, no
 // disease-specific tailoring. Each test is PCP-orderable, insurance-
 // covered, with an ICD-10 code that justifies billing.
+//
+// May 2026 refactor: condition / medication detection is delegated to the
+// canonical registries in `_shared/conditionAliases.ts` and
+// `_shared/medicationAliases.ts`. NEVER inline a condition or med regex
+// here again — add it to the registry. That's how universal fixes stay
+// universal (Nona Lynn lesson: "Hypothyroidism" wasn't matching
+// /hashimoto/i — fixed once in the registry, every injector benefits).
+
+import { hasCondition } from './conditionAliases.ts';
+import { isOnMed } from './medicationAliases.ts';
 
 export interface InjectionContext {
   age: number | null;
@@ -42,27 +52,38 @@ export function buildContextFlags(ctx: InjectionContext) {
     age, sex,
     isMenstruatingFemale: sex === 'female' && age >= 12 && age <= 55,
 
-    // Conditions (any chronic dx)
-    hasIBD: /\b(ulcerative colitis|crohn|ibd|inflammatory bowel|indeterminate colitis)\b/.test(c),
-    hasHashimotos: /\b(hashimoto|autoimmune thyroid|chronic thyroiditis)\b/.test(c),
-    hasGraves: /\b(graves|hyperthyroid)\b/.test(c),
-    hasT2D: /\b(type 2 diabet|t2d|t2dm|diabetes mellitus type 2|prediabet)\b/.test(c),
-    hasPCOS: /\b(pcos|polycystic ovar)\b/.test(c),
-    hasHTN: /\b(hypertension|htn|high blood pressure)\b/.test(c),
-    hasCKD: /\b(ckd|chronic kidney|kidney disease|renal disease)\b/.test(c),
-    hasCAD: /\b(cad|coronary|heart failure|chf|heart disease|atherosclerosis)\b/.test(c),
-    hasLupus: /\b(lupus|sle|systemic lupus)\b/.test(c),
-    hasRA: /\b(\bra\b|rheumatoid|psoriatic arthritis)\b/.test(c),
-    hasOsteo: /\b(osteoporosis|osteopenia)\b/.test(c),
-    hasAutoimmune: /\b(ulcerative colitis|crohn|ibd|hashimoto|graves|lupus|sle|ra|rheumatoid|psoriasis|ms|multiple sclerosis|celiac|t1d|type 1 diabetes)\b/.test(c),
+    // Conditions — delegated to canonical registry. Add new aliases there.
+    // NOTE: hasHashimotos now correctly fires on "Hypothyroidism" too (Nona fix).
+    hasIBD: hasCondition(c, 'ibd'),
+    hasHashimotos: hasCondition(c, 'hashimotos'),
+    hasGraves: hasCondition(c, 'graves'),
+    hasT2D: hasCondition(c, 't2d'),
+    hasPCOS: hasCondition(c, 'pcos'),
+    hasHTN: hasCondition(c, 'hypertension'),
+    hasCKD: hasCondition(c, 'ckd'),
+    hasCAD: hasCondition(c, 'cad'),
+    hasLupus: hasCondition(c, 'lupus'),
+    hasRA: hasCondition(c, 'ra'),
+    hasOsteo: hasCondition(c, 'osteoporosis'),
+    hasAutoimmune: hasCondition(c, 'ibd') || hasCondition(c, 'hashimotos') || hasCondition(c, 'graves')
+      || hasCondition(c, 'lupus') || hasCondition(c, 'ra') || hasCondition(c, 'psoriasis')
+      || hasCondition(c, 'ms') || hasCondition(c, 'celiac') || hasCondition(c, 'sjogrens')
+      || hasCondition(c, 'long_covid'),
 
-    // Medications
-    onMesalamine: /\b(mesalamine|sulfasalazine|asacol|pentasa|lialda|apriso)\b/.test(m),
-    onMetformin: /\b(metformin|glucophage)\b/.test(m),
-    onPPI: /\b(omeprazole|pantoprazole|esomeprazole|lansoprazole|rabeprazole|prilosec|nexium|protonix)\b/.test(m),
-    onStatin: /\b(atorvastatin|rosuvastatin|simvastatin|pravastatin|lovastatin|pitavastatin|fluvastatin|crestor|lipitor|zocor)\b/.test(m),
-    onSteroid: /\b(prednisone|prednisolone|methylprednisolone|dexamethasone)\b/.test(m),
-    onDiuretic: /\b(furosemide|lasix|hydrochlorothiazide|hctz|chlorthalidone|spironolactone|torsemide|bumetanide)\b/.test(m),
+    // Medications — delegated to canonical registry.
+    onMesalamine: isOnMed(m, 'mesalamine_5asa'),
+    onMetformin: isOnMed(m, 'metformin'),
+    onPPI: isOnMed(m, 'ppi'),
+    onStatin: isOnMed(m, 'statin'),
+    onSteroid: isOnMed(m, 'steroid_oral'),
+    onDiuretic: isOnMed(m, 'diuretic_thiazide') || isOnMed(m, 'diuretic_loop') || isOnMed(m, 'diuretic_potassium_sparing'),
+    onThyroidReplacement: isOnMed(m, 'thyroid_replacement'),
+    onTRT: isOnMed(m, 'trt'),
+    onSSRI: isOnMed(m, 'ssri'),
+    onSNRI: isOnMed(m, 'snri'),
+    onAnticoagulant: isOnMed(m, 'anticoagulant'),
+    onInsulin: isOnMed(m, 'insulin'),
+    onGLP1: isOnMed(m, 'glp1'),
 
     // Symptoms (broader buckets)
     hasJointSymptoms: /\b(joint pain|joint stiffness|arthralg|stiff)/.test(s),
