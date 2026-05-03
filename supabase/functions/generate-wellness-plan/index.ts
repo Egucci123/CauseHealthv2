@@ -10,6 +10,7 @@ import { classifyPatient } from '../_shared/patientClassifier.ts';
 import { runAdequacyChecks, runSelfSupplementChecks } from '../_shared/replacementTherapyChecks.ts';
 import { runPathways } from '../_shared/pathwayEngine.ts';
 import { pushRetestByKey, finalizeRetestTimeline } from '../_shared/retestRegistry.ts';
+import { detectAlreadyOptimal, applyAlreadyOptimalScrub } from '../_shared/alreadyOptimalFilter.ts';
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -181,6 +182,19 @@ serve(async (req) => {
     const userSuppText = (supps ?? []).map((s: any) => `${s.name ?? ''} ${s.dose ?? ''}`).join(' ');
     adequacyFlags.push(...runSelfSupplementChecks(userSuppText, labValues, age, profile?.sex ?? null));
     console.log(`[wellness-plan] adequacy flags: ${adequacyFlags.map(f => `${f.key}(${f.severity})`).join(', ') || 'none'}`);
+
+    // ── Already-optimal detection (Layer B) ──────────────────────────────
+    // Universal: for every marker in OPTIMAL_THRESHOLDS, if user is at goal,
+    // suppress related supplements + retests + tell the AI to skip them.
+    // The Nona Lynn case: omega-3 index 7.9 → don't recommend omega-3.
+    // Same logic applies to vit D, B12, A1c, ferritin, etc. for every user.
+    const optimalCtx = {
+      age,
+      sex: profile?.sex ?? null,
+      conditionsLower: (condStr ?? '').toLowerCase(),
+    };
+    const alreadyOptimal = detectAlreadyOptimal(labValues, optimalCtx);
+    console.log(`[wellness-plan] already-optimal: ${alreadyOptimal.optimalKeys.join(', ') || 'none'}`);
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -426,6 +440,9 @@ ${adequacyFlags.length > 0 ? `REPLACEMENT-THERAPY / SELF-SUPPLEMENT ADEQUACY FLA
 ${adequacyFlags.map(f => `  - [${f.severity.toUpperCase()}] ${f.title} — ${f.evidence}. ${f.detail}`).join('\n')}
 HEADLINE MUST MENTION: ${adequacyFlags.filter(f => f.headlineMustMention).map(f => f.headlineMustMention).join(' AND ') || '(none)'}
 TODAY_ACTIONS MUST INCLUDE: ${adequacyFlags.map(f => `"${f.todayAction}"`).filter(Boolean).join(' AND ') || '(none)'}
+` : ''}
+${alreadyOptimal.promptNotes.length > 0 ? `ALREADY-AT-GOAL FACTS (DO NOT WASTE A SLOT RECOMMENDING SOMETHING THE USER IS ALREADY HITTING):
+${alreadyOptimal.promptNotes.map(n => `  - ${n}`).join('\n')}
 ` : ''}
 ${isOptimizationMode ? `OPTIMIZATION CONTEXT: Patient labs are mostly healthy. Frame the plan around longevity optimization, not disease treatment. Phase names: "Build Foundation (Months 1-2)", "Optimize (Months 3-4)", "Sustain & Track (Months 5-6)". Retest cadence is 6 months, set retest_at: "6 months". Lifestyle interventions focus on longevity science: zone 2 cardio, resistance training, sleep optimization, cold/heat exposure, stress resilience, metabolic health.
 
@@ -772,6 +789,7 @@ CRITICAL OUTPUT RULES:
       retest_cap: classification.retestCap,
       retest_cadence: classification.retestCadence,
     };
+    plan.already_at_goal = alreadyOptimal.audit;     // shown in UI as "What's already working"
 
     // (Pivot May 2026: meal scrubber + meal padder + meal-related validators
     // removed alongside meals[] in the output. App is no longer a meal planner.)
@@ -1070,6 +1088,14 @@ CRITICAL OUTPUT RULES:
         plan.retest_timeline = plan.retest_timeline.slice(0, 20);
       }
     } catch (e) { console.error('[wellness-plan] retest-injector error:', e); }
+    // ── Already-optimal POST-flight scrub (Layer B) ──────────────────────
+    // Even after the prompt note, the AI sometimes recommends a supplement
+    // for a marker the user is already at goal on. Scrub deterministically.
+    const scrub = applyAlreadyOptimalScrub(plan, alreadyOptimal);
+    if (scrub.suppressedSupplements.length > 0 || scrub.suppressedRetests.length > 0) {
+      console.log(`[wellness-plan] already-optimal scrub: dropped supps=[${scrub.suppressedSupplements.join(',')}] retests=[${scrub.suppressedRetests.join(',')}]`);
+    }
+
     // Cap retest_timeline using the severity-aware classifier output.
     // critical_treatment / treatment → 20, symptomatic → 14, optimization →
     // 10, pristine → 6. finalizeRetestTimeline() also dedups by canonical
