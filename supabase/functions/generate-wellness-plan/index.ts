@@ -12,6 +12,7 @@ import { runPathways } from '../_shared/pathwayEngine.ts';
 import { pushRetestByKey, finalizeRetestTimeline } from '../_shared/retestRegistry.ts';
 import { detectAlreadyOptimal, applyAlreadyOptimalScrub } from '../_shared/alreadyOptimalFilter.ts';
 import { detectTestQualityIssues } from '../_shared/testQualityFlagger.ts';
+import { buildCausalChain, renderChainForPrompt } from '../_shared/causalChainBuilder.ts';
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -218,6 +219,23 @@ serve(async (req) => {
       inflammationElevated,
     });
     console.log(`[wellness-plan] test-quality flags: ${qualityFlags.map(f => f.key).join(', ') || 'none'}`);
+
+    // ── Causal chain (Layer A) ────────────────────────────────────────────
+    // Universal: declarative graph of root causes → intermediates → outcomes.
+    // Walk the graph for THIS patient → produce the layered cascade narrative.
+    // Synthesis no specialist would build (Endo sees TSH, Cardio sees LDL,
+    // Gyn sees FSH — none see the chain).
+    const causalChain = buildCausalChain({
+      conditionsLower: (condStr ?? '').toLowerCase(),
+      medsLower: (medsStr ?? '').toLowerCase(),
+      symptomsLower: (sympStr ?? '').toLowerCase(),
+      age,
+      sex: profile?.sex ?? null,
+      labValues,
+      adequacyKeys: adequacyFlags.map(f => f.key),
+      sleepHours: (profile?.lifestyle as any)?.sleepHours ?? null,
+    });
+    console.log(`[wellness-plan] causal chain: ${causalChain.nodes.length} nodes, ${causalChain.edges.length} edges, top=[${causalChain.topInterventions.map(n => n.key).join(',')}]`);
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -470,6 +488,7 @@ ${alreadyOptimal.promptNotes.map(n => `  - ${n}`).join('\n')}
 ${qualityFlags.length > 0 ? `TEST-QUALITY CAVEATS — these tests appear "in range" but the test itself is unreliable for THIS patient. Mention each in the summary so the user knows to ask for the better test:
 ${qualityFlags.map(f => `  - ${f.title} — ${f.detail} (you saw: ${f.evidence})`).join('\n')}
 ` : ''}
+${causalChain.nodes.length > 0 ? renderChainForPrompt(causalChain) + '\n' : ''}
 ${isOptimizationMode ? `OPTIMIZATION CONTEXT: Patient labs are mostly healthy. Frame the plan around longevity optimization, not disease treatment. Phase names: "Build Foundation (Months 1-2)", "Optimize (Months 3-4)", "Sustain & Track (Months 5-6)". Retest cadence is 6 months, set retest_at: "6 months". Lifestyle interventions focus on longevity science: zone 2 cardio, resistance training, sleep optimization, cold/heat exposure, stress resilience, metabolic health.
 
 CRITICAL — optimization mode does NOT relax the strict triage rule. For healthy patients with limited tested markers, retest_timeline should fill STANDARD-OF-CARE BASELINE GAPS — tests the doctor SHOULD have ordered for someone this age/sex but didn't:
@@ -816,6 +835,7 @@ CRITICAL OUTPUT RULES:
       retest_cadence: classification.retestCadence,
     };
     plan.already_at_goal = alreadyOptimal.audit;     // shown in UI as "What's already working"
+    plan.causal_chain = causalChain;                  // Layer A render data for the cascade view
 
     // (Pivot May 2026: meal scrubber + meal padder + meal-related validators
     // removed alongside meals[] in the output. App is no longer a meal planner.)
