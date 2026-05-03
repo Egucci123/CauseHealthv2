@@ -117,6 +117,18 @@ const REGISTRY: SupplementDef[] = [
     entry: { emoji: '🦴', nutrient: 'Vitamin K2 (MK-7)', form: 'Softgel', dose: '180mcg daily', timing: 'With dinner (pair with vitamin D + fatty meal)', why_short: 'Routes calcium to bone, away from arteries', why: 'K2 activates osteocalcin (binds calcium to bone) and matrix-Gla protein (prevents arterial calcification). Standard pairing with vitamin D and calcium.', practical_note: 'With dinner alongside vitamin D. CRITICAL: do NOT take if on warfarin (affects INR). Safe with NOACs (apixaban, rivaroxaban) but inform doctor.', category: 'condition_therapy', alternatives: [{ name: 'Vitamin K2 (MK-4)', form: 'Capsule', note: 'Shorter-acting; usually 3x/day; more bone research backing' }, { name: 'D3 + K2 combo softgel', form: 'Softgel', note: 'Combines two daily supps into one' }], priority: 'high', sourced_from: 'disease_mechanism', evidence_note: 'Strong evidence for bone density and arterial calcification reduction.' },
   },
 
+  // ── Lab-pattern targeted ──────────────────────────────────────────────
+  {
+    key: 'curcumin',
+    alreadyTakingPatterns: [/\bcurcumin\b/i, /\bturmeric\b.*extract/i, /\bmeriva\b/i],
+    entry: { emoji: '🌿', nutrient: 'Curcumin (Meriva or BCM-95)', form: 'Capsule (with phospholipid for absorption)', dose: '500-1000mg daily', timing: 'With breakfast (with fat)', why_short: 'Lowers hs-CRP via NF-kB modulation', why: 'Curcumin reduces hs-CRP, IL-6, and TNF-α through NF-kB pathway inhibition. Multiple meta-analyses support 500-1000mg of bioavailable curcumin (Meriva or BCM-95) for 8-12 weeks to cut CRP 0.4–1.2 mg/L.', practical_note: 'Bioavailability matters — plain turmeric capsules are mostly excreted. Use Meriva (phospholipid complex) or BCM-95. Take with the fattiest meal of the day. CAUTION: mild blood-thinning effect — avoid 2 wk before surgery; check with doctor if on warfarin or apixaban. Rare gallbladder caution if gallstones.', category: 'inflammation_cardio', alternatives: [{ name: 'Quercetin', form: 'Capsule', note: 'Different mechanism (mast-cell stabilizer); pairs well; cheaper' }, { name: 'NAC (N-Acetyl-Cysteine)', form: 'Capsule', note: 'Glutathione precursor; broad anti-inflammatory; complementary to curcumin' }], priority: 'high', sourced_from: 'lab_finding', evidence_note: 'Multiple Cochrane + meta-analyses support curcumin for inflammation marker reduction.' },
+  },
+  {
+    key: 'bergamot',
+    alreadyTakingPatterns: [/\bbergamot\b/i, /citrus bergamia/i],
+    entry: { emoji: '🍋', nutrient: 'Bergamot Extract (Bergamonte / BPF)', form: 'Capsule (standardized to 38% polyphenols)', dose: '500-1000mg daily', timing: 'Before lunch and dinner', why_short: 'Lowers small dense LDL + raises large HDL', why: 'Bergamot polyphenolic fraction (BPF) reduces LDL-P, small dense LDL, and triglycerides while raising HDL — particularly effective for atherogenic-pattern dyslipidemia where standard cholesterol numbers look OK.', practical_note: 'Take 30 min before main meals. Standardized to 38%+ polyphenols (BPF) — generic bergamot is weaker. Safe with statins (often used alongside for additional 15-25% LDL drop). Mild interaction with calcium-channel blockers; check with doctor.', category: 'inflammation_cardio', alternatives: [{ name: 'Citrus Bergamia + Olive Polyphenols', form: 'Capsule', note: 'Combo product; broader CV protection' }, { name: 'Red Yeast Rice + CoQ10', form: 'Capsule', note: 'Statin-like effect; needs CoQ10 to offset; check with prescribing doctor if already on a statin' }], priority: 'high', sourced_from: 'lab_finding', evidence_note: 'Mollace 2011 + multiple RCTs for atherogenic dyslipidemia.' },
+  },
+
   // ── Optimization-tier (longevity/general) ────────────────────────────
   {
     key: 'creatine',

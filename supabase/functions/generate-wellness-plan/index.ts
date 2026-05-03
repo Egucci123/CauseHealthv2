@@ -16,6 +16,7 @@ import { buildCausalChain, renderChainForPrompt } from '../_shared/causalChainBu
 import { buildPredictedChanges, renderPredictionsForPrompt } from '../_shared/predictiveOutcomes.ts';
 import { synthesizeAcrossSpecialties, renderSynthesisForPrompt } from '../_shared/specialtySynthesizer.ts';
 import { buildAudit } from '../_shared/auditLog.ts';
+import { detectLabPatterns } from '../_shared/labPatternRegistry.ts';
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -262,6 +263,17 @@ serve(async (req) => {
       conditionKeys: detectedConditionKeys,
     });
     console.log(`[wellness-plan] specialty synthesis: ${synthesis.specialtyCount} specialties (${synthesis.specialties.join(',')})`);
+
+    // ── Lab-pattern detection for prompt context ──────────────────────────
+    // Forces the AI to explicitly address every detected pattern in the
+    // headline + summary + today_actions. Pathway engine separately fires
+    // their declared tests + supplements (universal — see labPatternRegistry).
+    const detectedLabPatterns = detectLabPatterns(labValues);
+    const labPatternsForPrompt = detectedLabPatterns.length > 0
+      ? `LAB-VALUE PATTERNS detected — your headline + summary MUST explicitly address each one (the user pays $20 to see what their doctor's "your labs are mostly fine" missed):\n` +
+        detectedLabPatterns.map(p => `  - ${p.label} [${p.evidence}]: addressed via ${(p.requiredSupplements ?? []).join(' + ') || 'lifestyle alone'}; track via ${(p.requiredTests ?? []).join(' + ') || 'follow-up panel'}`).join('\n')
+      : '';
+    console.log(`[wellness-plan] lab patterns: ${detectedLabPatterns.map(p => p.key).join(', ') || 'none'}`);
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -517,6 +529,7 @@ ${qualityFlags.map(f => `  - ${f.title} — ${f.detail} (you saw: ${f.evidence})
 ${causalChain.nodes.length > 0 ? renderChainForPrompt(causalChain) + '\n' : ''}
 ${predictions.length > 0 ? renderPredictionsForPrompt(predictions) + '\n' : ''}
 ${synthesis.specialtyCount >= 2 ? renderSynthesisForPrompt(synthesis) + '\n' : ''}
+${labPatternsForPrompt}
 ${isOptimizationMode ? `OPTIMIZATION CONTEXT: Patient labs are mostly healthy. Frame the plan around longevity optimization, not disease treatment. Phase names: "Build Foundation (Months 1-2)", "Optimize (Months 3-4)", "Sustain & Track (Months 5-6)". Retest cadence is 6 months, set retest_at: "6 months". Lifestyle interventions focus on longevity science: zone 2 cardio, resistance training, sleep optimization, cold/heat exposure, stress resilience, metabolic health.
 
 CRITICAL — optimization mode does NOT relax the strict triage rule. For healthy patients with limited tested markers, retest_timeline should fill STANDARD-OF-CARE BASELINE GAPS — tests the doctor SHOULD have ordered for someone this age/sex but didn't:
@@ -1066,7 +1079,8 @@ CRITICAL OUTPUT RULES:
     // runs after this) can reference it. Default-empty so audit doesn't
     // crash if this whole try-block throws.
     let pathwayResult: ReturnType<typeof runPathways> = {
-      conditionsMatched: [], medClassesMatched: [], symptomsMatched: [], audit: [],
+      conditionsMatched: [], medClassesMatched: [], symptomsMatched: [],
+      labPatternsMatched: [], audit: [],
     };
     try {
       const has = (pattern: RegExp) =>
@@ -1123,12 +1137,13 @@ CRITICAL OUTPUT RULES:
         medsLower,
         symptomsTextWithSeverity: symptomsLower,
         symptomsArray: (symptoms ?? []) as any,
+        labValues,                    // for lab-pattern detection (CRP, LDL-P, etc.)
         sex: profile?.sex ?? null,
         retestCadence: classification.retestCadence,
         plan: { retest_timeline: plan.retest_timeline, supplement_stack: plan.supplement_stack },
         alreadyTakingText: alreadyTakingForEngine,
       });
-      console.log(`[wellness-plan] pathway engine fired: conditions=[${pathwayResult.conditionsMatched.join(',')}] meds=[${pathwayResult.medClassesMatched.join(',')}] symptoms=[${pathwayResult.symptomsMatched.join(',')}]`);
+      console.log(`[wellness-plan] pathway engine fired: conditions=[${pathwayResult.conditionsMatched.join(',')}] meds=[${pathwayResult.medClassesMatched.join(',')}] symptoms=[${pathwayResult.symptomsMatched.join(',')}] labPatterns=[${pathwayResult.labPatternsMatched.join(',')}]`);
 
       // ── UNIVERSAL TEST PAIRINGS (shared module — same rules in doctor-prep) ──
       const universalTests = buildUniversalTestInjections({

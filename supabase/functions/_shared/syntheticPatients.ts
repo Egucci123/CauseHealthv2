@@ -93,7 +93,7 @@ export const PATIENTS: SyntheticPatient[] = [
       causalRootKeys: ['under_replaced_thyroid', 'postmenopause', 'sleep_deprivation', 'autoimmune_activity'],
       specialtyCountAtLeast: 4,
       requiredTestKeys: ['thyroid_antibodies', 'reverse_t3', 'rbc_magnesium'],
-      requiredSupplementKeys: ['selenium'],
+      requiredSupplementKeys: ['selenium', 'curcumin', 'bergamot'],
       alreadyOptimalKeys: ['vitamin_d_25oh', 'serum_b12', 'ferritin_premenopausal_female', 'glucose_a1c'],
       testQualityKeys: ['serum_mg_unreliable', 'tsh_alone_on_replacement', 'ferritin_during_inflammation'],
     },
@@ -267,6 +267,7 @@ export function runSyntheticTests(): SyntheticTestResult[] {
     const pathwayResult = runPathways({
       conditionsLower, medsLower, symptomsTextWithSeverity: symptomsLower,
       symptomsArray: p.symptoms,
+      labValues: p.labValues,
       sex: p.profile.sex,
       retestCadence: classification.retestCadence,
       plan: fakePlan,

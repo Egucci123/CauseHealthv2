@@ -44,6 +44,7 @@ export interface PlanAudit {
     conditionsMatched: string[];
     medClassesMatched: string[];
     symptomsMatched: string[];
+    labPatternsMatched: string[];
     insertedTests: string[];
     insertedSupplements: string[];
     skippedTests: string[];        // already present in retest_timeline
@@ -97,6 +98,7 @@ export function buildAudit(input: BuildAuditInput): PlanAudit {
       conditionsMatched: input.pathwayResult.conditionsMatched,
       medClassesMatched: input.pathwayResult.medClassesMatched,
       symptomsMatched: input.pathwayResult.symptomsMatched,
+      labPatternsMatched: input.pathwayResult.labPatternsMatched ?? [],
       insertedTests: ins.filter(a => a.kind === 'test').map(a => `${a.source}:${a.sourceKey}->${a.itemKey}`),
       insertedSupplements: ins.filter(a => a.kind === 'supplement').map(a => `${a.source}:${a.sourceKey}->${a.itemKey}`),
       skippedTests: skp.filter(a => a.kind === 'test').map(a => `${a.source}:${a.sourceKey}->${a.itemKey}`),

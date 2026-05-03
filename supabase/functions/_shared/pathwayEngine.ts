@@ -24,12 +24,15 @@ import { MEDICATION_REGISTRY, isOnMed, MedClassDef } from './medicationAliases.t
 import { SYMPTOM_REGISTRY, getSymptom } from './symptomTestMap.ts';
 import { pushRetestByKey } from './retestRegistry.ts';
 import { pushSupplementByKey } from './supplementRegistry.ts';
+import { detectLabPatterns } from './labPatternRegistry.ts';
 
 export interface PathwayInput {
   conditionsLower: string;
   medsLower: string;
   symptomsTextWithSeverity: string;     // "fatigue (5/10), hair loss (8/10)"
   symptomsArray: Array<{ symptom?: string; severity?: number | null }>;
+  /** Lab values for lab-pattern detection. */
+  labValues: Array<{ marker_name?: string; value?: number | string | null; unit?: string | null; optimal_flag?: string | null }>;
   sex: string | null;
   retestCadence: string;                // '12 weeks' or '6 months'
   // Plan parts the engine writes into.
@@ -43,8 +46,8 @@ export interface PathwayInput {
 }
 
 export interface PathwayAuditEntry {
-  source: 'condition' | 'medication' | 'symptom';
-  sourceKey: string;     // e.g. 'hashimotos' or 'metformin' or 'fatigue'
+  source: 'condition' | 'medication' | 'symptom' | 'lab_pattern';
+  sourceKey: string;     // e.g. 'hashimotos' or 'metformin' or 'fatigue' or 'elevated_inflammation'
   kind: 'test' | 'supplement';
   itemKey: string;       // e.g. 'thyroid_antibodies' or 'selenium'
   inserted: boolean;
@@ -54,6 +57,7 @@ export interface PathwayResult {
   conditionsMatched: string[];
   medClassesMatched: string[];
   symptomsMatched: string[];
+  labPatternsMatched: string[];
   audit: PathwayAuditEntry[];
 }
 
@@ -62,6 +66,7 @@ export function runPathways(input: PathwayInput): PathwayResult {
   const conditionsMatched: string[] = [];
   const medClassesMatched: string[] = [];
   const symptomsMatched: string[] = [];
+  const labPatternsMatched: string[] = [];
 
   // ── 1. Condition pathways ──────────────────────────────────────────────
   // Every Tier-1 condition the user has → push its declared tests + supps.
@@ -152,5 +157,32 @@ export function runPathways(input: PathwayInput): PathwayResult {
     }
   }
 
-  return { conditionsMatched, medClassesMatched, symptomsMatched, audit };
+  // ── 4. Lab-pattern pathways ────────────────────────────────────────────
+  // For every detected lab pattern (elevated CRP, atherogenic lipids, etc.),
+  // fire its declared tests + supplements via the same canonical pushers.
+  // Universal: adding a new pattern is one row in labPatternRegistry.
+  const labPatterns = detectLabPatterns(input.labValues);
+  for (const p of labPatterns) {
+    labPatternsMatched.push(p.key);
+    for (const testKey of p.requiredTests) {
+      const inserted = pushRetestByKey(
+        input.plan.retest_timeline,
+        testKey,
+        `Lab pattern: ${p.label} (${p.evidence})`,
+        'c',
+        input.retestCadence,
+      );
+      audit.push({ source: 'lab_pattern', sourceKey: p.key, kind: 'test', itemKey: testKey, inserted });
+    }
+    for (const suppKey of p.requiredSupplements) {
+      const inserted = pushSupplementByKey(
+        input.plan.supplement_stack,
+        suppKey,
+        input.alreadyTakingText,
+      );
+      audit.push({ source: 'lab_pattern', sourceKey: p.key, kind: 'supplement', itemKey: suppKey, inserted });
+    }
+  }
+
+  return { conditionsMatched, medClassesMatched, symptomsMatched, labPatternsMatched, audit };
 }
