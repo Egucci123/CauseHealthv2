@@ -15,6 +15,7 @@ import { detectTestQualityIssues } from '../_shared/testQualityFlagger.ts';
 import { buildCausalChain, renderChainForPrompt } from '../_shared/causalChainBuilder.ts';
 import { buildPredictedChanges, renderPredictionsForPrompt } from '../_shared/predictiveOutcomes.ts';
 import { synthesizeAcrossSpecialties, renderSynthesisForPrompt } from '../_shared/specialtySynthesizer.ts';
+import { buildAudit } from '../_shared/auditLog.ts';
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -870,6 +871,8 @@ CRITICAL OUTPUT RULES:
       supplementKeys: plan.supplement_stack.map((s: any) => s?._key).filter(Boolean),
     });
     plan.specialty_synthesis = synthesis;
+    // Audit log appended at the very end (after pathway engine runs) so it
+    // captures the final state of all deterministic layers.
 
     // (Pivot May 2026: meal scrubber + meal padder + meal-related validators
     // removed alongside meals[] in the output. App is no longer a meal planner.)
@@ -1059,6 +1062,12 @@ CRITICAL OUTPUT RULES:
     //   - CBC with Differential (any abnormal CBC marker)
     // Same logic, same triggers, ensures wellness-plan retest_timeline
     // mirrors doctor-prep tests_to_request for the same patient.
+    // pathwayResult declared at outer scope so the audit log block (which
+    // runs after this) can reference it. Default-empty so audit doesn't
+    // crash if this whole try-block throws.
+    let pathwayResult: ReturnType<typeof runPathways> = {
+      conditionsMatched: [], medClassesMatched: [], symptomsMatched: [], audit: [],
+    };
     try {
       const has = (pattern: RegExp) =>
         plan.retest_timeline.some((t: any) =>
@@ -1109,7 +1118,7 @@ CRITICAL OUTPUT RULES:
         ...plan.supplement_stack.map((s: any) => `${s?.nutrient ?? ''} ${s?.form ?? ''}`),
         ...((supps ?? []).map((s: any) => s?.name ?? '')),
       ].join(' ').toLowerCase();
-      const pathwayResult = runPathways({
+      pathwayResult = runPathways({
         conditionsLower,
         medsLower,
         symptomsTextWithSeverity: symptomsLower,
@@ -1237,6 +1246,21 @@ CRITICAL OUTPUT RULES:
     }
 
     // Keep old plans for history — don't delete
+    // ── Audit log (final) ─────────────────────────────────────────────────
+    // Captures every deterministic layer's outputs so future debugging /
+    // regression analysis has full visibility into what fired and why.
+    plan._audit = buildAudit({
+      classification,
+      adequacyFlags,
+      alreadyOptimal,
+      qualityFlags,
+      causalChain,
+      predictions: plan.predicted_changes ?? [],
+      specialtySynthesis: synthesis,
+      pathwayResult,
+      labCount: labValues.length,
+    });
+
     await supabase.from('wellness_plans').insert({ user_id: userId, draw_id: drawId, plan_data: plan, generation_status: 'complete' });
 
     return new Response(JSON.stringify(plan), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
