@@ -235,36 +235,10 @@ const TodayTab = ({ plan, uid }: { plan: any; uid: string }) => {
         );
       })}
 
-      {/* Plan deep-dive — Lifestyle, 90-day phases, retest. Folded into Today
-          since the standalone Details tab was removed. */}
-      <div className="space-y-4 pt-2">
-        <FolderSection icon="restaurant" title="Lifestyle Interventions" countLabel="categories" count={4} explanation="Diet, sleep, exercise, and stress strategies targeting your specific lab patterns.">
-          <LifestyleInterventions interventions={plan.lifestyle_interventions ?? { diet: [], sleep: [], exercise: [], stress: [] }} />
-        </FolderSection>
-        <FolderSection icon="event" title="Your 90-Day Action Plan" countLabel="phases" count={3} explanation="Three phases — stabilize, optimize, maintain. Don't try to do everything at once.">
-          <ActionPlan actionPlan={plan.action_plan ?? { phase_1: { name: '', focus: '', actions: [] }, phase_2: { name: '', focus: '', actions: [] }, phase_3: { name: '', focus: '', actions: [] } }} retestTimeline={[]} planKey={plan.generated_at ?? 'default'} />
-        </FolderSection>
-        {Array.isArray(plan.retest_timeline) && plan.retest_timeline.length > 0 && (
-          <FolderSection icon="science" title="Recommended Retest at Week 12" count={plan.retest_timeline.length} countLabel={plan.retest_timeline.length === 1 ? 'marker' : 'markers'} explanation="Markers from your bloodwork to recheck. For NEW tests to discuss with your doctor, see Doctor Prep." accentColor="#1B423A">
-            <div className="space-y-3">
-              {plan.retest_timeline.map((r: any, i: number) => (
-                <div key={i} className="bg-clinical-cream rounded-lg p-4 border-l-4 border-primary-container">
-                  <div className="flex justify-between items-start gap-3 mb-1.5">
-                    <p className="text-body text-clinical-charcoal font-semibold text-sm">{r.marker}</p>
-                    <span className="text-precision text-[0.7rem] font-bold tracking-widest uppercase text-primary-container flex-shrink-0">{r.retest_at}</span>
-                  </div>
-                  <p className="text-body text-clinical-stone text-xs leading-relaxed">{r.why}</p>
-                </div>
-              ))}
-            </div>
-          </FolderSection>
-        )}
-        {plan.disclaimer && (
-          <div className="border border-outline-variant/10 rounded-lg p-5">
-            <p className="text-precision text-[0.6rem] text-clinical-stone tracking-wide leading-relaxed">{plan.disclaimer}</p>
-          </div>
-        )}
-      </div>
+      {/* Pivot May 2026: Lifestyle Interventions, 90-Day Action Plan, and the
+          retest markers list moved OUT of the Today tab and into top-level
+          sections on the main page. Today now ONLY shows 3 actions + week
+          progress + streak. Less crowded. */}
     </div>
   );
 };
@@ -680,37 +654,6 @@ export const WellnessPlanPage = () => {
             );
           })()}
 
-          {/* Symptoms addressed — moved to bottom (with the other deep-dive
-              dropdowns) per founder direction. Stays folded closed by default. */}
-          {Array.isArray(plan.symptoms_addressed) && plan.symptoms_addressed.length > 0 && (
-            <FolderSection
-              icon="monitor_heart"
-              title="Your symptoms — and how this plan addresses them"
-              count={plan.symptoms_addressed.length}
-              countLabel={plan.symptoms_addressed.length === 1 ? 'symptom' : 'symptoms'}
-              explanation="Every symptom you logged maps to a specific test, a supplement (when a lab confirms the cause), and a lifestyle change. Tap to expand."
-              accentColor="#7B1FA2"
-            >
-              <div className="space-y-3">
-                {plan.symptoms_addressed.map((s: any, i: number) => (
-                  <div key={i} className="bg-clinical-cream/40 rounded-[10px] p-4 border-l-2 border-[#7B1FA2]">
-                    <div className="flex items-start justify-between gap-3 mb-1.5">
-                      <p className="text-body text-clinical-charcoal text-sm font-semibold leading-snug">{s.symptom}</p>
-                      {typeof s.severity === 'number' && (
-                        <span className="text-precision text-[0.6rem] font-bold tracking-wider text-[#7B1FA2] bg-[#7B1FA2]/10 px-2 py-0.5 rounded flex-shrink-0">
-                          {s.severity}/10
-                        </span>
-                      )}
-                    </div>
-                    {s.how_addressed && (
-                      <p className="text-body text-clinical-stone text-xs leading-relaxed">{s.how_addressed}</p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </FolderSection>
-          )}
-
           {/* 90-day retest CTA — surfaces in last 2 weeks of protocol */}
           {showRetestCTA && (
             <Link
@@ -776,6 +719,71 @@ export const WellnessPlanPage = () => {
               {tab === 'take' && <TakeTab plan={plan} />}
             </motion.div>
           </AnimatePresence>
+
+          {/* Below-the-tabs sections — order set by founder direction:
+              1. Lifestyle Interventions (4 categories)
+              2. 90-Day Action Plan (3 phases)
+              3. Symptoms (bottom — context, not action)
+              The "Tests to ask for" retest list lives near the top of the page,
+              right under the headline, since it's the next concrete step. */}
+          <FolderSection
+            icon="restaurant"
+            title="Lifestyle Interventions"
+            countLabel="categories"
+            count={4}
+            explanation="Diet, sleep, exercise, and stress strategies targeting your specific lab patterns."
+          >
+            <LifestyleInterventions interventions={plan.lifestyle_interventions ?? { diet: [], sleep: [], exercise: [], stress: [] }} />
+          </FolderSection>
+
+          <FolderSection
+            icon="event"
+            title="Your 90-Day Action Plan"
+            countLabel="phases"
+            count={3}
+            explanation="Three phases — stabilize, optimize, maintain. Don't try to do everything at once."
+          >
+            <ActionPlan
+              actionPlan={plan.action_plan ?? { phase_1: { name: '', focus: '', actions: [] }, phase_2: { name: '', focus: '', actions: [] }, phase_3: { name: '', focus: '', actions: [] } }}
+              retestTimeline={[]}
+              planKey={plan.generated_at ?? 'default'}
+            />
+          </FolderSection>
+
+          {Array.isArray(plan.symptoms_addressed) && plan.symptoms_addressed.length > 0 && (
+            <FolderSection
+              icon="monitor_heart"
+              title="Your symptoms — and how this plan addresses them"
+              count={plan.symptoms_addressed.length}
+              countLabel={plan.symptoms_addressed.length === 1 ? 'symptom' : 'symptoms'}
+              explanation="Every symptom you logged maps to a specific test, a supplement (when a lab confirms the cause), and a lifestyle change. Tap to expand."
+              accentColor="#7B1FA2"
+            >
+              <div className="space-y-3">
+                {plan.symptoms_addressed.map((s: any, i: number) => (
+                  <div key={i} className="bg-clinical-cream/40 rounded-[10px] p-4 border-l-2 border-[#7B1FA2]">
+                    <div className="flex items-start justify-between gap-3 mb-1.5">
+                      <p className="text-body text-clinical-charcoal text-sm font-semibold leading-snug">{s.symptom}</p>
+                      {typeof s.severity === 'number' && (
+                        <span className="text-precision text-[0.6rem] font-bold tracking-wider text-[#7B1FA2] bg-[#7B1FA2]/10 px-2 py-0.5 rounded flex-shrink-0">
+                          {s.severity}/10
+                        </span>
+                      )}
+                    </div>
+                    {s.how_addressed && (
+                      <p className="text-body text-clinical-stone text-xs leading-relaxed">{s.how_addressed}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </FolderSection>
+          )}
+
+          {plan.disclaimer && (
+            <div className="border border-outline-variant/10 rounded-lg p-5">
+              <p className="text-precision text-[0.6rem] text-clinical-stone tracking-wide leading-relaxed">{plan.disclaimer}</p>
+            </div>
+          )}
         </div>
       )}
     </AppShell>
