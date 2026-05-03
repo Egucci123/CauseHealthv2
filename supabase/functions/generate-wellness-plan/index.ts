@@ -11,6 +11,7 @@ import { runAdequacyChecks, runSelfSupplementChecks } from '../_shared/replaceme
 import { runPathways } from '../_shared/pathwayEngine.ts';
 import { pushRetestByKey, finalizeRetestTimeline } from '../_shared/retestRegistry.ts';
 import { detectAlreadyOptimal, applyAlreadyOptimalScrub } from '../_shared/alreadyOptimalFilter.ts';
+import { detectTestQualityIssues } from '../_shared/testQualityFlagger.ts';
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -195,6 +196,28 @@ serve(async (req) => {
     };
     const alreadyOptimal = detectAlreadyOptimal(labValues, optimalCtx);
     console.log(`[wellness-plan] already-optimal: ${alreadyOptimal.optimalKeys.join(', ') || 'none'}`);
+
+    // ── Test-quality flagger (Layer D) ────────────────────────────────────
+    // Flag tests that are unreliable for this user's situation. Universal —
+    // serum Mg always, ferritin during inflammation, TSH alone on
+    // replacement, serum B12 on metformin/PPI/vegetarian, total T without
+    // SHBG, creatinine in muscular patients. Adding a row to RULES applies
+    // to every patient automatically.
+    const inflammationElevated = labValues.some((v: any) => {
+      const name = String(v.marker_name ?? '').toLowerCase();
+      const flag = (v.optimal_flag ?? '').toLowerCase();
+      return /(hs[-\s]?crp|c[-\s]?reactive)/i.test(name) && (flag === 'high' || flag === 'critical_high');
+    });
+    const qualityFlags = detectTestQualityIssues({
+      conditionsLower: (condStr ?? '').toLowerCase(),
+      medsLower: (medsStr ?? '').toLowerCase(),
+      symptomsLower: (sympStr ?? '').toLowerCase(),
+      age,
+      sex: profile?.sex ?? null,
+      labValues,
+      inflammationElevated,
+    });
+    console.log(`[wellness-plan] test-quality flags: ${qualityFlags.map(f => f.key).join(', ') || 'none'}`);
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -443,6 +466,9 @@ TODAY_ACTIONS MUST INCLUDE: ${adequacyFlags.map(f => `"${f.todayAction}"`).filte
 ` : ''}
 ${alreadyOptimal.promptNotes.length > 0 ? `ALREADY-AT-GOAL FACTS (DO NOT WASTE A SLOT RECOMMENDING SOMETHING THE USER IS ALREADY HITTING):
 ${alreadyOptimal.promptNotes.map(n => `  - ${n}`).join('\n')}
+` : ''}
+${qualityFlags.length > 0 ? `TEST-QUALITY CAVEATS — these tests appear "in range" but the test itself is unreliable for THIS patient. Mention each in the summary so the user knows to ask for the better test:
+${qualityFlags.map(f => `  - ${f.title} — ${f.detail} (you saw: ${f.evidence})`).join('\n')}
 ` : ''}
 ${isOptimizationMode ? `OPTIMIZATION CONTEXT: Patient labs are mostly healthy. Frame the plan around longevity optimization, not disease treatment. Phase names: "Build Foundation (Months 1-2)", "Optimize (Months 3-4)", "Sustain & Track (Months 5-6)". Retest cadence is 6 months, set retest_at: "6 months". Lifestyle interventions focus on longevity science: zone 2 cardio, resistance training, sleep optimization, cold/heat exposure, stress resilience, metabolic health.
 
@@ -1088,6 +1114,21 @@ CRITICAL OUTPUT RULES:
         plan.retest_timeline = plan.retest_timeline.slice(0, 20);
       }
     } catch (e) { console.error('[wellness-plan] retest-injector error:', e); }
+    // ── Test-quality flagger POST-flight (Layer D) ───────────────────────
+    // Push the better-test recommendations into the retest_timeline (deduped
+    // by canonical key) and stamp the flags on the plan for UI rendering.
+    if (qualityFlags.length > 0) {
+      plan.test_quality_flags = qualityFlags.map(f => ({
+        key: f.key, severity: f.severity, title: f.title,
+        detail: f.detail, evidence: f.evidence, betterTestKeys: f.betterTestKeys,
+      }));
+      for (const f of qualityFlags) {
+        for (const k of f.betterTestKeys) {
+          pushRetestByKey(plan.retest_timeline, k, `Better test: ${f.title}`, 'e', classification.retestCadence);
+        }
+      }
+    }
+
     // ── Already-optimal POST-flight scrub (Layer B) ──────────────────────
     // Even after the prompt note, the AI sometimes recommends a supplement
     // for a marker the user is already at goal on. Scrub deterministically.
