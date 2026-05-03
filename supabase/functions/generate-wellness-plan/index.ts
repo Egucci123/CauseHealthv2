@@ -5,7 +5,6 @@ import { isHealthyMode } from '../_shared/healthMode.ts';
 import { GOAL_LABELS, formatGoals } from '../_shared/goals.ts';
 import { buildRareDiseaseBlocklist, extractRareDiseaseContext } from '../_shared/rareDiseaseGate.ts';
 import { buildUniversalTestInjections } from '../_shared/testInjectors.ts';
-import { selectMealCandidates, inferLabTargets } from '../_shared/foodSelector.ts';
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -118,32 +117,11 @@ serve(async (req) => {
       `DIET: ${dietType}`,
     ].join(' · ');
 
-    // ── Food Playbook candidate selection ─────────────────────────────────
-    // Pull top ~30 brand-specific meals from the curated library that match
-    // this user's life_context + lab targets. AI picks 12-18 finalists from
-    // these candidates and writes the lab-specific "why" per user. The
-    // library ensures every output meal has a real brand/chain/SKU mention
-    // and matches the user's actual eating patterns.
-    const labTargets = inferLabTargets(labValues, symptoms);
-    const mealCandidates = selectMealCandidates({
-      workType: workType !== 'unknown' ? workType : undefined,
-      hasKids: kids !== 'unknown' && kids !== '0',
-      cookingTimeAvailable: cookTime !== 'unknown' ? cookTime : undefined,
-      weeklyFoodBudget: foodBudget !== 'unknown' ? foodBudget : undefined,
-      eatOutPlaces: Array.isArray(lifeCtx.eatOutPlaces) ? lifeCtx.eatOutPlaces : [],
-      breakfastPatterns: breakfastArr,
-      lunchPatterns: lunchArr,
-      dinnerPatterns: dinnerArr,
-      diet: dietType,
-      labTargets,
-    }, 30);
-    console.log(`[wellness-plan] inferred lab targets: ${labTargets.join(', ')}`);
-    console.log(`[wellness-plan] selected ${mealCandidates.length} meal candidates from playbook`);
-    const mealCandidatesStr = mealCandidates.length > 0
-      ? mealCandidates.map(m =>
-          `- [${m.playbook}|${m.when}|phase${m.phase}|${m.prepMinutes}min] ${m.emoji} ${m.name} | ingredients: ${m.ingredients.slice(0, 5).join(', ')}${m.protein_g ? ` | ~${m.protein_g}g protein` : ''}`
-        ).join('\n')
-      : '(no candidates — fall back to your library knowledge using the playbook rules below)';
+    // (Pivot May 2026: removed meal-candidate selection. The plan no longer
+    // generates specific meals — it generates a *dietary pattern* the user
+    // should follow, plus links out to trusted recipe sites. This drops 360
+    // meals worth of curation noise and stops the app from pretending to be
+    // a meal planner. See eating_pattern in the JSON output schema.)
 
     // Send ALL lab values, tagged with status from the new range model
     // (healthy/watch/low/high/critical_*) so the AI knows what to act on.
@@ -378,111 +356,24 @@ HARD RULES — FOLLOW EXACTLY:
     autoimmune     → gentle zone-2 + strength, NO overtraining; anti-inflammatory diet, identify triggers, sleep non-negotiable. Phases: lower inflammation (1) → triggers (2) → remission (3).
     pain           → gentle movement, build strength carefully, daily mobility; anti-inflammatory diet, omega-3, magnesium, sleep, stress, weight if relevant.
 
-11. MEALS — REALISTIC PROGRESSION + LIFESTYLE-TAILORED (CRITICAL — adherence beats perfection):
+11. EATING PATTERN — THE DIET, NOT THE MEALS:
+    CauseHealth tells the user WHAT KIND of eater to be, not what to cook tonight. We are not a meal planner. Output a single dietary pattern tied to their labs/conditions/goals. The frontend appends a static set of trusted recipe site links so the user finds actual recipes off-platform.
 
-    LIFESTYLE BRANCHING (read LIFESTYLE_CONTEXT in the user message — universal, no condition assumptions):
-      WORK_TYPE driver/shift/labor/service: on-the-move, no kitchen at lunch. Gas-station/fast-food/cooler meals in Phase 1. Meal-prep Sundays in Phase 3.
-      WORK_TYPE desk/parent_home: kitchen access. Stovetop OK from Phase 1.
-      WORK_SCHEDULE nights/rotating: avoid "breakfast at 7am" framing → "first meal of your day". Portable + protein-dense.
-      KIDS_AT_HOME 1+: fragmented time. NO >2-burner recipes. Sheet-pan / slow-cooker / instant-pot only after Phase 1. Kid-edible meals (parent isn't cooking two).
-      COOKING_TIME under_15: Phase 1 grocery-assembly only (no cooking). Phase 2: 5-15 min stovetop.
-      COOKING_TIME 60_plus: real recipes OK from Phase 1.
-      TYPICAL_LUNCH fast_food/gas_station: Phase 1 must be chain-order guides for EATS_OUT_AT chains. Real orders, not "make at home".
-      TYPICAL_LUNCH packed: cold packable meals (no microwave needed).
-      WEEKLY_FOOD_BUDGET under_50: Costco/store-brand only, no salmon/grass-fed. Frozen veg + chicken thighs + rice = $30/wk base.
-      WEEKLY_FOOD_BUDGET 50_100: 1-2 fresh-fish meals/wk max from Phase 2+.
-      DIET vegan/keto/vegetarian: NEVER suggest meals that break the diet.
-      Unknown context: busy/blue-collar default — grocery-basic, fast-food-friendly.
-
-    HEALTHCARE-ACCESS BRANCHING (universal):
+    HEALTHCARE-ACCESS BRANCHING (still relevant for retest cost guidance):
       INSURANCE cash/unknown: cheapest-tier tests only (Quest/LabCorp direct-pay, Walmart/Costco). Avoid NMR, advanced lipid, expensive specialty.
       INSURANCE medicaid/medicare: standard PCP-orderable; ICD-10 justification critical.
       HAS_PCP none/rare: mention "find a PCP for retest" in Phase 1 if monitoring needed.
       LAST_PHYSICAL 2yr_plus/never: bias toward "first proper physical" framing — basic CBC + CMP + Lipid + A1c + TSH baseline.
 
-    THE FOOD PLAYBOOK — bar = nutritionist + health-influencer who understands busy adults (not textbook). Adherence beats perfection: jumping straight to "wild salmon + bone broth" collapses by week 2. Build meals as a swap-then-level-up progression.
+    EATING_PATTERN OUTPUT — required object with these fields:
+      - name: short label of the pattern. Use one of: "Mediterranean (anti-inflammatory)", "Low-glycemic + high-protein", "Anti-inflammatory plant-forward", "DASH (blood-pressure focused)", "Mediterranean + low-FODMAP" (IBS/UC), "TLC (lipid-lowering)", "Whole-food balanced", "Higher-protein lower-carb (insulin resistance)". Pick the ONE that best targets this user's primary lab pattern. Don't invent new names.
+      - rationale: 1-2 plain-English sentences linking the pattern to THIS user's specific lab findings. Example: "Your liver enzyme (94) and triglycerides (210) point to insulin resistance. A Mediterranean pattern with lower refined carbs cuts liver fat fastest." 30 words MAX.
+      - emphasize: array of 4-6 SHORT food categories to lean into, plain English. Examples: ["fatty fish 2x/week", "leafy greens daily", "olive oil as primary fat", "berries", "lentils + beans", "nuts (small handful)"]. NO brand names. NO recipes.
+      - limit: array of 3-5 SHORT categories to cut back, plain English. Examples: ["sugary drinks", "white bread + pastries", "deep-fried foods", "alcohol >3/week", "processed lunch meats"].
 
-    BETTER-PATH RULE (CRITICAL): A little mayo is fine. A normal Wawa hoagie isn't a sin. Don't strip enjoyment for marginal gains. The bar is "meaningfully better than what they're eating now" — NOT "what a longevity podcaster would order." If a swap saves 200 cal or doubles protein, THAT'S the win. Pick the ONE swap that matters most and let the rest ride. We're putting people on a better path, not ruining their lives.
+    NO meals[] in the output. NO chain orders. NO recipes. NO playbooks. NO phase progression. NO weekly meal spotlight. Frontend handles outbound recipe links separately.
 
-    PAIRING RULES (default smart swaps, no over-correction):
-      DRINKS THAT PAIR WITH MEALS:
-        ✅ ALWAYS OK: water, Diet Coke, Coke Zero, Diet Pepsi, Pepsi Zero, Sprite Zero, Diet Mountain Dew, sparkling water, unsweetened iced tea, black coffee, cold brew (no sugar), Diet Lemonade (Chick-fil-A), Celsius zero-sugar, LMNT/Liquid IV zero-sugar.
-        ❌ NEVER suggest WITH a meal: regular soda (Coke, Pepsi, Sprite, Dr Pepper, Mountain Dew, Fanta, Mug Root Beer), sweet tea, sugary lemonade, milkshakes, frappuccinos, energy drinks with sugar, fruit-juice cocktails, chocolate milk except as protein shake.
-      SIDES TO AVOID PAIRING (default these out — suggest healthier sides):
-        ❌ Fast-food deep-fried fries (McD's fries, BK fries, Wendy's fries, Five Guys fries) — replace with side salad, baked potato, fruit, apple slices, side of black beans.
-        ❌ Hash browns at fast-food (especially McD's) — replace with fruit cup OR add an extra protein item.
-        ❌ Onion rings, mozzarella sticks, jalapeño poppers, fried pickles.
-        ❌ Sugary breakfast pastries (donuts, cinnamon rolls, muffins) as a meal.
-      OK IN MODERATION (don't strip these):
-        ✅ Frozen sweet potato fries (oven-baked at home with kielbasa, sheet-pan style) — these are real food, just air-fryer them.
-        ✅ Kettle chips occasionally with a sandwich (small bag, not the giant one).
-        ✅ Pizza night with kids (limit to 2 slices, add a side salad).
-        ✅ Bun on the burger / sandwich (the protein doubling is the win, not bun-removal).
-      The point: avoid the worst pairings (regular soda + fries together is the universal "bad combo"), but don't make every meal feel like a punishment.
-
-    PLAYBOOK NAMING — every meal must declare a playbook tag. The 12 playbooks are: convenience_store / fast_food / protein_bar_shake / crock_pot / sheet_pan / frozen_aisle / frozen_breakfast / low_cal_drink / mom_friendly / viral_hack / lunchbox_thermos / simple_home_cook. The MEAL_CANDIDATES list (in the user message) is pre-filtered for this user; pick from there and copy each candidate's playbook + phase + when fields verbatim. Don't re-categorize — a hot rotisserie chicken belongs in convenience_store (grab-and-go) or simple_home_cook, NOT frozen_aisle. Content validators will re-tag mismatches automatically.
-
-    PLAN STRUCTURE — PER-PLAYBOOK GENERATION (the "Food Playbook"):
-
-    The user has TOLD YOU which meal patterns they actually use via BREAKFAST_PATTERNS, LUNCH_PATTERNS, DINNER_PATTERNS (multi-select, up to 5 each). Generate 1-2 meals PER PATTERN they listed, not a generic phase progression. So if they said "fast_food + wawa_convenience + packed" for lunch, you give them 1-2 fast-food order ideas, 1-2 Wawa ideas, AND 1-2 packed-cooler ideas — total 3-6 lunch options across their actual lunch reality.
-
-    Each meal entry MUST include:
-      - "playbook" field — REQUIRED — ONE of: 'convenience_store' / 'fast_food' / 'protein_bar_shake' / 'crock_pot' / 'sheet_pan' / 'frozen_aisle' / 'frozen_breakfast' / 'low_cal_drink' / 'mom_friendly' / 'viral_hack' / 'lunchbox_thermos' / 'simple_home_cook'. Pick the playbook that best describes the meal's CATEGORY in real life. UI groups by playbook.
-      - "phase" field — 1 (start here, easiest), 2 (level up after a few weeks), or 3 (optimal, real recipe). Within each playbook section, phase determines difficulty/ambition. Phase 1 should dominate.
-      - "when" field — breakfast / lunch / dinner / snack
-      - SPECIFIC brand / SKU / chain name. "Costco rotisserie chicken" beats "rotisserie chicken." "Banza chickpea pasta" beats "high-protein pasta." "Wawa egg white wrap" beats "convenience-store wrap."
-
-    TARGETS PER PLAN — A FULL WEEK+ OF VARIETY (CRITICAL):
-
-    The user does NOT want to regenerate every 3 days because they ran out of options. Generate enough breadth to cover 1-2 weeks of eating without repetition. PEOPLE DO NOT EAT THE SAME THING EVERY DAY.
-
-    PER-PATTERN HARD MINIMUMS (NON-NEGOTIABLE):
-      - For EVERY pattern the user listed in BREAKFAST_PATTERNS / LUNCH_PATTERNS / DINNER_PATTERNS, generate AT LEAST 3 meals from that playbook. If they listed 4 lunch patterns, give 12+ lunch meals (3 per pattern).
-      - Example: user picked "fast_food + wawa_convenience + gas_station" for lunch → MINIMUM 9 lunch meals (3 fast-food chain orders + 3 Wawa-specific + 3 gas-station/7-Eleven/Sheetz).
-      - If breakfast pattern includes "skip" → meals[].when="breakfast" entries are OK (label them "for the days you DO eat breakfast" in the why), BUT today_actions MUST NOT prescribe eating breakfast as a daily action. The user actively chose to skip — recommending "eat a 2-egg breakfast every morning" contradicts their stated pattern. If breakfast=skip, today_actions should focus on hydration + lunch protein + supplement timing instead.
-
-    CHAIN DIVERSITY:
-      - If user has 3+ chains in EATS_OUT_AT, fast_food meals MUST cover at least 4 different chains. Don't stack 4 Chipotle ideas — rotate Chick-fil-A, Wendy's, Subway, McDonald's, Panera, Taco Bell, Dunkin, Five Guys, Burger King, Cracker Barrel.
-      - HARD CHAIN CAP: maximum 3 meals from any single chain across the WHOLE plan. If candidates show 6 Wawa entries, you pick at most 3. Same rule for Sheetz, Chick-fil-A, 7-Eleven, Costco, Trader Joe's, every chain. If you exceed this you've failed the variety test.
-
-    SLOT TARGETS:
-      - 4-6 BREAKFAST options (or 1-2 if pattern is "skip").
-      - 8-12 LUNCH options (the most-frequent meal type for most people).
-      - 6-9 DINNER options.
-      - 3-5 SNACK + DRINK options.
-      - **TOTAL: 25-35 MEALS** (bumped from 21-30 to give the weekly spotlight rotation enough headroom across the 12-week journey).
-
-    PHASE COVERAGE FOR WEEKLY PROGRESSION (HARD REQUIREMENT — DO NOT SKIP):
-    The /wellness page surfaces a "This Week's Focus" spotlight that rotates meals across weeks 1-12, gradually shifting from convenience (Phase 1) to home cooking (Phase 3). For the rotation to work, every plan MUST include this distribution:
-      - AT LEAST 6 Phase-1 meals (easy mode for weeks 1-3 — convenience_store, fast_food, frozen_breakfast, low_cal_drink, protein_bar_shake)
-      - AT LEAST 8 Phase-2 meals (level up for weeks 4-6 — lunchbox_thermos, sheet_pan, frozen_aisle, viral_hack, mom_friendly)
-      - AT LEAST 6 Phase-3 meals (home cook for weeks 7-12 — simple_home_cook, crock_pot, sheet_pan)
-
-    DINNER FLOOR — ABSOLUTE MINIMUM (failing this means the plan is broken):
-      - AT LEAST 6 dinners total (when="dinner") in meals[]. NOT 1, NOT 2, NOT 3. **AT LEAST 6.**
-      - Of those dinners: AT LEAST 2 Phase-1 (frozen-aisle, fast-food, convenience-store dinner options).
-      - Of those dinners: AT LEAST 2 Phase-2 (sheet-pan, frozen-aisle dinners with prep).
-      - Of those dinners: AT LEAST 2 Phase-3 (crock-pot, simple-home-cook).
-      - If MEAL_CANDIDATES doesn't include enough crock-pot / sheet-pan / simple-home-cook options, you MUST INVENT extra dinners that follow the brand-specific naming rule. Examples of valid invented Phase-3 dinners: "Sheet-pan honey-mustard chicken thighs + frozen broccoli + Minute brown rice", "Crock-pot pulled chicken (Frank's hot sauce + ranch) + bagged Caesar", "Air-fryer salmon + frozen Brussels + Minute rice".
-      - A plan with only 1 dinner option is the #1 known failure mode. Treat the 6-dinner floor as non-negotiable.
-
-    Copy each candidate's phase tag verbatim from MEAL_CANDIDATES when using a candidate; for invented meals you assign the phase based on prep effort (Phase 1 = no cooking, Phase 2 = sheet-pan/frozen w/ prep, Phase 3 = stove + multiple ingredients).
-
-    Pattern = "unknown" → default broad mix: 2 fast-food + 2 frozen + 2 convenience-store + 2 lunchbox + 2 protein-bar/shake.
-
-    PATTERN → PLAYBOOK MAPPING (use this when picking which playbook a meal belongs to):
-      breakfast: skip→— · fast_food→fast_food · gas_station→convenience_store · coffee_shop→fast_food · frozen_sandwich→frozen_breakfast · eggs_home→simple_home_cook · cereal→simple_home_cook · smoothie→low_cal_drink/viral_hack · protein_bar→protein_bar_shake
-      lunch: fast_food→fast_food · gas_station→convenience_store · wawa_convenience→convenience_store · packed→lunchbox_thermos · cafeteria→fast_food · cooler_box→lunchbox_thermos · drive_thru_salad→fast_food · restaurant→simple_home_cook · skip→—
-      dinner: cook_scratch→simple_home_cook · crock_pot→crock_pot · sheet_pan→sheet_pan · frozen_meal→frozen_aisle · takeout→fast_food · restaurant→simple_home_cook · kid_friendly→mom_friendly · snack_dinner→viral_hack/protein_bar_shake
-
-    Forbidden generics (auto-scrubbed if generated): "yogurt + berries + nuts", "egg + whole-grain toast", "grilled chicken + rice + broccoli", "salmon + asparagus", "kale salad with chicken", plain "ground turkey chili", any meal without a brand/chain/SKU. The candidate list already filters these out — pick from there.
-
-    PHASE TAG semantics (each meal carries phase 1/2/3 from its candidate):
-      - Phase 1: easy swaps, real chain orders, grocery shortcuts, portable snacks. <5 min prep.
-      - Phase 2: stock the freezer, level up orders, viral hacks, simple sheet-pan/one-pot. 10-15 min.
-      - Phase 3: real recipes, 15-25 min, 6-10 ingredients. Still grocery-store basic.
-
-    The why field is what makes the meal SMART for THIS user. Reference their specific lab or symptom or barrier in plain English. Example: "Cottage cheese protein helps your liver enzyme (97) repair while you sleep. Beats the morning bagel." Beats "Protein supports liver."
+    The user's logged food patterns (BREAKFAST_PATTERNS / LUNCH_PATTERNS / DINNER_PATTERNS) are CONTEXT for tone only — if they said "fast_food + skip breakfast", note that limiting deep-fried items applies to their fast-food orders, but never list specific orders.
 
 12. LIMITED-DATA MODE: If the user has NO lab values uploaded (only symptoms, conditions, medications, goals), still generate a useful plan based on:
     - Diagnosed conditions and known mechanisms
@@ -515,11 +406,6 @@ CURRENT SUPPLEMENTS (already taking — do NOT re-recommend; account for lab int
 SYMPTOMS (for context only — do NOT supplement based on symptoms alone): ${sympStr}
 LIFESTYLE_CONTEXT (drives meals + workout realism — see hard rule 11 below): ${lifestyleStr}
 
-INFERRED_LAB_TARGETS (the meals + supplements should hit these): ${labTargets.join(', ') || 'none flagged'}
-
-MEAL_CANDIDATES — pre-filtered from CauseHealth's curated Food Playbook based on this user's life_context + labs. **Pick 21-30 finalists from THIS list** for the meals[] output (the user wants a full week+ of variety so they don't have to regenerate after 3 days). Use the candidate names verbatim in meals[].name, copy their playbook + phase + when fields, but write a personalized "why" sentence that links each meal to THIS user's specific lab values or symptoms (use plain English: 'liver enzyme' not 'ALT', '3-month blood sugar' not 'A1c'). Aim for BREADTH — span as many of the user's selected meal patterns as possible, ROTATE chains within fast_food (don't pick 4 Chipotle ideas; rotate Wendy's, Chick-fil-A, Subway, McDonald's, Dunkin, etc.), and cover EVERY playbook the user has signal for. If a candidate doesn't fit, skip it; you may invent supplemental meals only when candidates don't cover a slot, but every invented meal must follow the same brand-specific + playbook-tagged rules and will be subject to the same scrubbing rules. Candidates:
-${mealCandidatesStr}
-
 SUPPLEMENT-LAB INTERACTION KNOWLEDGE (use when interpreting labs and building stack):
 - Biotin (>1mg/day): falsely alters TSH/T3/T4/Troponin/Vit D — pause 72hr before retest.
 - Creatine: raises serum creatinine ~10–20% (artifact, not kidney damage); use cystatin-C for true GFR.
@@ -547,11 +433,11 @@ ${allLabsStr.slice(0, 4000)}
 NUTRIENTS NOT TESTED (do NOT recommend supplements for these — mention in disclaimer only. Do NOT add them to retest_timeline as a 'baseline gap'. The strict triage rule still applies in optimization mode — a missing test only earns a retest_timeline entry if the patient has a symptom, medication depletion, or out-of-range marker that the test would investigate. Healthy patients with no triggers get a SHORT retest list focused on actual labs to track, not a longevity wishlist.):
 ${notTestedStr}
 
-Return JSON: {"generated_at":"${new Date().toISOString()}","headline":"one 12-word verdict in plain English (e.g. 'Your iron is low — fix it and the fatigue lifts')","summary":"3 short sentences max — what's wrong, what we'll fix, how long it takes","today_actions":[{"emoji":"","action":"one verb-led sentence the user does TODAY (e.g. 'Eat a 3-egg breakfast')","why":"one short sentence","category":"eat|move|take|sleep|stress"}],"supplement_stack":[{"emoji":"💊","nutrient":"","form":"","dose":"","timing":"","why_short":"6-10 word reason in plain English","why":"1 sentence linking to a lab or symptom","practical_note":"REQUIRED — 1 short sentence covering: WHY this timing (absorption / fat-soluble / GABA / circadian), interaction warnings with this user's actual medications, and any 'avoid taking with X' or 'take on empty stomach' caveats. Keep it ONE sentence.","category":"REQUIRED — ONE of: 'sleep_stress' / 'gut_healing' / 'liver_metabolic' / 'inflammation_cardio' / 'nutrient_repletion' / 'condition_therapy'. Pick the supplement's PRIMARY purpose for this patient. Use 'liver_metabolic' for liver enzyme elevation, lipid/cholesterol, blood sugar / insulin resistance, or hepatoprotective supplements (milk thistle, NAC, TUDCA). 'inflammation_cardio' is for heart-rhythm + inflammation markers (omega-3 for ApoB/TG when liver is fine; turmeric for joint inflammation only). When in doubt, the LIVER goes in liver_metabolic.","alternatives":"REQUIRED — array of 1-2 EQUIVALENT alternative options the user can pick instead, formatted as objects {name, form, note}. Examples: Magnesium Glycinate primary -> alternatives: [{name:'Magnesium Threonate', form:'Capsule', note:'Better for cognition + sleep; pricier'}, {name:'Magnesium Citrate', form:'Powder', note:'Cheaper, mild laxative effect'}]. Saccharomyces boulardii primary -> alternatives: [{name:'Visbiome (multi-strain)', form:'Capsule', note:'Most-studied multi-strain UC probiotic; needs refrigeration'}, {name:'VSL#3', form:'Sachets', note:'Higher CFU count; more expensive'}]. Omega-3 primary -> alternatives: [{name:'Algae-based DHA/EPA', form:'Softgel', note:'Vegan option, no fish burps'}, {name:'Liquid fish oil', form:'Liquid', note:'Easier to dose 2-3g; cheaper per gram'}]. Give the user real choice between EQUIVALENT options (different form/source/price/brand) — never alternatives that solve a different problem.","priority":"critical|high|moderate","sourced_from":"lab_finding|disease_mechanism","evidence_note":""}],"meals":[{"emoji":"🥗","name":"meal name (MUST include specific brand/chain/SKU — e.g. 'Costco rotisserie + Uncle Ben’s rice + bagged Caesar')","when":"breakfast|lunch|dinner|snack","phase":1,"playbook":"REQUIRED — ONE of: 'convenience_store' / 'fast_food' / 'protein_bar_shake' / 'crock_pot' / 'sheet_pan' / 'frozen_aisle' / 'frozen_breakfast' / 'low_cal_drink' / 'mom_friendly' / 'viral_hack' / 'lunchbox_thermos' / 'simple_home_cook'","ingredients":["short list with brand names where useful"],"why":"1 sentence — link to user's specific lab or symptom or barrier. Reference labs by plain English (e.g. 'liver enzyme' not 'ALT')."}],"workouts":[{"emoji":"🏃","day":"Mon|Tue|Wed|Thu|Fri|Sat|Sun","title":"e.g. 'Zone 2 walk'","duration_min":30,"description":"1 sentence","why":"1 sentence — which goal/lab this serves"}],"lifestyle_interventions":{"diet":[{"emoji":"🥗","intervention":"","rationale":"","priority":""}],"sleep":[{"emoji":"😴","intervention":"","rationale":"","priority":""}],"exercise":[{"emoji":"💪","intervention":"","rationale":"","priority":""}],"stress":[{"emoji":"🧘","intervention":"","rationale":"","priority":""}]},"action_plan":{"phase_1":{"name":"Stabilize (Weeks 1-4)","focus":"","actions":[]},"phase_2":{"name":"Optimize (Weeks 5-8)","focus":"","actions":[]},"phase_3":{"name":"Maintain (Weeks 9-12)","focus":"","actions":[]}},"symptoms_addressed":[{"symptom":"","severity":7,"how_addressed":"MAX 30 WORDS. Two short sentences max. 6th-grade reading level. Format: '[plain-English cause]. [What we're doing about it].' Example: 'Mostly your low vitamin D (24) plus iron loss from UC. We added vitamin D, an iron test, and folate. Hair grows slow — give it 12 weeks.' DO NOT list dosages, percentage improvements, mechanisms, or jargon. Just: cause + plan."}],"retest_timeline":[{"marker":"","retest_at":"","why":""}],"disclaimer":"Educational only. Talk to your doctor before changing anything."}
+Return JSON: {"generated_at":"${new Date().toISOString()}","headline":"one 12-word verdict in plain English (e.g. 'Your iron is low — fix it and the fatigue lifts')","summary":"3 short sentences max — what's wrong, what we'll fix, how long it takes","today_actions":[{"emoji":"","action":"one verb-led sentence the user does TODAY (e.g. 'Eat a 3-egg breakfast')","why":"one short sentence","category":"eat|move|take|sleep|stress"}],"supplement_stack":[{"emoji":"💊","nutrient":"","form":"","dose":"","timing":"","why_short":"6-10 word reason in plain English","why":"1 sentence linking to a lab or symptom","practical_note":"REQUIRED — 1 short sentence covering: WHY this timing (absorption / fat-soluble / GABA / circadian), interaction warnings with this user's actual medications, and any 'avoid taking with X' or 'take on empty stomach' caveats. Keep it ONE sentence.","category":"REQUIRED — ONE of: 'sleep_stress' / 'gut_healing' / 'liver_metabolic' / 'inflammation_cardio' / 'nutrient_repletion' / 'condition_therapy'. Pick the supplement's PRIMARY purpose for this patient.","alternatives":"REQUIRED — array of 1-2 EQUIVALENT alternative options the user can pick instead, formatted as objects {name, form, note}.","priority":"critical|high|moderate","sourced_from":"lab_finding|disease_mechanism","evidence_note":""}],"eating_pattern":{"name":"ONE of the approved pattern names","rationale":"1-2 plain-English sentences linking this pattern to THIS user's labs (max 30 words)","emphasize":["4-6 short food categories to lean into, no brands"],"limit":["3-5 short categories to cut back, no brands"]},"workouts":[{"emoji":"🏃","day":"Mon|Tue|Wed|Thu|Fri|Sat|Sun","title":"e.g. 'Zone 2 walk'","duration_min":30,"description":"1 sentence","why":"1 sentence — which goal/lab this serves"}],"lifestyle_interventions":{"diet":[{"emoji":"🥗","intervention":"","rationale":"","priority":""}],"sleep":[{"emoji":"😴","intervention":"","rationale":"","priority":""}],"exercise":[{"emoji":"💪","intervention":"","rationale":"","priority":""}],"stress":[{"emoji":"🧘","intervention":"","rationale":"","priority":""}]},"action_plan":{"phase_1":{"name":"Stabilize (Weeks 1-4)","focus":"","actions":[]},"phase_2":{"name":"Optimize (Weeks 5-8)","focus":"","actions":[]},"phase_3":{"name":"Maintain (Weeks 9-12)","focus":"","actions":[]}},"symptoms_addressed":[{"symptom":"","severity":7,"how_addressed":"MAX 30 WORDS. Two short sentences max. 6th-grade reading level. Format: '[plain-English cause]. [What we're doing about it].'"}],"retest_timeline":[{"marker":"","retest_at":"","why":""}],"disclaimer":"Educational only. Talk to your doctor before changing anything."}
 
 CRITICAL OUTPUT RULES:
 - today_actions: EXACTLY 3 items — the most important things this user can do TODAY. Mix categories (one eat, one move, one take is ideal).
-- meals: 5-7 meals tied to this user's specific abnormal labs and goals. Real food, not "anti-inflammatory diet."
+- eating_pattern: ONE pattern object (NOT an array). Pick the single best dietary pattern for this user's labs.
 - workouts: 3-5 workouts spanning a week, tailored to user's goals (longevity → zone 2 + lift, weight → resistance + walk, energy → easy cardio + sleep).` }],
       }),
     });
@@ -796,16 +682,10 @@ CRITICAL OUTPUT RULES:
     }
     if (!Array.isArray(plan.supplement_stack)) plan.supplement_stack = [];
     if (!Array.isArray(plan.today_actions)) plan.today_actions = [];
-    if (!Array.isArray(plan.meals)) plan.meals = [];
 
-    // ── Meal scrubber + playbook content validator (locked-in rule) ──
-    // 4 layers:
-    //   1. Forbidden generic templates (lazy defaults) — drop outright
-    //   2. Brand/chain/SKU specificity gate — meal must name one
-    //   3. Playbook content match — frozen_aisle MUST mention frozen,
-    //      convenience_store MUST mention Wawa/7-Eleven/etc, crock_pot MUST
-    //      mention crock-pot/slow-cooker. Mismatches get re-categorized to
-    //      a guess based on content, or dropped if no clean fit.
+    // (Pivot May 2026: meal scrubber + meal padder + meal-related validators
+    // removed alongside meals[] in the output. App is no longer a meal planner.)
+    /* MEAL_SCRUBBER_DELETED_BLOCK_START
     try {
       const FORBIDDEN_PATTERNS: RegExp[] = [
         /^\s*\d?\-?egg\s+(scramble|breakfast|with|and)\s+(toast|bread|whole)/i,
@@ -967,6 +847,15 @@ CRITICAL OUTPUT RULES:
         }
       }
     } catch (e) { console.error('[wellness-plan] meal-padder error:', e); }
+    MEAL_SCRUBBER_DELETED_BLOCK_END */
+
+    // Eating pattern fallback — empty object if AI dropped it.
+    if (!plan.eating_pattern || typeof plan.eating_pattern !== 'object') {
+      plan.eating_pattern = { name: '', rationale: '', emphasize: [], limit: [] };
+    }
+
+    // Drop legacy meals[] if the AI emitted it from a stale prompt.
+    if (Array.isArray(plan.meals)) delete plan.meals;
 
     if (!Array.isArray(plan.workouts)) plan.workouts = [];
     if (!plan.headline) plan.headline = '';

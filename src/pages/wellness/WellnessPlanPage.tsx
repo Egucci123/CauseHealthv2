@@ -8,8 +8,6 @@ import { Button } from '../../components/ui/Button';
 import { FolderSection } from '../../components/ui/FolderSection';
 import { LifestyleInterventions } from '../../components/wellness/LifestyleInterventions';
 import { ActionPlan } from '../../components/wellness/ActionPlan';
-import { FoodPlaybookLibrary } from '../../components/wellness/FoodPlaybookLibrary';
-import { WeeklySpotlight } from '../../components/wellness/WeeklySpotlight';
 import { TransformationForecast } from '../../components/wellness/TransformationForecast';
 import { useWellnessPlan, useGenerateWellnessPlan } from '../../hooks/useWellnessPlan';
 import { useLatestLabDraw, useLatestLabValues } from '../../hooks/useLabData';
@@ -272,267 +270,118 @@ const TodayTab = ({ plan, uid }: { plan: any; uid: string }) => {
 };
 
 // ── Eat Tab ────────────────────────────────────────────────────────────────────
-// Build a deduplicated, alphabetical shopping list from all meal ingredients.
-function buildShoppingList(meals: any[]): string[] {
-  const set = new Set<string>();
-  for (const m of meals) {
-    for (const ing of m.ingredients ?? []) {
-      const cleaned = String(ing)
-        .toLowerCase()
-        // Strip leading quantities like "2 eggs", "1/2 cup spinach", "3oz salmon"
-        .replace(/^\s*\d+(\.\d+)?\s*(\/\s*\d+)?\s*(cup|cups|tbsp|tsp|oz|lb|g|ml|cans?|cloves?|pieces?|slices?|tbs|tablespoons?|teaspoons?)?\.?\s*/i, '')
-        .replace(/^\s*\d+(\.\d+)?\s*/i, '')
-        .trim();
-      if (cleaned) set.add(cleaned);
-    }
-  }
-  return [...set].sort();
-}
+// Static set of trusted outbound recipe sites — same for every user. We don't
+// curate recipes; we point users at sites that already do that well. Picked for
+// breadth (Mediterranean, low-carb, simple weeknight) and reputation (NYT Cooking,
+// EatingWell, Bon Appétit, Mediterranean Dish, Skinnytaste, Budget Bytes).
+const RECIPE_LINKS: { label: string; subtitle: string; url: string }[] = [
+  { label: 'NYT Cooking',          subtitle: 'Best general recipe library on the internet', url: 'https://cooking.nytimes.com/' },
+  { label: 'EatingWell',           subtitle: 'Free recipes filtered by health condition + diet', url: 'https://www.eatingwell.com/' },
+  { label: 'The Mediterranean Dish', subtitle: 'The gold standard for Mediterranean cooking',   url: 'https://www.themediterraneandish.com/' },
+  { label: 'Skinnytaste',          subtitle: 'Lower-calorie weeknight recipes with macros',     url: 'https://www.skinnytaste.com/' },
+  { label: 'Budget Bytes',         subtitle: 'Cheap, simple, real-life recipes — cost per serving', url: 'https://www.budgetbytes.com/' },
+];
 
 const EatTab = ({ plan }: { plan: any }) => {
-  const meals = plan.meals ?? [];
-  const [showList, setShowList] = useState(false);
-  const [showLibrary, setShowLibrary] = useState(false);
-  const userId = useAuthStore(s => s.user?.id ?? '');
-
-  // Export the AI-curated plan meals to a PDF directly. Different from the
-  // "Browse Full Library" PDF — this one's just the user's curated week.
-  const exportPlanPDF = async () => {
-    const { default: jsPDF } = await import('jspdf');
-    const doc = new jsPDF({ unit: 'pt', format: 'letter' });
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const margin = 40;
-    let y = margin;
-    const ensureSpace = (need: number) => {
-      if (y + need > doc.internal.pageSize.getHeight() - margin) {
-        doc.addPage();
-        y = margin;
-      }
-    };
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(20);
-    doc.setTextColor(27, 66, 58);
-    doc.text('Your CauseHealth Food Plan', margin, y);
-    y += 24;
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.setTextColor(100);
-    doc.text(`${meals.length} meals matched to your labs and life — ${new Date().toLocaleDateString()}`, margin, y);
-    y += 24;
-
-    const order = ['breakfast', 'lunch', 'dinner', 'snack'];
-    const sortedForPDF = [...meals].sort((a, b) => order.indexOf(a.when) - order.indexOf(b.when));
-    let lastWhen = '';
-    for (const m of sortedForPDF) {
-      if (m.when !== lastWhen) {
-        ensureSpace(28);
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(13);
-        doc.setTextColor(27, 66, 58);
-        doc.text(String(m.when || 'meal').toUpperCase(), margin, y);
-        y += 16;
-        lastWhen = m.when;
-      }
-      ensureSpace(60);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(10);
-      doc.setTextColor(40);
-      const nameLines = doc.splitTextToSize(`• ${m.name || ''}`, pageWidth - margin * 2);
-      for (const line of nameLines) { doc.text(line, margin, y); y += 12; }
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(8.5);
-      doc.setTextColor(120);
-      const ing = doc.splitTextToSize((m.ingredients || []).join(' · '), pageWidth - margin * 2 - 12);
-      for (const line of ing) { doc.text(line, margin + 12, y); y += 10; }
-      if (m.why) {
-        doc.setTextColor(90);
-        const whyLines = doc.splitTextToSize(`Why: ${m.why}`, pageWidth - margin * 2 - 12);
-        for (const line of whyLines) { doc.text(line, margin + 12, y); y += 10; }
-      }
-      y += 8;
-    }
-    const totalPages = doc.getNumberOfPages();
-    for (let i = 1; i <= totalPages; i++) {
-      doc.setPage(i);
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7);
-      doc.setTextColor(150);
-      doc.text(`Page ${i} of ${totalPages} · CauseHealth Food Plan`, margin, doc.internal.pageSize.getHeight() - 24);
-    }
-    doc.save('causehealth-food-plan.pdf');
-  };
-
-  if (meals.length === 0) {
-    return <p className="text-body text-clinical-stone text-sm">Regenerate your plan to get your weekly food list.</p>;
-  }
-  const order = ['breakfast', 'lunch', 'dinner', 'snack'];
-  const sorted = [...meals].sort((a, b) => order.indexOf(a.when) - order.indexOf(b.when));
-  const shoppingList = buildShoppingList(meals);
-  // Amazon Fresh search URL — opens a search for the whole list comma-separated.
-  // Most users will recognize / refine items. Not a deep-link to cart (Amazon
-  // doesn't expose that for non-affiliate use), but one click away from buying.
-  const amazonFreshUrl = `https://www.amazon.com/alm/storefront?almBrandId=QW16YXpvbiBGcmVzaA%3D%3D&search=${encodeURIComponent(shoppingList.slice(0, 8).join(' '))}`;
-
-  return (
-    <div className="space-y-4">
-      {/* Weekly spotlight — rotates which meals from the user's plan get
-          highlighted based on weeks since plan generation. Phase 1 dominates
-          early weeks, Phase 3 home-cooking dominates late weeks. Dinner gets
-          a stronger push toward home-cook over time. Pure deterministic logic
-          — no new AI calls. */}
-      {plan.generated_at && userId && meals.length > 0 && (
-        <WeeklySpotlight
-          meals={meals}
-          planGeneratedAt={plan.generated_at}
-          userId={userId}
-          browseAnchorId="wellness-meals-all"
-        />
-      )}
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <p className="text-body text-clinical-stone text-sm">Real meals + real chain orders + lunchbox hacks for real life. Pick what works this week — start anywhere.</p>
-        <div className="flex gap-2 flex-wrap">
-          <button
-            onClick={exportPlanPDF}
-            className="inline-flex items-center gap-1.5 text-precision text-[0.65rem] font-bold tracking-widest uppercase px-3 py-2 bg-clinical-white border border-[#1B423A]/30 hover:border-[#1B423A] text-[#1B423A] rounded-[8px] transition-all"
-          >
-            <span className="material-symbols-outlined text-[14px]">picture_as_pdf</span>
-            Export PDF
-          </button>
-          <button
-            onClick={() => setShowLibrary(true)}
-            className="inline-flex items-center gap-1.5 text-precision text-[0.65rem] font-bold tracking-widest uppercase px-3 py-2 bg-[#D4A574] hover:bg-[#B8915F] text-clinical-charcoal rounded-[8px] transition-colors"
-          >
-            <span className="material-symbols-outlined text-[14px]">library_books</span>
-            Browse Full Library
-          </button>
-          <button
-            onClick={() => setShowList(!showList)}
-            className="inline-flex items-center gap-1.5 text-precision text-[0.65rem] font-bold tracking-widest uppercase px-3 py-2 bg-gradient-to-br from-[#1B423A] to-[#0F2A24] hover:from-[#244F46] hover:to-[#163730] text-[#D4A574] rounded-[8px] transition-all"
-          >
-            <span className="material-symbols-outlined text-[14px]">shopping_basket</span>
-            {showList ? 'Hide List' : `Shopping List (${shoppingList.length})`}
-          </button>
-        </div>
-      </div>
-
-      <FoodPlaybookLibrary open={showLibrary} onClose={() => setShowLibrary(false)} />
-
-      {showList && (
+  const pattern = plan.eating_pattern ?? null;
+  const hasPattern = pattern && (pattern.name || (Array.isArray(pattern.emphasize) && pattern.emphasize.length > 0));
+  if (!hasPattern) {
+    return (
+      <div className="space-y-4">
+        <p className="text-body text-clinical-stone text-sm">Your plan didn't include an eating pattern. Hit Regenerate to refresh — newer plans always include one.</p>
         <div className="bg-clinical-white rounded-[10px] shadow-card border-t-[3px] border-[#1B423A] p-5">
-          <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
-            <div>
-              <p className="text-authority text-base text-clinical-charcoal font-bold">Your Shopping List</p>
-              <p className="text-precision text-[0.6rem] text-clinical-stone tracking-wide">Combined ingredients across all meals · {shoppingList.length} items</p>
-            </div>
-            <a
-              href={amazonFreshUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-precision text-[0.65rem] font-bold tracking-widest uppercase px-3 py-2 bg-[#D4A574] hover:bg-[#B8915F] text-clinical-charcoal rounded-[8px] transition-colors"
-            >
-              <span className="material-symbols-outlined text-[14px]">shopping_cart</span>
-              Shop on Amazon
-              <span className="material-symbols-outlined text-[12px]">open_in_new</span>
-            </a>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-            {shoppingList.map((item) => (
-              <label key={item} className="flex items-center gap-2 bg-clinical-cream rounded-md px-3 py-2 hover:bg-clinical-cream/70 cursor-pointer">
-                <input type="checkbox" className="accent-[#1B423A] w-4 h-4 flex-shrink-0" />
-                <span className="text-body text-clinical-charcoal text-sm capitalize">{item}</span>
-              </label>
+          <p className="text-precision text-[0.65rem] font-bold tracking-widest uppercase text-clinical-stone mb-3">Trusted recipe sites</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {RECIPE_LINKS.map(l => (
+              <a key={l.url} href={l.url} target="_blank" rel="noopener noreferrer" className="flex items-start gap-3 p-3 rounded-[8px] hover:bg-clinical-cream transition-colors">
+                <span className="material-symbols-outlined text-[#D4A574] text-[18px] mt-0.5">restaurant</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-body text-clinical-charcoal text-sm font-semibold">{l.label}</p>
+                  <p className="text-precision text-[0.65rem] text-clinical-stone">{l.subtitle}</p>
+                </div>
+                <span className="material-symbols-outlined text-clinical-stone text-[14px]">open_in_new</span>
+              </a>
             ))}
           </div>
         </div>
-      )}
+      </div>
+    );
+  }
 
-      {/* Render meals grouped by PLAYBOOK (the "Food Playbook"). Each meal
-          carries a phase badge (1=Start Here, 2=Level Up, 3=Optimal) so the
-          user sees difficulty without sections being walled off by phase.
-          Anchor id used by WeeklySpotlight's "Browse all" button to scroll. */}
-      <div id="wellness-meals-all" />
-      {(() => {
-        const PLAYBOOK_META: Record<string, { label: string; sub: string; emoji: string; color: string }> = {
-          convenience_store: { label: 'Convenience Store Grabs', sub: 'Wawa, 7-Eleven, gas stations, truck stops', emoji: '🏪', color: '#7B1FA2' },
-          fast_food: { label: 'Fast-Food Smart Orders', sub: 'Real chains, real orders — protein-doubled', emoji: '🍔', color: '#E8922A' },
-          protein_bar_shake: { label: 'Bars & Shakes', sub: 'Real brands, real prices, anywhere in 60 sec', emoji: '🍫', color: '#C94F4F' },
-          crock_pot: { label: 'Crock Pot Set-and-Forget', sub: 'Throw it in, eats for the week', emoji: '🍲', color: '#5E8C61' },
-          sheet_pan: { label: 'Sheet-Pan / One-Pan', sub: '5 ingredients, zero cleanup', emoji: '🥘', color: '#D4A574' },
-          frozen_aisle: { label: 'Frozen Aisle Wins', sub: 'Costco, Trader Joe\'s, Aldi specifics', emoji: '❄️', color: '#1B423A' },
-          frozen_breakfast: { label: 'Frozen Breakfast Sandwiches', sub: 'Microwave it, eat it, go', emoji: '🥪', color: '#A2845E' },
-          low_cal_drink: { label: 'Drink Swaps', sub: 'Replace soda + sweet coffee with these', emoji: '🥤', color: '#2A9D8F' },
-          mom_friendly: { label: 'Kid-Tested + Adult-Friendly', sub: 'Same plate, parent gets the protein', emoji: '🧒', color: '#B5651D' },
-          viral_hack: { label: 'Viral Hacks That Actually Work', sub: 'TikTok-tested, lab-targeted', emoji: '📱', color: '#9B59B6' },
-          lunchbox_thermos: { label: 'Lunchbox / Cooler / Thermos', sub: 'Driver, construction, shift work', emoji: '🧊', color: '#1F77B4' },
-          simple_home_cook: { label: 'Simple Home Cook', sub: 'Real recipes, still grocery-store basic', emoji: '🍳', color: '#1B4332' },
-        };
-        const PLAYBOOK_ORDER = [
-          'convenience_store', 'fast_food', 'protein_bar_shake', 'frozen_aisle',
-          'frozen_breakfast', 'lunchbox_thermos', 'sheet_pan', 'crock_pot',
-          'simple_home_cook', 'mom_friendly', 'viral_hack', 'low_cal_drink',
-        ];
-        const PHASE_BADGE: Record<number, { label: string; color: string }> = {
-          1: { label: 'Start here', color: '#2A9D8F' },
-          2: { label: 'Level up', color: '#D4A574' },
-          3: { label: 'Optimal', color: '#1B4332' },
-        };
-        // Group meals by playbook field. Meals with no playbook fall into "_other" bucket.
-        const byPlaybook = new Map<string, any[]>();
-        for (const m of sorted) {
-          const key = (typeof m?.playbook === 'string' && m.playbook in PLAYBOOK_META) ? m.playbook : '_other';
-          if (!byPlaybook.has(key)) byPlaybook.set(key, []);
-          byPlaybook.get(key)!.push(m);
-        }
-        const orderedKeys = [...PLAYBOOK_ORDER.filter(k => byPlaybook.has(k))];
-        if (byPlaybook.has('_other')) orderedKeys.push('_other');
-        if (orderedKeys.length === 0) {
-          return <p className="text-body text-clinical-stone text-sm py-4">No meals yet. Hit Regenerate.</p>;
-        }
-        return orderedKeys.map(key => {
-          const meta = key === '_other'
-            ? { label: 'More Ideas', sub: 'Other meals from your plan', emoji: '🍽️', color: '#999' }
-            : PLAYBOOK_META[key];
-          const meals = byPlaybook.get(key)!;
-          return (
-            <div key={key} className="space-y-3">
-              <div className="flex items-center gap-3 pt-2">
-                <span className="text-2xl flex-shrink-0">{meta.emoji}</span>
-                <div className="flex-1">
-                  <p className="text-precision text-[0.65rem] font-bold tracking-widest uppercase text-clinical-charcoal">{meta.label}</p>
-                  <p className="text-precision text-[0.6rem] text-clinical-stone">{meta.sub}</p>
-                </div>
-                <span className="text-precision text-[0.7rem] text-clinical-stone tracking-widest">{meals.length}</span>
-              </div>
-              {meals.map((m: any, i: number) => {
-                const badge = PHASE_BADGE[m.phase as number] ?? null;
-                return (
-                  <div key={i} className="bg-clinical-white border-l-2 rounded-[10px] p-4" style={{ borderLeftColor: meta.color }}>
-                    <div className="flex items-start gap-3">
-                      <span className="text-3xl flex-shrink-0">{m.emoji || meta.emoji}</span>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
-                          <p className="text-body text-clinical-charcoal font-semibold">{m.name}</p>
-                          <div className="flex items-center gap-1.5 flex-shrink-0">
-                            {badge && (
-                              <span className="text-precision text-[0.7rem] font-bold tracking-widest uppercase px-1.5 py-0.5 rounded" style={{ backgroundColor: `${badge.color}20`, color: badge.color }}>{badge.label}</span>
-                            )}
-                            {m.when && <span className="text-precision text-[0.7rem] font-bold tracking-widest uppercase text-primary-container">{m.when}</span>}
-                          </div>
-                        </div>
-                        {m.ingredients?.length > 0 && <p className="text-body text-clinical-stone text-sm">{m.ingredients.join(' · ')}</p>}
-                        {m.why && <p className="text-precision text-[0.65rem] text-clinical-stone mt-2 italic">{m.why}</p>}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+  const emphasize: string[] = Array.isArray(pattern.emphasize) ? pattern.emphasize : [];
+  const limit: string[]     = Array.isArray(pattern.limit)     ? pattern.limit     : [];
+
+  return (
+    <div className="space-y-4">
+      {/* Pattern card — the WHAT KIND of eater you should be */}
+      <div className="bg-gradient-to-br from-[#1B423A] to-[#0F2A24] rounded-[10px] p-6 shadow-card">
+        <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-[#D4A574] mb-2">Your Eating Pattern</p>
+        <p className="text-authority text-2xl text-on-surface font-bold leading-tight">{pattern.name || 'Whole-food balanced'}</p>
+        {pattern.rationale && (
+          <p className="text-body text-on-surface-variant text-sm mt-3 leading-relaxed">{pattern.rationale}</p>
+        )}
+      </div>
+
+      {/* Emphasize / Limit two-up */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {emphasize.length > 0 && (
+          <div className="bg-clinical-white rounded-[10px] shadow-card border-t-[3px] border-[#2A9D8F] p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="material-symbols-outlined text-[#2A9D8F] text-[20px]">add_circle</span>
+              <p className="text-precision text-[0.65rem] font-bold tracking-widest uppercase text-clinical-charcoal">Lean Into</p>
             </div>
-          );
-        });
-      })()}
+            <ul className="space-y-2">
+              {emphasize.map((item, i) => (
+                <li key={i} className="flex items-start gap-2">
+                  <span className="text-[#2A9D8F] text-sm leading-tight mt-0.5">+</span>
+                  <span className="text-body text-clinical-charcoal text-sm leading-snug capitalize">{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {limit.length > 0 && (
+          <div className="bg-clinical-white rounded-[10px] shadow-card border-t-[3px] border-[#C94F4F] p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="material-symbols-outlined text-[#C94F4F] text-[20px]">remove_circle</span>
+              <p className="text-precision text-[0.65rem] font-bold tracking-widest uppercase text-clinical-charcoal">Cut Back On</p>
+            </div>
+            <ul className="space-y-2">
+              {limit.map((item, i) => (
+                <li key={i} className="flex items-start gap-2">
+                  <span className="text-[#C94F4F] text-sm leading-tight mt-0.5">−</span>
+                  <span className="text-body text-clinical-charcoal text-sm leading-snug capitalize">{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+
+      {/* Outbound recipe links — we're not a meal planner; we send users to real recipe sites */}
+      <div className="bg-clinical-white rounded-[10px] shadow-card border-t-[3px] border-[#D4A574] p-5">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="material-symbols-outlined text-[#D4A574] text-[20px]">menu_book</span>
+          <p className="text-precision text-[0.65rem] font-bold tracking-widest uppercase text-clinical-charcoal">Find Recipes</p>
+        </div>
+        <p className="text-body text-clinical-stone text-xs mb-4 leading-relaxed">CauseHealth tells you the diet pattern. These trusted recipe sites do recipes better than any app could.</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {RECIPE_LINKS.map(l => (
+            <a key={l.url} href={l.url} target="_blank" rel="noopener noreferrer" className="flex items-start gap-3 p-3 rounded-[8px] bg-clinical-cream/50 hover:bg-clinical-cream transition-colors border border-outline-variant/10">
+              <span className="material-symbols-outlined text-[#D4A574] text-[18px] mt-0.5">restaurant</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-body text-clinical-charcoal text-sm font-semibold">{l.label}</p>
+                <p className="text-precision text-[0.65rem] text-clinical-stone">{l.subtitle}</p>
+              </div>
+              <span className="material-symbols-outlined text-clinical-stone text-[14px]">open_in_new</span>
+            </a>
+          ))}
+        </div>
+      </div>
     </div>
   );
 };
+
 
 // ── Move Tab ───────────────────────────────────────────────────────────────────
 const MoveTab = ({ plan }: { plan: any }) => {
