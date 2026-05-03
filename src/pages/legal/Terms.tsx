@@ -43,8 +43,8 @@ export const Terms = () => (
           CauseHealth uses artificial intelligence (Anthropic Claude) to analyze your data and generate reports. AI-generated content may contain errors, omissions, or inaccuracies. All AI outputs are provided "as-is" for educational purposes. You should verify all information with your healthcare provider before acting on it. CauseHealth does not guarantee the accuracy, completeness, or clinical validity of any AI-generated content.
         </Section>
 
-        <Section title="6. Subscription and Payment">
-          CauseHealth Pro is a monthly subscription at $12/month ($144/year). You may cancel at any time through your account settings. Cancellation takes effect at the end of your current billing period. No refunds are provided for partial months. Payment is processed securely through Stripe. CauseHealth does not store your credit card information.
+        <Section title="6. One-Time Purchase">
+          CauseHealth charges $20 (one-time) per lab analysis you choose to unlock. There is no recurring subscription. Once an analysis is unlocked, it remains accessible in your account indefinitely. New labs uploaded later are charged separately at the same $20 rate. No refunds are issued once an analysis has been generated. Payment is processed securely through Stripe. CauseHealth does not store your credit card information.
         </Section>
 
         <Section title="7. Your Data">

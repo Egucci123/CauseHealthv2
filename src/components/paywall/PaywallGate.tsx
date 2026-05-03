@@ -27,16 +27,16 @@ const PaywallCard = ({ feature, description }: { feature: string; description?: 
       <div className="w-14 h-14 bg-[#D4A574]/15 rounded-full flex items-center justify-center mx-auto mb-5">
         <span className="material-symbols-outlined text-[#D4A574] text-2xl">lock</span>
       </div>
-      <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-[#D4A574] mb-2">Pro feature</p>
+      <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-[#D4A574] mb-2">Unlock this analysis</p>
       <p className="text-authority text-2xl text-clinical-charcoal font-bold mb-2">{feature}</p>
       {description && (
         <p className="text-body text-clinical-stone text-sm mb-6 max-w-sm mx-auto leading-relaxed">{description}</p>
       )}
-      <p className="text-authority text-3xl text-clinical-charcoal font-bold mb-1">$12<span className="text-base text-clinical-stone font-normal">/month</span></p>
-      <p className="text-precision text-[0.65rem] text-clinical-stone tracking-wide mb-6">Cancel anytime · Includes everything</p>
+      <p className="text-authority text-3xl text-clinical-charcoal font-bold mb-1">$20<span className="text-base text-clinical-stone font-normal"> one-time</span></p>
+      <p className="text-precision text-[0.65rem] text-clinical-stone tracking-wide mb-6">Lifetime access · No subscription</p>
       <div className="flex flex-col gap-2 max-w-sm mx-auto">
         <Link to="/settings?tab=subscription">
-          <Button variant="primary" size="lg" icon="auto_awesome" className="w-full">Upgrade to Pro</Button>
+          <Button variant="primary" size="lg" icon="auto_awesome" className="w-full">Unlock for $20</Button>
         </Link>
         <button
           onClick={() => setShowRedeem(v => !v)}

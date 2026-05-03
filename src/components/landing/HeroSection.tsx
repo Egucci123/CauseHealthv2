@@ -175,7 +175,7 @@ export const HeroSection = () => (
           </p>
           <p className="text-body text-clinical-stone text-base leading-relaxed mb-10 max-w-lg">
             Built for nurses, truckers, parents, shift workers — the patients doctors rush
-            through. <strong className="text-clinical-charcoal">$12 a month.</strong> Less than your morning coffee.
+            through. <strong className="text-clinical-charcoal">$20 per analysis.</strong> No subscription. Lifetime access.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 mb-8">
@@ -199,7 +199,7 @@ export const HeroSection = () => (
           </div>
 
           <p className="text-precision text-[0.68rem] text-clinical-stone tracking-wide">
-            Free to upload · $12/month for full plan · Cancel anytime · Master codes for friends
+            Free preview · $20 one-time per analysis · No subscription · Master codes for friends
           </p>
 
           <div className="flex flex-wrap gap-3 mt-10">

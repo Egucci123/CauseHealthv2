@@ -101,8 +101,8 @@ export const SubscriptionManagement = () => {
               </div>
             ) : (
               <div className="bg-clinical-cream rounded-lg p-4 mb-5">
-                <div className="flex items-baseline gap-1 mb-1"><span className="text-precision text-2xl font-bold text-clinical-charcoal">$12</span><span className="text-precision text-sm text-clinical-stone">/month</span></div>
-                <p className="text-body text-sm text-clinical-stone">CauseHealth Pro</p>
+                <div className="flex items-baseline gap-1 mb-1"><span className="text-precision text-2xl font-bold text-clinical-charcoal">$20</span><span className="text-precision text-sm text-clinical-stone">per analysis</span></div>
+                <p className="text-body text-sm text-clinical-stone">Lifetime access — no subscription</p>
               </div>
             )}
             {isPastDue && <div className="bg-[#C94F4F]/10 border border-[#C94F4F]/20 rounded-lg p-3 mb-4"><p className="text-body text-sm text-[#C94F4F]">Your last payment failed. Update your payment method to keep access.</p></div>}
@@ -112,12 +112,12 @@ export const SubscriptionManagement = () => {
           </div>
         ) : (
           <div>
-            <p className="text-body text-sm text-clinical-stone mb-5">You're on the free plan. Upgrade to unlock all AI-powered features.</p>
+            <p className="text-body text-sm text-clinical-stone mb-5">Pay once per lab analysis. No monthly subscription. Lifetime access to whatever you unlock.</p>
             <div className="bg-clinical-cream rounded-lg p-4 mb-5">
-              <div className="flex items-baseline gap-1 mb-1"><span className="text-precision text-3xl font-bold text-clinical-charcoal">$12</span><span className="text-precision text-sm text-clinical-stone">/month</span></div>
-              <p className="text-body text-sm text-clinical-stone">CauseHealth Pro — cancel anytime</p>
+              <div className="flex items-baseline gap-1 mb-1"><span className="text-precision text-3xl font-bold text-clinical-charcoal">$20</span><span className="text-precision text-sm text-clinical-stone">one-time</span></div>
+              <p className="text-body text-sm text-clinical-stone">Per lab analysis · Lifetime access</p>
             </div>
-            <button onClick={() => checkout.mutate()} disabled={checkout.isPending} className="w-full bg-primary-container text-white text-sm font-semibold py-3 hover:bg-[#2D6A4F] transition-colors disabled:opacity-60" style={{ borderRadius: '6px' }}>{checkout.isPending ? 'Redirecting to checkout...' : 'Upgrade to Pro'}</button>
+            <button onClick={() => checkout.mutate()} disabled={checkout.isPending} className="w-full bg-primary-container text-white text-sm font-semibold py-3 hover:bg-[#2D6A4F] transition-colors disabled:opacity-60" style={{ borderRadius: '6px' }}>{checkout.isPending ? 'Redirecting to checkout...' : 'Unlock for $20'}</button>
             {checkout.isError && (
               <div className="mt-3 bg-[#C94F4F]/10 border border-[#C94F4F]/30 rounded-lg p-3">
                 <p className="text-body text-[#C94F4F] text-sm">{(checkout.error as Error)?.message ?? 'Checkout failed. Please try again.'}</p>

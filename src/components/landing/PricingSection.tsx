@@ -2,16 +2,16 @@
 import { Button } from '../ui/Button';
 
 const FEATURES = [
-  'Unlimited lab report uploads',
   'Optimal range analysis (not just "normal")',
-  '90-day personalized wellness plan',
-  'Doctor Prep document with ICD-10 codes',
+  'Watch list — markers worth tracking even if "in range"',
+  'Tests your doctor didn\'t order, with ICD-10 codes',
+  'Findings your doctor missed — root-cause patterns across markers',
+  'Doctor Prep document — printable, hand to your doctor',
+  '90-day plan with retest schedule',
   'Medication depletion mapping (CoQ10, B12, folate, magnesium)',
   'Biological + Cardiometabolic Age scoring',
-  'Daily check-in + adherence tracking',
-  'Weekly meal spotlight (rotating + chain-aware)',
   'AI chat that reads your actual labs',
-  'Lab trend tracking over time',
+  'Lifetime access to every analysis you buy',
   'PDF export — yours to keep',
 ];
 
@@ -28,11 +28,11 @@ export const PricingSection = () => {
             <div className="w-4 h-px bg-primary" />
           </div>
           <h2 className="text-authority text-4xl md:text-5xl font-bold text-white leading-tight mb-4">
-            Less than one specialist copay.
+            $20 per analysis. No subscription.
           </h2>
           <p className="text-body text-on-surface-variant text-lg max-w-lg mx-auto">
-            The Doctor Prep feature alone has helped users get thousands in
-            previously uncovered tests approved by insurance.
+            Pay when you upload labs. Keep that analysis forever. No monthly
+            charge sitting in the background.
           </p>
         </div>
 
@@ -45,26 +45,26 @@ export const PricingSection = () => {
         >
           <div className="bg-primary-container px-6 py-2">
             <p className="text-precision text-[0.68rem] text-white tracking-widest uppercase font-bold text-center">
-              Full Access
+              One-Time Purchase
             </p>
           </div>
 
           <div className="p-8 md:p-10">
             <div className="text-center mb-8">
               <h3 className="text-authority text-2xl text-clinical-charcoal font-semibold mb-2">
-                CauseHealth Pro
+                Lab Analysis
               </h3>
               <p className="text-body text-clinical-stone text-sm mb-6">
-                Everything you need to understand your labs and advocate for your health.
+                Upload your bloodwork. Pay once. Keep it forever.
               </p>
               <div className="flex items-baseline justify-center gap-1">
                 <span className="text-authority text-5xl text-clinical-charcoal font-bold">
-                  $12
+                  $20
                 </span>
-                <span className="text-body text-clinical-stone text-sm">/month</span>
+                <span className="text-body text-clinical-stone text-sm">per analysis</span>
               </div>
               <p className="text-precision text-[0.6rem] text-clinical-stone tracking-wide mt-2">
-                Less than your morning coffee · $144/year
+                One-time. Lifetime access to that analysis. New labs later? $20 again.
               </p>
             </div>
 
@@ -74,10 +74,10 @@ export const PricingSection = () => {
               onClick={() => window.location.href = '/register'}
               className="w-full justify-center mb-3"
             >
-              Start Your Health Intelligence
+              Upload My Labs
             </Button>
             <p className="text-precision text-[0.6rem] text-clinical-stone tracking-wide text-center mb-8">
-              Free signup · Free uploads · Have a code? Redeem it in Settings.
+              Free signup · Free preview · Pay only to unlock the full analysis + plan.
             </p>
 
             <div className="space-y-3">
@@ -99,7 +99,7 @@ export const PricingSection = () => {
         </div>
 
         <p className="text-body text-on-surface-variant/60 text-sm text-center mt-8">
-          Cancel anytime. No contracts. Your data is always yours and always deletable.
+          No subscriptions. No surprises. Your data is always yours and always deletable.
         </p>
       </div>
     </section>

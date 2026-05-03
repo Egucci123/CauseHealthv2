@@ -50,8 +50,8 @@ export const Sidebar = ({ currentPath: _currentPath }: SidebarProps) => {
       <div className="px-4 py-5 border-t border-[#414844]/20">
         {profile?.subscriptionTier === 'free' && (
           <button onClick={() => navigate('/settings')} className="w-full mb-3 bg-primary-container/20 border border-primary-container/30 rounded-lg px-3 py-2.5 text-left hover:bg-primary-container/30 transition-colors">
-            <p className="text-precision text-[0.6rem] text-primary font-bold tracking-widest uppercase">Upgrade to Core</p>
-            <p className="text-body text-on-surface-variant/70 text-xs mt-0.5">Unlock your full wellness plan</p>
+            <p className="text-precision text-[0.6rem] text-primary font-bold tracking-widest uppercase">Unlock for $20</p>
+            <p className="text-body text-on-surface-variant/70 text-xs mt-0.5">One-time, lifetime access</p>
           </button>
         )}
         <div className="flex items-center gap-3">

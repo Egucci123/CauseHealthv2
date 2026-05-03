@@ -9,7 +9,7 @@ const ROWS: { label: string; us: string; them: string; usWin: boolean }[] = [
   { label: 'Medication + supplement interaction layer', us: '✓ Threaded through every analysis', them: 'Generic insights', usWin: true },
   { label: '90-day plan with retest tracking', us: '✓ Today actions, meals, workouts', them: 'Score + insights', usWin: true },
   { label: 'AI chat that knows your data', us: '✓ Plain English, your labs', them: 'Limited messaging', usWin: true },
-  { label: 'Annual cost', us: '$144/year', them: '$365/year', usWin: true },
+  { label: 'Cost', us: '$20 per lab analysis · no subscription', them: '$365/year subscription', usWin: true },
 ];
 
 export const VsFunction = () => (
