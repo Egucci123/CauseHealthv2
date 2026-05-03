@@ -171,7 +171,7 @@ const DEFAULT_LIFESTYLE: Partial<LifestyleData> = {
 };
 
 export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
-  currentStep: 1, totalSteps: 7, loading: false,
+  currentStep: 1, totalSteps: 6, loading: false,
   firstName: '', lastName: '', dateOfBirth: '', sex: '',
   heightFt: '', heightIn: '', weightLbs: '', locationState: '',
   conditions: [], noConditions: false,

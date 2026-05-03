@@ -7,7 +7,6 @@ import { Step2_Diagnoses }  from '../../components/onboarding/steps/Step2_Diagno
 import { Step3_Medications } from '../../components/onboarding/steps/Step3_Medications';
 import { Step4_Symptoms }   from '../../components/onboarding/steps/Step4_Symptoms';
 import { Step5_Lifestyle }  from '../../components/onboarding/steps/Step5_Lifestyle';
-import { Step6_DailyLife }  from '../../components/onboarding/steps/Step6_DailyLife';
 import { Step6_Goals }      from '../../components/onboarding/steps/Step6_Goals';
 import { Step7_Complete }   from '../../components/onboarding/steps/Step7_Complete';
 
@@ -33,13 +32,17 @@ export const Onboarding = () => {
     }} />;
   }
 
-  // Step 6 is the "Daily Life" step (work, kids, food, healthcare access).
-  // Existing Goals + Complete components keep their filenames for git history
-  // continuity but mount at positions 7 and 8 respectively.
+  // Pivot May 2026: Step 6 (Daily Life — work / kids / cooking time / food
+  // patterns / budget / eat-out chains) deleted. The app no longer plans meals
+  // so the food-pattern collection added zero value; the work / kids context
+  // wasn't strong enough on its own to justify a whole step. Goals slides into
+  // slot 6, Complete to slot 7. Existing component filenames kept for git
+  // history. Users mid-flow at the old step 7 (Goals) hit step 6 here and
+  // resume cleanly because the store cap is now 6.
   const steps: Record<number, React.ReactNode> = {
     1: <Step1_Welcome />, 2: <Step2_Diagnoses />, 3: <Step3_Medications />,
-    4: <Step4_Symptoms />, 5: <Step5_Lifestyle />, 6: <Step6_DailyLife />,
-    7: <Step6_Goals />, 8: <Step7_Complete />,
+    4: <Step4_Symptoms />, 5: <Step5_Lifestyle />, 6: <Step6_Goals />,
+    7: <Step7_Complete />,
   };
 
   return steps[currentStep] ?? <Step1_Welcome />;
