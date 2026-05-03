@@ -413,6 +413,6 @@ export const DesignVerification = () => (
       </div>
     </main>
 
-    <MobileNav currentPath="/dashboard" />
+    <MobileNav />
   </div>
 );

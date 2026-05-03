@@ -43,8 +43,8 @@ function useSmartPrompts() {
       .filter((v: any) => ['low', 'high', 'critical_low', 'critical_high', 'deficient', 'elevated'].includes(v.optimal_flag ?? ''))
       .slice(0, 2);
     for (const v of outOfRange) {
-      const label = `Why is my ${v.marker_name} ${v.value}?`;
-      const prompt = `My ${v.marker_name} is ${v.value}${v.unit ? ' ' + v.unit : ''}. Why? What does it mean for me and what's the next step?`;
+      const label = `Why is my ${v.markerName} ${v.value}?`;
+      const prompt = `My ${v.markerName} is ${v.value}${v.unit ? ' ' + v.unit : ''}. Why? What does it mean for me and what's the next step?`;
       out.push({ label: label.length > 36 ? label.slice(0, 33) + '…' : label, prompt });
     }
 
