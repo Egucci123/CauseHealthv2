@@ -4,11 +4,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { OnboardingShell } from '../OnboardingShell';
 import { SYMPTOM_CATEGORIES } from '../../../data/symptoms';
 import { useOnboardingStore } from '../../../store/onboardingStore';
-import { SectionLabel } from '../../ui/SectionLabel';
 
 export const Step4_Symptoms = () => {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const { nextStep, symptoms, addSymptom, removeSymptom, updateSymptom, noSymptoms } = useOnboardingStore();
+  const { nextStep, symptoms, addSymptom, removeSymptom, noSymptoms } = useOnboardingStore();
   const updateStep4 = useOnboardingStore(s => s.updateStep4);
 
   const isSelected = (symptom: string) => symptoms.some(s => s.symptom === symptom);
@@ -73,27 +72,10 @@ export const Step4_Symptoms = () => {
           );
         })}
 
-        {symptoms.length > 0 && (
-          <div className="mt-4">
-            <SectionLabel>Rate Your Severity</SectionLabel>
-            <div className="space-y-3">
-              {symptoms.slice(0, 5).map(sym => (
-                <div key={sym.id} className="bg-clinical-white rounded-lg p-4 border border-outline-variant/10">
-                  <div className="flex justify-between items-center mb-2">
-                    <p className="text-body text-clinical-charcoal text-sm font-medium">{sym.symptom}</p>
-                    <span className="text-precision text-[0.68rem] text-clinical-stone">{sym.severity}/10</span>
-                  </div>
-                  <input type="range" min={1} max={10} value={sym.severity} onChange={e => updateSymptom(sym.id, { severity: parseInt(e.target.value) })} className="w-full accent-primary-container cursor-pointer" />
-                  <div className="flex justify-between mt-1">
-                    <span className="text-precision text-[0.6rem] text-clinical-stone">Mild</span>
-                    <span className="text-precision text-[0.6rem] text-clinical-stone">Severe</span>
-                  </div>
-                </div>
-              ))}
-              {symptoms.length > 5 && <p className="text-body text-clinical-stone text-xs text-center">+ {symptoms.length - 5} more symptoms selected. Rate them in your full profile.</p>}
-            </div>
-          </div>
-        )}
+        {/* Severity slider removed — users were rating everything 5 by default
+            anyway, which gave false signal. Just selecting a symptom is the
+            signal; the deterministic engines fire workups for any selected
+            symptom. (Backend stores severity 5 as a no-op default.) */}
 
         <button
           type="button"
