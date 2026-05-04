@@ -20,9 +20,9 @@ export function UpgradePrompt({ feature }: { feature: ProFeature }) {
       </div>
       <p className="text-precision text-[0.68rem] uppercase tracking-widest text-[#D4A574] mb-2">Locked</p>
       <h3 className="text-authority text-xl text-clinical-charcoal mb-2">{PRO_FEATURES[feature]}</h3>
-      <p className="text-body text-sm text-clinical-stone mb-6 max-w-xs mx-auto">Unlock {PRO_FEATURES[feature].toLowerCase()} for $20 — one-time per analysis.</p>
+      <p className="text-body text-sm text-clinical-stone mb-6 max-w-xs mx-auto">Unlock {PRO_FEATURES[feature].toLowerCase()} for $19 — one-time per analysis.</p>
       <button onClick={() => navigate('/settings?tab=subscription')} className="bg-primary-container text-white text-sm font-semibold px-6 py-2.5 hover:bg-[#2D6A4F] transition-colors" style={{ borderRadius: '6px' }}>
-        Unlock — $20 one-time
+        Unlock — $19 one-time
       </button>
     </div>
   );

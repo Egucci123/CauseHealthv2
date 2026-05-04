@@ -6,30 +6,30 @@ const STEPS = [
   {
     number: '01',
     icon: 'upload_file',
-    title: 'Upload Your Labs',
+    title: 'Upload Your Bloodwork',
     body: 'Drag and drop any lab PDF or take a photo — LabCorp, Quest, MyChart, hospital systems, paper printouts. Our AI extracts every value in 30 seconds. Add more files to the same draw if your CRP comes back later.',
     detail: 'PDF + photo · Auto-extraction · Manual entry · Add-to-draw',
   },
   {
     number: '02',
     icon: 'biotech',
-    title: 'Get the Analysis',
-    body: 'Healthy / Watch / Out-of-Range bucketing on every value. Watch list catches drift before diagnosis. Biological + cardiometabolic age. Percentile vs your age and sex. Medication depletions mapped to your symptoms. Critical findings flagged instantly with deterministic safety logic.',
-    detail: 'Watch list · Bio + cardiometabolic age · Percentile cohort · Critical alerts',
+    title: 'Pattern + Early-Detection Engine',
+    body: 'Optimal-range analysis on every value (not just "normal"). Watch list flags drift months before diagnosis. Pattern recognition catches what no single doctor sees: atherogenic LDL particles, prediabetic A1c, elevated inflammation markers, under-replaced thyroid, polycythemia. Medication-nutrient depletions mapped automatically (statin → CoQ10, metformin → B12, PPI → Mg).',
+    detail: 'Optimal ranges · Pattern recognition · Depletion mapping · Critical alerts',
   },
   {
     number: '03',
     icon: 'favorite',
-    title: 'Your 90-Day Plan',
-    body: '25-35 personalized meals from a 360+ meal library — convenience-store shortcuts to home-cook recipes — that evolve weekly from easy mode to home cooking. Supplement stack with alternatives. Workouts. Daily check-in. AI chat that reads your labs.',
-    detail: 'Weekly meal spotlight · Supplements with alternatives · Daily check-in · AI chat',
+    title: '90-Day Plan + Supplement Stack',
+    body: 'Evidence-based supplement stack sourced from your specific labs (curcumin for elevated CRP, selenium for Hashimoto antibodies, berberine for prediabetic A1c) — with practical alternatives, dose, timing, and drug-interaction notes. Eating pattern. Workouts. AI chat that reads your specific labs. Predicted lab changes at 12-week retest.',
+    detail: 'Lab-driven supplements · Alternatives + interactions · Predicted outcomes · AI chat',
   },
   {
     number: '04',
     icon: 'description',
-    title: 'Walk In Prepared',
-    body: 'Doctor Prep PDF formatted as a clinical reference — every test with ICD-10 billing codes, medical-necessity statements, and insurance coverage signals. Hand it to your doctor. Insurance covers what they order when the codes are right.',
-    detail: 'ICD-10 codes · Coverage signals · Patient questions · PDF download',
+    title: 'Doctor Prep — Walk In Ready',
+    body: 'Doctor Prep PDF formatted as a clinical document: tests your doctor didn\'t order with ICD-10 codes (so insurance covers them), medication alternatives to discuss, cross-specialty synthesis (endo + cardio + gyn + GI in ONE doc — no specialist sees all of it), and questions to ask. Hand it to your doctor and watch the visit transform.',
+    detail: 'ICD-10 codes · Med alternatives · Cross-specialty synthesis · Patient questions',
   },
 ];
 
@@ -57,7 +57,7 @@ export const HowItWorks = () => {
             </span>
           </div>
           <h2 className="text-authority text-4xl md:text-5xl font-bold text-clinical-charcoal leading-tight">
-            From labs to answers<br />in minutes.
+            From labs to a doctor-ready<br />analysis in minutes.
           </h2>
         </div>
 
@@ -110,10 +110,10 @@ export const HowItWorks = () => {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
             <div>
               <h3 className="text-authority text-2xl text-clinical-charcoal font-semibold">
-                Ready to see what your labs actually mean?
+                Ready to catch what your doctor missed?
               </h3>
               <p className="text-body text-clinical-stone text-sm mt-2">
-                Start free. Upload your first lab report in 60 seconds.
+                $19, one-time. Upload your bloodwork in 60 seconds.
               </p>
             </div>
             <button

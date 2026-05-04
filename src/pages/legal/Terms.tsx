@@ -44,7 +44,7 @@ export const Terms = () => (
         </Section>
 
         <Section title="6. One-Time Purchase">
-          CauseHealth charges $20 (one-time) per lab analysis you choose to unlock. There is no recurring subscription. Once an analysis is unlocked, it remains accessible in your account indefinitely. New labs uploaded later are charged separately at the same $20 rate. No refunds are issued once an analysis has been generated. Payment is processed securely through Stripe. CauseHealth does not store your credit card information.
+          CauseHealth charges $19 (one-time) per lab analysis you choose to unlock. There is no recurring subscription. Once an analysis is unlocked, it remains accessible in your account indefinitely. New labs uploaded later are charged separately at the same $19 rate. No refunds are issued once an analysis has been generated. Payment is processed securely through Stripe. CauseHealth does not store your credit card information.
         </Section>
 
         <Section title="7. Your Data">

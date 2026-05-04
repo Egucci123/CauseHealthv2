@@ -270,7 +270,7 @@ serve(async (req) => {
     // their declared tests + supplements (universal — see labPatternRegistry).
     const detectedLabPatterns = detectLabPatterns(labValues);
     const labPatternsForPrompt = detectedLabPatterns.length > 0
-      ? `LAB-VALUE PATTERNS detected — your headline + summary MUST explicitly address each one (the user pays $20 to see what their doctor's "your labs are mostly fine" missed):\n` +
+      ? `LAB-VALUE PATTERNS detected — your headline + summary MUST explicitly address each one (the user pays $19 to see what their doctor's "your labs are mostly fine" missed):\n` +
         detectedLabPatterns.map(p => `  - ${p.label} [${p.evidence}]: addressed via ${(p.requiredSupplements ?? []).join(' + ') || 'lifestyle alone'}; track via ${(p.requiredTests ?? []).join(' + ') || 'follow-up panel'}`).join('\n')
       : '';
     console.log(`[wellness-plan] lab patterns: ${detectedLabPatterns.map(p => p.key).join(', ') || 'none'}`);
@@ -515,7 +515,7 @@ USER'S OTHER GOALS (secondary): ${goalsStr}
 MODE: ${classification.mode} (reasons: ${classification.reasons.join('; ')})
 RETEST_CADENCE: ${classification.retestCadence}
 
-${adequacyFlags.length > 0 ? `REPLACEMENT-THERAPY / SELF-SUPPLEMENT ADEQUACY FLAGS — these MUST appear in your headline + summary + today_actions. The user pays $20 for the app to catch what their doctor missed; do not bury these:
+${adequacyFlags.length > 0 ? `REPLACEMENT-THERAPY / SELF-SUPPLEMENT ADEQUACY FLAGS — these MUST appear in your headline + summary + today_actions. The user pays $19 for the app to catch what their doctor missed; do not bury these:
 ${adequacyFlags.map(f => `  - [${f.severity.toUpperCase()}] ${f.title} — ${f.evidence}. ${f.detail}`).join('\n')}
 HEADLINE MUST MENTION: ${adequacyFlags.filter(f => f.headlineMustMention).map(f => f.headlineMustMention).join(' AND ') || '(none)'}
 TODAY_ACTIONS MUST INCLUDE: ${adequacyFlags.map(f => `"${f.todayAction}"`).filter(Boolean).join(' AND ') || '(none)'}

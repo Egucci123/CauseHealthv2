@@ -16,17 +16,12 @@ const useVisible = (threshold = 0.2) => {
   return { ref, visible };
 };
 
-// Visual mockup of the actual app — a Watch-tagged HbA1c value at 5.5%
-// (technically inside the lab's "normal" range of 4.0–5.6 but on our curated
-// Watch list because it's drifting toward prediabetes). This is the core
-// product distinction: standard ranges miss the early signal; we don't.
+// ── Watch list visual (early detection) ─────────────────────────────────
 const WatchListVisual = () => (
   <div className="bg-clinical-white rounded-[10px] p-6 border border-outline-variant/10">
     <p className="text-precision text-[0.68rem] text-clinical-stone tracking-widest uppercase mb-4">
       Hemoglobin A1c (3-month blood sugar)
     </p>
-
-    {/* Score chips — same look as the actual lab analytics page */}
     <div className="grid grid-cols-3 gap-2 mb-5">
       <div className="bg-clinical-cream rounded-sm py-2 text-center">
         <p className="text-precision text-[0.6rem] font-bold text-[#1B4332] tracking-wider uppercase">Healthy</p>
@@ -38,8 +33,6 @@ const WatchListVisual = () => (
         <p className="text-precision text-[0.6rem] font-bold text-[#C94F4F] tracking-wider uppercase">Out of Range</p>
       </div>
     </div>
-
-    {/* Marker tile — gradient bar with a dot */}
     <div className="flex items-baseline justify-between mb-2">
       <span className="text-authority text-3xl text-clinical-charcoal font-bold leading-none">5.5</span>
       <div>
@@ -57,16 +50,15 @@ const WatchListVisual = () => (
     <p className="text-precision text-[0.7rem] text-clinical-stone mb-3">
       Standard: 4.0–5.6% · Watch threshold: ≥5.4%
     </p>
-
-    {/* Plain-English callout */}
     <div className="border-l-2 border-[#E8922A] bg-[#E8922A]/5 p-3">
       <p className="text-body text-clinical-charcoal text-xs leading-relaxed">
-        Your lab says <strong>"normal."</strong> We tag it <strong>Watch</strong> — it's drifting toward prediabetes. Catchable with diet now. Diagnosed in 5 years if ignored.
+        Your lab says <strong>"normal."</strong> We tag it <strong>Watch</strong> — drifting toward prediabetes. Catchable now. Diagnosed in 5 years if ignored.
       </p>
     </div>
   </div>
 );
 
+// ── Depletion + medication alternatives visual ──────────────────────────
 const DepletionChainVisual = () => (
   <div className="bg-clinical-white rounded-[10px] p-6 border border-outline-variant/10">
     <p className="text-precision text-[0.68rem] text-clinical-stone tracking-widest uppercase mb-4">
@@ -89,153 +81,190 @@ const DepletionChainVisual = () => (
       ))}
     </div>
     <div className="mt-4 p-3 bg-primary-container/5 border-l-2 border-primary-container">
-      <p className="text-precision text-[0.6rem] text-primary-container uppercase tracking-wider mb-1">Fix</p>
-      <p className="text-body text-clinical-charcoal text-xs">CoQ10 (ubiquinol) 200mg daily with food.</p>
-    </div>
-  </div>
-);
-
-// Visual mockup of the Wellness Plan tab — meals + supplements + a phase pill.
-// Shows the rotating spotlight + brand-specific meals so the user sees the
-// shape of the plan, not abstract promises.
-const WellnessPlanVisual = () => (
-  <div className="bg-clinical-white rounded-[10px] p-5 border border-outline-variant/10 space-y-3">
-    <div className="flex items-center justify-between">
-      <p className="text-precision text-[0.6rem] text-clinical-stone tracking-widest uppercase">
-        This Week's Focus · Week 1 of 12
-      </p>
-      <span className="inline-block bg-[#1B4332] text-white text-precision text-[0.7rem] px-1.5 py-0.5 font-bold tracking-wider">
-        EASY MODE
-      </span>
-    </div>
-
-    {/* Meal pills */}
-    <div className="space-y-2">
-      <div className="bg-clinical-cream/60 rounded-lg px-3 py-2 flex items-center gap-2">
-        <span className="text-base">🌯</span>
-        <div className="flex-1 min-w-0">
-          <p className="text-body text-clinical-charcoal text-xs font-semibold leading-tight">Wawa egg white wrap + spinach</p>
-          <p className="text-precision text-[0.7rem] text-clinical-stone">30g protein · breakfast · Phase 1</p>
-        </div>
-      </div>
-      <div className="bg-clinical-cream/60 rounded-lg px-3 py-2 flex items-center gap-2">
-        <span className="text-base">🍚</span>
-        <div className="flex-1 min-w-0">
-          <p className="text-body text-clinical-charcoal text-xs font-semibold leading-tight">Chipotle bowl · double chicken</p>
-          <p className="text-precision text-[0.7rem] text-clinical-stone">65g protein · lunch · Phase 1</p>
-        </div>
-      </div>
-      <div className="bg-clinical-cream/60 rounded-lg px-3 py-2 flex items-center gap-2">
-        <span className="text-base">🐟</span>
-        <div className="flex-1 min-w-0">
-          <p className="text-body text-clinical-charcoal text-xs font-semibold leading-tight">Air-fryer salmon + frozen broccoli</p>
-          <p className="text-precision text-[0.7rem] text-clinical-stone">38g protein · dinner · Phase 2</p>
-        </div>
-      </div>
-    </div>
-
-    {/* Supplement card */}
-    <div className="bg-primary-container/5 border-l-2 border-primary-container rounded-r-lg p-3">
-      <div className="flex items-center gap-2 mb-1.5">
-        <span className="material-symbols-outlined text-primary-container text-[14px]">medication</span>
-        <p className="text-precision text-[0.6rem] text-primary-container font-bold tracking-widest uppercase">Supplement Stack</p>
-      </div>
+      <p className="text-precision text-[0.6rem] text-primary-container uppercase tracking-wider mb-1">Fix + Alternative Discussion</p>
       <p className="text-body text-clinical-charcoal text-xs leading-relaxed">
-        <strong>CoQ10 (Ubiquinol) 200mg</strong> · with dinner · for atorvastatin depletion
+        CoQ10 (Ubiquinol) 200mg daily with food. Plus: Doctor Prep includes lower-dose statin alternatives + bergamot/red yeast considerations to discuss.
       </p>
-      <p className="text-body text-clinical-stone text-[0.6rem] mt-1">+ 4 more · alternatives included for each</p>
     </div>
-
-    <p className="text-body text-clinical-stone text-[0.6rem] italic leading-snug pt-1">
-      Plan rotates weekly — Phase 1 convenience-store hacks early, Phase 3 home cooking by week 7+.
-    </p>
   </div>
 );
 
-// Visual mockup of the Biological + Cardiometabolic Age cards.
-// Shows the two-number system: PhenoAge (peer-reviewed) vs CauseHealth's
-// own composite that catches what PhenoAge misses (lipids/liver/glucose/D).
+// ── Causal cascade visual (Layer A — the moat) ──────────────────────────
+const CausalCascadeVisual = () => (
+  <div className="bg-clinical-white rounded-[10px] p-6 border border-outline-variant/10">
+    <p className="text-precision text-[0.68rem] text-clinical-stone tracking-widest uppercase mb-4">
+      Why You Feel This Way — The Cascade
+    </p>
+    <div className="space-y-3">
+      <div>
+        <p className="text-precision text-[0.6rem] text-[#C94F4F] uppercase tracking-wider font-bold mb-1">Layer 1 · Root Cause</p>
+        <div className="bg-[#C94F4F]/10 rounded p-2 border-l-2 border-[#C94F4F]">
+          <p className="text-body text-clinical-charcoal text-xs font-semibold">Under-replaced thyroid (TSH 3.04 on Armour)</p>
+        </div>
+      </div>
+      <p className="text-center text-clinical-stone text-xs">↓ drives</p>
+      <div>
+        <p className="text-precision text-[0.6rem] text-[#E8922A] uppercase tracking-wider font-bold mb-1">Layer 2 · Driven State</p>
+        <div className="bg-[#E8922A]/10 rounded p-2 border-l-2 border-[#E8922A]">
+          <p className="text-body text-clinical-charcoal text-xs font-semibold">Chronic inflammation (hs-CRP 2.2)</p>
+        </div>
+      </div>
+      <p className="text-center text-clinical-stone text-xs">↓ drives</p>
+      <div>
+        <p className="text-precision text-[0.6rem] text-[#1B4332] uppercase tracking-wider font-bold mb-1">Layer 3 · Symptoms You Feel</p>
+        <div className="bg-clinical-cream rounded p-2 border-l-2 border-[#1B4332]">
+          <p className="text-body text-clinical-charcoal text-xs">Fatigue · Brain fog · Weight resistance · Joint pain</p>
+        </div>
+      </div>
+    </div>
+    <div className="mt-4 p-3 bg-primary-container/5 border-l-2 border-primary-container">
+      <p className="text-precision text-[0.6rem] text-primary-container uppercase tracking-wider mb-1">Highest-leverage fix</p>
+      <p className="text-body text-clinical-charcoal text-xs">Fix Layer 1 (thyroid dose) and Layers 2-3 dissolve. Don't start at the symptom.</p>
+    </div>
+  </div>
+);
+
+// ── Bio + cardiometabolic age visual ────────────────────────────────────
 const BioAgeVisual = () => (
   <div className="bg-clinical-white rounded-[10px] p-5 border border-outline-variant/10 space-y-4">
-    {/* PhenoAge */}
     <div>
       <div className="flex items-center justify-between mb-1">
-        <p className="text-precision text-[0.6rem] text-clinical-stone tracking-widest uppercase font-bold">
-          Biological Age
-        </p>
+        <p className="text-precision text-[0.6rem] text-clinical-stone tracking-widest uppercase font-bold">Biological Age</p>
         <span className="text-precision text-[0.7rem] text-clinical-stone tracking-wide">PhenoAge · Levine 2018</span>
       </div>
       <div className="flex items-baseline gap-2 mb-1">
         <span className="text-authority text-4xl font-bold leading-none" style={{ color: '#1B4332' }}>22.8</span>
         <span className="text-body text-clinical-stone text-xs">years</span>
-        <span
-          className="ml-auto text-precision text-[0.7rem] font-bold tracking-widest uppercase px-2 py-0.5"
-          style={{ borderRadius: '3px', backgroundColor: '#1B433215', color: '#1B4332' }}
-        >
-          5.4 yrs younger
-        </span>
+        <span className="ml-auto text-precision text-[0.7rem] font-bold tracking-widest uppercase px-2 py-0.5"
+          style={{ borderRadius: '3px', backgroundColor: '#1B433215', color: '#1B4332' }}>5.4 yrs younger</span>
       </div>
       <p className="text-precision text-[0.7rem] text-clinical-stone leading-relaxed italic">
-        9-marker peer-reviewed mortality biomarker (albumin, creatinine, glucose, CRP, lymphocytes, MCV, RDW, ALP, WBC).
+        9-marker peer-reviewed mortality biomarker.
       </p>
     </div>
-
     <div className="border-t border-outline-variant/15 pt-3">
       <div className="flex items-center justify-between mb-1">
-        <p className="text-precision text-[0.6rem] text-clinical-stone tracking-widest uppercase font-bold">
-          Cardiometabolic Age
-        </p>
+        <p className="text-precision text-[0.6rem] text-clinical-stone tracking-widest uppercase font-bold">Cardiometabolic Age</p>
         <span className="text-precision text-[0.7rem] text-clinical-stone tracking-wide">CauseHealth model</span>
       </div>
       <div className="flex items-baseline gap-2 mb-1">
         <span className="text-authority text-4xl font-bold leading-none" style={{ color: '#C94F4F' }}>42</span>
         <span className="text-body text-clinical-stone text-xs">years</span>
-        <span
-          className="ml-auto text-precision text-[0.7rem] font-bold tracking-widest uppercase px-2 py-0.5"
-          style={{ borderRadius: '3px', backgroundColor: '#C94F4F15', color: '#C94F4F' }}
-        >
-          14 yrs older
-        </span>
+        <span className="ml-auto text-precision text-[0.7rem] font-bold tracking-widest uppercase px-2 py-0.5"
+          style={{ borderRadius: '3px', backgroundColor: '#C94F4F15', color: '#C94F4F' }}>14 yrs older</span>
       </div>
       <p className="text-precision text-[0.7rem] text-clinical-stone leading-relaxed italic">
-        Lipids, liver enzymes, glucose, vitamin D — the metabolic markers PhenoAge skips.
+        Lipids, liver enzymes, glucose, vitamin D — markers PhenoAge skips.
       </p>
     </div>
-
     <div className="bg-[#D4A574]/10 border-l-2 border-[#D4A574] rounded-r-lg p-3">
       <p className="text-body text-clinical-charcoal text-xs leading-relaxed">
-        Two numbers, two stories. Most apps give you one. We give you both because they answer different questions.
+        Two numbers, two stories. Your lab gives you neither.
       </p>
     </div>
   </div>
 );
 
-// Visual mockup of the daily check-in + AI chat — the "ongoing coaching"
-// half of the product. Shows the adherence ring + a chat snippet so the user
-// sees this is more than a one-time analysis.
-const ChatCheckInVisual = () => (
-  <div className="bg-clinical-white rounded-[10px] p-5 border border-outline-variant/10 space-y-4">
-    {/* Adherence ring mockup */}
-    <div className="flex items-center gap-4">
-      <div className="relative w-20 h-20 flex-shrink-0">
-        <svg width="80" height="80" viewBox="0 0 80 80" className="-rotate-90">
-          <circle cx="40" cy="40" r="34" fill="none" stroke="#E8E3DB" strokeWidth="6" />
-          <circle cx="40" cy="40" r="34" fill="none" stroke="#1B4332" strokeWidth="6" strokeLinecap="round"
-            strokeDasharray="213.6" strokeDashoffset="42.7" />
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-authority text-xl text-clinical-charcoal font-bold leading-none">80</span>
-          <span className="text-precision text-[0.45rem] text-clinical-stone uppercase tracking-wider mt-0.5">% adherence</span>
-        </div>
+// ── Doctor prep + cross-specialty synthesis visual ──────────────────────
+const DoctorPrepVisual = () => (
+  <div className="bg-clinical-white rounded-[10px] overflow-hidden border border-outline-variant/10">
+    <div className="bg-[#131313] px-4 py-3">
+      <p className="text-precision text-[0.6rem] text-on-surface-variant tracking-widest uppercase">
+        CauseHealth. · Clinical Prep Document
+      </p>
+    </div>
+    <div className="p-4 space-y-3">
+      <div>
+        <p className="text-precision text-[0.6rem] text-clinical-stone tracking-widest uppercase mb-2">Tests Doctor Should Order</p>
+        {[
+          { test: 'TPO + Tg Antibodies', icd: 'E06.3', coverage: 'COVERED', color: '#1B4332' },
+          { test: 'Reverse T3', icd: 'E03.9', coverage: 'COVERED', color: '#1B4332' },
+          { test: 'Coronary Calcium Score', icd: 'Z13.6', coverage: 'COVERED', color: '#1B4332' },
+        ].map((row) => (
+          <div key={row.test} className="flex items-center justify-between py-2 border-b border-outline-variant/5">
+            <div>
+              <p className="text-body text-clinical-charcoal text-xs font-medium">{row.test}</p>
+              <p className="text-precision text-[0.7rem] text-clinical-stone">{row.icd}</p>
+            </div>
+            <span className="text-precision text-[0.7rem] px-1.5 py-0.5 font-bold text-white flex-shrink-0"
+              style={{ background: row.color }}>{row.coverage}</span>
+          </div>
+        ))}
       </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-precision text-[0.6rem] text-clinical-stone tracking-widest uppercase font-bold mb-1">Day 14 · Week 2 of 12</p>
-        <p className="text-body text-clinical-charcoal text-sm font-semibold leading-tight">14-day streak</p>
-        <p className="text-body text-clinical-stone text-xs leading-snug mt-1">Sleep up 2 points. CoQ10: 13/14 days.</p>
+      <div className="pt-1 border-t border-outline-variant/10">
+        <p className="text-precision text-[0.6rem] text-clinical-stone tracking-widest uppercase mb-2">Cross-Specialty Synthesis</p>
+        <div className="space-y-1">
+          {[
+            { label: 'Endocrinologist would see', text: 'thyroid + DHEA' },
+            { label: 'Cardiologist would see', text: 'lipid pattern + CRP' },
+            { label: 'Gynecologist would see', text: 'postmenopausal hormone shift' },
+          ].map((row) => (
+            <p key={row.label} className="text-body text-clinical-charcoal text-xs leading-snug">
+              <span className="text-clinical-stone">{row.label}:</span> {row.text}
+            </p>
+          ))}
+        </div>
+        <p className="text-precision text-[0.65rem] text-primary-container italic mt-2">No single doctor sees all of it. CauseHealth does.</p>
+      </div>
+    </div>
+  </div>
+);
+
+// ── Supplement stack + predicted outcomes visual ────────────────────────
+const SupplementStackVisual = () => (
+  <div className="bg-clinical-white rounded-[10px] p-5 border border-outline-variant/10 space-y-4">
+    <p className="text-precision text-[0.6rem] text-clinical-stone tracking-widest uppercase font-bold">
+      Evidence-Based Supplement Stack
+    </p>
+
+    {/* Supplement cards */}
+    <div className="space-y-2">
+      <div className="bg-clinical-cream/60 rounded-lg p-3 border-l-2 border-[#C94F4F]">
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-body text-clinical-charcoal text-xs font-bold">Curcumin (Meriva)</p>
+          <span className="text-precision text-[0.55rem] bg-[#C94F4F] text-white px-1.5 py-0.5 font-bold tracking-wider">CRITICAL</span>
+        </div>
+        <p className="text-precision text-[0.65rem] text-clinical-stone">500-1000mg · breakfast w/ fat · for elevated CRP 2.2</p>
+        <p className="text-precision text-[0.6rem] text-clinical-stone italic mt-1">+ alternatives: Quercetin · NAC</p>
+      </div>
+      <div className="bg-clinical-cream/60 rounded-lg p-3 border-l-2 border-[#E8922A]">
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-body text-clinical-charcoal text-xs font-bold">Selenium (Selenomethionine)</p>
+          <span className="text-precision text-[0.55rem] bg-[#E8922A] text-white px-1.5 py-0.5 font-bold tracking-wider">HIGH</span>
+        </div>
+        <p className="text-precision text-[0.65rem] text-clinical-stone">200mcg · breakfast · for Hashimoto's TPO antibodies</p>
+        <p className="text-precision text-[0.6rem] text-clinical-stone italic mt-1">+ alt: Brazil nuts (1-2 daily)</p>
       </div>
     </div>
 
-    {/* Chat snippet */}
+    {/* Predicted outcome */}
+    <div className="bg-primary-container/5 border-l-2 border-primary-container rounded-r-lg p-3">
+      <p className="text-precision text-[0.6rem] text-primary-container font-bold tracking-widest uppercase mb-1">
+        Predicted at 12-week retest
+      </p>
+      <div className="space-y-1 text-xs">
+        <div className="flex items-center justify-between">
+          <span className="text-clinical-charcoal">hs-CRP</span>
+          <span className="font-bold text-[#1B4332]">−0.6 mg/L</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-clinical-charcoal">TPO Ab</span>
+          <span className="font-bold text-[#1B4332]">−200 IU/mL</span>
+        </div>
+      </div>
+      <p className="text-precision text-[0.6rem] text-clinical-stone italic mt-2">
+        Falsifiable forecasts from peer-reviewed effect-size data. Doctors don't make these.
+      </p>
+    </div>
+  </div>
+);
+
+// ── AI chat visual (without daily-tracking gimmicks) ────────────────────
+const AIChatVisual = () => (
+  <div className="bg-clinical-white rounded-[10px] p-5 border border-outline-variant/10 space-y-3">
+    <p className="text-precision text-[0.6rem] text-clinical-stone tracking-widest uppercase font-bold">
+      AI Chat — Knows Your Specific Labs
+    </p>
     <div className="bg-clinical-cream/60 rounded-lg p-3 space-y-2">
       <div className="flex items-start gap-2">
         <div className="w-6 h-6 rounded-full bg-clinical-charcoal flex-shrink-0 flex items-center justify-center">
@@ -251,71 +280,46 @@ const ChatCheckInVisual = () => (
         </div>
         <div className="bg-primary-container/10 rounded-lg px-3 py-1.5 max-w-[85%]">
           <p className="text-body text-clinical-charcoal text-xs leading-snug">
-            Your ferritin is 28 — low. With your hair thinning and afternoon crashes, that's the most likely driver. Iron panel is in your retest list for week 6.
+            Your TSH is 3.04 on Armour — that's under-replaced (target 0.5–2.0). Plus serum Mg looks fine, but that test is unreliable;
+            with your sleep symptoms, RBC magnesium would tell us more.
           </p>
         </div>
       </div>
-    </div>
-
-    <p className="text-precision text-[0.7rem] text-clinical-stone italic">
-      AI chat reads your actual labs, conditions, and meds — not generic answers.
-    </p>
-  </div>
-);
-
-const DoctorPrepVisual = () => (
-  <div className="bg-clinical-white rounded-[10px] overflow-hidden border border-outline-variant/10">
-    <div className="bg-[#131313] px-4 py-3">
-      <p className="text-precision text-[0.6rem] text-on-surface-variant tracking-widest uppercase">
-        CauseHealth. · Clinical Prep Document
-      </p>
-    </div>
-    <div className="p-4 space-y-3">
-      <div>
-        <p className="text-precision text-[0.6rem] text-clinical-stone tracking-widest uppercase mb-2">Test Requests</p>
-        {[
-          { test: 'RBC Folate + MMA', icd: 'D52.1 · K51.90', coverage: 'COVERED', color: '#1B4332' },
-          { test: 'Creatine Kinase (CK)', icd: 'G72.0 · T46.6X5A', coverage: 'COVERED', color: '#1B4332' },
-          { test: 'Free Testosterone', icd: 'E29.1 · R53.83', coverage: 'UNCERTAIN', color: '#E8922A' },
-        ].map((row) => (
-          <div key={row.test} className="flex items-center justify-between py-2 border-b border-outline-variant/5">
-            <div>
-              <p className="text-body text-clinical-charcoal text-xs font-medium">{row.test}</p>
-              <p className="text-precision text-[0.7rem] text-clinical-stone">{row.icd}</p>
-            </div>
-            <span
-              className="text-precision text-[0.7rem] px-1.5 py-0.5 font-bold text-white flex-shrink-0"
-              style={{ background: row.color }}
-            >
-              {row.coverage}
-            </span>
-          </div>
-        ))}
+      <div className="flex items-start gap-2">
+        <div className="w-6 h-6 rounded-full bg-clinical-charcoal flex-shrink-0 flex items-center justify-center">
+          <span className="material-symbols-outlined text-white text-[12px]">person</span>
+        </div>
+        <div className="bg-clinical-white rounded-lg px-3 py-1.5">
+          <p className="text-body text-clinical-charcoal text-xs">What should I ask my doctor for?</p>
+        </div>
       </div>
     </div>
+    <p className="text-precision text-[0.7rem] text-clinical-stone italic">
+      Reads your specific labs, conditions, meds, and symptoms — not generic answers.
+    </p>
   </div>
 );
 
 const FEATURES = [
   {
-    label: 'Watch List Detection',
-    title: 'Normal isn\'t always healthy.',
-    body: 'Standard lab ranges flag values that have already crossed into a diagnosis. Our Watch list flags the values that are drifting — A1c at 5.5, ApoB above 90, ferritin under 50, hs-CRP creeping up — markers that are "in range" by lab standards but show the early signal of a problem you can still fix. We tag every value as Healthy, Watch, or Out of Range so the early signal isn\'t buried.',
+    label: 'Watch List · Early Detection',
+    title: 'Catch the drift\nbefore the diagnosis.',
+    body: 'Standard lab ranges flag values that have already crossed into a diagnosis. Our Watch list flags the values that are drifting — A1c at 5.5 (prediabetic pattern), ApoB above 90, ferritin under 50, hs-CRP creeping up, atherogenic LDL particle counts. Markers that are "in range" but show the early signal of a problem you can still fix. Months or years of warning before a diagnosis your doctor would have given you anyway.',
     visual: <WatchListVisual />,
     flip: false,
   },
   {
-    label: 'Medication Depletion Mapping',
+    label: 'Medication Depletions + Alternatives',
     title: 'Your prescription may be\ncausing your symptoms.',
-    body: 'Statins deplete CoQ10. Mesalamine depletes folate and B12. Metformin depletes B12. PPIs deplete magnesium, zinc, and iron. These are documented, clinically established depletions — and almost no one is ever told. We map every medication you take to the nutrients it depletes, connect that depletion to the symptoms you reported, and give you the exact intervention.',
+    body: 'Statins deplete CoQ10. Mesalamine depletes folate and B12. Metformin depletes B12. PPIs deplete magnesium, zinc, and iron. Thiazide diuretics deplete potassium and magnesium. SSRIs raise risk of low sodium. These are documented depletions almost no one is ever told about. We map every medication to nutrients it depletes, connect that to the symptoms you reported, AND surface medication alternatives to discuss with your doctor when there are gentler options.',
     visual: <DepletionChainVisual />,
     flip: true,
   },
   {
-    label: 'Your 90-Day Wellness Plan',
-    title: 'Not just a score.\nA path.',
-    body: '25-35 personalized meals from a 360+ meal library — convenience-store hacks for week 1, sheet-pan and crock-pot recipes by week 7. Brand-specific (Wawa, Chipotle, Costco) and chain-aware (no Wawa for Texas users). Supplement stack with 1-2 alternatives per supplement. Workouts, lifestyle interventions, and a 12-week phased action plan. Updates every Monday.',
-    visual: <WellnessPlanVisual />,
+    label: 'Causal Cascade',
+    title: 'The synthesis\nno doctor builds.',
+    body: 'Doctors are siloed. Your endo sees TSH. Your cardio sees LDL. Your gyn sees hormones. Nobody connects all three. CauseHealth maps your findings as a layered cascade: Layer 1 root causes (under-replaced thyroid, postmenopause, sleep deprivation) → Layer 2 driven states (chronic inflammation, atherogenic lipids) → Layer 3 outcomes (fatigue, brain fog, weight resistance, joint pain). Then ranks the highest-leverage fix. Fix Layer 1 and Layers 2-3 dissolve.',
+    visual: <CausalCascadeVisual />,
     flip: false,
   },
   {
@@ -326,22 +330,28 @@ const FEATURES = [
     flip: true,
   },
   {
-    label: 'ICD-10 Doctor Prep Document',
-    title: 'Get the tests your doctor\nwould never order.',
-    body: 'We generate a formatted clinical document for your next appointment — with the specific tests you need, the medical necessity statement for each, and the ICD-10 billing codes that tell your insurer why it\'s covered. Your doctor has 12 minutes. Hand them a document that does the diagnostic reasoning for them.',
+    label: 'Doctor Prep · Cross-Specialty Synthesis',
+    title: 'Get the tests your\ndoctor never ordered.',
+    body: 'Printable clinical document for your next appointment: tests with ICD-10 codes (insurance covers what they order when codes are right), medication alternatives to discuss, cross-specialty synthesis (endo + cardio + gyn + GI in one place — no specialist sees all of it), questions to ask, and a clear medical-necessity framing. Walk in prepared. Walk out with the workup you needed years ago.',
     visual: <DoctorPrepVisual />,
     flip: false,
   },
   {
-    label: 'AI Chat + Daily Check-In',
-    title: 'Coaching, on tap.',
-    body: 'Daily 30-second check-in (energy, sleep, pain, mental clarity, mood) builds your adherence score. Tap supplements as you take them — streak counter, weekly heat map, sparkline trends. AI chat reads your actual labs, conditions, and meds — ask "why is my energy low?" and it cites your specific values. Not a generic chatbot.',
-    visual: <ChatCheckInVisual />,
+    label: 'Supplement Stack · Predicted Outcomes',
+    title: 'Evidence-based stacks +\nfalsifiable forecasts.',
+    body: 'Supplement stack sourced from your specific labs (curcumin for elevated CRP, selenium for Hashimoto\'s antibodies, berberine for prediabetic A1c, CoQ10 for statin depletion). Each entry includes dose, timing, drug-interaction notes, and 1-2 alternatives. Then we predict the lab change at your 12-week retest based on peer-reviewed effect-size data: "TSH should drop 1.0–2.0 mIU/L if dose is optimized." Doctors don\'t make falsifiable forecasts. We do.',
+    visual: <SupplementStackVisual />,
     flip: true,
+  },
+  {
+    label: 'AI Chat · Reads Your Actual Labs',
+    title: 'Coaching with\nyour data, not generic.',
+    body: 'AI chat that has your specific labs, conditions, medications, and symptoms loaded into context. Ask "why is my energy low?" and it cites your specific TSH, ferritin, vitamin D — and explains which tests we don\'t trust given your situation (serum magnesium "in range" is unreliable; ferritin during inflammation is falsely elevated). Not a generic chatbot. Yours.',
+    visual: <AIChatVisual />,
+    flip: false,
   },
 ];
 
-// Wrapper component to use the hook correctly (not inside a callback)
 const FeatureItem = ({ feature, index: _index }: { feature: typeof FEATURES[number]; index: number }) => {
   const { ref, visible } = useVisible(0.15);
   return (
@@ -391,7 +401,7 @@ export const FeaturesSection = () => (
           </span>
         </div>
         <h2 className="text-authority text-4xl md:text-5xl font-bold text-white leading-tight">
-          The connections that<br />12 minutes can't make.
+          The connections that<br />15 minutes can't make.
         </h2>
       </div>
 

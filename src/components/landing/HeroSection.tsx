@@ -155,27 +155,31 @@ export const HeroSection = () => (
           <div className="inline-flex items-center gap-2 mb-6">
             <div className="w-4 h-px bg-primary-container" />
             <span className="text-precision text-[0.68rem] text-primary-container tracking-widest uppercase font-bold">
-              Built for normal people
+              Bloodwork analysis · Early detection · Doctor prep
             </span>
           </div>
 
           <h1 className="text-authority font-bold text-clinical-charcoal leading-tight mb-2">
-            <span className="text-5xl md:text-6xl block">Your doctor has</span>
-            <span className="text-5xl md:text-6xl block">12 minutes.</span>
+            <span className="text-5xl md:text-6xl block">Turn your doctor</span>
+            <span className="text-5xl md:text-6xl block">into a functional</span>
           </h1>
           <h2 className="text-authority text-4xl md:text-5xl font-bold text-primary-container leading-tight mb-8">
-            You deserve<br />answers.
+            health doctor —<br />for $19.
           </h2>
 
           <p className="text-body text-clinical-stone text-lg leading-relaxed mb-4 max-w-lg">
-            Upload your bloodwork. Get a <strong className="text-clinical-charcoal">Healthy / Watch / Out-of-Range</strong> read
-            on every value, your <strong className="text-clinical-charcoal">biological + cardiometabolic age</strong>,
-            a <strong className="text-clinical-charcoal">90-day plan</strong> with meals and supplements that fit your real life,
-            and a <strong className="text-clinical-charcoal">Doctor Prep PDF</strong> with ICD-10 codes that get tests covered.
+            Upload your bloodwork. CauseHealth catches the patterns one doctor's 15-minute visit can't:
+            <strong className="text-clinical-charcoal"> medication-nutrient depletions, atherogenic lipid shifts, under-replaced
+            thyroid, prediabetic patterns</strong> — months or years before they become a diagnosis.
+          </p>
+          <p className="text-body text-clinical-stone text-base leading-relaxed mb-4 max-w-lg">
+            You walk out with a printable <strong className="text-clinical-charcoal">Doctor Prep PDF</strong> (ICD-10 codes
+            so insurance covers the follow-ups), a <strong className="text-clinical-charcoal">90-day plan</strong> with
+            evidence-based supplements + dietary pattern, the right <strong className="text-clinical-charcoal">tests your
+            doctor didn't order</strong>, and an AI that knows your specific labs.
           </p>
           <p className="text-body text-clinical-stone text-base leading-relaxed mb-10 max-w-lg">
-            Built for nurses, truckers, parents, shift workers — the patients doctors rush
-            through. <strong className="text-clinical-charcoal">$20 per analysis.</strong> No subscription. Lifetime access.
+            <strong className="text-clinical-charcoal">$19 per analysis.</strong> No subscription. Pay once, own it forever.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 mb-8">
@@ -185,7 +189,7 @@ export const HeroSection = () => (
               onClick={() => window.location.href = '/register'}
               icon="upload_file"
             >
-              Try It Free — No Card
+              Upload My Bloodwork
             </Button>
             <Button
               variant="secondary"
@@ -199,13 +203,13 @@ export const HeroSection = () => (
           </div>
 
           <p className="text-precision text-[0.68rem] text-clinical-stone tracking-wide">
-            Free preview · $20 one-time per analysis · No subscription · Master codes for friends
+            Free signup · $19 one-time per analysis · No subscription · Master codes for friends
           </p>
 
           <div className="flex flex-wrap gap-3 mt-10">
             <DetectionCounter />
-            <StatPill label="90-day personalized plan" delay={1.0} />
-            <StatPill label="Biological + cardiometabolic age" delay={1.2} />
+            <StatPill label="Early-detection pattern engine" delay={1.0} />
+            <StatPill label="Medication depletion mapping" delay={1.2} />
             <StatPill label="ICD-10 coded doctor prep" delay={1.4} />
           </div>
         </motion.div>

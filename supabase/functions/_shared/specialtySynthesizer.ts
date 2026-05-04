@@ -186,7 +186,7 @@ export function synthesizeAcrossSpecialties(input: SynthesisInput): SpecialtySyn
 /** Render block for the prompt. */
 export function renderSynthesisForPrompt(s: SpecialtySynthesis): string {
   if (s.specialtyCount < 2) return '';
-  const lines: string[] = ['CROSS-SPECIALTY SYNTHESIS — these findings span multiple medical silos. The user pays $20 to see what no single doctor connects:'];
+  const lines: string[] = ['CROSS-SPECIALTY SYNTHESIS — these findings span multiple medical silos. The user pays $19 to see what no single doctor connects:'];
   for (const g of s.bySpecialty) {
     lines.push(`  ${g.specialtyLabel} would see: ${g.findings.map(f => f.label).join('; ')}`);
   }

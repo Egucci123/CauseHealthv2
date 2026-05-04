@@ -5,11 +5,14 @@ import { motion } from 'framer-motion';
 
 const ROWS: { label: string; us: string; them: string; usWin: boolean }[] = [
   { label: 'Bring your own labs (LabCorp, Quest, MyChart, paper)', us: '✓ Any source — PDF or photo', them: 'Their lab order only', usWin: true },
-  { label: 'Doctor prep document with ICD-10 codes', us: '✓ Built for your visit', them: 'Replaces the visit', usWin: true },
-  { label: 'Medication + supplement interaction layer', us: '✓ Threaded through every analysis', them: 'Generic insights', usWin: true },
-  { label: '90-day plan with retest tracking', us: '✓ Today actions, meals, workouts', them: 'Score + insights', usWin: true },
-  { label: 'AI chat that knows your data', us: '✓ Plain English, your labs', them: 'Limited messaging', usWin: true },
-  { label: 'Cost', us: '$20 per lab analysis · no subscription', them: '$365/year subscription', usWin: true },
+  { label: 'Early-detection pattern engine (Watch list)', us: '✓ Flags drift before diagnosis', them: 'Standard ranges only', usWin: true },
+  { label: 'Causal cascade — root → symptom synthesis', us: '✓ Layered cause-effect map', them: 'Flat findings list', usWin: true },
+  { label: 'Cross-specialty synthesis (endo + cardio + gyn)', us: '✓ One synthesis across silos', them: 'Single-system view', usWin: true },
+  { label: 'Doctor Prep with ICD-10 codes', us: '✓ Insurance-covered tests', them: 'Replaces the visit', usWin: true },
+  { label: 'Medication depletion + alternatives mapping', us: '✓ Per-drug detection + swaps to discuss', them: 'Generic insights', usWin: true },
+  { label: 'Predicted lab outcomes (falsifiable forecasts)', us: '✓ Specific ΔX in 12 weeks', them: 'No predictions', usWin: true },
+  { label: 'AI chat that knows your specific labs', us: '✓ Cites your TSH, ferritin, etc.', them: 'Limited messaging', usWin: true },
+  { label: 'Cost', us: '$19 per lab analysis · no subscription', them: '$365/year subscription', usWin: true },
 ];
 
 export const VsFunction = () => (

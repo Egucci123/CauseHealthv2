@@ -32,11 +32,11 @@ const PaywallCard = ({ feature, description }: { feature: string; description?: 
       {description && (
         <p className="text-body text-clinical-stone text-sm mb-6 max-w-sm mx-auto leading-relaxed">{description}</p>
       )}
-      <p className="text-authority text-3xl text-clinical-charcoal font-bold mb-1">$20<span className="text-base text-clinical-stone font-normal"> one-time</span></p>
+      <p className="text-authority text-3xl text-clinical-charcoal font-bold mb-1">$19<span className="text-base text-clinical-stone font-normal"> one-time</span></p>
       <p className="text-precision text-[0.65rem] text-clinical-stone tracking-wide mb-6">Lifetime access · No subscription</p>
       <div className="flex flex-col gap-2 max-w-sm mx-auto">
         <Link to="/settings?tab=subscription">
-          <Button variant="primary" size="lg" icon="auto_awesome" className="w-full">Unlock for $20</Button>
+          <Button variant="primary" size="lg" icon="auto_awesome" className="w-full">Unlock for $19</Button>
         </Link>
         <button
           onClick={() => setShowRedeem(v => !v)}

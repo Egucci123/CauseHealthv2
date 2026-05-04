@@ -28,7 +28,7 @@ export const PricingSection = () => {
             <div className="w-4 h-px bg-primary" />
           </div>
           <h2 className="text-authority text-4xl md:text-5xl font-bold text-white leading-tight mb-4">
-            $20 per analysis. No subscription.
+            $19 per analysis. No subscription.
           </h2>
           <p className="text-body text-on-surface-variant text-lg max-w-lg mx-auto">
             Pay when you upload labs. Keep that analysis forever. No monthly
@@ -59,12 +59,12 @@ export const PricingSection = () => {
               </p>
               <div className="flex items-baseline justify-center gap-1">
                 <span className="text-authority text-5xl text-clinical-charcoal font-bold">
-                  $20
+                  $19
                 </span>
                 <span className="text-body text-clinical-stone text-sm">per analysis</span>
               </div>
               <p className="text-precision text-[0.6rem] text-clinical-stone tracking-wide mt-2">
-                One-time. Lifetime access to that analysis. New labs later? $20 again.
+                One-time. Lifetime access to that analysis. New labs later? $19 again.
               </p>
             </div>
 

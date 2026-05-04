@@ -14,15 +14,19 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 const FEATURES = [
-  'Unlimited lab uploads & AI analysis',
-  '90-day personalized wellness plan',
-  'Doctor prep documents with ICD-10 codes',
-  'Medication depletion mapping (CoQ10, B12, folate, magnesium)',
+  'Optimal-range analysis (not just "normal")',
+  'Watch list — early detection of drift before diagnosis',
+  'Doctor Prep PDF with ICD-10 codes (insurance-covered tests)',
+  'Tests your doctor didn\'t order — root-cause workup',
+  'Medication depletion mapping (CoQ10, B12, folate, Mg)',
+  'Medication alternatives to discuss with your doctor',
+  'Evidence-based supplement stack with alternatives',
+  'Causal cascade — root → driven state → symptoms',
+  'Cross-specialty synthesis (endo + cardio + gyn + GI)',
+  'Predicted lab changes at 12-week retest',
   'Biological + Cardiometabolic Age scoring',
-  'Daily check-in + adherence tracking',
-  'Weekly meal spotlight (rotating + chain-aware)',
-  'AI chat that reads your actual labs',
-  'Progress tracking & trend charts',
+  'AI chat that reads your specific labs',
+  'Lifetime access to every analysis you buy',
   'PDF export for all documents',
 ];
 
@@ -101,7 +105,7 @@ export const SubscriptionManagement = () => {
               </div>
             ) : (
               <div className="bg-clinical-cream rounded-lg p-4 mb-5">
-                <div className="flex items-baseline gap-1 mb-1"><span className="text-precision text-2xl font-bold text-clinical-charcoal">$20</span><span className="text-precision text-sm text-clinical-stone">per analysis</span></div>
+                <div className="flex items-baseline gap-1 mb-1"><span className="text-precision text-2xl font-bold text-clinical-charcoal">$19</span><span className="text-precision text-sm text-clinical-stone">per analysis</span></div>
                 <p className="text-body text-sm text-clinical-stone">Lifetime access — no subscription</p>
               </div>
             )}
@@ -114,10 +118,10 @@ export const SubscriptionManagement = () => {
           <div>
             <p className="text-body text-sm text-clinical-stone mb-5">Pay once per lab analysis. No monthly subscription. Lifetime access to whatever you unlock.</p>
             <div className="bg-clinical-cream rounded-lg p-4 mb-5">
-              <div className="flex items-baseline gap-1 mb-1"><span className="text-precision text-3xl font-bold text-clinical-charcoal">$20</span><span className="text-precision text-sm text-clinical-stone">one-time</span></div>
+              <div className="flex items-baseline gap-1 mb-1"><span className="text-precision text-3xl font-bold text-clinical-charcoal">$19</span><span className="text-precision text-sm text-clinical-stone">one-time</span></div>
               <p className="text-body text-sm text-clinical-stone">Per lab analysis · Lifetime access</p>
             </div>
-            <button onClick={() => checkout.mutate()} disabled={checkout.isPending} className="w-full bg-primary-container text-white text-sm font-semibold py-3 hover:bg-[#2D6A4F] transition-colors disabled:opacity-60" style={{ borderRadius: '6px' }}>{checkout.isPending ? 'Redirecting to checkout...' : 'Unlock for $20'}</button>
+            <button onClick={() => checkout.mutate()} disabled={checkout.isPending} className="w-full bg-primary-container text-white text-sm font-semibold py-3 hover:bg-[#2D6A4F] transition-colors disabled:opacity-60" style={{ borderRadius: '6px' }}>{checkout.isPending ? 'Redirecting to checkout...' : 'Unlock for $19'}</button>
             {checkout.isError && (
               <div className="mt-3 bg-[#C94F4F]/10 border border-[#C94F4F]/30 rounded-lg p-3">
                 <p className="text-body text-[#C94F4F] text-sm">{(checkout.error as Error)?.message ?? 'Checkout failed. Please try again.'}</p>

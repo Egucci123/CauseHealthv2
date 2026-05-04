@@ -58,7 +58,7 @@ const AlertCard = ({ alert, onDismiss, isPro }: { alert: PriorityAlert; onDismis
               className="flex items-center gap-2 text-precision text-[0.65rem] font-bold tracking-wider uppercase text-[#D4A574] hover:underline mt-1"
             >
               <span className="material-symbols-outlined text-[14px]">lock</span>
-              Unlock why · $20 one-time
+              Unlock why · $19 one-time
             </button>
           )}
         </div>
