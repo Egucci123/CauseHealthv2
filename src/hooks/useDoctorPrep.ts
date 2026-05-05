@@ -31,6 +31,19 @@ export interface DoctorPrepDocument {
   }>;
   patient_questions?: string[];
   functional_medicine_note?: string;
+  /** Differential diagnosis: conditions the data fits but the user
+   *  hasn't been diagnosed with. Sourced from the wellness plan's
+   *  suspected_conditions. Rendered separately from tests_to_request. */
+  possible_conditions?: Array<{
+    name: string;
+    category?: string;
+    confidence?: 'high' | 'moderate' | 'low';
+    evidence?: string;
+    confirmatory_tests?: string[];
+    icd10?: string;
+    what_to_ask_doctor?: string;
+    source?: 'ai' | 'deterministic';
+  }>;
 }
 
 // Module-level generation state — survives component unmount/remount

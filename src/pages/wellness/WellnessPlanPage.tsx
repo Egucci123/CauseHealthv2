@@ -8,6 +8,7 @@ import { Button } from '../../components/ui/Button';
 import { FolderSection } from '../../components/ui/FolderSection';
 import { LifestyleInterventions } from '../../components/wellness/LifestyleInterventions';
 import { ActionPlan } from '../../components/wellness/ActionPlan';
+import { PossibleConditions } from '../../components/wellness/PossibleConditions';
 import { TransformationForecast } from '../../components/wellness/TransformationForecast';
 import { useWellnessPlan, useGenerateWellnessPlan } from '../../hooks/useWellnessPlan';
 import { useLatestLabDraw, useLatestLabValues } from '../../hooks/useLabData';
@@ -705,6 +706,30 @@ export const WellnessPlanPage = () => {
                 ))}
               </div>
             </FolderSection>
+            );
+          })()}
+
+          {/* Possible conditions to investigate — separate from retests.
+              Retests = baseline tests the doctor missed. This = differential
+              diagnosis (patterns the data fits but never made it onto a
+              chart). Each entry carries its own confirmatory_tests, so the
+              user knows exactly what to ask for. */}
+          {(() => {
+            const suspected = (plan.suspected_conditions ?? []).filter(
+              (c: any) => c && typeof c.name === 'string' && c.name.trim().length > 0,
+            );
+            return suspected.length > 0 && (
+              <FolderSection
+                icon="quiz"
+                title="Possible conditions to investigate"
+                count={suspected.length}
+                countLabel={suspected.length === 1 ? 'pattern' : 'patterns'}
+                explanation="Patterns in your bloodwork and symptoms that fit conditions you haven't been diagnosed with. Not a diagnosis — a differential. Each one comes with the confirmatory tests to ask your doctor for."
+                accentColor="#C94F4F"
+                defaultOpen
+              >
+                <PossibleConditions conditions={suspected} />
+              </FolderSection>
             );
           })()}
 

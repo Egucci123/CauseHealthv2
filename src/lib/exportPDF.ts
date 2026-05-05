@@ -254,6 +254,51 @@ export function exportPatientVisitGuidePDF(doc: DoctorPrepDocument, userName: st
   // (rendered above) is the single source of truth, already filtered by the
   // strict triage rule.
 
+  // ── Possible conditions to investigate (differential) ────────────────
+  // Distinct from tests_to_request: those are the baseline tests the doctor
+  // missed; this is the differential — patterns the data fits that the
+  // patient hasn't been diagnosed with, each with its own confirmatory workup.
+  if (Array.isArray(doc.possible_conditions) && doc.possible_conditions.length > 0) {
+    sectionHeader('Possible conditions to investigate');
+    para(
+      'Patterns in the labs / symptoms that fit conditions not yet on the chart. These are differentials, not diagnoses. Each one lists the confirmatory workup to ask about.',
+      { color: [80, 80, 80], italic: true, size: 9, gap: 4 },
+    );
+    doc.possible_conditions.forEach((c, i) => {
+      checkPage(34);
+      pdf.setFontSize(10); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(19, 19, 19);
+      const conf = String(c.confidence ?? 'low').toUpperCase();
+      pdf.text(stripUnsupportedChars(`${i + 1}. ${c.name}  [${conf}]`), margin, y); y += 5;
+      if (c.icd10) {
+        pdf.setFontSize(8); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(140, 130, 110);
+        pdf.text(stripUnsupportedChars(`ICD-10  ${c.icd10}`), margin + 3, y); y += 4;
+      }
+      if (c.evidence) {
+        pdf.setFontSize(8.5); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(212, 165, 116);
+        pdf.text('Why this is on the differential:', margin + 3, y); y += 4;
+        pdf.setFont('helvetica', 'normal'); pdf.setTextColor(40, 40, 40);
+        const evLines = pdf.splitTextToSize(stripUnsupportedChars(c.evidence), contentW - 6);
+        pdf.text(evLines, margin + 3, y); y += evLines.length * 3.8 + 2;
+      }
+      if (Array.isArray(c.confirmatory_tests) && c.confirmatory_tests.length > 0) {
+        pdf.setFontSize(8.5); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(212, 165, 116);
+        pdf.text('Tests to confirm:', margin + 3, y); y += 4;
+        pdf.setFont('helvetica', 'normal'); pdf.setTextColor(40, 40, 40);
+        const tLines = pdf.splitTextToSize(stripUnsupportedChars('• ' + c.confirmatory_tests.join('\n• ')), contentW - 6);
+        pdf.text(tLines, margin + 3, y); y += tLines.length * 3.8 + 2;
+      }
+      if (c.what_to_ask_doctor) {
+        pdf.setFontSize(8.5); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(212, 165, 116);
+        pdf.text('Script for the visit:', margin + 3, y); y += 4;
+        pdf.setFont('helvetica', 'italic'); pdf.setTextColor(40, 40, 40);
+        const sLines = pdf.splitTextToSize(stripUnsupportedChars(`"${c.what_to_ask_doctor}"`), contentW - 6);
+        pdf.text(sLines, margin + 3, y); y += sLines.length * 3.8 + 4;
+      } else {
+        y += 2;
+      }
+    });
+  }
+
   // ── Other points to bring up ─────────────────────────────────────────
   if (doc.discussion_points?.length) {
     sectionHeader('Other things to bring up');

@@ -4,6 +4,7 @@ import { AppShell } from '../../components/layout/AppShell';
 import { Button } from '../../components/ui/Button';
 import { ClinicalSummary } from '../../components/doctorprep/ClinicalSummary';
 import { TestsToRequest } from '../../components/doctorprep/TestsToRequest';
+import { PossibleConditionsCard } from '../../components/doctorprep/PossibleConditionsCard';
 import { VisitCardStacks } from '../../components/doctorprep/VisitCardStacks';
 import { MedicationsTab } from '../../components/doctorprep/MedicationsTab';
 import { isHealthyMode as computeIsHealthyMode } from '../../lib/healthMode';
@@ -225,6 +226,9 @@ export const DoctorPrep = () => {
           {activeTab === 'tests' && (
             <div className="space-y-4">
               <TestsToRequest tests={Array.isArray(doc.tests_to_request) ? doc.tests_to_request : []} advanced={Array.isArray(doc.advanced_screening) ? doc.advanced_screening : []} />
+              {Array.isArray(doc.possible_conditions) && doc.possible_conditions.length > 0 && (
+                <PossibleConditionsCard conditions={doc.possible_conditions} />
+              )}
             </div>
           )}
           {activeTab === 'medications' && <MedicationsTab />}

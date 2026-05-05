@@ -837,6 +837,30 @@ CRITICAL OUTPUT RULES (for the new card-stack UI):
         console.log(`[doctor-prep] No recent wellness plan — using AI-generated + injected tests_to_request (${doc.tests_to_request.length} tests)`);
       }
 
+      // ── POSSIBLE CONDITIONS (differential) ──────────────────────────────
+      // Separate from tests_to_request (baseline gap-fill). This list is
+      // the differential-diagnosis ask: patterns the data fits that the
+      // user hasn't been diagnosed with. Each entry carries its own
+      // confirmatory_tests and "what to ask your doctor" prompt.
+      const planSuspected = (latestPlan?.plan_data as any)?.suspected_conditions;
+      if (Array.isArray(planSuspected) && planSuspected.length > 0 && planDrawMatches && planFresh) {
+        doc.possible_conditions = planSuspected
+          .filter((c: any) => c && typeof c.name === 'string' && c.name.trim().length > 0)
+          .map((c: any) => ({
+            name: c.name,
+            category: c.category ?? 'other',
+            confidence: c.confidence ?? 'low',
+            evidence: c.evidence ?? '',
+            confirmatory_tests: Array.isArray(c.confirmatory_tests) ? c.confirmatory_tests : [],
+            icd10: c.icd10 ?? '',
+            what_to_ask_doctor: c.what_to_ask_doctor ?? '',
+            source: c.source === 'deterministic' ? 'deterministic' : 'ai',
+          }));
+        console.log(`[doctor-prep] Sourced possible_conditions from wellness plan (${doc.possible_conditions.length})`);
+      } else if (!Array.isArray(doc.possible_conditions)) {
+        doc.possible_conditions = [];
+      }
+
       // Differential cap by mode
       const isOptMode = isHealthy;
       const testCap = isOptMode ? 10 : 20;
@@ -854,6 +878,7 @@ CRITICAL OUTPUT RULES (for the new card-stack UI):
     if (!Array.isArray(doc.questions_to_ask)) doc.questions_to_ask = [];
     if (!doc.headline) doc.headline = '';
     if (!Array.isArray(doc.medication_alternatives)) doc.medication_alternatives = [];
+    if (!Array.isArray(doc.possible_conditions)) doc.possible_conditions = [];
     if (!doc.review_of_systems) doc.review_of_systems = {};
     if (!doc.lab_summary) doc.lab_summary = { draw_date: '', lab_name: '', urgent_findings: [], other_abnormal: [] };
     if (!doc.generated_at) doc.generated_at = new Date().toISOString();

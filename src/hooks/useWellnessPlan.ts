@@ -65,6 +65,21 @@ export interface WellnessPlanData {
     phase_3: { name: string; focus: string; actions: string[] };
   };
   retest_timeline: { marker: string; retest_at: string; why: string }[];
+  /** Differential diagnosis: conditions the labs/symptoms fit but the user
+   *  hasn't been diagnosed with. Populated by AI open-ended reasoning +
+   *  deterministic backstop. Each entry includes confirmatory_tests so the
+   *  user can ask their doctor for the exact workup. Rendered separately
+   *  from retest_timeline (this is differential, not baseline-gap). */
+  suspected_conditions?: {
+    name: string;
+    category?: string;
+    confidence?: 'high' | 'moderate' | 'low';
+    evidence?: string;
+    confirmatory_tests?: string[];
+    icd10?: string;
+    what_to_ask_doctor?: string;
+    source?: 'ai' | 'deterministic';
+  }[];
   // Per-symptom how-this-plan-addresses-it list. Populated by
   // generate-wellness-plan after the Symptoms page was deleted (April 2026).
   symptoms_addressed?: { symptom: string; severity?: number; how_addressed: string }[];
