@@ -1427,7 +1427,20 @@ CALIBRATION (applies to ALL arrays): Healthy 26yo with clean labs → 0-2 entrie
       testQualityCaveatsAi: plan.test_quality_caveats_ai ?? [],
     });
 
-    await supabase.from('wellness_plans').insert({ user_id: userId, draw_id: drawId, plan_data: plan, generation_status: 'complete' });
+    // Persist the plan. Supabase JS client returns {data, error} rather than
+    // throwing — without this check, a save failure would still return a 200
+    // with the plan body, and the next refetch would show the user's stale
+    // prior plan. We log + 500 instead so the UI can surface a real error.
+    const { error: insertErr } = await supabase
+      .from('wellness_plans')
+      .insert({ user_id: userId, draw_id: drawId, plan_data: plan, generation_status: 'complete' });
+    if (insertErr) {
+      console.error('[wellness-plan] insert failed:', insertErr);
+      return new Response(
+        JSON.stringify({ error: `Failed to save plan: ${insertErr.message ?? String(insertErr)}` }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
 
     return new Response(JSON.stringify(plan), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (err) {
