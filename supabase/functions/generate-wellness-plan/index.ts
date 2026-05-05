@@ -18,6 +18,7 @@ import { synthesizeAcrossSpecialties, renderSynthesisForPrompt } from '../_share
 import { buildAudit } from '../_shared/auditLog.ts';
 import { detectLabPatterns } from '../_shared/labPatternRegistry.ts';
 import { runSuspectedConditionsBackstop } from '../_shared/suspectedConditionsBackstop.ts';
+import { detectCriticalFindings } from '../_shared/criticalFindingsBackstop.ts';
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -927,6 +928,27 @@ CALIBRATION: Healthy 26yo with clean labs → 0-2 entries (or empty array). Mult
     plan.already_at_goal_ai = plan.already_at_goal_ai.filter((a: any) => a?.marker).map((a: any) => ({ ...a, source: a.source ?? 'ai' }));
     plan.test_quality_caveats_ai = plan.test_quality_caveats_ai.filter((t: any) => t?.marker).map((t: any) => ({ ...t, source: t.source ?? 'ai' }));
     console.log(`[wellness-plan] universal AI domains: patterns=${plan.multi_marker_patterns.length} depletions=${plan.medication_depletions.length} critical=${plan.critical_findings_ai.length} predictions=${plan.predicted_changes_ai.length} atgoal=${plan.already_at_goal_ai.length} testqual=${plan.test_quality_caveats_ai.length}`);
+
+    // ── Critical findings: deterministic backstop (UNIVERSAL) ───────────────
+    // The AI does open-ended urgency reasoning. The backstop fires on hard
+    // clinical thresholds (ADA / KDIGO / ACC-AHA / NCCN) regardless of what
+    // the AI returned. De-duped against AI entries by marker name.
+    const detCritical = detectCriticalFindings(labValues);
+    if (detCritical.length > 0) {
+      const aiCriticalLower = plan.critical_findings_ai
+        .map((c: any) => String(c.finding ?? '').toLowerCase())
+        .join(' | ');
+      const novel = detCritical.filter(d => !aiCriticalLower.includes(String(d.marker).toLowerCase()));
+      for (const d of novel) {
+        plan.critical_findings_ai.push({
+          finding: `${d.marker} ${d.value}${d.unit ? ' ' + d.unit : ''} (${d.threshold})`,
+          severity: d.severity,
+          rationale: d.rationale,
+          source: 'deterministic',
+        });
+      }
+      if (novel.length > 0) console.log(`[wellness-plan] critical-findings backstop fired: ${novel.map(n => n.marker).join(', ')}`);
+    }
 
     // ── Suspected conditions: AI + deterministic backstop (UNIVERSAL) ──────
     // The AI did open-ended differential diagnosis (universal — can find any
