@@ -6,6 +6,7 @@ import { HeroSection }       from '../components/landing/HeroSection';
 import { StatsBar }          from '../components/landing/StatsBar';
 import { ProblemSection }    from '../components/landing/ProblemSection';
 import { HowItWorks }        from '../components/landing/HowItWorks';
+import { TwoDrawJourney }    from '../components/landing/TwoDrawJourney';
 import { FeaturesSection }   from '../components/landing/FeaturesSection';
 import { ConditionsSection } from '../components/landing/ConditionsSection';
 import { VsFunction }        from '../components/landing/VsFunction';
@@ -39,6 +40,7 @@ export const Landing = () => {
     <StatsBar />
     <ProblemSection />
     <HowItWorks />
+    <TwoDrawJourney />
     <FeaturesSection />
     <ConditionsSection />
     <VsFunction />
