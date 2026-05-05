@@ -585,88 +585,21 @@ CRITICAL OUTPUT RULES:
 - eating_pattern: ONE pattern object (NOT an array). Pick the single best dietary pattern for this user's labs.
 - workouts: 3-5 workouts spanning a week, tailored to user's goals (longevity → zone 2 + lift, weight → resistance + walk, energy → easy cardio + sleep).
 
-UNIVERSAL OPEN-ENDED CLINICAL REASONING (apply to EVERY domain below — do NOT constrain yourself to a checklist):
-Every domain below should be filled in OPEN-ENDED. Deterministic engines fire as a backstop for high-prevalence cases — your job is to surface the LONG TAIL the registries don't catch. Reason from first principles. Be thorough.
+REASONING MODE — open-ended, first-principles, like a sharp internist with time:
+Deterministic engines fire as a backstop for high-prevalence cases. YOUR job is the long tail they don't catch. Reason from the data picture, not from a checklist. Cover every body system implicitly — endocrine, cardio, GI, hepatic, renal, heme, autoimmune, MSK, repro, neuro, respiratory, infectious, oncology rule-outs, nutritional. Don't constrain yourself.
 
-DOMAIN 1 — multi_marker_patterns: Look at the lab panel as a whole. Surface EVERY multi-marker pattern present (not just the textbook ones). Examples:
-  • atherogenic dyslipidemia (LDL-P + small LDL-P + low Large HDL-P + ApoB)
-  • insulin resistance cluster (A1c + insulin + HDL + TG + ALT)
-  • iron deficiency hidden by inflammation (ferritin "normal" + low TIBC + low sat + high CRP)
-  • hemochromatosis pattern (high ferritin + high transferrin sat)
-  • macrocytic anemia (high MCV + low B12 or folate)
-  • microcytic anemia (low MCV + iron pattern)
-  • myeloproliferative pattern (high RBC + high WBC + high platelets)
-  • polycythemia + IR + sleep symptoms (OSA signature)
-  • elevated globulin + age 60+ + bone pain (myeloma red-flag)
-  • thyroid + autoimmune cluster
-  • cortisol/HPA dysregulation
-  • methylation issues (high homocysteine + low B12/folate)
-  • liver + alcohol pattern (AST > ALT + GGT high)
-  • anything else the data shows
+For EACH of these arrays, fill in OPEN-ENDED. Empty array if nothing fits. No padding.
+  • multi_marker_patterns — every multi-marker cluster you see (atherogenic, IR, IDA-masked-by-inflammation, hemochromatosis, macro/microcytic, myeloproliferative, OSA signature, methylation, AST>ALT+GGT, etc. — but ALSO anything else the data shows)
+  • medication_depletions — every drug → every nutrient depletion + reported symptom of that deficiency. Not constrained to the 35-drug registry
+  • critical_findings_ai — any urgent (this-week) finding worth headlining
+  • predicted_changes_ai — for each intervention, predicted lab change at retest with confidence + (if known) effect-size cite
+  • already_at_goal_ai — every marker already optimal, so we don't waste recommendations
+  • test_quality_caveats_ai — any test unreliable for THIS patient's situation (acute illness, biotin, timing, etc.)
+  • suspected_conditions — DIFFERENTIAL DIAGNOSIS. The most-valuable section of the plan. List every condition the data fits that's NOT already on the patient's DIAGNOSED CONDITIONS list. Be aggressive on rule-outs (hemochromatosis if iron pattern fits, multiple myeloma rule-out for unexplained globulin + age 60+, MASLD/NASH on hepatic+metabolic patterns, sleep apnea on polycythemia+symptoms, NCAH/Cushing's on hyperandrogenism + cortisol clues, etc.).
 
-DOMAIN 2 — medication_depletions: For EVERY drug on the patient's medication list, list every nutrient/mineral the drug depletes + symptoms of that deficiency the patient is reporting. Don't constrain to the 35 drug classes in the registry — you know more drugs than that. New brand names, less-common drugs, OTC drugs, supplements taken at high doses — all fair game.
+For each suspected_condition: confidence (high/moderate/low), 1-sentence evidence string citing the specific values + symptoms, confirmatory_tests (what the doctor should order to confirm), primary ICD-10, what_to_ask_doctor (the literal sentence to say at the visit).
 
-DOMAIN 3 — critical_findings_ai (separate from the deterministic critical engine): Any finding that requires URGENT (this-week) action and would benefit from being mentioned in the headline. Don't mince words — if their hematocrit is 53% on TRT, say so.
-
-DOMAIN 4 — retest_timeline (extend, don't constrain): Beyond the standard panel groupings + symptom-test map below, add ANY test the data picture warrants. For example: if elevated platelets + high RDW → reticulocyte count + peripheral smear. If unexplained anemia + age 50+ → fecal occult blood + colonoscopy referral. If postmenopausal female + atherogenic lipids → CAC score. Reason from the picture.
-
-DOMAIN 5 — supplement_stack (be thorough on disease-mechanism): For every diagnosed condition, list EVERY evidence-based supplement that supports it. Not just the ones in the registry. Long-tail conditions (Sjögren's, fibromyalgia, mast cell activation, POTS, MCAS, EDS, etc.) deserve their condition-specific evidence-based stacks.
-
-DOMAIN 6 — predicted_changes_ai (separate from deterministic predictions): For each intervention in your plan, predict the lab change at retest. Cite peer-reviewed effect-size estimates when you can. If you can't estimate, mark confidence='low'.
-
-DOMAIN 7 — already_at_goal: ANY marker the patient is already at goal on (not just vitamin D / B12 / omega-3 / ferritin / A1c — also things like SHBG in optimal, healthy uric acid, optimal albumin, etc.). Note as already at goal so we don't waste recommendations.
-
-DOMAIN 8 — test_quality_caveats_ai (separate from deterministic): Any test in this draw that's unreliable for THIS patient's situation. Universal — not just the 6 we hardcoded. Examples: random spot urine for sodium, fasting glucose without context, any biotin-affected marker if patient is on biotin, any test affected by a current acute illness.
-
-DOMAIN 9 — early_detection_pattern_matches: Patterns that fit a condition the patient hasn't been diagnosed with — surfaced via suspected_conditions[]. Already covered.
-
-CALIBRATION FOR ALL DOMAINS: Pristine 26yo with clean labs → near-empty arrays. Multi-issue patient → 5-15+ items per domain. Don't pad. Don't skip. Be thorough but precise.
-
-SUSPECTED_CONDITIONS — UNIVERSAL DIFFERENTIAL DIAGNOSIS (this is the most-valuable section of the plan; do NOT skip):
-This is open-ended differential diagnosis. Look at this patient's complete picture: every lab value (in-range AND out-of-range), every symptom, every medication, age, sex, demographics, family history if mentioned. List EVERY condition the pattern fits — regardless of whether it appears on the patient's stated DIAGNOSED CONDITIONS list. Do NOT constrain yourself to a checklist. Reason from first principles like a sharp internist who has time. Be thorough.
-
-Categories to scan across (this is the floor, not the ceiling — surface anything that fits):
-
-ENDOCRINE / HORMONE: Hashimoto's (subclinical or overt), Graves, hypothyroid, hyperthyroid, T2D / prediabetes, insulin resistance, metabolic syndrome, PCOS (female), Cushing's (rule-out: high cortisol + central obesity + striae), Addison's / adrenal insufficiency (low cortisol + low Na + high K), pheochromocytoma rule-out (episodic HTN + tachycardia), hyperprolactinemia, postmenopause, premature ovarian insufficiency, low testosterone (male), late-onset hypogonadism.
-
-CARDIOVASCULAR / METABOLIC: atherogenic dyslipidemia, familial hypercholesterolemia (LDL>190 + family hx), hypertriglyceridemia, NAFLD, NASH (liver fibrosis), heart failure rule-out (NT-proBNP), atrial fibrillation rule-out, hypertension, coronary artery disease risk, peripheral artery disease.
-
-HEMATOLOGY: iron deficiency anemia, B12 deficiency, pernicious anemia, folate deficiency, anemia of chronic disease, hereditary hemochromatosis (ferritin>300 + sat>50%), polycythemia vera rule-out, thalassemia trait (microcytic + normal iron), thrombocytopenia, thrombocytosis, leukocytosis, leukopenia, MGUS / myeloma rule-out (globulin pattern + age).
-
-GI / LIVER: IBD (UC/Crohn's) suspected, IBS, celiac (suspected from iron+D+B12 deficiencies + GI symptoms), NAFLD, NASH, alcoholic liver disease (AST>ALT + GGT), drug-induced liver injury (on hepatotoxic med + ALT high), hepatitis A/B/C (liver pattern + risk factors), pancreatitis pattern, gallstone risk, SIBO.
-
-KIDNEY: CKD (with stage estimate from eGFR), acute kidney injury (sudden creatinine bump), diabetic nephropathy, hypertensive nephrosclerosis, glomerulonephritis (UACR + sediment).
-
-AUTOIMMUNE / RHEUMATOLOGY: Hashimoto's, Graves, lupus (ANA positive + symptoms), RA (RF/CCP + joint symptoms), psoriatic arthritis, Sjögren's (sicca + ANA), polymyalgia rheumatica (50+ + ESR/CRP elevated + stiffness), giant cell arteritis rule-out (50+ + ESR + headache/jaw claudication), vasculitis rule-out, scleroderma pattern.
-
-INFLAMMATORY / INFECTIOUS: chronic inflammation pattern, long COVID / PASC (post-viral cluster), HIV rule-out, hepatitis B/C, chronic Lyme consider in endemic areas, mold biotoxin illness consider with rare cluster, tick-borne illness consider.
-
-RESPIRATORY: asthma, COPD (smoking + lung pattern), sleep apnea (Hct + IR + snoring + weight), pulmonary embolism rule-out (D-dimer in right context).
-
-MENTAL HEALTH / NEURO: depression (symptom + low D/B12/thyroid pattern), anxiety, ADHD, migraine, MS rule-out (neuro symptoms + B12 + D), Parkinson's rule-out, cognitive decline (B12 + thyroid + D + homocysteine), HPA dysregulation, chronic fatigue syndrome (ME-CFS) — multi-system unexplained pattern.
-
-MUSCULOSKELETAL: osteoporosis / osteopenia, sarcopenia (50+ + low protein), fibromyalgia (symptom cluster + tender points), vitamin D deficiency myopathy, statin-induced myopathy, rhabdomyolysis (CK > 1000).
-
-REPRODUCTIVE: infertility workup, PCOS, endometriosis (severe dysmenorrhea + symptoms), premature ovarian insufficiency, hypogonadism (M).
-
-SKIN: psoriasis, eczema/atopic dermatitis, acne (hormonal pattern), vitiligo (autoimmune cluster).
-
-NUTRITIONAL: vitamin D deficiency (D<30), B12 deficiency (B12<300 OR MMA high), folate deficiency, iron deficiency, magnesium deficiency, zinc deficiency, selenium deficiency, low-protein malnutrition.
-
-ONCOLOGY RED FLAGS (rule-out only, never alarm): unexplained anemia + age 50+ + weight loss → colon cancer rule-out; unexplained globulin elevation + bone pain + age 60+ → multiple myeloma rule-out; persistent unexplained inflammation marker elevation → solid-tumor or lymphoma rule-out; sustained leukocytosis without infection → hematologic malignancy rule-out.
-
-RARE BUT IMPORTANT: hereditary hemochromatosis, Wilson's disease (rare — copper + liver), alpha-1 antitrypsin deficiency (liver+lung), pituitary adenoma (hormone patterns), adrenal adenoma, neuroendocrine tumor, thyroid nodule / cancer (TSH suppressed + nodule mention), Cushing's (cortisol pattern), hyperaldosteronism (HTN + low K).
-
-For each suspected condition you identify:
-- Pick a confidence level (high = pattern is unmistakable; moderate = pattern fits but multiple causes possible; low = consider but lots of differentials)
-- Cite the SPECIFIC evidence in 1 sentence ("TSH 3.2 + fatigue + hair loss + cold intolerance + female 49yo — fits subclinical Hashimoto's")
-- List the confirmatory tests the doctor should order
-- Pick the primary ICD-10 (so insurance covers the workup)
-- Write the literal sentence the user can read out loud at the visit
-
-DO NOT include conditions the user already has on their DIAGNOSED CONDITIONS list (unless the suspicion is for a complication of that dx, like "diabetic nephropathy" in a known T2D patient).
-
-CALIBRATION: Healthy 26yo with clean labs → 0-2 entries (or empty array). Multi-issue patient → 5-15+ entries. Don't pad. Don't skip. Be honest about confidence level. Better than a doctor means catching what 12 minutes can't see — not making things up.` }],
+CALIBRATION (applies to ALL arrays): Healthy 26yo with clean labs → 0-2 entries each. Multi-issue patient → 5-15. Don't pad, don't skip. Better than a doctor = catching what 12 minutes can't see, NOT making things up.` }],
       }),
     });
 

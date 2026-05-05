@@ -170,11 +170,13 @@ export function useGenerateWellnessPlan() {
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-    // 120-second hard timeout — Supabase Edge Functions have a 150s hard
-    // cap, and our prompt + JSON output regularly takes 60-90s. 120s gives
-    // a buffer without exceeding the gateway timeout.
+    // 240-second hard timeout. The plan engine now produces 7 AI-reasoning
+    // domains + suspected_conditions + drug-interaction screen + deterministic
+    // backstops on top of the base plan, which has pushed cold-cache
+    // generation into the 90-180s range for treatment-mode patients.
+    // Supabase Edge Functions allow up to 400s; 240s leaves headroom.
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 120_000);
+    const timeoutId = setTimeout(() => controller.abort(), 240_000);
 
     activeGeneration = fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-wellness-plan`, {
       method: 'POST',
@@ -196,7 +198,7 @@ export function useGenerateWellnessPlan() {
       return data as WellnessPlanData;
     }).catch((err: any) => {
       if (err?.name === 'AbortError') {
-        throw new Error('Generation took too long (120s). The AI is overloaded — wait a minute and try again.');
+        throw new Error('Generation took too long (240s). The AI is overloaded — wait a minute and try again.');
       }
       throw err;
     }).finally(() => {
