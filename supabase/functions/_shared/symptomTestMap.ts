@@ -169,6 +169,105 @@ export const SYMPTOMS: SymptomDef[] = [
     aliases: [/hot flash/i, /night sweat/i, /vasomotor/i],
     tests: ['estradiol_progesterone_testosterone', 'thyroid_panel'],
   },
+  // ── Female reproductive / cycle symptoms ────────────────────────────────
+  // Each symptom triggers the FULL differential workup — not a single-disease
+  // workup. "Irregular periods" can be: thyroid disease, hyperprolactinemia,
+  // PCOS, premature ovarian insufficiency, perimenopause, hypothalamic
+  // amenorrhea, Cushing's, insulin resistance, NCAH. Every one of those
+  // needs to be reachable from the symptom alone.
+  {
+    key: 'irregular_periods',
+    label: 'Irregular / missed / heavy / absent periods',
+    aliases: [
+      /irregular (cycle|period|menstrual)/i,
+      /missed period/i, /skipped period/i,
+      /amenorrh/i, /oligomenorrh/i, /menorrhag/i,
+      /heavy period/i, /heavy menstrual/i,
+      /period (?:is|are) (?:irregular|heavy|missing|late)/i,
+      /no period/i,
+    ],
+    // Universal causes: thyroid, pituitary (prolactin), HPA axis (cortisol),
+    // metabolic (A1c).
+    tests: ['thyroid_panel', 'thyroid_antibodies', 'prolactin', 'hba1c', 'am_cortisol_if_hpa'],
+    // Female DDx adds: PCOS (androgens, SHBG, insulin), POI / perimenopause /
+    // hypothalamic amenorrhea (LH, FSH, estradiol, progesterone).
+    femaleAdds: ['androgen_panel', 'shbg', 'fasting_insulin_homa_ir', 'lh_fsh', 'estradiol_progesterone_testosterone'],
+  },
+  {
+    key: 'painful_periods',
+    label: 'Painful periods / pelvic pain / painful sex',
+    aliases: [
+      /painful period/i, /period pain/i,
+      /dysmenorrh/i, /pelvic pain/i,
+      /painful sex/i, /dyspareun/i, /endometrios/i,
+    ],
+    // Universal causes: endometriosis (no lab — flagged for imaging),
+    // adenomyosis / fibroids (imaging), PID (inflammatory + CBC), IBD overlap
+    // (calprotectin), thyroid (cycle hormone modifier).
+    tests: ['hs_crp', 'cbc', 'fecal_calprotectin', 'thyroid_panel'],
+    femaleAdds: ['estradiol_progesterone_testosterone'],
+  },
+  {
+    key: 'infertility',
+    label: 'Infertility / trouble conceiving',
+    aliases: [
+      /infertil/i,
+      /trying to conceive/i,
+      /can'?t (?:get pregnant|conceive)/i,
+      /unable to conceive/i,
+      /trouble conceiving/i,
+      /\bttc\b/i, /fertility/i,
+    ],
+    // Universal causes: thyroid + autoimmune thyroid (Hashimoto's
+    // dramatically lowers fertility), pituitary (prolactin), metabolic
+    // (insulin resistance), HPA stress, vit D deficiency.
+    tests: ['thyroid_panel', 'thyroid_antibodies', 'prolactin', 'hba1c', 'fasting_insulin_homa_ir', 'vit_d_25oh', 'am_cortisol_if_hpa'],
+    // Female DDx adds: PCOS, POI, ovarian reserve (LH/FSH/estradiol/progesterone).
+    femaleAdds: ['androgen_panel', 'shbg', 'lh_fsh', 'estradiol_progesterone_testosterone'],
+    // Male DDx adds: low T, varicocele workup (testosterone, LH/FSH for primary vs secondary).
+    maleAdds: ['testosterone_total_free', 'lh_fsh', 'estradiol_male'],
+  },
+  {
+    key: 'hirsutism',
+    label: 'Hirsutism (excess facial / body hair)',
+    aliases: [
+      /hirsut/i,
+      /excess(?:ive)? (?:facial|body|chin) hair/i,
+      /dark hair (?:on|growing)/i,
+      /chin hair/i, /upper lip hair/i,
+      /(?:facial|body) hair growth/i,
+      /unwanted hair/i,
+    ],
+    // Universal causes: PCOS (most common), non-classic adrenal hyperplasia
+    // (DHEA-S, 17-OH-progesterone), Cushing's (cortisol), insulin resistance,
+    // androgen-secreting tumor (very high T).
+    tests: ['fasting_insulin_homa_ir', 'am_cortisol_if_hpa'],
+    femaleAdds: ['androgen_panel', 'shbg', 'lh_fsh'],
+  },
+  {
+    key: 'breast_changes',
+    label: 'Breast tenderness / nipple discharge / cyclic breast pain',
+    aliases: [
+      /breast tender/i, /breast pain/i,
+      /nipple discharge/i, /galactorrh/i, /mastalg/i,
+    ],
+    // Universal causes: hyperprolactinemia (pituitary), thyroid disease,
+    // hormone imbalance, perimenopause.
+    tests: ['prolactin', 'thyroid_panel'],
+    femaleAdds: ['estradiol_progesterone_testosterone'],
+  },
+  {
+    key: 'vaginal_dryness',
+    label: 'Vaginal dryness / cycle changes / perimenopause',
+    aliases: [
+      /vaginal dryness/i, /vaginal atrophy/i,
+      /perimenopaus/i, /menopaus/i,
+    ],
+    // Universal causes: estrogen decline (menopause/POI), autoimmune
+    // (Sjögren's — significant overlap, classic miss), thyroid.
+    tests: ['thyroid_panel', 'ana_reflex', 'ssa_ssb_antibodies'],
+    femaleAdds: ['estradiol_progesterone_testosterone', 'lh_fsh'],
+  },
 ];
 
 const BY_KEY = new Map<string, SymptomDef>(SYMPTOMS.map(s => [s.key, s]));
