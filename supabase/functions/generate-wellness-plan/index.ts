@@ -576,12 +576,49 @@ ${allLabsStr.slice(0, 4000)}
 NUTRIENTS NOT TESTED (do NOT recommend supplements for these — mention in disclaimer only. Do NOT add them to retest_timeline as a 'baseline gap'. The strict triage rule still applies in optimization mode — a missing test only earns a retest_timeline entry if the patient has a symptom, medication depletion, or out-of-range marker that the test would investigate. Healthy patients with no triggers get a SHORT retest list focused on actual labs to track, not a longevity wishlist.):
 ${notTestedStr}
 
-Return JSON: {"generated_at":"${new Date().toISOString()}","headline":"one 12-word verdict in plain English (e.g. 'Your iron is low — fix it and the fatigue lifts')","summary":"3 short sentences max — what's wrong, what we'll fix, how long it takes","today_actions":[{"emoji":"","action":"one verb-led sentence the user does TODAY (e.g. 'Eat a 3-egg breakfast')","why":"one short sentence","category":"eat|move|take|sleep|stress"}],"supplement_stack":[{"emoji":"💊","nutrient":"","form":"","dose":"","timing":"","why_short":"6-10 word reason in plain English","why":"1 sentence linking to a lab or symptom","practical_note":"REQUIRED — 1 short sentence covering: WHY this timing (absorption / fat-soluble / GABA / circadian), interaction warnings with this user's actual medications, and any 'avoid taking with X' or 'take on empty stomach' caveats. Keep it ONE sentence.","category":"REQUIRED — ONE of: 'sleep_stress' / 'gut_healing' / 'liver_metabolic' / 'inflammation_cardio' / 'nutrient_repletion' / 'condition_therapy'. Pick the supplement's PRIMARY purpose for this patient.","alternatives":"REQUIRED — array of 1-2 EQUIVALENT alternative options the user can pick instead, formatted as objects {name, form, note}.","priority":"critical|high|moderate","sourced_from":"lab_finding|disease_mechanism","evidence_note":""}],"eating_pattern":{"name":"ONE of the approved pattern names","rationale":"1-2 plain-English sentences linking this pattern to THIS user's labs (max 30 words)","emphasize":["4-6 short food categories to lean into, no brands"],"limit":["3-5 short categories to cut back, no brands"]},"workouts":[{"emoji":"🏃","day":"Mon|Tue|Wed|Thu|Fri|Sat|Sun","title":"e.g. 'Zone 2 walk'","duration_min":30,"description":"1 sentence","why":"1 sentence — which goal/lab this serves"}],"lifestyle_interventions":{"diet":[{"emoji":"🥗","intervention":"","rationale":"","priority":""}],"sleep":[{"emoji":"😴","intervention":"","rationale":"","priority":""}],"exercise":[{"emoji":"💪","intervention":"","rationale":"","priority":""}],"stress":[{"emoji":"🧘","intervention":"","rationale":"","priority":""}]},"action_plan":{"phase_1":{"name":"Stabilize (Weeks 1-4)","focus":"","actions":[]},"phase_2":{"name":"Optimize (Weeks 5-8)","focus":"","actions":[]},"phase_3":{"name":"Maintain (Weeks 9-12)","focus":"","actions":[]}},"symptoms_addressed":[{"symptom":"","severity":7,"how_addressed":"MAX 30 WORDS. Two short sentences max. 6th-grade reading level. Format: '[plain-English cause]. [What we're doing about it].'"}],"retest_timeline":[{"marker":"","retest_at":"","why":""}],"suspected_conditions":[{"name":"plain-English condition name (e.g. 'Subclinical Hashimoto's thyroiditis', 'PCOS', 'Prediabetes', 'NAFLD', 'Pernicious anemia', 'Polymyalgia rheumatica')","category":"endocrine|cardiovascular|hematology|gi|kidney|autoimmune|reproductive|neuro|musculoskeletal|metabolic|respiratory|mental_health|infectious|oncology|nutritional|other","confidence":"high|moderate|low","evidence":"1 sentence citing the SPECIFIC labs / symptoms / meds / demographics that fit the pattern","confirmatory_tests":"array of plain-English tests the doctor should order to confirm or rule out (e.g. ['TPO antibodies','Thyroglobulin antibodies','Reverse T3'])","icd10":"primary ICD-10 code for the suspected condition","what_to_ask_doctor":"1 short sentence the user can literally read aloud at the visit"}],"disclaimer":"Educational only. Talk to your doctor before changing anything."}
+Return JSON: {"generated_at":"${new Date().toISOString()}","headline":"one 12-word verdict in plain English (e.g. 'Your iron is low — fix it and the fatigue lifts')","summary":"3 short sentences max — what's wrong, what we'll fix, how long it takes","today_actions":[{"emoji":"","action":"one verb-led sentence the user does TODAY (e.g. 'Eat a 3-egg breakfast')","why":"one short sentence","category":"eat|move|take|sleep|stress"}],"supplement_stack":[{"emoji":"💊","nutrient":"","form":"","dose":"","timing":"","why_short":"6-10 word reason in plain English","why":"1 sentence linking to a lab or symptom","practical_note":"REQUIRED — 1 short sentence covering: WHY this timing (absorption / fat-soluble / GABA / circadian), interaction warnings with this user's actual medications, and any 'avoid taking with X' or 'take on empty stomach' caveats. Keep it ONE sentence.","category":"REQUIRED — ONE of: 'sleep_stress' / 'gut_healing' / 'liver_metabolic' / 'inflammation_cardio' / 'nutrient_repletion' / 'condition_therapy'. Pick the supplement's PRIMARY purpose for this patient.","alternatives":"REQUIRED — array of 1-2 EQUIVALENT alternative options the user can pick instead, formatted as objects {name, form, note}.","priority":"critical|high|moderate","sourced_from":"lab_finding|disease_mechanism","evidence_note":""}],"eating_pattern":{"name":"ONE of the approved pattern names","rationale":"1-2 plain-English sentences linking this pattern to THIS user's labs (max 30 words)","emphasize":["4-6 short food categories to lean into, no brands"],"limit":["3-5 short categories to cut back, no brands"]},"workouts":[{"emoji":"🏃","day":"Mon|Tue|Wed|Thu|Fri|Sat|Sun","title":"e.g. 'Zone 2 walk'","duration_min":30,"description":"1 sentence","why":"1 sentence — which goal/lab this serves"}],"lifestyle_interventions":{"diet":[{"emoji":"🥗","intervention":"","rationale":"","priority":""}],"sleep":[{"emoji":"😴","intervention":"","rationale":"","priority":""}],"exercise":[{"emoji":"💪","intervention":"","rationale":"","priority":""}],"stress":[{"emoji":"🧘","intervention":"","rationale":"","priority":""}]},"action_plan":{"phase_1":{"name":"Stabilize (Weeks 1-4)","focus":"","actions":[]},"phase_2":{"name":"Optimize (Weeks 5-8)","focus":"","actions":[]},"phase_3":{"name":"Maintain (Weeks 9-12)","focus":"","actions":[]}},"symptoms_addressed":[{"symptom":"","severity":7,"how_addressed":"MAX 30 WORDS. Two short sentences max. 6th-grade reading level. Format: '[plain-English cause]. [What we're doing about it].'"}],"retest_timeline":[{"marker":"","retest_at":"","why":""}],"suspected_conditions":[{"name":"plain-English condition name","category":"endocrine|cardiovascular|hematology|gi|kidney|autoimmune|reproductive|neuro|musculoskeletal|metabolic|respiratory|mental_health|infectious|oncology|nutritional|other","confidence":"high|moderate|low","evidence":"1 sentence citing the SPECIFIC labs / symptoms / meds / demographics that fit the pattern","confirmatory_tests":["array of plain-English tests"],"icd10":"primary ICD-10 code","what_to_ask_doctor":"1 short sentence the user can read aloud"}],"multi_marker_patterns":[{"name":"plain-English pattern name (e.g. 'Atherogenic dyslipidemia pattern', 'Iron deficiency hidden by inflammation', 'Macrocytic anemia signature', 'Methylation impairment')","category":"endocrine|cardiovascular|hematology|gi|kidney|autoimmune|reproductive|neuro|musculoskeletal|metabolic|respiratory|mental_health|infectious|oncology|nutritional|other","evidence":"1 sentence citing the EXACT marker values that comprise the pattern","clinical_significance":"1 sentence on what this pattern means for THIS patient's health","confirmatory_action":"the next step — usually a specific test or rule-out workup"}],"medication_depletions":[{"medication":"the specific drug from the patient's medication list","nutrient_depleted":"vitamin/mineral/cofactor depleted","mechanism":"1-sentence pharmacology — why this drug depletes this nutrient","symptoms_to_watch":"comma-separated symptoms patient should watch for, drawn from THEIR reported symptoms when applicable","intervention":"the supplement OR test-first decision (per APPROVED EMPIRICAL EXCEPTIONS rule)","retest_marker":"the lab marker that confirms the depletion (added to retest_timeline)"}],"critical_findings_ai":[{"finding":"the urgent-action finding","severity":"critical|high","why_urgent":"1 sentence — why this needs action this week","action":"specific action the user should take this week (e.g. 'Email PCP today about ALT 187')"}],"predicted_changes_ai":[{"intervention":"the change you're recommending","marker":"specific lab marker expected to move","direction":"up|down","magnitude":"approximate change with units (e.g. '-0.4 mg/L', '-15 mg/dL', '+0.3 ng/mL')","timeframe_weeks":12,"confidence":"high|moderate|low","evidence":"1 sentence with effect-size citation if known"}],"already_at_goal_ai":[{"marker":"the marker name","value":"observed value with units","optimal_target":"why we consider this at-goal (the range)","note":"1 sentence — what we're NOT recommending because of this"}],"test_quality_caveats_ai":[{"marker":"the test/marker that's unreliable here","why_unreliable":"1 sentence on why this test fails for THIS patient","better_test":"the test that would actually answer the question"}],"disclaimer":"Educational only. Talk to your doctor before changing anything."}
 
 CRITICAL OUTPUT RULES:
 - today_actions: EXACTLY 3 items — the most important things this user can do TODAY. Mix categories (one eat, one move, one take is ideal).
 - eating_pattern: ONE pattern object (NOT an array). Pick the single best dietary pattern for this user's labs.
 - workouts: 3-5 workouts spanning a week, tailored to user's goals (longevity → zone 2 + lift, weight → resistance + walk, energy → easy cardio + sleep).
+
+UNIVERSAL OPEN-ENDED CLINICAL REASONING (apply to EVERY domain below — do NOT constrain yourself to a checklist):
+Every domain below should be filled in OPEN-ENDED. Deterministic engines fire as a backstop for high-prevalence cases — your job is to surface the LONG TAIL the registries don't catch. Reason from first principles. Be thorough.
+
+DOMAIN 1 — multi_marker_patterns: Look at the lab panel as a whole. Surface EVERY multi-marker pattern present (not just the textbook ones). Examples:
+  • atherogenic dyslipidemia (LDL-P + small LDL-P + low Large HDL-P + ApoB)
+  • insulin resistance cluster (A1c + insulin + HDL + TG + ALT)
+  • iron deficiency hidden by inflammation (ferritin "normal" + low TIBC + low sat + high CRP)
+  • hemochromatosis pattern (high ferritin + high transferrin sat)
+  • macrocytic anemia (high MCV + low B12 or folate)
+  • microcytic anemia (low MCV + iron pattern)
+  • myeloproliferative pattern (high RBC + high WBC + high platelets)
+  • polycythemia + IR + sleep symptoms (OSA signature)
+  • elevated globulin + age 60+ + bone pain (myeloma red-flag)
+  • thyroid + autoimmune cluster
+  • cortisol/HPA dysregulation
+  • methylation issues (high homocysteine + low B12/folate)
+  • liver + alcohol pattern (AST > ALT + GGT high)
+  • anything else the data shows
+
+DOMAIN 2 — medication_depletions: For EVERY drug on the patient's medication list, list every nutrient/mineral the drug depletes + symptoms of that deficiency the patient is reporting. Don't constrain to the 35 drug classes in the registry — you know more drugs than that. New brand names, less-common drugs, OTC drugs, supplements taken at high doses — all fair game.
+
+DOMAIN 3 — critical_findings_ai (separate from the deterministic critical engine): Any finding that requires URGENT (this-week) action and would benefit from being mentioned in the headline. Don't mince words — if their hematocrit is 53% on TRT, say so.
+
+DOMAIN 4 — retest_timeline (extend, don't constrain): Beyond the standard panel groupings + symptom-test map below, add ANY test the data picture warrants. For example: if elevated platelets + high RDW → reticulocyte count + peripheral smear. If unexplained anemia + age 50+ → fecal occult blood + colonoscopy referral. If postmenopausal female + atherogenic lipids → CAC score. Reason from the picture.
+
+DOMAIN 5 — supplement_stack (be thorough on disease-mechanism): For every diagnosed condition, list EVERY evidence-based supplement that supports it. Not just the ones in the registry. Long-tail conditions (Sjögren's, fibromyalgia, mast cell activation, POTS, MCAS, EDS, etc.) deserve their condition-specific evidence-based stacks.
+
+DOMAIN 6 — predicted_changes_ai (separate from deterministic predictions): For each intervention in your plan, predict the lab change at retest. Cite peer-reviewed effect-size estimates when you can. If you can't estimate, mark confidence='low'.
+
+DOMAIN 7 — already_at_goal: ANY marker the patient is already at goal on (not just vitamin D / B12 / omega-3 / ferritin / A1c — also things like SHBG in optimal, healthy uric acid, optimal albumin, etc.). Note as already at goal so we don't waste recommendations.
+
+DOMAIN 8 — test_quality_caveats_ai (separate from deterministic): Any test in this draw that's unreliable for THIS patient's situation. Universal — not just the 6 we hardcoded. Examples: random spot urine for sodium, fasting glucose without context, any biotin-affected marker if patient is on biotin, any test affected by a current acute illness.
+
+DOMAIN 9 — early_detection_pattern_matches: Patterns that fit a condition the patient hasn't been diagnosed with — surfaced via suspected_conditions[]. Already covered.
+
+CALIBRATION FOR ALL DOMAINS: Pristine 26yo with clean labs → near-empty arrays. Multi-issue patient → 5-15+ items per domain. Don't pad. Don't skip. Be thorough but precise.
 
 SUSPECTED_CONDITIONS — UNIVERSAL DIFFERENTIAL DIAGNOSIS (this is the most-valuable section of the plan; do NOT skip):
 This is open-ended differential diagnosis. Look at this patient's complete picture: every lab value (in-range AND out-of-range), every symptom, every medication, age, sex, demographics, family history if mentioned. List EVERY condition the pattern fits — regardless of whether it appears on the patient's stated DIAGNOSED CONDITIONS list. Do NOT constrain yourself to a checklist. Reason from first principles like a sharp internist who has time. Be thorough.
@@ -873,6 +910,23 @@ CALIBRATION: Healthy 26yo with clean labs → 0-2 entries (or empty array). Mult
     if (!Array.isArray(plan.today_actions)) plan.today_actions = [];
     if (!Array.isArray(plan.retest_timeline)) plan.retest_timeline = [];
     if (!Array.isArray(plan.suspected_conditions)) plan.suspected_conditions = [];
+    if (!Array.isArray(plan.multi_marker_patterns)) plan.multi_marker_patterns = [];
+    if (!Array.isArray(plan.medication_depletions)) plan.medication_depletions = [];
+    if (!Array.isArray(plan.critical_findings_ai)) plan.critical_findings_ai = [];
+    if (!Array.isArray(plan.predicted_changes_ai)) plan.predicted_changes_ai = [];
+    if (!Array.isArray(plan.already_at_goal_ai)) plan.already_at_goal_ai = [];
+    if (!Array.isArray(plan.test_quality_caveats_ai)) plan.test_quality_caveats_ai = [];
+
+    // ── Source attribution on every AI-produced array ────────────────────
+    // Tag each entry with source: 'ai' so the UI/audit can distinguish
+    // AI-reasoned items from deterministic-backstop items.
+    plan.multi_marker_patterns = plan.multi_marker_patterns.filter((p: any) => p?.name).map((p: any) => ({ ...p, source: p.source ?? 'ai' }));
+    plan.medication_depletions = plan.medication_depletions.filter((d: any) => d?.medication).map((d: any) => ({ ...d, source: d.source ?? 'ai' }));
+    plan.critical_findings_ai = plan.critical_findings_ai.filter((c: any) => c?.finding).map((c: any) => ({ ...c, source: c.source ?? 'ai' }));
+    plan.predicted_changes_ai = plan.predicted_changes_ai.filter((p: any) => p?.intervention).map((p: any) => ({ ...p, source: p.source ?? 'ai' }));
+    plan.already_at_goal_ai = plan.already_at_goal_ai.filter((a: any) => a?.marker).map((a: any) => ({ ...a, source: a.source ?? 'ai' }));
+    plan.test_quality_caveats_ai = plan.test_quality_caveats_ai.filter((t: any) => t?.marker).map((t: any) => ({ ...t, source: t.source ?? 'ai' }));
+    console.log(`[wellness-plan] universal AI domains: patterns=${plan.multi_marker_patterns.length} depletions=${plan.medication_depletions.length} critical=${plan.critical_findings_ai.length} predictions=${plan.predicted_changes_ai.length} atgoal=${plan.already_at_goal_ai.length} testqual=${plan.test_quality_caveats_ai.length}`);
 
     // ── Suspected conditions: AI + deterministic backstop (UNIVERSAL) ──────
     // The AI did open-ended differential diagnosis (universal — can find any
@@ -1351,6 +1405,12 @@ CALIBRATION: Healthy 26yo with clean labs → 0-2 entries (or empty array). Mult
       pathwayResult,
       labCount: labValues.length,
       suspectedConditions: plan.suspected_conditions ?? [],
+      multiMarkerPatterns: plan.multi_marker_patterns ?? [],
+      medicationDepletions: plan.medication_depletions ?? [],
+      criticalFindingsAi: plan.critical_findings_ai ?? [],
+      predictedChangesAi: plan.predicted_changes_ai ?? [],
+      alreadyAtGoalAi: plan.already_at_goal_ai ?? [],
+      testQualityCaveatsAi: plan.test_quality_caveats_ai ?? [],
     });
 
     await supabase.from('wellness_plans').insert({ user_id: userId, draw_id: drawId, plan_data: plan, generation_status: 'complete' });

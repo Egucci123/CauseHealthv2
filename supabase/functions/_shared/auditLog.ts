@@ -54,6 +54,15 @@ export interface PlanAudit {
   predictionCount: number;
   /** Suspected conditions surfaced (AI + deterministic backstop). */
   suspectedConditions: Array<{ name: string; category: string; confidence: string; source: 'ai' | 'deterministic' }>;
+  /** Universal AI domain output counts. */
+  universalAi: {
+    multiMarkerPatterns: number;
+    medicationDepletions: number;
+    criticalFindingsAi: number;
+    predictedChangesAi: number;
+    alreadyAtGoalAi: number;
+    testQualityCaveatsAi: number;
+  };
   /** Lab counts. */
   labStats: { total: number; critical: number; outOfRange: number };
 }
@@ -70,6 +79,13 @@ export interface BuildAuditInput {
   labCount: number;
   /** Suspected conditions from AI + backstop. */
   suspectedConditions?: Array<{ name?: string; category?: string; confidence?: string; source?: string }>;
+  /** Universal AI domain arrays — passed for count summary. */
+  multiMarkerPatterns?: any[];
+  medicationDepletions?: any[];
+  criticalFindingsAi?: any[];
+  predictedChangesAi?: any[];
+  alreadyAtGoalAi?: any[];
+  testQualityCaveatsAi?: any[];
 }
 
 export function buildAudit(input: BuildAuditInput): PlanAudit {
@@ -115,6 +131,14 @@ export function buildAudit(input: BuildAuditInput): PlanAudit {
       confidence: c.confidence ?? 'low',
       source: (c.source === 'deterministic' ? 'deterministic' : 'ai') as 'ai' | 'deterministic',
     })),
+    universalAi: {
+      multiMarkerPatterns: (input.multiMarkerPatterns ?? []).length,
+      medicationDepletions: (input.medicationDepletions ?? []).length,
+      criticalFindingsAi: (input.criticalFindingsAi ?? []).length,
+      predictedChangesAi: (input.predictedChangesAi ?? []).length,
+      alreadyAtGoalAi: (input.alreadyAtGoalAi ?? []).length,
+      testQualityCaveatsAi: (input.testQualityCaveatsAi ?? []).length,
+    },
     labStats: {
       total: input.labCount,
       critical: input.classification.flags.criticalCount,
