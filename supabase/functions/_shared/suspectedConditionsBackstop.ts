@@ -147,6 +147,41 @@ const RULES: BackstopRule[] = [
     },
   },
 
+  // ── Type 2 Diabetes (diagnostic threshold, undiagnosed) ────────────────
+  // Universal: A1c ≥ 6.5% OR fasting glucose ≥ 126 mg/dL on a single draw
+  // already meets ADA diagnostic criteria. If the user has no T2D dx on
+  // file, this fires as a high-confidence suspected condition. The AI
+  // sometimes treats diagnostic-threshold cases as critical findings only,
+  // so this backstop ensures the diagnosis itself surfaces in the
+  // differential — that's where users actually look for "what could this be."
+  {
+    key: 'undiagnosed_t2d',
+    alreadyRaisedIf: [/type 2 diab/i, /\bt2d\b/i, /diabetes mellitus/i, /\bdm2\b/i, /diabetic\b/i],
+    skipIfDx: ['t2d'],
+    detect: (ctx) => {
+      const a1c = mark(ctx.labValues, [/^hemoglobin a1c/i, /^a1c\b/i, /glycohemoglobin/i]);
+      const glucose = mark(ctx.labValues, [/^glucose\b/i, /^fasting glucose/i]);
+      const a1cDx = a1c && a1c.value >= 6.5;
+      const glucDx = glucose && glucose.value >= 126;
+      if (a1cDx || glucDx) {
+        const ev: string[] = [];
+        if (a1cDx) ev.push(`A1c ${a1c!.value}% (≥6.5% = ADA diagnostic)`);
+        if (glucDx) ev.push(`fasting glucose ${glucose!.value} mg/dL (≥126 = ADA diagnostic)`);
+        return {
+          name: 'Type 2 Diabetes (undiagnosed)',
+          category: 'metabolic',
+          confidence: 'high',
+          evidence: `Labs meet ADA diagnostic criteria for diabetes despite no diagnosis on file: ${ev.join(', ')}.`,
+          confirmatory_tests: ['Repeat HbA1c on a separate day to confirm', 'Fasting glucose (repeat)', 'Fasting Insulin + HOMA-IR', 'Comprehensive metabolic panel + UACR (kidney)', 'Lipid panel (extended)', 'Dilated eye exam (baseline retinopathy screen)'],
+          icd10: 'E11.9',
+          what_to_ask_doctor: "My A1c/glucose is in the diabetic range — can we confirm with a repeat draw and start a treatment plan? I'd also like baseline kidney (UACR) and eye-exam referrals.",
+          source: 'deterministic',
+        };
+      }
+      return null;
+    },
+  },
+
   // ── Prediabetes ────────────────────────────────────────────────────────
   {
     key: 'prediabetes',
