@@ -17,6 +17,7 @@ import { buildPredictedChanges, renderPredictionsForPrompt } from '../_shared/pr
 import { synthesizeAcrossSpecialties, renderSynthesisForPrompt } from '../_shared/specialtySynthesizer.ts';
 import { buildAudit } from '../_shared/auditLog.ts';
 import { detectLabPatterns } from '../_shared/labPatternRegistry.ts';
+import { runSuspectedConditionsBackstop } from '../_shared/suspectedConditionsBackstop.ts';
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -575,12 +576,58 @@ ${allLabsStr.slice(0, 4000)}
 NUTRIENTS NOT TESTED (do NOT recommend supplements for these — mention in disclaimer only. Do NOT add them to retest_timeline as a 'baseline gap'. The strict triage rule still applies in optimization mode — a missing test only earns a retest_timeline entry if the patient has a symptom, medication depletion, or out-of-range marker that the test would investigate. Healthy patients with no triggers get a SHORT retest list focused on actual labs to track, not a longevity wishlist.):
 ${notTestedStr}
 
-Return JSON: {"generated_at":"${new Date().toISOString()}","headline":"one 12-word verdict in plain English (e.g. 'Your iron is low — fix it and the fatigue lifts')","summary":"3 short sentences max — what's wrong, what we'll fix, how long it takes","today_actions":[{"emoji":"","action":"one verb-led sentence the user does TODAY (e.g. 'Eat a 3-egg breakfast')","why":"one short sentence","category":"eat|move|take|sleep|stress"}],"supplement_stack":[{"emoji":"💊","nutrient":"","form":"","dose":"","timing":"","why_short":"6-10 word reason in plain English","why":"1 sentence linking to a lab or symptom","practical_note":"REQUIRED — 1 short sentence covering: WHY this timing (absorption / fat-soluble / GABA / circadian), interaction warnings with this user's actual medications, and any 'avoid taking with X' or 'take on empty stomach' caveats. Keep it ONE sentence.","category":"REQUIRED — ONE of: 'sleep_stress' / 'gut_healing' / 'liver_metabolic' / 'inflammation_cardio' / 'nutrient_repletion' / 'condition_therapy'. Pick the supplement's PRIMARY purpose for this patient.","alternatives":"REQUIRED — array of 1-2 EQUIVALENT alternative options the user can pick instead, formatted as objects {name, form, note}.","priority":"critical|high|moderate","sourced_from":"lab_finding|disease_mechanism","evidence_note":""}],"eating_pattern":{"name":"ONE of the approved pattern names","rationale":"1-2 plain-English sentences linking this pattern to THIS user's labs (max 30 words)","emphasize":["4-6 short food categories to lean into, no brands"],"limit":["3-5 short categories to cut back, no brands"]},"workouts":[{"emoji":"🏃","day":"Mon|Tue|Wed|Thu|Fri|Sat|Sun","title":"e.g. 'Zone 2 walk'","duration_min":30,"description":"1 sentence","why":"1 sentence — which goal/lab this serves"}],"lifestyle_interventions":{"diet":[{"emoji":"🥗","intervention":"","rationale":"","priority":""}],"sleep":[{"emoji":"😴","intervention":"","rationale":"","priority":""}],"exercise":[{"emoji":"💪","intervention":"","rationale":"","priority":""}],"stress":[{"emoji":"🧘","intervention":"","rationale":"","priority":""}]},"action_plan":{"phase_1":{"name":"Stabilize (Weeks 1-4)","focus":"","actions":[]},"phase_2":{"name":"Optimize (Weeks 5-8)","focus":"","actions":[]},"phase_3":{"name":"Maintain (Weeks 9-12)","focus":"","actions":[]}},"symptoms_addressed":[{"symptom":"","severity":7,"how_addressed":"MAX 30 WORDS. Two short sentences max. 6th-grade reading level. Format: '[plain-English cause]. [What we're doing about it].'"}],"retest_timeline":[{"marker":"","retest_at":"","why":""}],"disclaimer":"Educational only. Talk to your doctor before changing anything."}
+Return JSON: {"generated_at":"${new Date().toISOString()}","headline":"one 12-word verdict in plain English (e.g. 'Your iron is low — fix it and the fatigue lifts')","summary":"3 short sentences max — what's wrong, what we'll fix, how long it takes","today_actions":[{"emoji":"","action":"one verb-led sentence the user does TODAY (e.g. 'Eat a 3-egg breakfast')","why":"one short sentence","category":"eat|move|take|sleep|stress"}],"supplement_stack":[{"emoji":"💊","nutrient":"","form":"","dose":"","timing":"","why_short":"6-10 word reason in plain English","why":"1 sentence linking to a lab or symptom","practical_note":"REQUIRED — 1 short sentence covering: WHY this timing (absorption / fat-soluble / GABA / circadian), interaction warnings with this user's actual medications, and any 'avoid taking with X' or 'take on empty stomach' caveats. Keep it ONE sentence.","category":"REQUIRED — ONE of: 'sleep_stress' / 'gut_healing' / 'liver_metabolic' / 'inflammation_cardio' / 'nutrient_repletion' / 'condition_therapy'. Pick the supplement's PRIMARY purpose for this patient.","alternatives":"REQUIRED — array of 1-2 EQUIVALENT alternative options the user can pick instead, formatted as objects {name, form, note}.","priority":"critical|high|moderate","sourced_from":"lab_finding|disease_mechanism","evidence_note":""}],"eating_pattern":{"name":"ONE of the approved pattern names","rationale":"1-2 plain-English sentences linking this pattern to THIS user's labs (max 30 words)","emphasize":["4-6 short food categories to lean into, no brands"],"limit":["3-5 short categories to cut back, no brands"]},"workouts":[{"emoji":"🏃","day":"Mon|Tue|Wed|Thu|Fri|Sat|Sun","title":"e.g. 'Zone 2 walk'","duration_min":30,"description":"1 sentence","why":"1 sentence — which goal/lab this serves"}],"lifestyle_interventions":{"diet":[{"emoji":"🥗","intervention":"","rationale":"","priority":""}],"sleep":[{"emoji":"😴","intervention":"","rationale":"","priority":""}],"exercise":[{"emoji":"💪","intervention":"","rationale":"","priority":""}],"stress":[{"emoji":"🧘","intervention":"","rationale":"","priority":""}]},"action_plan":{"phase_1":{"name":"Stabilize (Weeks 1-4)","focus":"","actions":[]},"phase_2":{"name":"Optimize (Weeks 5-8)","focus":"","actions":[]},"phase_3":{"name":"Maintain (Weeks 9-12)","focus":"","actions":[]}},"symptoms_addressed":[{"symptom":"","severity":7,"how_addressed":"MAX 30 WORDS. Two short sentences max. 6th-grade reading level. Format: '[plain-English cause]. [What we're doing about it].'"}],"retest_timeline":[{"marker":"","retest_at":"","why":""}],"suspected_conditions":[{"name":"plain-English condition name (e.g. 'Subclinical Hashimoto's thyroiditis', 'PCOS', 'Prediabetes', 'NAFLD', 'Pernicious anemia', 'Polymyalgia rheumatica')","category":"endocrine|cardiovascular|hematology|gi|kidney|autoimmune|reproductive|neuro|musculoskeletal|metabolic|respiratory|mental_health|infectious|oncology|nutritional|other","confidence":"high|moderate|low","evidence":"1 sentence citing the SPECIFIC labs / symptoms / meds / demographics that fit the pattern","confirmatory_tests":"array of plain-English tests the doctor should order to confirm or rule out (e.g. ['TPO antibodies','Thyroglobulin antibodies','Reverse T3'])","icd10":"primary ICD-10 code for the suspected condition","what_to_ask_doctor":"1 short sentence the user can literally read aloud at the visit"}],"disclaimer":"Educational only. Talk to your doctor before changing anything."}
 
 CRITICAL OUTPUT RULES:
 - today_actions: EXACTLY 3 items — the most important things this user can do TODAY. Mix categories (one eat, one move, one take is ideal).
 - eating_pattern: ONE pattern object (NOT an array). Pick the single best dietary pattern for this user's labs.
-- workouts: 3-5 workouts spanning a week, tailored to user's goals (longevity → zone 2 + lift, weight → resistance + walk, energy → easy cardio + sleep).` }],
+- workouts: 3-5 workouts spanning a week, tailored to user's goals (longevity → zone 2 + lift, weight → resistance + walk, energy → easy cardio + sleep).
+
+SUSPECTED_CONDITIONS — UNIVERSAL DIFFERENTIAL DIAGNOSIS (this is the most-valuable section of the plan; do NOT skip):
+This is open-ended differential diagnosis. Look at this patient's complete picture: every lab value (in-range AND out-of-range), every symptom, every medication, age, sex, demographics, family history if mentioned. List EVERY condition the pattern fits — regardless of whether it appears on the patient's stated DIAGNOSED CONDITIONS list. Do NOT constrain yourself to a checklist. Reason from first principles like a sharp internist who has time. Be thorough.
+
+Categories to scan across (this is the floor, not the ceiling — surface anything that fits):
+
+ENDOCRINE / HORMONE: Hashimoto's (subclinical or overt), Graves, hypothyroid, hyperthyroid, T2D / prediabetes, insulin resistance, metabolic syndrome, PCOS (female), Cushing's (rule-out: high cortisol + central obesity + striae), Addison's / adrenal insufficiency (low cortisol + low Na + high K), pheochromocytoma rule-out (episodic HTN + tachycardia), hyperprolactinemia, postmenopause, premature ovarian insufficiency, low testosterone (male), late-onset hypogonadism.
+
+CARDIOVASCULAR / METABOLIC: atherogenic dyslipidemia, familial hypercholesterolemia (LDL>190 + family hx), hypertriglyceridemia, NAFLD, NASH (liver fibrosis), heart failure rule-out (NT-proBNP), atrial fibrillation rule-out, hypertension, coronary artery disease risk, peripheral artery disease.
+
+HEMATOLOGY: iron deficiency anemia, B12 deficiency, pernicious anemia, folate deficiency, anemia of chronic disease, hereditary hemochromatosis (ferritin>300 + sat>50%), polycythemia vera rule-out, thalassemia trait (microcytic + normal iron), thrombocytopenia, thrombocytosis, leukocytosis, leukopenia, MGUS / myeloma rule-out (globulin pattern + age).
+
+GI / LIVER: IBD (UC/Crohn's) suspected, IBS, celiac (suspected from iron+D+B12 deficiencies + GI symptoms), NAFLD, NASH, alcoholic liver disease (AST>ALT + GGT), drug-induced liver injury (on hepatotoxic med + ALT high), hepatitis A/B/C (liver pattern + risk factors), pancreatitis pattern, gallstone risk, SIBO.
+
+KIDNEY: CKD (with stage estimate from eGFR), acute kidney injury (sudden creatinine bump), diabetic nephropathy, hypertensive nephrosclerosis, glomerulonephritis (UACR + sediment).
+
+AUTOIMMUNE / RHEUMATOLOGY: Hashimoto's, Graves, lupus (ANA positive + symptoms), RA (RF/CCP + joint symptoms), psoriatic arthritis, Sjögren's (sicca + ANA), polymyalgia rheumatica (50+ + ESR/CRP elevated + stiffness), giant cell arteritis rule-out (50+ + ESR + headache/jaw claudication), vasculitis rule-out, scleroderma pattern.
+
+INFLAMMATORY / INFECTIOUS: chronic inflammation pattern, long COVID / PASC (post-viral cluster), HIV rule-out, hepatitis B/C, chronic Lyme consider in endemic areas, mold biotoxin illness consider with rare cluster, tick-borne illness consider.
+
+RESPIRATORY: asthma, COPD (smoking + lung pattern), sleep apnea (Hct + IR + snoring + weight), pulmonary embolism rule-out (D-dimer in right context).
+
+MENTAL HEALTH / NEURO: depression (symptom + low D/B12/thyroid pattern), anxiety, ADHD, migraine, MS rule-out (neuro symptoms + B12 + D), Parkinson's rule-out, cognitive decline (B12 + thyroid + D + homocysteine), HPA dysregulation, chronic fatigue syndrome (ME-CFS) — multi-system unexplained pattern.
+
+MUSCULOSKELETAL: osteoporosis / osteopenia, sarcopenia (50+ + low protein), fibromyalgia (symptom cluster + tender points), vitamin D deficiency myopathy, statin-induced myopathy, rhabdomyolysis (CK > 1000).
+
+REPRODUCTIVE: infertility workup, PCOS, endometriosis (severe dysmenorrhea + symptoms), premature ovarian insufficiency, hypogonadism (M).
+
+SKIN: psoriasis, eczema/atopic dermatitis, acne (hormonal pattern), vitiligo (autoimmune cluster).
+
+NUTRITIONAL: vitamin D deficiency (D<30), B12 deficiency (B12<300 OR MMA high), folate deficiency, iron deficiency, magnesium deficiency, zinc deficiency, selenium deficiency, low-protein malnutrition.
+
+ONCOLOGY RED FLAGS (rule-out only, never alarm): unexplained anemia + age 50+ + weight loss → colon cancer rule-out; unexplained globulin elevation + bone pain + age 60+ → multiple myeloma rule-out; persistent unexplained inflammation marker elevation → solid-tumor or lymphoma rule-out; sustained leukocytosis without infection → hematologic malignancy rule-out.
+
+RARE BUT IMPORTANT: hereditary hemochromatosis, Wilson's disease (rare — copper + liver), alpha-1 antitrypsin deficiency (liver+lung), pituitary adenoma (hormone patterns), adrenal adenoma, neuroendocrine tumor, thyroid nodule / cancer (TSH suppressed + nodule mention), Cushing's (cortisol pattern), hyperaldosteronism (HTN + low K).
+
+For each suspected condition you identify:
+- Pick a confidence level (high = pattern is unmistakable; moderate = pattern fits but multiple causes possible; low = consider but lots of differentials)
+- Cite the SPECIFIC evidence in 1 sentence ("TSH 3.2 + fatigue + hair loss + cold intolerance + female 49yo — fits subclinical Hashimoto's")
+- List the confirmatory tests the doctor should order
+- Pick the primary ICD-10 (so insurance covers the workup)
+- Write the literal sentence the user can read out loud at the visit
+
+DO NOT include conditions the user already has on their DIAGNOSED CONDITIONS list (unless the suspicion is for a complication of that dx, like "diabetic nephropathy" in a known T2D patient).
+
+CALIBRATION: Healthy 26yo with clean labs → 0-2 entries (or empty array). Multi-issue patient → 5-15+ entries. Don't pad. Don't skip. Be honest about confidence level. Better than a doctor means catching what 12 minutes can't see — not making things up.` }],
       }),
     });
 
@@ -825,6 +872,35 @@ CRITICAL OUTPUT RULES:
     if (!Array.isArray(plan.supplement_stack)) plan.supplement_stack = [];
     if (!Array.isArray(plan.today_actions)) plan.today_actions = [];
     if (!Array.isArray(plan.retest_timeline)) plan.retest_timeline = [];
+    if (!Array.isArray(plan.suspected_conditions)) plan.suspected_conditions = [];
+
+    // ── Suspected conditions: AI + deterministic backstop (UNIVERSAL) ──────
+    // The AI did open-ended differential diagnosis (universal — can find any
+    // condition the data fits, including the long tail). The backstop fires
+    // for ~16 must-not-miss high-prevalence cases (Hashimoto's, PCOS,
+    // prediabetes, NAFLD, iron-deficiency anemia, B12 deficiency, hemochrom,
+    // sleep apnea, postmenopause, low T male, vit D deficiency, atherogenic
+    // dyslipidemia, FH rule-out, polymyalgia rheumatica, multiple myeloma
+    // rule-out — independent of what the AI returned). Skips anything the AI
+    // already raised or the user already has on their dx list.
+    // Tag the AI's entries first.
+    plan.suspected_conditions = plan.suspected_conditions
+      .filter((c: any) => c && c.name)
+      .map((c: any) => ({ ...c, source: c.source ?? 'ai' }));
+    const backstopEntries = runSuspectedConditionsBackstop({
+      age,
+      sex: profile?.sex ?? null,
+      conditionsLower: (condStr ?? '').toLowerCase(),
+      symptomsLower: (sympStr ?? '').toLowerCase(),
+      medsLower: (medsStr ?? '').toLowerCase(),
+      labValues,
+      aiSuspectedConditions: plan.suspected_conditions,
+    });
+    if (backstopEntries.length > 0) {
+      plan.suspected_conditions.push(...backstopEntries);
+      console.log(`[wellness-plan] suspected backstop fired: ${backstopEntries.map(e => e.name).join(', ')}`);
+    }
+    console.log(`[wellness-plan] suspected_conditions total: ${plan.suspected_conditions.length} (ai=${plan.suspected_conditions.filter((c: any) => c.source === 'ai').length}, det=${plan.suspected_conditions.filter((c: any) => c.source === 'deterministic').length})`);
 
     // ── Adequacy flags: post-flight injection (universal) ────────────────
     // Surface every adequacy flag (thyroid under-replaced, TRT polycythemia,
@@ -1274,6 +1350,7 @@ CRITICAL OUTPUT RULES:
       specialtySynthesis: synthesis,
       pathwayResult,
       labCount: labValues.length,
+      suspectedConditions: plan.suspected_conditions ?? [],
     });
 
     await supabase.from('wellness_plans').insert({ user_id: userId, draw_id: drawId, plan_data: plan, generation_status: 'complete' });

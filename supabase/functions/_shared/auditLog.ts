@@ -52,6 +52,8 @@ export interface PlanAudit {
   };
   /** Predicted outcomes generated. */
   predictionCount: number;
+  /** Suspected conditions surfaced (AI + deterministic backstop). */
+  suspectedConditions: Array<{ name: string; category: string; confidence: string; source: 'ai' | 'deterministic' }>;
   /** Lab counts. */
   labStats: { total: number; critical: number; outOfRange: number };
 }
@@ -66,6 +68,8 @@ export interface BuildAuditInput {
   specialtySynthesis: SpecialtySynthesis;
   pathwayResult: PathwayResult;
   labCount: number;
+  /** Suspected conditions from AI + backstop. */
+  suspectedConditions?: Array<{ name?: string; category?: string; confidence?: string; source?: string }>;
 }
 
 export function buildAudit(input: BuildAuditInput): PlanAudit {
@@ -105,6 +109,12 @@ export function buildAudit(input: BuildAuditInput): PlanAudit {
       skippedSupplements: skp.filter(a => a.kind === 'supplement').map(a => `${a.source}:${a.sourceKey}->${a.itemKey}`),
     },
     predictionCount: input.predictions.length,
+    suspectedConditions: (input.suspectedConditions ?? []).map(c => ({
+      name: c.name ?? '',
+      category: c.category ?? 'other',
+      confidence: c.confidence ?? 'low',
+      source: (c.source === 'deterministic' ? 'deterministic' : 'ai') as 'ai' | 'deterministic',
+    })),
     labStats: {
       total: input.labCount,
       critical: input.classification.flags.criticalCount,
