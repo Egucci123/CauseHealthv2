@@ -40,10 +40,14 @@ export const PossibleConditions = ({ conditions }: PossibleConditionsProps) => {
 
   return (
     <div className="space-y-3">
-      <p className="text-body text-clinical-stone text-sm leading-relaxed">
-        These aren't diagnoses — they're patterns in your data your doctor should investigate.
-        Bring this list to your visit and ask about the confirmatory tests.
-      </p>
+      <div className="bg-[#C94F4F]/5 border-l-4 border-[#C94F4F] rounded-r p-4">
+        <p className="text-precision text-[0.6rem] text-[#C94F4F] tracking-widest font-bold uppercase mb-1">
+          Not a diagnosis
+        </p>
+        <p className="text-body text-clinical-charcoal text-sm leading-relaxed">
+          These are pattern-matches against your data — informational only. Only your physician can diagnose a condition. Bring this list to your visit as a starting point for discussion, not a conclusion.
+        </p>
+      </div>
 
       <div className="space-y-3">
         {sorted.map((c, i) => {

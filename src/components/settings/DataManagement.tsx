@@ -51,10 +51,27 @@ export const DataManagement = () => {
   const handleDelete = async () => {
     if (!confirmDelete) { setConfirmDelete(true); return; }
     setDeleting(true);
-    for (const table of ['detections', 'priority_alerts', 'conditions', 'doctor_prep_documents', 'wellness_plans', 'lab_values', 'lab_draws', 'symptoms', 'medications']) {
-      await supabase.from(table).delete().eq('user_id', user!.id);
+    try {
+      // Hard delete — wipes all data tables AND deletes the auth.users row
+      // via the delete-account edge function. The client SDK can't delete
+      // an auth row, that's why we go through the edge function.
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) throw new Error('No session');
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-account`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error ?? `Deletion failed (${res.status})`);
+      }
+      await useAuthStore.getState().signOut();
+    } catch (e) {
+      setDeleting(false);
+      alert(`Account deletion failed: ${e instanceof Error ? e.message : String(e)}\n\nPlease contact support@causehealth.app and we'll handle it manually.`);
     }
-    await useAuthStore.getState().signOut();
   };
 
   return (

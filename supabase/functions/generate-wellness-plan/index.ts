@@ -19,6 +19,7 @@ import { buildAudit } from '../_shared/auditLog.ts';
 import { detectLabPatterns } from '../_shared/labPatternRegistry.ts';
 import { runSuspectedConditionsBackstop } from '../_shared/suspectedConditionsBackstop.ts';
 import { detectCriticalFindings } from '../_shared/criticalFindingsBackstop.ts';
+import { screenInteractions } from '../_shared/drugInteractionEngine.ts';
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -902,6 +903,64 @@ CALIBRATION: Healthy 26yo with clean labs → 0-2 entries (or empty array). Mult
         .slice(0, 10)
         .map((s: any, i: number) => ({ ...s, rank: i + 1 })); // force 1..N, no gaps or duplicates
     }
+
+    // ── DRUG INTERACTION SCREENING (SAFETY-CRITICAL) ─────────────────────
+    // Cross-check every supplement against the user's medication list.
+    // 'block' severity removes the supplement entirely.
+    // 'caution' severity keeps it but appends a warning to practical_note.
+    // Audit trail in plan._audit.interactions so we can see what fired.
+    try {
+      if (Array.isArray(plan.supplement_stack) && plan.supplement_stack.length > 0) {
+        const supplementNames = plan.supplement_stack.map((s: any) => s?.nutrient ?? s?.name ?? '').filter(Boolean);
+        const screen = screenInteractions(supplementNames, (medsStr ?? '').toLowerCase());
+        if (screen.findings.length > 0) {
+          console.log(`[wellness-plan] interaction screen: ${screen.findings.length} finding(s), ${screen.blockedSupplements.length} blocked, ${screen.cautionSupplements.length} caution`);
+          // Remove blocked
+          if (screen.blockedSupplements.length > 0) {
+            const blockedSet = new Set(screen.blockedSupplements.map(s => s.toLowerCase()));
+            plan.supplement_stack = plan.supplement_stack.filter((s: any) => {
+              const name = String(s?.nutrient ?? s?.name ?? '').toLowerCase();
+              return !blockedSet.has(name);
+            });
+          }
+          // Caution: append to practical_note
+          if (screen.cautionSupplements.length > 0) {
+            const cautionMap = new Map(screen.cautionSupplements.map(c => [c.name.toLowerCase(), c.warning]));
+            plan.supplement_stack = plan.supplement_stack.map((s: any) => {
+              const name = String(s?.nutrient ?? s?.name ?? '').toLowerCase();
+              const warning = cautionMap.get(name);
+              if (!warning) return s;
+              const note = String(s.practical_note ?? '');
+              return {
+                ...s,
+                practical_note: note.includes(warning) ? note : `${note}\n\n⚠ INTERACTION: ${warning}`,
+                interaction_caution: warning,
+              };
+            });
+          }
+          // Surface findings to top-level for UI rendering
+          plan.interaction_warnings = screen.findings.map(f => ({
+            supplement: f.supplement,
+            medication: f.medication,
+            severity: f.severity,
+            warning: f.userWarning,
+          }));
+        }
+        (plan._audit ??= {}).interactions = {
+          totalFindings: screen.findings.length,
+          blocked: screen.blockedSupplements,
+          caution: screen.cautionSupplements.map(c => c.name),
+          rules: screen.findings.map(f => ({ key: f.key, supplement: f.supplement, severity: f.severity })),
+        };
+      }
+    } catch (e) {
+      console.error('[wellness-plan] interaction screen error:', e);
+    }
+
+    // ── DISCLAIMER (deterministic — never let the AI wing this) ──────────
+    // Same wording on every plan, every user, every time. Lawyer-blessable
+    // boilerplate — do not let the AI rewrite it case-by-case.
+    plan.disclaimer = "CauseHealth is a wellness and health-information service, not a medical provider. We do not diagnose, treat, prescribe, or replace professional medical care. The patterns and tests in this plan are general informational suggestions based on your data — they are not a diagnosis. Always consult your physician or pharmacist before starting any supplement, lifestyle change, or new medication, and before stopping or modifying any prescribed treatment. If you are experiencing a medical emergency, call 911 or your local emergency number.";
 
     // Validate before saving — never save corrupt/partial plans
     if (!plan.summary && !plan.supplement_stack) {

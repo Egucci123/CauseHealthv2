@@ -879,6 +879,10 @@ CRITICAL OUTPUT RULES (for the new card-stack UI):
     if (!doc.headline) doc.headline = '';
     if (!Array.isArray(doc.medication_alternatives)) doc.medication_alternatives = [];
     if (!Array.isArray(doc.possible_conditions)) doc.possible_conditions = [];
+
+    // ── DISCLAIMER (deterministic) ─────────────────────────────────────
+    // Same wording on every doctor-prep doc. Treat as legal boilerplate.
+    (doc as any).disclaimer = "This document is patient-prepared by CauseHealth, a wellness information service. It is not a medical record, not a diagnosis, and not medical advice. The suggested tests and possible conditions are general informational pattern-matches on the patient's lab data — clinical judgment, history, and exam are the physician's responsibility. CauseHealth is not a healthcare provider and does not replace professional medical care.";
     if (!doc.review_of_systems) doc.review_of_systems = {};
     if (!doc.lab_summary) doc.lab_summary = { draw_date: '', lab_name: '', urgent_findings: [], other_abnormal: [] };
     if (!doc.generated_at) doc.generated_at = new Date().toISOString();

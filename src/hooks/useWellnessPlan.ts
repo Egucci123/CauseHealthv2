@@ -65,6 +65,15 @@ export interface WellnessPlanData {
     phase_3: { name: string; focus: string; actions: string[] };
   };
   retest_timeline: { marker: string; retest_at: string; why: string }[];
+  /** Drug-supplement interactions found by the safety engine.
+   *  'block' severity = supplement was REMOVED from supplement_stack.
+   *  'caution' severity = supplement is still in stack but with a warning. */
+  interaction_warnings?: Array<{
+    supplement: string;
+    medication: string;
+    severity: 'block' | 'caution';
+    warning: string;
+  }>;
   /** Differential diagnosis: conditions the labs/symptoms fit but the user
    *  hasn't been diagnosed with. Populated by AI open-ended reasoning +
    *  deterministic backstop. Each entry includes confirmatory_tests so the

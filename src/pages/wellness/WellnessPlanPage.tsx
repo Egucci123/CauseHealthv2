@@ -9,6 +9,7 @@ import { FolderSection } from '../../components/ui/FolderSection';
 import { LifestyleInterventions } from '../../components/wellness/LifestyleInterventions';
 import { ActionPlan } from '../../components/wellness/ActionPlan';
 import { PossibleConditions } from '../../components/wellness/PossibleConditions';
+import { InteractionWarnings } from '../../components/wellness/InteractionWarnings';
 import { TransformationForecast } from '../../components/wellness/TransformationForecast';
 import { useWellnessPlan, useGenerateWellnessPlan } from '../../hooks/useWellnessPlan';
 import { useLatestLabDraw, useLatestLabValues } from '../../hooks/useLabData';
@@ -708,6 +709,24 @@ export const WellnessPlanPage = () => {
             </FolderSection>
             );
           })()}
+
+          {/* Drug-supplement interaction warnings — safety-critical, render
+              high on the page so the user sees them before the supplement
+              stack itself. 'block' items already filtered out of the stack;
+              'caution' items remain with a warning. */}
+          {Array.isArray(plan.interaction_warnings) && plan.interaction_warnings.length > 0 && (
+            <FolderSection
+              icon="warning"
+              title="Drug–supplement interactions"
+              count={plan.interaction_warnings.length}
+              countLabel={plan.interaction_warnings.length === 1 ? 'finding' : 'findings'}
+              explanation="Every supplement we recommend is checked against your medications. Items shown here either were removed from your stack or kept with a warning. Always confirm with your pharmacist before starting anything new."
+              accentColor="#C94F4F"
+              defaultOpen
+            >
+              <InteractionWarnings warnings={plan.interaction_warnings} />
+            </FolderSection>
+          )}
 
           {/* Possible conditions to investigate — separate from retests.
               Retests = baseline tests the doctor missed. This = differential
