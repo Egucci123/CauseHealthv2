@@ -401,7 +401,7 @@ export const FeaturesSection = () => (
           </span>
         </div>
         <h2 className="text-authority text-4xl md:text-5xl font-bold text-white leading-tight">
-          The connections that<br />15 minutes can't make.
+          The connections that<br />12 minutes can't make.
         </h2>
       </div>
 

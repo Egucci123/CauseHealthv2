@@ -168,7 +168,7 @@ export const HeroSection = () => (
           </h2>
 
           <p className="text-body text-clinical-stone text-lg leading-relaxed mb-4 max-w-lg">
-            Upload your bloodwork. CauseHealth catches the patterns one doctor's 15-minute visit can't:
+            Upload your bloodwork. CauseHealth catches the patterns one doctor's 12-minute visit can't:
             <strong className="text-clinical-charcoal"> medication-nutrient depletions, atherogenic lipid shifts, under-replaced
             thyroid, prediabetic patterns</strong> — months or years before they become a diagnosis.
           </p>
