@@ -298,7 +298,7 @@ const SymptomsEditor = () => {
                     {symptoms.filter(s => s.category === category.id).map(s => (
                       <div key={s.symptom} className="mt-3 flex items-center gap-3">
                         <span className="text-body text-clinical-charcoal text-sm flex-1 truncate">{s.symptom}</span>
-                        <input type="range" min={1} max={10} value={s.severity}
+                        <input type="range" min={1} max={10} defaultValue={s.severity} key={s.symptom}
                           onChange={e => updateSeverity(s.symptom, parseInt(e.target.value))}
                           className="w-32 accent-primary-container" />
                         <span className="text-precision text-[0.65rem] text-clinical-charcoal w-6 text-right">{s.severity}</span>

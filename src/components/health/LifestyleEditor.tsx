@@ -86,11 +86,11 @@ export const LifestyleEditor = ({ value, onChange }: Props) => {
         <div className="space-y-6">
           <div>
             <div className="flex justify-between items-center mb-2"><SectionLabel className="mb-0">Hours per Night</SectionLabel><span className="text-authority text-2xl text-clinical-charcoal font-bold">{value.sleepHours ?? 7}h</span></div>
-            <input type="range" min={4} max={12} step={0.5} value={value.sleepHours ?? 7} onChange={e => onChange({ sleepHours: parseFloat(e.target.value) })} className="w-full accent-primary-container" />
+            <input type="range" min={4} max={12} step={0.5} defaultValue={value.sleepHours ?? 7} onChange={e => onChange({ sleepHours: parseFloat(e.target.value) })} className="w-full accent-primary-container" />
           </div>
           <div>
             <div className="flex justify-between items-center mb-2"><SectionLabel className="mb-0">Sleep Quality</SectionLabel><span className="text-authority text-2xl text-clinical-charcoal font-bold">{value.sleepQuality ?? 6}/10</span></div>
-            <input type="range" min={1} max={10} value={value.sleepQuality ?? 6} onChange={e => onChange({ sleepQuality: parseInt(e.target.value) })} className="w-full accent-primary-container" />
+            <input type="range" min={1} max={10} defaultValue={value.sleepQuality ?? 6} onChange={e => onChange({ sleepQuality: parseInt(e.target.value) })} className="w-full accent-primary-container" />
           </div>
           <div><SectionLabel>Do You Snore?</SectionLabel><ToggleButtons options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }, { value: 'partner_says', label: 'Partner says yes' }]} val={value.snoring} onPick={v => onChange({ snoring: v as any })} /></div>
           <div><SectionLabel>Wake Feeling Rested?</SectionLabel><ToggleButtons options={[{ value: 'yes', label: 'Yes' }, { value: 'sometimes', label: 'Sometimes' }, { value: 'no', label: 'Rarely' }]} val={value.wakeRested} onPick={v => onChange({ wakeRested: v as any })} /></div>
@@ -113,11 +113,11 @@ export const LifestyleEditor = ({ value, onChange }: Props) => {
           </div>
           <div>
             <div className="flex justify-between items-center mb-2"><SectionLabel className="mb-0">Alcohol (drinks/week)</SectionLabel><span className="text-authority text-2xl text-clinical-charcoal font-bold">{value.alcoholPerWeek ?? 0}</span></div>
-            <input type="range" min={0} max={21} value={value.alcoholPerWeek ?? 0} onChange={e => onChange({ alcoholPerWeek: parseInt(e.target.value) })} className="w-full accent-primary-container" />
+            <input type="range" min={0} max={21} defaultValue={value.alcoholPerWeek ?? 0} onChange={e => onChange({ alcoholPerWeek: parseInt(e.target.value) })} className="w-full accent-primary-container" />
           </div>
           <div>
             <div className="flex justify-between items-center mb-2"><SectionLabel className="mb-0">Coffee (cups/day)</SectionLabel><span className="text-authority text-2xl text-clinical-charcoal font-bold">{value.coffeePerDay ?? 1}</span></div>
-            <input type="range" min={0} max={8} value={value.coffeePerDay ?? 1} onChange={e => onChange({ coffeePerDay: parseInt(e.target.value) })} className="w-full accent-primary-container" />
+            <input type="range" min={0} max={8} defaultValue={value.coffeePerDay ?? 1} onChange={e => onChange({ coffeePerDay: parseInt(e.target.value) })} className="w-full accent-primary-container" />
           </div>
         </div>
       </SectionCard>
@@ -128,7 +128,7 @@ export const LifestyleEditor = ({ value, onChange }: Props) => {
         <div className="space-y-6">
           <div>
             <div className="flex justify-between items-center mb-2"><SectionLabel className="mb-0">Days per Week</SectionLabel><span className="text-authority text-2xl text-clinical-charcoal font-bold">{value.exerciseDaysPerWeek ?? 2}</span></div>
-            <input type="range" min={0} max={7} value={value.exerciseDaysPerWeek ?? 2} onChange={e => onChange({ exerciseDaysPerWeek: parseInt(e.target.value) })} className="w-full accent-primary-container" />
+            <input type="range" min={0} max={7} defaultValue={value.exerciseDaysPerWeek ?? 2} onChange={e => onChange({ exerciseDaysPerWeek: parseInt(e.target.value) })} className="w-full accent-primary-container" />
           </div>
           <div><SectionLabel>Types of Exercise</SectionLabel>
             <ChipSelect items={EXERCISE_TYPES} selected={value.exerciseTypes ?? []}
@@ -143,7 +143,7 @@ export const LifestyleEditor = ({ value, onChange }: Props) => {
         <div className="space-y-6">
           <div>
             <div className="flex justify-between items-center mb-2"><SectionLabel className="mb-0">Overall Stress Level</SectionLabel><span className="text-authority text-2xl text-clinical-charcoal font-bold">{value.stressLevel ?? 5}/10</span></div>
-            <input type="range" min={1} max={10} value={value.stressLevel ?? 5} onChange={e => onChange({ stressLevel: parseInt(e.target.value) })} className="w-full accent-primary-container" />
+            <input type="range" min={1} max={10} defaultValue={value.stressLevel ?? 5} onChange={e => onChange({ stressLevel: parseInt(e.target.value) })} className="w-full accent-primary-container" />
           </div>
           <div><SectionLabel>Primary Stressors</SectionLabel>
             <ChipSelect items={STRESS_OPTIONS} selected={value.primaryStressors ?? []}
