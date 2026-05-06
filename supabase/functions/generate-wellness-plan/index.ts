@@ -1590,7 +1590,14 @@ CALIBRATION (applies to ALL arrays): Healthy patient with clean labs → 0-2 ent
     // critical_treatment / treatment → 20, symptomatic → 14, optimization →
     // 10, pristine → 6. finalizeRetestTimeline() also dedups by canonical
     // key (so DHEA-S can't appear twice).
-    plan.retest_timeline = finalizeRetestTimeline(plan.retest_timeline, classification.retestCap);
+    //
+    // We pass labValues so the finalize step can suppress retests for
+    // markers ALREADY measured in this draw at healthy tier. Universal
+    // tracking-not-screening principle: if Lp(a) just came back normal,
+    // don't re-recommend it. If folate was just measured optimal, drop
+    // it. The retest list should be focused on what's still unresolved
+    // or actively being tracked — not a re-screen of the whole panel.
+    plan.retest_timeline = finalizeRetestTimeline(plan.retest_timeline, classification.retestCap, labValues);
     console.log(`[wellness-plan] retest_timeline finalized to ${plan.retest_timeline.length} entries (cap=${classification.retestCap}, mode=${classification.mode})`);
     if (!plan.generated_at) plan.generated_at = new Date().toISOString();
 

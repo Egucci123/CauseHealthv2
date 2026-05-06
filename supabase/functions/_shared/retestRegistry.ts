@@ -712,10 +712,65 @@ export function hasRetestByKey(retestTimeline: any[], key: string): boolean {
   });
 }
 
-/** Final pass: dedup by canonical key, drop empty markers, cap. */
-export function finalizeRetestTimeline(retestTimeline: any[], cap: number): any[] {
+/** Once-in-lifetime baseline tests. If the user has a measured value
+ *  for one of these in their current draw AND that value is in healthy
+ *  tier, we should NEVER add it back to the retest list. Lp(a) is the
+ *  textbook example — it's genetically determined and stable for life,
+ *  so once you've measured it normal, retesting it is clinical waste. */
+const ONCE_IN_LIFETIME_KEYS = new Set([
+  'lp_a',
+  // ApoB is NOT once-in-lifetime — it tracks intervention response. Keep
+  // retestable.
+]);
+
+/** Final pass: dedup by canonical key, drop empty markers, cap, and
+ *  drop tests whose canonical marker is already measured + healthy in
+ *  the current draw (so retests don't re-recommend tests the patient
+ *  just got back normal).
+ *
+ *  @param retestTimeline  the list of test recommendations the AI +
+ *    deterministic injectors produced
+ *  @param cap  hard maximum
+ *  @param currentLabs  current draw's lab values — used to decide which
+ *    tests are already-measured-and-healthy. When omitted (e.g. for
+ *    first-time users), no health-tier suppression happens.
+ */
+export function finalizeRetestTimeline(
+  retestTimeline: any[],
+  cap: number,
+  currentLabs?: Array<{ marker_name?: string | null; optimal_flag?: string | null; standard_flag?: string | null }>,
+): any[] {
   const seen = new Set<string>();
   const out: any[] = [];
+
+  // Build a map: canonical-key → tier (0 = healthy, 3 = critical) for the
+  // current draw's labs. Used to suppress retest entries whose canonical
+  // marker is already in the draw at healthy tier.
+  const currentTierByKey = new Map<string, number>();
+  if (currentLabs && currentLabs.length > 0) {
+    const TIER_MAP: Record<string, number> = {
+      healthy: 0, optimal: 0, normal: 0,
+      watch: 1, watchlist: 1, borderline: 1,
+      low: 2, high: 2, abnormal: 2, out_of_range: 2,
+      critical: 3, critical_low: 3, critical_high: 3, urgent: 3,
+    };
+    for (const lv of currentLabs) {
+      const flag = String(lv.optimal_flag ?? lv.standard_flag ?? '').trim().toLowerCase().replace(/[\s-]/g, '_');
+      const tier = TIER_MAP[flag];
+      if (tier === undefined) continue;
+      const name = String(lv.marker_name ?? '');
+      // Match against registry to find canonical key
+      for (const def of REGISTRY) {
+        if (def.aliases.some(re => re.test(name))) {
+          // Track LOWEST tier (most healthy) we've seen for this key
+          const prev = currentTierByKey.get(def.key);
+          if (prev === undefined || tier < prev) currentTierByKey.set(def.key, tier);
+          break;
+        }
+      }
+    }
+  }
+
   for (const r of retestTimeline) {
     const marker = String(r?.marker ?? '').trim();
     if (!marker) continue;
@@ -729,6 +784,22 @@ export function finalizeRetestTimeline(retestTimeline: any[], cap: number): any[
     if (key) {
       if (seen.has(key)) continue;
       seen.add(key);
+
+      // ── RETEST SUPPRESSION (universal, retest-only) ──────────────
+      // If the marker is already in the current draw at HEALTHY tier,
+      // don't re-add it as a retest — it just got measured normal.
+      // Caller (currentLabs param) is what activates this — first-time
+      // users with no prior draw still get the full list because the
+      // marker isn't established yet.
+      const currentTier = currentTierByKey.get(key);
+      if (currentTier === 0) {
+        // Once-in-lifetime test? Always drop if normal in current draw.
+        if (ONCE_IN_LIFETIME_KEYS.has(key)) continue;
+        // For trackable tests, drop only if we're confident the user has
+        // a recent measurement (signaled by currentLabs being passed at
+        // all + matching the marker). Skip from retest.
+        continue;
+      }
     }
     // Backfill specialist routing on AI-generated entries that didn't have one
     if (!r.specialist) {

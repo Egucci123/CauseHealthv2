@@ -309,6 +309,18 @@ export function renderPriorDrawForPrompt(summary: ProgressSummary | null): strin
   lines.push('5. SUSPECTED_CONDITIONS: re-evaluate. Some may resolve (drop them). New patterns may emerge from the new data.');
   lines.push('6. ALREADY_AT_GOAL_AI: any marker that just hit optimal in this draw goes here so we don\'t re-recommend interventions for it.');
   lines.push('7. MODE: if the patient improved on multiple critical markers, the mode may shift (treatment → optimization).');
+  lines.push('');
+  lines.push('8. RETEST_TIMELINE — TRACKING-FOCUSED, NOT SCREENING-FOCUSED:');
+  lines.push('   This is a RETEST plan, not a first-draw screening. The retest list should be SHORT (5-10 items, not 15-20). Include a marker on the next-retest list ONLY IF:');
+  lines.push('   - It\'s tracking an active intervention\'s progress (ALT on milk thistle, TG on omega-3 — yes); OR');
+  lines.push('   - It\'s monitoring a still-unresolved issue (Hct still high → yes); OR');
+  lines.push('   - It\'s mandatory drug-class safety monitoring (statin → CMP + CK at minimum); OR');
+  lines.push('   - It\'s a new symptom-triggered workup not yet done.');
+  lines.push('   DO NOT include a marker if:');
+  lines.push('   - It was JUST measured in this draw AND came back HEALTHY-tier (e.g. Folate 8 ng/mL — done, established, drop it);');
+  lines.push('   - It\'s a once-in-lifetime baseline already established (Lp(a), HFE genetics, ApoE — never retest these once measured normal);');
+  lines.push('   - The original concern is fully addressed (Vit D was 24, now 48 — drop from list, mention in already_at_goal_ai instead).');
+  lines.push('   The AI must look at THIS DRAW\'s lab values BEFORE adding anything to retest_timeline. If the test is already in the labs and the value is healthy, do NOT re-list it.');
   lines.push('=== END PRIOR DRAW BASELINE ===');
   return lines.join('\n');
 }
