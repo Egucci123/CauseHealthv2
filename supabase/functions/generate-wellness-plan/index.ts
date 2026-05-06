@@ -585,15 +585,20 @@ CRITICAL OUTPUT RULES:
 - eating_pattern: ONE pattern object (NOT an array). Pick the single best dietary pattern for this user's labs.
 - workouts: 3-5 workouts spanning a week, tailored to user's goals (longevity → zone 2 + lift, weight → resistance + walk, energy → easy cardio + sleep).
 
-RETEST_TIMELINE ROUTING — DEFAULT EVERYTHING TO "pcp". A good PCP can order nearly every blood test we recommend (ApoB, Lp(a), Free T3, Reverse T3, MMA, RBC magnesium, AM cortisol, hormone panels, autoimmune workup) when given the right ICD-10 — and we provide that. Sending users to 12 specialists creates copay sticker shock and isn't how patients actually use the system.
+RETEST_TIMELINE ROUTING — UNIVERSAL RULE: default everything to "pcp" UNLESS one of the criteria below applies. A good PCP can order nearly every blood test we recommend (ApoB, Lp(a), Free T3, Reverse T3, MMA, RBC magnesium, AM cortisol, hormone panels, autoimmune workup) when given the right ICD-10 — we provide that. Sending users to 12 specialists creates copay sticker shock and isn't how patients use the system.
 
 ONLY route OUT of "pcp" for:
   - "imaging"       : non-blood studies that need separate orders — liver ultrasound, FibroScan, CAC score, sleep study (HSAT/polysomnography), DEXA, mammogram, EKG, abdominal US, pelvic US
-  - "functional"    : tests genuinely hard to get covered even with good ICD-10 — DUTCH cortisol panel, organic acids, comprehensive stool analysis, food sensitivity (IgG4) panels. Most "advanced" bloodwork is NOT functional — keep ApoB/Lp(a)/Reverse T3/MMA/RBC mag in pcp.
-  - "mental_health" : PHQ-9, GAD-7 screening tools (done in any PCP visit but framed separately)
-  - "gi"            : ONLY when the test is something a GI doctor orders during their existing follow-up (fecal calprotectin for established UC patients on biologics — they're seeing GI anyway, no extra copay)
+  - "functional"    : tests genuinely hard to get covered even with good ICD-10 — DUTCH cortisol panel, organic acids, comprehensive stool analysis, food sensitivity (IgG4) panels
+  - "mental_health" : PHQ-9, GAD-7 screening tools
+  - "gi"            : tests that fold into an EXISTING gastroenterology follow-up (no extra copay since patient is already being seen). UNIVERSAL TRIGGER: patient has GI dx (UC / Crohn's / IBS / celiac / chronic IBD) on conditions list → route fecal calprotectin, celiac serology, AND any test that is a direct workup of that dx (iron panel for IBD blood loss; folate/B12 for IBD malabsorption) to "gi". For non-GI patients, those tests stay in "pcp".
 
-Everything else → "pcp". Trust the PCP. The insurance_note tells the user how to advocate if the PCP pushes back — escalate doesn't mean "go to specialist," it means "ask for the test with this code."
+UNIVERSAL CONDITION-FOLLOW-UP RULE: For ANY chronic condition on the patient's diagnosed list, if a test directly monitors or workups that condition AND the patient is being followed by that specialty, route to the existing specialty visit (no extra copay). Examples:
+  - GI dx + nutritional/inflammation tests → "gi"
+  - Cardiac dx + advanced lipid/cardiac markers → still "pcp" (PCP orders most lipid markers; cardiology is for procedural/imaging)
+  - Endocrine dx (diabetes, thyroid disorder) + monitoring tests → "pcp" (endocrinologist not in routine cycle)
+
+Everything else → "pcp". Trust the PCP. The insurance_note tells the user how to advocate if the PCP pushes back — escalate doesn't mean "go to specialist," it means "ask harder with this code."
 
 REASONING MODE — open-ended, first-principles, like a sharp internist with time:
 Deterministic engines fire as a backstop for high-prevalence cases. YOUR job is the long tail they don't catch. Reason from the data picture, not from a checklist. Cover every body system implicitly — endocrine, cardio, GI, hepatic, renal, heme, autoimmune, MSK, repro, neuro, respiratory, infectious, oncology rule-outs, nutritional. Don't constrain yourself.
@@ -605,16 +610,21 @@ For EACH of these arrays, fill in OPEN-ENDED. Empty array if nothing fits. No pa
   • predicted_changes_ai — for each intervention, predicted lab change at retest with confidence + (if known) effect-size cite
   • already_at_goal_ai — every marker already optimal, so we don't waste recommendations
   • test_quality_caveats_ai — any test unreliable for THIS patient's situation (acute illness, biotin, timing, etc.)
-  • suspected_conditions — DIFFERENTIAL DIAGNOSIS. The most-valuable section of the plan. List conditions the data fits that are NOT already on the patient's DIAGNOSED CONDITIONS list. STRICT QUALITY BAR — be a sharp clinician, not a defensive one:
+  • suspected_conditions — TRUE DIFFERENTIAL DIAGNOSIS (hidden conditions only). The most-valuable section of the plan. List ONLY hidden conditions the patient DOES NOT know they have. STRICT QUALITY BAR:
 
-    HARD RULES (enforce on yourself):
-    1. EVIDENCE FLOOR: Each entry MUST cite at least ONE objective finding — a lab value that's out-of-range/borderline OR a pathognomonic symptom + a supporting lab. "Symptoms could fit X" alone is NOT enough unless the symptoms are unique to that condition.
-    2. NO "TEST WASN'T DONE" ENTRIES: If your evidence is "this test wasn't run, so the patient might have X," that belongs in retest_timeline as a test recommendation — NOT in suspected_conditions as a differential. A differential needs DATA, not absence of data.
-    3. NO DUPLICATES: If two conditions share the same root finding (e.g. polycythemia + sleep apnea both citing high Hct), pick the upstream one and put the downstream finding in its evidence line.
-    4. NO CONTRADICTIONS: Don't list Gilbert syndrome with elevated ALT (Gilbert is normal liver enzymes). Don't list "early hypothyroidism" with TSH dead-center optimal. Check that your evidence actually supports the entry.
-    5. CAP AT 7: Even for a multi-issue patient, the doctor reads 5-7 differentials before tuning out. Pick your strongest 7. Better an aggressive doctor takes 5 seriously than dismisses 13.
+    HARD EXCLUSIONS — DO NOT include these (they belong in OTHER fields):
+    1. CONFIRMED LAB FINDINGS — "Vitamin D deficiency" when D=24 ng/mL is measured. Already in lab summary + we recommend D3. NOT a hidden condition.
+    2. CONFIRMED LIPID PATTERNS — "Atherogenic dyslipidemia" when LDL+TG are already shown out-of-range on the lipid panel. The lipid panel IS the finding. Don't restate it as a "possible condition."
+    3. DRUG DEPLETIONS — "Mesalamine-induced folate/B12 deficiency." That's medication_depletions[]. Not a differential.
+    4. EXISTING DIAGNOSES — "Active UC" when UC is already on conditions list. That's monitoring an existing dx, not a differential. Skip it.
+    5. DUPLICATES — If two entries share the same root finding (polycythemia + sleep apnea both citing Hct), pick the upstream one. Polycythemia secondary to sleep apnea = ONE entry: sleep apnea, with "+ secondary polycythemia" in the evidence.
+    6. CONTRADICTIONS — Gilbert with elevated ALT (Gilbert needs normal LFTs). Hypothyroid with TSH 1.93 (dead-center optimal). Check evidence supports entry.
+    7. "TEST WASN'T DONE" ENTRIES — That's a retest_timeline reason, not a differential.
 
-    Be aggressive on rule-outs that DO clear the bar (hemochromatosis if ferritin>300 + sat>50%, multiple myeloma rule-out if unexplained globulin + age 60+, MASLD/NASH on hepatic+metabolic patterns, sleep apnea on polycythemia+symptoms, NCAH/Cushing's on hyperandrogenism + cortisol clues). Just don't reach.
+    HARD INCLUSIONS — these ARE proper differentials:
+    - Hidden conditions where the data fits but the diagnosis is missing (NAFLD on hepatic+metabolic pattern; insulin resistance despite normal A1c; sleep apnea on polycythemia+symptoms; hemochromatosis if iron pattern fits; PCOS on hyperandrogenism; subclinical Hashimoto's if TPO+ or TSH>2.5; FH if LDL>190 family hx; multiple myeloma rule-out if unexplained globulin + age 60+; statin-induced myopathy on CK + symptoms; Cushing's on hyperandrogenism + cortisol clues)
+
+    CAP AT 5 — better 5 strong unknowns than 10 mixed quality. If you have more than 5 candidates, drop the weakest. The doctor reads 4-5 and engages; reads 10 and dismisses.
 
 For each suspected_condition: confidence (high/moderate/low), 1-sentence evidence string citing SPECIFIC values + symptoms, confirmatory_tests (what the doctor should order to confirm), primary ICD-10, what_to_ask_doctor (the literal sentence to say at the visit).
 
@@ -1021,8 +1031,10 @@ CALIBRATION (applies to ALL arrays): Healthy patient with clean labs → 0-2 ent
         if (nameRoot) seenNameRoot.add(nameRoot);
         deduped.push(c);
       }
-      // Cap at 7 — doctors don't read past this
-      plan.suspected_conditions = deduped.slice(0, 7);
+      // Cap at 5 — universal cap, applies to every patient. A doctor reads
+      // 4-5 differentials and engages; reads 10 and dismisses. Better one
+      // strong list every patient takes seriously than a kitchen-sink list.
+      plan.suspected_conditions = deduped.slice(0, 5);
       const dropped = before - plan.suspected_conditions.length;
       if (dropped > 0) {
         console.log(`[wellness-plan] suspected_conditions: ${before} -> ${plan.suspected_conditions.length} (dropped ${dropped} via dedup/cap)`);

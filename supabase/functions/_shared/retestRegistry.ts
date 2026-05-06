@@ -633,14 +633,16 @@ const SPECIALIST_BY_KEY: Record<string, Specialist> = {
   dexa_if_long_term: 'imaging',
   ekg_if_dose_high:  'imaging',
 
-  // ── Functional / cash-pay (insurance often denies) ─────────────────
-  // Add here only if the test is genuinely hard to get covered through PCP.
+  // ── GI-domain tests (universal — these are GI's bread and butter) ──
+  // These belong with the GI doctor regardless of who's seeing the patient.
+  // Calprotectin specifically is rarely PCP-ordered.
+  fecal_calprotectin: 'gi',
+  celiac_serology:    'gi',
+
+  // Functional / cash-pay routing intentionally empty.
   // Most "advanced" bloodwork (ApoB, Lp(a), Reverse T3, MMA, RBC Mg,
   // AM cortisol, hormone panels, autoimmune workup) DOES get covered with
   // proper ICD-10 — those stay in PCP.
-  // (Empty for now — add specifically problematic tests as we learn.)
-
-  // ── Everything else defaults to PCP via resolver below ─────────────
 };
 
 /** Resolve the specialist for a canonical test key. Registry's per-row
