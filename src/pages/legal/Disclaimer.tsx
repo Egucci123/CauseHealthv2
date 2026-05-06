@@ -8,7 +8,7 @@ export const Disclaimer = () => (
     <main className="max-w-3xl mx-auto px-6 py-24 md:py-32">
       <p className="text-precision text-[0.68rem] font-bold tracking-widest uppercase text-primary-container mb-3">Legal</p>
       <h1 className="text-authority text-4xl md:text-5xl text-clinical-charcoal font-bold mb-6 leading-tight">Medical Disclaimer</h1>
-      <p className="text-body text-clinical-stone text-base mb-10">Last updated: April 27, 2026</p>
+      <p className="text-body text-clinical-stone text-base mb-10">Last updated: May 6, 2026</p>
 
       <div className="prose prose-lg max-w-none space-y-6">
         <section>

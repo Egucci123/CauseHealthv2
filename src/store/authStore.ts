@@ -257,6 +257,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
           subscriptionExpiresAt: data.subscription_expires_at ?? null,
           compCodeUsed:         data.comp_code_used ?? null,
           onboardingCompleted:  data.onboarding_completed,
+          termsAcceptance:      data.terms_acceptance ?? null,
           primaryGoals:         data.primary_goals,
           familyHistory:        data.family_history ?? null,
           geneticTesting:       data.genetic_testing ?? null,

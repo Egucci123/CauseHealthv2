@@ -1,6 +1,7 @@
 // src/components/auth/ProtectedRoute.tsx
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
+import { AcceptTermsScreen, TERMS_VERSION } from './AcceptTermsScreen';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -46,6 +47,15 @@ export const ProtectedRoute = ({
   // with a null profile (causes blank state) and don't redirect to onboarding (causes flash).
   if (requireOnboarding && !profile) {
     return <AuthLoading />;
+  }
+
+  // ── CONSENT GATE ───────────────────────────────────────────────────
+  // Authenticated users who haven't accepted the current terms version
+  // see the full-screen consent screen. Universal — applies to every
+  // protected route, every user, until they accept. Re-fires automatically
+  // when TERMS_VERSION changes (e.g. material privacy policy update).
+  if (profile && (!profile.termsAcceptance || profile.termsAcceptance.terms_version !== TERMS_VERSION)) {
+    return <AcceptTermsScreen onAccepted={() => { /* profile re-fetched inside; ProtectedRoute re-renders */ }} />;
   }
 
   if (requireOnboarding && profile && !profile.onboardingCompleted) {

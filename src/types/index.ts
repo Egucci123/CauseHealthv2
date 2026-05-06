@@ -67,6 +67,16 @@ export interface Profile {
   subscriptionExpiresAt: string | null;
   compCodeUsed:         string | null;
   onboardingCompleted:  boolean;
+  /** Terms / Privacy / Disclaimer consent record. Set the first time the
+   *  user clicks Accept on the consent screen at signup. Re-shown if
+   *  TERMS_VERSION ever changes (handled by the gating component). */
+  termsAcceptance:      {
+    terms_version: string;
+    terms_accepted_at: string;
+    privacy_accepted_at: string;
+    disclaimer_accepted_at: string;
+    user_agent?: string;
+  } | null;
   primaryGoals:         string[] | null;
   // Onboarding context (added 2026-04-29) — used by AI prompts for personalization
   familyHistory:        FamilyHistory | null;
