@@ -1,25 +1,29 @@
 // src/components/ui/SmoothSlider.tsx
 //
-// A range input that FEELS continuous during drag but stores integer
-// (or arbitrary-step) values. Native <input type="range" step="1"> snaps
-// at every integer — the snap-jiggle is what users describe as "stopping
-// at each one" or "not sliding smoothly."
+// A range input that is genuinely smooth to drag.
 //
-// Solution: use step="any" internally (continuous drag), keep an
-// uncommitted local value while dragging, and commit the rounded value
-// to the parent on each tick of the drag. Visual movement is buttery,
-// the displayed + saved value is the rounded integer.
+// Why the obvious controlled-input version is broken:
+//   <input type="range" value={value} onChange={e => setValue(...)} />
+// Every drag tick triggers parent re-render → React reconciles the input
+// → input's `value` prop is set imperatively → browser's active drag
+// gesture gets interrupted, thumb releases mid-drag, user has to re-click
+// to keep going. Symptom matches the bug report exactly.
 //
-// Universal — works for any integer slider (sleep hours, coffee/day,
-// alcohol/week, exercise days, stress level, severity scales).
+// Fix: input is UNCONTROLLED (defaultValue, no value prop). React never
+// touches the DOM input during drag. We sync the DOM `value` directly via
+// a ref when the parent's `value` changes from outside (load, reset,
+// programmatic update) — but NOT during the user's own drag, because
+// the input already has the right value (the user is the one setting it).
+//
+// Universal — works for any integer or fractional-step slider.
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 
 interface Props {
   min: number;
   max: number;
-  /** The committed step the parent cares about. 1 for integers, 0.5 for
-   *  half-steps. Internal native step is always "any" for smooth feel. */
+  /** Committed step the parent cares about. 1 for integers, 0.5 for halves.
+   *  Internal slider always uses step="any" for buttery drag. */
   step?: number;
   value: number;
   onChange: (next: number) => void;
@@ -36,47 +40,47 @@ export const SmoothSlider = ({
   className = '',
   ariaLabel,
 }: Props) => {
-  // Local uncommitted value during drag — provides the smooth visual feel.
-  const [draft, setDraft] = useState<number>(value);
-  const draftRef = useRef<number>(value);
+  const ref = useRef<HTMLInputElement>(null);
 
   const round = (v: number) => {
     if (step >= 1) return Math.round(v);
     return Math.round(v / step) * step;
   };
 
-  // Sync draft from external `value` ONLY when the parent's value
-  // genuinely changed — i.e., not just echoing back the rounded value
-  // we just committed. Without this guard, dragging to 7.3 commits 7 to
-  // parent, parent re-renders with value=7, this useEffect would snap
-  // draft from 7.3 back to 7, fighting the next drag tick. Stutter.
+  // Sync DOM value when parent's `value` changes externally (load, reset,
+  // programmatic updates). We compare rounded-DOM-value to the new value;
+  // if they differ, write directly to the DOM. This bypasses React
+  // reconciliation, so an active drag is NEVER interrupted by an
+  // upstream state change echoing back.
   useEffect(() => {
-    if (round(draftRef.current) !== value) {
-      setDraft(value);
-      draftRef.current = value;
+    const el = ref.current;
+    if (!el) return;
+    const currentDom = parseFloat(el.value);
+    if (Number.isFinite(currentDom) && round(currentDom) !== value) {
+      el.value = String(value);
     }
-    // round() is stable per step, intentionally not in deps
+    // Only re-run when parent's `value` actually changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
 
   return (
     <input
+      ref={ref}
       type="range"
       min={min}
       max={max}
       step="any"
-      value={draft}
+      defaultValue={value}
       aria-label={ariaLabel}
-      onInput={(e) => {
-        const raw = parseFloat((e.target as HTMLInputElement).value);
-        setDraft(raw);
-        draftRef.current = raw;
+      onChange={(e) => {
+        // Fires on every drag tick. Commit the rounded value to parent
+        // when it differs — keeps the displayed number ("7h") in sync.
+        // The slider's own DOM value is continuous (step="any"), so the
+        // browser's drag tracking is never interrupted.
+        const raw = parseFloat(e.target.value);
+        if (!Number.isFinite(raw)) return;
         const rounded = round(raw);
         if (rounded !== value) onChange(rounded);
-      }}
-      onChange={() => {
-        // Native onChange is redundant once onInput is wired, but keep a
-        // no-op to silence React's "controlled-without-onChange" warning.
       }}
       className={`w-full accent-primary-container ${className}`}
     />
