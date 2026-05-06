@@ -360,7 +360,31 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
         error: finalErr?.message ?? null,
       });
 
-      try { await useAuthStore.getState().fetchProfile(); } catch {}
+      // ── OPTIMISTIC AUTH-STORE UPDATE (prevents refresh-required Finish bug) ──
+      // We just successfully updated profiles.onboarding_completed=true. Patch
+      // the local Zustand profile NOW so ProtectedRoute sees the new value
+      // immediately on the next route navigation. Without this, the navigate
+      // from Step 7 happens before fetchProfile's network round-trip lands,
+      // ProtectedRoute reads stale profile.onboardingCompleted=false, and
+      // bounces the user back to /onboarding. Refresh fixes it because init
+      // reads the now-correct value from DB. Optimistic patch eliminates
+      // that race entirely.
+      if (!finalErr) {
+        const auth = useAuthStore.getState();
+        if (auth.profile) {
+          useAuthStore.setState({
+            profile: {
+              ...auth.profile,
+              onboardingCompleted: true,
+              primaryGoals: state.primaryGoals.filter(Boolean),
+            },
+          });
+        }
+      }
+
+      // Background fetch for full sync — don't block the user's navigate.
+      // If it fails, the optimistic patch above keeps things working.
+      useAuthStore.getState().fetchProfile().catch(() => { /* swallowed; local state already correct */ });
 
       // Clear local backup once everything is durably in the DB
       if (!finalErr) clearLocalOnboarding();
