@@ -40,17 +40,24 @@ export const SmoothSlider = ({
   const [draft, setDraft] = useState<number>(value);
   const draftRef = useRef<number>(value);
 
-  // Keep draft in sync if parent changes value externally (e.g. reset / load).
-  useEffect(() => {
-    setDraft(value);
-    draftRef.current = value;
-  }, [value]);
-
   const round = (v: number) => {
     if (step >= 1) return Math.round(v);
-    // Round to nearest step: e.g. step=0.5 → snap to halves
     return Math.round(v / step) * step;
   };
+
+  // Sync draft from external `value` ONLY when the parent's value
+  // genuinely changed — i.e., not just echoing back the rounded value
+  // we just committed. Without this guard, dragging to 7.3 commits 7 to
+  // parent, parent re-renders with value=7, this useEffect would snap
+  // draft from 7.3 back to 7, fighting the next drag tick. Stutter.
+  useEffect(() => {
+    if (round(draftRef.current) !== value) {
+      setDraft(value);
+      draftRef.current = value;
+    }
+    // round() is stable per step, intentionally not in deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
 
   return (
     <input
@@ -60,22 +67,16 @@ export const SmoothSlider = ({
       step="any"
       value={draft}
       aria-label={ariaLabel}
-      // onInput fires during drag (continuous motion). Update the visual
-      // draft state immediately so the thumb glides without stutter.
       onInput={(e) => {
         const raw = parseFloat((e.target as HTMLInputElement).value);
         setDraft(raw);
         draftRef.current = raw;
-        // Also commit the rounded value to parent on each tick — callers
-        // rely on `value` prop reflecting the current selection in real
-        // time (e.g., "7h" display next to slider). The round prevents
-        // float noise from leaking into stored state.
         const rounded = round(raw);
         if (rounded !== value) onChange(rounded);
       }}
       onChange={() => {
-        // Native onChange is redundant once onInput is wired, but keep
-        // a no-op to avoid React's "controlled without onChange" warning.
+        // Native onChange is redundant once onInput is wired, but keep a
+        // no-op to silence React's "controlled-without-onChange" warning.
       }}
       className={`w-full accent-primary-container ${className}`}
     />
