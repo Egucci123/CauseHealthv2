@@ -833,10 +833,20 @@ CALIBRATION (applies to ALL arrays): Healthy patient with clean labs → 0-2 ent
       // rule is test-first (medications trigger tests, not blind supplementation),
       // but a narrow allow-list permits empirical supplementation where the
       // depletion is universal AND testing is impractical AND the supplement
-      // is safe + inexpensive. Currently allowed: CoQ10/ubiquinol (statin
-      // patients), B12 (long-term metformin), magnesium glycinate (long-term
-      // PPI). Anything else gets dropped.
-      const empiricalAllowed = /coq10|ubiquinol|coenzyme\s*q10|^b[\s-]?12|cobalamin|magnesium\s+glycinate/i;
+      // is safe + inexpensive AND has a clear evidence base for the specific
+      // medication.
+      //
+      // Allowed empirical supplementation:
+      //   - CoQ10/ubiquinol — statin patients (statins block CoQ10 synthesis)
+      //   - B12 — long-term metformin / PPI patients (impaired absorption)
+      //   - Magnesium Glycinate — PPI / diuretic / steroid patients (renal wasting)
+      //   - Milk Thistle (silymarin) — statin / hepatotoxic-med patients
+      //     (30+ years safety data; protective on hepatocytes; no major interactions)
+      //   - Calcium + D3 — steroid patients (ACR guidelines mandate this for
+      //     anyone on >5mg prednisone for >3 months — NOT optional, it's standard of care)
+      //   - Vitamin D3 — steroid patients (steroid-induced D deficiency,
+      //     same ACR guidelines)
+      const empiricalAllowed = /coq10|ubiquinol|coenzyme\s*q10|^b[\s-]?12|cobalamin|magnesium\s+glycinate|milk\s*thistle|silymarin|silybin|calcium\s*[+\s]\s*vitamin\s*d|calcium\s*[+\s]\s*d3|vitamin\s*d3?\b/i;
       const beforeFilterCount = plan.supplement_stack.length;
       plan.supplement_stack = plan.supplement_stack.filter((s: any) => {
         const src = (s?.sourced_from ?? '').toLowerCase();
