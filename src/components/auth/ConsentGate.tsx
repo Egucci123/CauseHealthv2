@@ -38,15 +38,27 @@ export const ConsentGate = ({ onConsented }: Props) => {
   const userId = useAuthStore(s => s.user?.id);
   const [missing, setMissing] = useState<Set<ConsentType> | null>(null);
 
-  // Initial fetch of missing consents
+  // Initial fetch of missing consents. CRITICAL: if the user is already
+  // fully consented (returning user, navigated back from onboarding, etc.),
+  // we MUST signal the parent immediately. Otherwise we sit on the
+  // "Checking consent" spinner forever — there's no screen to accept,
+  // refresh() never runs, onConsented() never fires.
   useEffect(() => {
     let cancelled = false;
     if (!userId) return;
     (async () => {
       const m = await getMissingConsents(userId);
-      if (!cancelled) setMissing(m);
+      if (cancelled) return;
+      setMissing(m);
+      // Auto-bypass when there's nothing to consent to (returning users,
+      // browser back navigation, etc.). This is the bug fix.
+      if (isFullyConsented(m)) onConsented();
     })();
     return () => { cancelled = true; };
+    // onConsented intentionally omitted from deps — it's a fresh closure
+    // on every parent render, but its behavior is stable (always calls
+    // the same setState). Including it would cause an infinite loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   // After a screen records consent, refresh the missing set
@@ -69,7 +81,8 @@ export const ConsentGate = ({ onConsented }: Props) => {
     return <HealthDataConsentScreen onAccepted={refresh} />;
   }
 
-  // All three logged — caller should have already onConsented'd, but if
-  // the effect raced, render loading briefly until it does.
+  // All three logged — useEffect above already called onConsented(). The
+  // parent will re-render and stop showing this gate. Render loading just
+  // for the single tick before that re-render lands.
   return <Loading />;
 };
