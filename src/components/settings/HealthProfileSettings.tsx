@@ -9,7 +9,6 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '../ui/Button';
 import { SectionLabel } from '../ui/SectionLabel';
-import { SmoothSlider } from '../ui/SmoothSlider';
 import { useMedications, useSaveMedications } from '../../hooks/useMedications';
 import { useConditions, useSaveConditions } from '../../hooks/useConditions';
 import { useSymptoms, useSaveSymptoms } from '../../hooks/useSymptoms';
@@ -299,9 +298,9 @@ const SymptomsEditor = () => {
                     {symptoms.filter(s => s.category === category.id).map(s => (
                       <div key={s.symptom} className="mt-3 flex items-center gap-3">
                         <span className="text-body text-clinical-charcoal text-sm flex-1 truncate">{s.symptom}</span>
-                        <SmoothSlider min={1} max={10} value={s.severity}
-                          onChange={v => updateSeverity(s.symptom, v)}
-                          className="w-32" ariaLabel={`Severity of ${s.symptom}`} />
+                        <input type="range" min={1} max={10} value={s.severity}
+                          onChange={e => updateSeverity(s.symptom, parseInt(e.target.value))}
+                          className="w-32 accent-primary-container" />
                         <span className="text-precision text-[0.65rem] text-clinical-charcoal w-6 text-right">{s.severity}</span>
                       </div>
                     ))}

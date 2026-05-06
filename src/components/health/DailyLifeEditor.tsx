@@ -8,7 +8,6 @@
 // Healthcare) but most users filled only the first tab and missed the rest.
 // Stacked sections force users to scroll past every required field.
 import { SectionLabel } from '../ui/SectionLabel';
-import { SmoothSlider } from '../ui/SmoothSlider';
 import type { LifeContext } from '../../store/onboardingStore';
 
 const WORK_TYPES: { value: LifeContext['workType']; label: string; icon: string }[] = [
@@ -164,7 +163,7 @@ export const DailyLifeEditor = ({ value, onChange }: Props) => {
           <div><SectionLabel>When do you work?</SectionLabel><Toggle options={SCHEDULE_OPTS} val={value.workSchedule} onPick={v => onChange({ workSchedule: v })} /></div>
           <div>
             <div className="flex justify-between items-center mb-2"><SectionLabel className="mb-0">Hours per week</SectionLabel><span className="text-authority text-2xl text-clinical-charcoal font-bold">{value.hoursWorkedPerWeek ?? 40}h</span></div>
-            <SmoothSlider min={0} max={80} value={value.hoursWorkedPerWeek ?? 40} onChange={v => onChange({ hoursWorkedPerWeek: v })} ariaLabel="Hours worked per week" />
+            <input type="range" min={0} max={80} value={value.hoursWorkedPerWeek ?? 40} onChange={e => onChange({ hoursWorkedPerWeek: parseInt(e.target.value) })} className="w-full accent-primary-container" />
           </div>
         </div>
       </SectionCard>
@@ -177,7 +176,7 @@ export const DailyLifeEditor = ({ value, onChange }: Props) => {
           <div><SectionLabel>You live with...</SectionLabel><Toggle options={LIVING_OPTS} val={value.livingSituation} onPick={v => onChange({ livingSituation: v })} /></div>
           <div>
             <div className="flex justify-between items-center mb-2"><SectionLabel className="mb-0">How often do you cook at home?</SectionLabel><span className="text-authority text-2xl text-clinical-charcoal font-bold">{value.cookHomeFrequency ?? 5}/10</span></div>
-            <SmoothSlider min={0} max={10} value={value.cookHomeFrequency ?? 5} onChange={v => onChange({ cookHomeFrequency: v })} ariaLabel="How often do you cook at home" />
+            <input type="range" min={0} max={10} value={value.cookHomeFrequency ?? 5} onChange={e => onChange({ cookHomeFrequency: parseInt(e.target.value) })} className="w-full accent-primary-container" />
           </div>
         </div>
       </SectionCard>
