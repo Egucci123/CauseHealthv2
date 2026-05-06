@@ -595,11 +595,20 @@ For EACH of these arrays, fill in OPEN-ENDED. Empty array if nothing fits. No pa
   • predicted_changes_ai — for each intervention, predicted lab change at retest with confidence + (if known) effect-size cite
   • already_at_goal_ai — every marker already optimal, so we don't waste recommendations
   • test_quality_caveats_ai — any test unreliable for THIS patient's situation (acute illness, biotin, timing, etc.)
-  • suspected_conditions — DIFFERENTIAL DIAGNOSIS. The most-valuable section of the plan. List every condition the data fits that's NOT already on the patient's DIAGNOSED CONDITIONS list. Be aggressive on rule-outs (hemochromatosis if iron pattern fits, multiple myeloma rule-out for unexplained globulin + age 60+, MASLD/NASH on hepatic+metabolic patterns, sleep apnea on polycythemia+symptoms, NCAH/Cushing's on hyperandrogenism + cortisol clues, etc.).
+  • suspected_conditions — DIFFERENTIAL DIAGNOSIS. The most-valuable section of the plan. List conditions the data fits that are NOT already on the patient's DIAGNOSED CONDITIONS list. STRICT QUALITY BAR — be a sharp clinician, not a defensive one:
 
-For each suspected_condition: confidence (high/moderate/low), 1-sentence evidence string citing the specific values + symptoms, confirmatory_tests (what the doctor should order to confirm), primary ICD-10, what_to_ask_doctor (the literal sentence to say at the visit).
+    HARD RULES (enforce on yourself):
+    1. EVIDENCE FLOOR: Each entry MUST cite at least ONE objective finding — a lab value that's out-of-range/borderline OR a pathognomonic symptom + a supporting lab. "Symptoms could fit X" alone is NOT enough unless the symptoms are unique to that condition.
+    2. NO "TEST WASN'T DONE" ENTRIES: If your evidence is "this test wasn't run, so the patient might have X," that belongs in retest_timeline as a test recommendation — NOT in suspected_conditions as a differential. A differential needs DATA, not absence of data.
+    3. NO DUPLICATES: If two conditions share the same root finding (e.g. polycythemia + sleep apnea both citing high Hct), pick the upstream one and put the downstream finding in its evidence line.
+    4. NO CONTRADICTIONS: Don't list Gilbert syndrome with elevated ALT (Gilbert is normal liver enzymes). Don't list "early hypothyroidism" with TSH dead-center optimal. Check that your evidence actually supports the entry.
+    5. CAP AT 7: Even for a multi-issue patient, the doctor reads 5-7 differentials before tuning out. Pick your strongest 7. Better an aggressive doctor takes 5 seriously than dismisses 13.
 
-CALIBRATION (applies to ALL arrays): Healthy 26yo with clean labs → 0-2 entries each. Multi-issue patient → 5-15. Don't pad, don't skip. Better than a doctor = catching what 12 minutes can't see, NOT making things up.` }],
+    Be aggressive on rule-outs that DO clear the bar (hemochromatosis if ferritin>300 + sat>50%, multiple myeloma rule-out if unexplained globulin + age 60+, MASLD/NASH on hepatic+metabolic patterns, sleep apnea on polycythemia+symptoms, NCAH/Cushing's on hyperandrogenism + cortisol clues). Just don't reach.
+
+For each suspected_condition: confidence (high/moderate/low), 1-sentence evidence string citing SPECIFIC values + symptoms, confirmatory_tests (what the doctor should order to confirm), primary ICD-10, what_to_ask_doctor (the literal sentence to say at the visit).
+
+CALIBRATION (applies to ALL arrays): Healthy patient with clean labs → 0-2 entries each. Multi-issue patient → 4-7 well-evidenced entries (NOT 13 weakly-evidenced). Don't pad, don't skip. Better than a doctor = catching what 12 minutes can't see, with the evidence to back it up.` }],
       }),
     });
 
@@ -967,6 +976,47 @@ CALIBRATION (applies to ALL arrays): Healthy 26yo with clean labs → 0-2 entrie
     if (backstopEntries.length > 0) {
       plan.suspected_conditions.push(...backstopEntries);
       console.log(`[wellness-plan] suspected backstop fired: ${backstopEntries.map(e => e.name).join(', ')}`);
+    }
+
+    // ── DEDUP + CAP suspected_conditions (universal) ─────────────────────
+    // The AI sometimes lists the same condition twice with different framings
+    // (e.g. "Sleep apnea (secondary polycythemia)" + "Secondary polycythemia
+    // from sleep apnea" — same finding) and sometimes pads with weak entries
+    // when given a long-tail patient. Enforce: dedup by ICD-10 root + name
+    // similarity, sort by confidence, cap at 7. Doctors stop reading after 5-7.
+    {
+      const before = plan.suspected_conditions.length;
+      // Dedup: collapse entries that share the same ICD-10 root (first 3 chars)
+      // OR have nearly-identical names. Keep the higher-confidence one.
+      const confRank: Record<string, number> = { high: 0, moderate: 1, low: 2 };
+      const sorted = [...plan.suspected_conditions].sort((a: any, b: any) => {
+        const ar = confRank[(a.confidence ?? 'low').toLowerCase()] ?? 3;
+        const br = confRank[(b.confidence ?? 'low').toLowerCase()] ?? 3;
+        if (ar !== br) return ar - br;
+        // Tiebreak: deterministic backstop entries before AI (they're vetted)
+        return (a.source === 'deterministic' ? 0 : 1) - (b.source === 'deterministic' ? 0 : 1);
+      });
+      const seenIcd = new Set<string>();
+      const seenNameRoot = new Set<string>();
+      const deduped: any[] = [];
+      for (const c of sorted) {
+        const icd = String(c.icd10 ?? '').slice(0, 3).toUpperCase();
+        // Crude name root: first 4 alpha chars, lowercased — collapses variants
+        // like "polycythemia" / "polycythaemia" / "secondary polycythemia"
+        const nameNorm = String(c.name ?? '').toLowerCase().replace(/[^a-z]/g, '');
+        const nameRoot = nameNorm.slice(0, 6);
+        if (icd && seenIcd.has(icd)) continue;
+        if (nameRoot && seenNameRoot.has(nameRoot)) continue;
+        if (icd) seenIcd.add(icd);
+        if (nameRoot) seenNameRoot.add(nameRoot);
+        deduped.push(c);
+      }
+      // Cap at 7 — doctors don't read past this
+      plan.suspected_conditions = deduped.slice(0, 7);
+      const dropped = before - plan.suspected_conditions.length;
+      if (dropped > 0) {
+        console.log(`[wellness-plan] suspected_conditions: ${before} -> ${plan.suspected_conditions.length} (dropped ${dropped} via dedup/cap)`);
+      }
     }
     console.log(`[wellness-plan] suspected_conditions total: ${plan.suspected_conditions.length} (ai=${plan.suspected_conditions.filter((c: any) => c.source === 'ai').length}, det=${plan.suspected_conditions.filter((c: any) => c.source === 'deterministic').length})`);
 
