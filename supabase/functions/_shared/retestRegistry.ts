@@ -12,6 +12,23 @@
 // schema. Injectors call `pushRetestByKey(plan, 'thyroid_antibodies', ...)`
 // — never construct a marker name string by hand.
 
+/** Which specialist routinely orders this test. Drives the wellness-plan
+ *  routing UI so users walk into each specialist visit with a focused,
+ *  defensible ask — instead of handing 20 tests to a PCP who'll order 8. */
+export type Specialist =
+  | 'pcp'             // Primary care — basics any PCP orders without pushback
+  | 'gi'              // Gastroenterology — UC/Crohn's/IBS/celiac/calprotectin
+  | 'hepatology'      // Liver-specific — ultrasound, FibroScan, advanced liver panels
+  | 'cardiology'      // Cardiology — ApoB, Lp(a), CAC score
+  | 'endocrinology'   // Endocrine — full thyroid panel, hormones, advanced metabolic
+  | 'sleep_medicine'  // Sleep — polysomnography, HSAT
+  | 'rheumatology'    // ANA, RF, anti-CCP, complement, autoimmune workup
+  | 'nephrology'      // Kidney-specific advanced
+  | 'hematology'      // SPEP, free light chains, advanced heme
+  | 'functional'      // Functional medicine — RBC mineral panels, organic acids
+  | 'imaging'         // Non-blood: ultrasound, FibroScan, CAC, DEXA
+  | 'mental_health';  // PHQ-9, GAD-7 — screening tools
+
 export interface RetestDef {
   key: string;                       // canonical id, e.g. 'thyroid_antibodies'
   canonical: string;                 // user-facing test name (the doctor will recognize)
@@ -19,6 +36,10 @@ export interface RetestDef {
   icd10Description: string;
   insuranceNote: string;             // why insurance covers this with the ICD-10
   defaultPriority: 'urgent' | 'high' | 'moderate';
+  /** Default specialist routing for this test. The AI can override per-patient
+   *  (e.g. an ApoB ordered by an internist who's into preventive cards stays
+   *  pcp), but the registry default ensures we have a sane fallback. */
+  specialist?: Specialist;
   // Aliases so we can detect when the AI returned a string referring to this
   // test (and avoid double-adding it). Generous — match brand+abbrev+full name.
   aliases: RegExp[];
@@ -585,6 +606,78 @@ const REGISTRY: RetestDef[] = [
 
 const BY_KEY = new Map<string, RetestDef>(REGISTRY.map(r => [r.key, r]));
 
+/** Default specialist routing per canonical test key. Single source of truth
+ *  for the wellness-plan UI grouping. The AI can override per-patient context
+ *  but this default ensures every recognized test routes correctly. PCP is
+ *  the catch-all — only narrow specialty tests are routed elsewhere. */
+const SPECIALIST_BY_KEY: Record<string, Specialist> = {
+  // ── Endocrinology / advanced thyroid ───────────────────────────────
+  thyroid_panel:    'pcp',           // basic TSH+T4 — any PCP
+  thyroid_antibodies:'pcp',          // TPO+TgAb — PCP can order
+  reverse_t3:       'endocrinology', // advanced — PCP often won't
+  tsi_antibodies:   'endocrinology',
+  androgen_panel:   'endocrinology',
+  shbg:             'endocrinology',
+  estradiol_progesterone_testosterone: 'endocrinology',
+  estradiol_male:   'endocrinology',
+  testosterone_total_free: 'endocrinology',
+  lh_fsh:           'endocrinology',
+  prolactin:        'endocrinology',
+  am_cortisol_if_hpa:'endocrinology',
+  pth:              'endocrinology',
+
+  // ── Cardiology (preventive lipidology) ─────────────────────────────
+  apob:             'cardiology',
+  lp_a:             'cardiology',
+  cac_score:        'cardiology',     // imaging — also surfaces in imaging folder
+  glyca:            'cardiology',
+  nt_probnp_if_hf:  'cardiology',
+  lipid_panel_extended: 'cardiology', // extended NMR particle panel
+
+  // ── GI / Hepatology ────────────────────────────────────────────────
+  fecal_calprotectin: 'gi',
+  celiac_serology:    'gi',
+  liver_panel:        'pcp',          // basic LFT — PCP
+  ggt:                'hepatology',
+  liver_ultrasound:   'imaging',      // imaging folder
+
+  // ── Rheumatology / autoimmune ─────────────────────────────────────
+  ana_reflex:       'rheumatology',
+  rf_anti_ccp:      'rheumatology',
+  ssa_ssb_antibodies:'rheumatology',
+  esr:              'pcp',            // PCP can order
+  uric_acid:        'pcp',
+
+  // ── Nephrology ────────────────────────────────────────────────────
+  cystatin_c_egfr:  'nephrology',
+  uacr:             'pcp',            // PCP-orderable, baseline screen
+  kidney_function:  'pcp',
+
+  // ── Sleep medicine ────────────────────────────────────────────────
+  // (no current registry key — added via imaging when sleep study is recommended)
+
+  // ── Functional medicine / advanced nutritional ────────────────────
+  rbc_magnesium:    'functional',     // RBC mineral panels rarely PCP
+  ionized_calcium:  'pcp',
+  ctx_telopeptide:  'endocrinology',  // bone turnover — endo or PCP
+
+  // ── Imaging (non-blood) ───────────────────────────────────────────
+  mammogram_if_due:  'imaging',
+  dexa_if_long_term: 'imaging',
+  ekg_if_dose_high:  'cardiology',
+
+  // ── PCP defaults — basic everywhere ───────────────────────────────
+  // (anything not above defaults to 'pcp' via the resolver below)
+};
+
+/** Resolve the specialist for a canonical test key. Registry's per-row
+ *  `specialist` wins if set; otherwise SPECIALIST_BY_KEY; default 'pcp'. */
+export function specialistForKey(key: string): Specialist {
+  const def = BY_KEY.get(key);
+  if (def?.specialist) return def.specialist;
+  return SPECIALIST_BY_KEY[key] ?? 'pcp';
+}
+
 /** Look up a test by canonical key. */
 export function getRetest(key: string): RetestDef | undefined {
   return BY_KEY.get(key);
@@ -626,6 +719,7 @@ export function pushRetestByKey(
     icd10_description: def.icd10Description,
     priority: def.defaultPriority,
     insurance_note: def.insuranceNote,
+    specialist: specialistForKey(def.key),
     emoji: '🧪',
     _key: def.key,                  // canonical key for downstream dedup
   });
@@ -660,6 +754,10 @@ export function finalizeRetestTimeline(retestTimeline: any[], cap: number): any[
     if (key) {
       if (seen.has(key)) continue;
       seen.add(key);
+    }
+    // Backfill specialist routing on AI-generated entries that didn't have one
+    if (!r.specialist) {
+      r.specialist = key ? specialistForKey(key) : 'pcp';
     }
     out.push(r);
     if (out.length >= cap) break;

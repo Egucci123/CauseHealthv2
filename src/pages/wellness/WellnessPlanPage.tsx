@@ -683,30 +683,82 @@ export const WellnessPlanPage = () => {
               The split into 'retest' vs 'new tests' was a UX experiment that
               tested poorly: users had to mentally merge two lists. Now ONE
               comprehensive list of every test to ask for at the 12-week visit. */}
+          {/* Tests grouped by specialist. Each folder is the focused, defensible
+              list for that visit — PCP gets the basics, GI gets UC-relevant
+              tests, cardiology gets ApoB/Lp(a), etc. The user walks in to each
+              specialist with a list that doesn't feel "extreme" and is paired
+              with the right ICD-10. */}
           {(() => {
-            const validRetests = (plan.retest_timeline ?? []).filter((r: any) => typeof r?.marker === 'string' && r.marker.trim().length > 0);
-            return validRetests.length > 0 && (
-            <FolderSection
-              icon="science"
-              title="Tests to ask for at your 12-week visit"
-              count={validRetests.length}
-              countLabel={validRetests.length === 1 ? 'test' : 'tests'}
-              explanation="Every test the doctor should run at your follow-up. Some re-measure values from this draw to track progress; others fill in gaps from symptoms or medication side effects. All are PCP-orderable and insurance-covered. Hand the doctor this list."
-              accentColor="#1B423A"
-              defaultOpen
-            >
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {validRetests.map((r: any, i: number) => (
-                  <div key={i} className="flex items-start gap-2 p-3 bg-clinical-cream/40 rounded-[8px]">
-                    <span className="material-symbols-outlined text-[16px] flex-shrink-0 mt-0.5 text-[#1B423A]">science</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-body text-clinical-charcoal text-sm font-semibold leading-tight">{r.marker}</p>
-                      {r.why && <p className="text-precision text-[0.6rem] text-clinical-stone mt-1 leading-snug">{r.why}</p>}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </FolderSection>
+            const validRetests = (plan.retest_timeline ?? []).filter(
+              (r: any) => typeof r?.marker === 'string' && r.marker.trim().length > 0,
+            );
+            if (validRetests.length === 0) return null;
+
+            const SPECIALIST_META: Record<string, { title: string; explanation: string; icon: string; accent: string }> = {
+              pcp:            { title: 'For your PCP visit',         icon: 'medical_services',  accent: '#1B423A', explanation: 'The basics any primary care doctor will order at your 12-week follow-up. All insurance-covered with the ICD-10 codes paired here.' },
+              gi:             { title: 'For your GI doctor',          icon: 'restaurant',         accent: '#8B6F47', explanation: 'Tests your gastroenterologist orders. Bring this list to your UC follow-up — most are covered with K51.90 / K50.90.' },
+              hepatology:     { title: 'For a hepatology referral',   icon: 'medication',         accent: '#5C8FA8', explanation: 'Liver-specific tests. If your PCP sees ALT remains elevated, ask for a hepatology referral and bring this list.' },
+              cardiology:     { title: 'For preventive cardiology',   icon: 'monitor_heart',      accent: '#C94F4F', explanation: 'Advanced lipid + cardiovascular risk markers. Some PCPs order these; if not, ask for a cardiology referral.' },
+              endocrinology:  { title: 'For an endocrinologist',      icon: 'biotech',            accent: '#7B5CA0', explanation: 'Full thyroid panel, hormone, and adrenal workup. PCPs often only order TSH — these go deeper.' },
+              sleep_medicine: { title: 'For a sleep medicine referral', icon: 'bedtime',          accent: '#3D4F6A', explanation: 'Sleep study to evaluate apnea and oxygenation. Most insurances cover this with snoring, fatigue, or polycythemia documented.' },
+              rheumatology:   { title: 'For a rheumatology referral', icon: 'health_and_safety',  accent: '#A0563D', explanation: 'Autoimmune workup tests. Ask your PCP for a referral if joint symptoms persist or autoimmune dx is suspected.' },
+              nephrology:     { title: 'For a nephrology referral',   icon: 'water_drop',         accent: '#4A7C8D', explanation: 'Advanced kidney function tests. Refer if eGFR persistently abnormal.' },
+              hematology:     { title: 'For a hematology referral',   icon: 'opacity',            accent: '#8E2A2A', explanation: 'Advanced blood disorder workup. For unexplained CBC patterns or rule-outs.' },
+              functional:     { title: 'For a functional medicine doctor', icon: 'spa',           accent: '#5F7A4D', explanation: "Tests most PCPs don't order routinely. If your PCP declines, a functional medicine MD or naturopathic doctor will run these — often with cash-pay options under $100." },
+              imaging:        { title: 'Imaging to consider',         icon: 'visibility',         accent: '#6B6B6B', explanation: 'Non-blood tests — ultrasound, FibroScan, sleep study, CAC. These need a separate order or referral; insurance coverage varies by indication.' },
+              mental_health:  { title: 'Mental health screening',     icon: 'psychology',         accent: '#7B6FA0', explanation: 'Standard screening tools your PCP can administer in 5 minutes during a visit.' },
+            };
+
+            const groups: Record<string, any[]> = {};
+            for (const r of validRetests) {
+              const key = (r.specialist ?? 'pcp') as string;
+              (groups[key] ??= []).push(r);
+            }
+            const order: string[] = ['pcp', 'gi', 'hepatology', 'cardiology', 'endocrinology', 'sleep_medicine', 'rheumatology', 'nephrology', 'hematology', 'functional', 'imaging', 'mental_health'];
+
+            return (
+              <>
+                {order.filter(k => groups[k]?.length).map((k) => {
+                  const meta = SPECIALIST_META[k] ?? SPECIALIST_META.pcp;
+                  const items = groups[k];
+                  return (
+                    <FolderSection
+                      key={k}
+                      icon={meta.icon}
+                      title={meta.title}
+                      count={items.length}
+                      countLabel={items.length === 1 ? 'test' : 'tests'}
+                      explanation={meta.explanation}
+                      accentColor={meta.accent}
+                      defaultOpen={k === 'pcp'}
+                    >
+                      <div className="space-y-2">
+                        {items.map((r: any, i: number) => (
+                          <div key={i} className="bg-clinical-cream/40 rounded-[8px] p-3">
+                            <div className="flex items-start gap-2">
+                              <span className="material-symbols-outlined text-[16px] flex-shrink-0 mt-0.5" style={{ color: meta.accent }}>science</span>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <p className="text-body text-clinical-charcoal text-sm font-semibold leading-tight">{r.marker}</p>
+                                  {r.icd10 && (
+                                    <span className="text-precision text-[0.6rem] text-clinical-stone tracking-wider px-1.5 py-0.5 bg-clinical-white border border-clinical-cream" style={{ borderRadius: '2px' }}>
+                                      ICD-10 · {r.icd10}
+                                    </span>
+                                  )}
+                                </div>
+                                {r.why && <p className="text-precision text-[0.65rem] text-clinical-stone mt-1 leading-snug">{r.why}</p>}
+                                {r.insurance_note && (
+                                  <p className="text-precision text-[0.6rem] text-clinical-stone/80 mt-1 italic leading-snug">{r.insurance_note}</p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </FolderSection>
+                  );
+                })}
+              </>
             );
           })()}
 

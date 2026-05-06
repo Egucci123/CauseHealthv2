@@ -64,7 +64,19 @@ export interface WellnessPlanData {
     phase_2: { name: string; focus: string; actions: string[] };
     phase_3: { name: string; focus: string; actions: string[] };
   };
-  retest_timeline: { marker: string; retest_at: string; why: string }[];
+  retest_timeline: {
+    marker: string;
+    retest_at: string;
+    why: string;
+    /** Which specialist routinely orders this test. Drives UI grouping so
+     *  the patient walks into each visit with a focused list — not 20
+     *  things handed to a PCP who'll only order half. */
+    specialist?: 'pcp' | 'gi' | 'hepatology' | 'cardiology' | 'endocrinology' | 'sleep_medicine' | 'rheumatology' | 'nephrology' | 'hematology' | 'functional' | 'imaging' | 'mental_health';
+    icd10?: string;
+    icd10_description?: string;
+    insurance_note?: string;
+    priority?: 'urgent' | 'high' | 'moderate';
+  }[];
   /** Drug-supplement interactions found by the safety engine.
    *  'block' severity = supplement was REMOVED from supplement_stack.
    *  'caution' severity = supplement is still in stack but with a warning. */
