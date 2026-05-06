@@ -42,53 +42,93 @@ serve(async (req) => {
       supabase.from('lab_draws').select('id').eq('user_id', userId).order('draw_date', { ascending: false }).limit(1).maybeSingle(),
     ]);
 
-    // ── REGEN RATE LIMITING ─────────────────────────────────────────────
-    // Two-layer protection against runaway regenerations:
-    //   1. Per-draw cap: max 3 generations per lab upload. Aligns with the
-    //      "$19 per analysis" pricing — one analysis, one plan, with 2 regens
-    //      of headroom for users who add a missed symptom/condition. After 3,
-    //      the user must upload new labs to get a fresh plan.
-    //   2. Cooldown: 30-minute minimum between attempts. Prevents rapid-fire
-    //      spam from a confused user clicking Regenerate 5 times in a row.
+    // ── REGEN CAP: 3 per unique lab dataset (universal) ─────────────────
+    // Cap is 3 generations per UNIQUE set of lab values, not per draw_id.
+    // Why: a user could otherwise game the cap by deleting their lab draw
+    // and re-uploading the identical labs to get a fresh 3.
     //
-    // Universal — applies to every user. Anti-abuse, not punitive.
+    // We hash the (sorted) lab values for the current draw, find any prior
+    // draws by this user in the last 14 days with the same hash, and sum
+    // the wellness_plans across them. If >= 3, block.
+    //
+    // Different lab values (family member, friend, genuine retest) always
+    // produce a different hash → fresh count. Only literal re-upload of
+    // identical numbers is caught.
     const draftDrawId = latestDrawRes.data?.id ?? null;
     if (draftDrawId) {
-      const { data: priorPlans } = await supabase
-        .from('wellness_plans')
-        .select('id, created_at')
-        .eq('user_id', userId)
-        .eq('draw_id', draftDrawId)
-        .eq('generation_status', 'complete')
-        .order('created_at', { ascending: false });
+      // Helper: stable hash of lab values for this draw
+      const hashLabs = async (drawId: string): Promise<string> => {
+        const { data: vals } = await supabase
+          .from('lab_values')
+          .select('marker_name, value, unit')
+          .eq('draw_id', drawId);
+        if (!vals?.length) return '';
+        // Sort by marker_name, then build canonical string. Round numeric
+        // values to 2 decimals to avoid float-noise false negatives.
+        const canonical = [...vals]
+          .sort((a, b) => String(a.marker_name ?? '').localeCompare(String(b.marker_name ?? '')))
+          .map(v => {
+            const num = typeof v.value === 'number' ? v.value : parseFloat(String(v.value ?? ''));
+            const rounded = Number.isFinite(num) ? num.toFixed(2) : String(v.value ?? '');
+            return `${String(v.marker_name ?? '').trim().toLowerCase()}|${rounded}|${String(v.unit ?? '').trim().toLowerCase()}`;
+          })
+          .join(';');
+        const bytes = new TextEncoder().encode(canonical);
+        const digest = await crypto.subtle.digest('SHA-256', bytes);
+        return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+      };
 
-      const planCount = priorPlans?.length ?? 0;
-      const PER_DRAW_CAP = 3;
-      const COOLDOWN_MIN = 30;
+      const currentHash = await hashLabs(draftDrawId);
+      const PER_DATASET_CAP = 3;
+      let totalPlans = 0;
 
-      if (planCount >= PER_DRAW_CAP) {
+      if (currentHash) {
+        // Find all draws by this user in last 14 days
+        const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+        const { data: recentDraws } = await supabase
+          .from('lab_draws')
+          .select('id, draw_date')
+          .eq('user_id', userId)
+          .gte('draw_date', fourteenDaysAgo.slice(0, 10));
+
+        // Hash each recent draw and collect ones matching the current hash
+        const matchingDrawIds: string[] = [];
+        for (const d of recentDraws ?? []) {
+          if (d.id === draftDrawId) continue;
+          const h = await hashLabs(d.id);
+          if (h && h === currentHash) matchingDrawIds.push(d.id);
+        }
+        matchingDrawIds.push(draftDrawId);
+
+        // Sum plans across all matching draws
+        const { count } = await supabase
+          .from('wellness_plans')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', userId)
+          .in('draw_id', matchingDrawIds)
+          .eq('generation_status', 'complete');
+        totalPlans = count ?? 0;
+      } else {
+        // Fallback: no values yet. Cap by draw_id only.
+        const { count } = await supabase
+          .from('wellness_plans')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', userId)
+          .eq('draw_id', draftDrawId)
+          .eq('generation_status', 'complete');
+        totalPlans = count ?? 0;
+      }
+
+      if (totalPlans >= PER_DATASET_CAP) {
         return new Response(JSON.stringify({
-          error: `You've used all ${PER_DRAW_CAP} generations for this lab upload. Upload new labs to generate a fresh plan.`,
+          error: `You've used all ${PER_DATASET_CAP} generations for these lab values. Upload genuinely new labs (different values) to generate a fresh plan.`,
           code: 'REGEN_LIMIT_REACHED',
-          limit: PER_DRAW_CAP,
-          used: planCount,
+          limit: PER_DATASET_CAP,
+          used: totalPlans,
         }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
-      const lastPlanAt = priorPlans?.[0]?.created_at;
-      if (lastPlanAt) {
-        const minutesSince = (Date.now() - new Date(lastPlanAt).getTime()) / 60000;
-        if (minutesSince < COOLDOWN_MIN) {
-          const wait = Math.ceil(COOLDOWN_MIN - minutesSince);
-          return new Response(JSON.stringify({
-            error: `Please wait ${wait} more minute${wait === 1 ? '' : 's'} before regenerating. (Cooldown: ${COOLDOWN_MIN} min between generations.)`,
-            code: 'REGEN_COOLDOWN',
-            waitMinutes: wait,
-          }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-        }
-      }
-
-      console.log(`[wellness-plan] regen check passed: ${planCount}/${PER_DRAW_CAP} used for this draw`);
+      console.log(`[wellness-plan] regen check passed: ${totalPlans}/${PER_DATASET_CAP} used for this lab dataset`);
     }
 
     const profile = profileRes.data; const meds = medsRes.data ?? []; const symptoms = symptomsRes.data ?? [];
