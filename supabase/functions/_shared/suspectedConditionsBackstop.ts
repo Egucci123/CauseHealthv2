@@ -73,27 +73,99 @@ interface BackstopRule {
 }
 
 const RULES: BackstopRule[] = [
-  // ── Subclinical Hashimoto's / hypothyroid ──────────────────────────────
+  // ── Hashimoto's thyroiditis / Hypothyroidism (universal) ───────────────
+  // Real-case validation (PMC12988615) caught this rule was too narrow:
+  //   - Only checked TSH + 3 specific symptoms (fatigue, hair loss, cold)
+  //   - Ignored TPO antibodies entirely (the most specific Hashimoto marker)
+  //   - Capped TSH at <10 (overt hypothyroid never fired)
+  //   - Missed all the broader hypothyroid symptom cluster
+  // Now fires on ANY of: TPO+, TgAb+, low free T4, overt TSH, subclinical TSH+symptoms.
   {
-    key: 'subclinical_hashimotos',
-    alreadyRaisedIf: [/hashimoto/i, /hypothyroid/i, /autoimmune thyroid/i, /chronic thyroiditis/i],
+    key: 'hashimoto_or_hypothyroid',
+    alreadyRaisedIf: [/hashimoto/i, /hypothyroid/i, /autoimmune thyroid/i, /chronic thyroiditis/i, /thyroid dysfunction/i],
     skipIfDx: ['hashimotos'],
     detect: (ctx) => {
       const tsh = mark(ctx.labValues, [/^tsh\b/i]);
+      const tpo = mark(ctx.labValues, [/tpo|thyroid peroxidase/i]);
+      const tgab = mark(ctx.labValues, [/thyroglobulin antibod/i]);
+      const ft4 = mark(ctx.labValues, [/free t4|t4,?\s*free/i]);
+
+      // ── Trigger A: TPO antibodies positive (most specific) ──────────
+      // TPO upper limit varies by lab (typically 9-35 IU/mL). Use 35 as
+      // conservative threshold — any value above that is positive.
+      if (tpo && tpo.value > 35) {
+        return {
+          name: "Hashimoto's thyroiditis (autoimmune)",
+          category: 'endocrine',
+          confidence: 'high',
+          evidence: `TPO antibodies ${tpo.value} IU/mL (positive)${tsh ? ` + TSH ${tsh.value} mIU/L` : ''}${ft4 && ft4.value < 0.9 ? ` + Free T4 ${ft4.value} ng/dL (low)` : ''}. TPO+ is the most specific marker for Hashimoto's.`,
+          confirmatory_tests: ['Thyroglobulin Antibodies', 'Free T4', 'Free T3', 'Reverse T3', 'Thyroid Ultrasound'],
+          icd10: 'E06.3',
+          what_to_ask_doctor: "My TPO antibodies are positive — that's diagnostic for Hashimoto's autoimmune thyroiditis. Can we discuss treatment and monitoring?",
+          source: 'deterministic',
+        };
+      }
+
+      // ── Trigger B: TgAb positive without TPO data ───────────────────
+      if (tgab && tgab.value > 40 && (!tpo || tpo.value <= 35)) {
+        return {
+          name: "Autoimmune thyroid disease (TgAb+)",
+          category: 'endocrine',
+          confidence: 'moderate',
+          evidence: `Thyroglobulin antibodies ${tgab.value} IU/mL (positive). TgAb+ alone is suggestive of autoimmune thyroid involvement.`,
+          confirmatory_tests: ['TPO Antibodies', 'Free T4', 'Free T3', 'Reverse T3'],
+          icd10: 'E06.3',
+          what_to_ask_doctor: "My thyroglobulin antibodies are positive — can we run TPO antibodies to confirm autoimmune thyroid disease?",
+          source: 'deterministic',
+        };
+      }
+
       if (!tsh) return null;
-      const fatigue = symptom(ctx.symptomsLower, [/fatigue/i, /tired/i]);
+
+      // ── Trigger C: Overt hypothyroidism (TSH ≥ 10 OR TSH high + low Free T4) ──
+      const overtByTsh = tsh.value >= 10;
+      const overtByPattern = tsh.value >= 4.5 && ft4 && ft4.value < 0.9;
+      if (overtByTsh || overtByPattern) {
+        return {
+          name: 'Overt hypothyroidism (rule-out Hashimoto vs other causes)',
+          category: 'endocrine',
+          confidence: 'high',
+          evidence: `TSH ${tsh.value} mIU/L${ft4 ? ` + Free T4 ${ft4.value} ng/dL` : ''} fits overt hypothyroidism. Most common cause in adults is Hashimoto's.`,
+          confirmatory_tests: ['TPO Antibodies', 'Thyroglobulin Antibodies', 'Free T4', 'Free T3'],
+          icd10: 'E03.9',
+          what_to_ask_doctor: "My TSH is in the overt hypothyroid range — can we confirm with TPO antibodies and start treatment?",
+          source: 'deterministic',
+        };
+      }
+
+      // ── Trigger D: Subclinical hypothyroid + broader symptom cluster ──
+      // Hypothyroidism manifests across MANY symptoms, not just 3. Universal
+      // symptom net: fatigue, brain fog, weight gain, hair loss, cold,
+      // depression/mood, joint pain, dry skin, slow metabolism, memory.
+      const fatigue = symptom(ctx.symptomsLower, [/fatigue/i, /tired/i, /low energy/i, /afternoon (energy )?crash/i]);
+      const brainFog = symptom(ctx.symptomsLower, [/brain fog/i, /memory/i, /forget|concentr|focus/i]);
+      const weightGain = symptom(ctx.symptomsLower, [/weight gain/i, /can'?t lose weight/i, /slow metabolism/i]);
       const hairLoss = symptom(ctx.symptomsLower, [/hair (loss|thin|fall)/i]);
       const cold = symptom(ctx.symptomsLower, [/cold (hand|feet|intoler)/i]);
-      const symptomCount = [fatigue, hairLoss, cold].filter(Boolean).length;
-      if (tsh.value >= 2.5 && tsh.value < 10 && symptomCount >= 2) {
+      const moodIssues = symptom(ctx.symptomsLower, [/anxiety/i, /depress|low mood|mood swing/i]);
+      const symptomCount = [fatigue, brainFog, weightGain, hairLoss, cold, moodIssues].filter(Boolean).length;
+      if (tsh.value >= 2.5 && symptomCount >= 2) {
+        const matched = [
+          fatigue ? 'fatigue' : null,
+          brainFog ? 'brain fog/memory' : null,
+          weightGain ? 'weight gain' : null,
+          hairLoss ? 'hair loss' : null,
+          cold ? 'cold intolerance' : null,
+          moodIssues ? 'mood symptoms' : null,
+        ].filter(Boolean).join(', ');
         return {
           name: "Subclinical Hashimoto's / Hypothyroidism",
           category: 'endocrine',
           confidence: tsh.value >= 4.5 ? 'high' : 'moderate',
-          evidence: `TSH ${tsh.value} mIU/L (subclinical range) + ${symptomCount} matching symptoms (${fatigue ? 'fatigue, ' : ''}${hairLoss ? 'hair loss, ' : ''}${cold ? 'cold intolerance' : ''}).`,
+          evidence: `TSH ${tsh.value} mIU/L (subclinical range) + ${symptomCount} hypothyroid-pattern symptoms (${matched}).`,
           confirmatory_tests: ['TPO Antibodies', 'Thyroglobulin Antibodies', 'Free T4', 'Free T3', 'Reverse T3'],
           icd10: 'E06.3',
-          what_to_ask_doctor: "My TSH is rising and I have classic hypothyroid symptoms — can we run TPO and Tg antibodies to rule out Hashimoto's?",
+          what_to_ask_doctor: "My TSH is elevated and I have multiple hypothyroid symptoms — can we run TPO and Tg antibodies to rule out Hashimoto's?",
           source: 'deterministic',
         };
       }
