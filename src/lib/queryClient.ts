@@ -31,9 +31,31 @@ export const queryClient = new QueryClient({
 // ── Visibility-change handler ───────────────────────────────────────────────
 // Mobile browsers + PWA installs don't fire window focus events reliably when
 // the user backgrounds the tab and returns. The visibilitychange event is the
-// canonical signal. When the user comes back after >5s away, invalidate all
-// active queries so the page reflects fresh server state immediately.
+// canonical signal. When the user comes back after >2s away:
+//   1. Refresh the Supabase session FIRST (so any JWT that expired during
+//      idle is renewed before queries fire). Without this, queries refetch
+//      with stale JWT → 401 → silent failure → page renders empty/stale →
+//      user has to manually refresh. Symptom matches the 'come back after
+//      5min and have to refresh' bug exactly.
+//   2. Invalidate all queries so they refetch with the now-fresh token.
+//
+// supabase.auth.getSession() auto-refreshes the token if expired and emits
+// the TOKEN_REFRESHED event, which the auth listener hooks to re-fetch the
+// profile. So one call covers both the JWT renewal and the profile sync.
 let lastHiddenAt = 0;
+const refreshAndInvalidate = async () => {
+  // Lazy import to avoid circular module load at boot
+  try {
+    const { supabase } = await import('./supabase');
+    await supabase.auth.getSession();
+  } catch (e) {
+    // If session refresh fails, still invalidate queries below — they'll
+    // either succeed with the existing token or surface a real auth error.
+    console.warn('[queryClient] session refresh on focus failed:', e);
+  }
+  queryClient.invalidateQueries();
+};
+
 if (typeof document !== 'undefined') {
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') {
@@ -46,17 +68,17 @@ if (typeof document !== 'undefined') {
       // left the UI stuck on stale 'processing' state. 2s catches the
       // common pattern without firing on every momentary blink.
       if (lastHiddenAt > 0 && awayMs > 2000) {
-        queryClient.invalidateQueries();
+        refreshAndInvalidate();
       }
     }
   });
 
-  // Also re-invalidate on pageshow with persisted=true (back-forward cache hit).
+  // Also re-validate on pageshow with persisted=true (back-forward cache hit).
   // Safari especially restores the page from BFCache without firing visibilitychange.
   window.addEventListener('pageshow', (e) => {
     if ((e as PageTransitionEvent).persisted) {
       logEvent('bfcache_restore');
-      queryClient.invalidateQueries();
+      refreshAndInvalidate();
     }
   });
 }
