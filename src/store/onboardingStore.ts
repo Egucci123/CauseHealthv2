@@ -568,11 +568,19 @@ export function clearLocalOnboarding() {
   try { localStorage.removeItem(LOCAL_KEY); } catch {}
 }
 
-// Subscribe to store changes — auto-save 2 seconds after last change.
-// Also persist to localStorage IMMEDIATELY on every change so data is never lost.
+// Subscribe to store changes — auto-save 2s after last change to DB,
+// 250ms debounced to localStorage.
+//
+// CRITICAL: localStorage writes are SYNCHRONOUS and block the main
+// thread. Writing on every state change (e.g. every slider drag tick)
+// causes the browser to lose mouse capture mid-drag — symptom: slider
+// drag releases at every value change, user has to re-click to keep
+// dragging. Debouncing localStorage to 250ms keeps the data safe (worst
+// case 250ms loss on close) without breaking interactive components.
+let localPersistTimer: ReturnType<typeof setTimeout> | undefined;
 useOnboardingStore.subscribe((state, prevState) => {
-  // Always persist locally on any data change — instant, no network needed
-  const dataChanged = state.firstName !== prevState.firstName || state.lastName !== prevState.lastName ||
+  // Cheap reference checks first — only do JSON.stringify if reference changed
+  const refChanged = state.firstName !== prevState.firstName || state.lastName !== prevState.lastName ||
     state.dateOfBirth !== prevState.dateOfBirth || state.sex !== prevState.sex ||
     state.heightFt !== prevState.heightFt || state.heightIn !== prevState.heightIn ||
     state.weightLbs !== prevState.weightLbs || state.primaryGoals.length !== prevState.primaryGoals.length ||
@@ -580,17 +588,22 @@ useOnboardingStore.subscribe((state, prevState) => {
     state.medications.length !== prevState.medications.length ||
     state.symptoms.length !== prevState.symptoms.length ||
     state.supplements.length !== prevState.supplements.length ||
-    JSON.stringify(state.familyHistory) !== JSON.stringify(prevState.familyHistory) ||
+    state.familyHistory !== prevState.familyHistory ||
     state.geneticTesting !== prevState.geneticTesting ||
-    JSON.stringify(state.lifestyle) !== JSON.stringify(prevState.lifestyle) ||
-    JSON.stringify(state.lifeContext) !== JSON.stringify(prevState.lifeContext) ||
+    state.lifestyle !== prevState.lifestyle ||
+    state.lifeContext !== prevState.lifeContext ||
     state.specificConcern !== prevState.specificConcern ||
     state.triedBefore !== prevState.triedBefore ||
     state.hearAboutUs !== prevState.hearAboutUs;
   const stepChanged = state.currentStep !== prevState.currentStep;
 
-  if (dataChanged || stepChanged) {
-    persistLocal(state);
+  if (refChanged || stepChanged) {
+    // Debounced localStorage write — 250ms after the user stops interacting.
+    // This is what unblocks slider drags and other rapid-input components.
+    clearTimeout(localPersistTimer);
+    localPersistTimer = setTimeout(() => persistLocal(useOnboardingStore.getState()), 250);
+
+    // Debounced DB save (longer window — DB is a network call)
     clearTimeout(autoSaveTimer);
     if (stepChanged) {
       autoSaveToDB();
