@@ -47,7 +47,7 @@ export const Dashboard = () => {
   );
 
   return (
-    <AppShell pageTitle="Intelligence Hub">
+    <AppShell pageTitle="Intelligence Hub" showDisclaimer>
       {/* Critical / Emergency banner — ALWAYS visible (safety overrides paywall) */}
       {criticalFindings.length > 0 && <CriticalBanner findings={criticalFindings} />}
 

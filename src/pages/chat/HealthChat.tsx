@@ -65,7 +65,7 @@ export const HealthChat = () => {
 
   if (!isPro) {
     return (
-      <AppShell pageTitle="Health Chat">
+      <AppShell pageTitle="Health Chat" showDisclaimer>
         <PaywallGate
           feature="Health Chat"
           description="Ask anything about your labs, symptoms, supplements, or what to do next. The AI knows your data — labs, meds, conditions, goals — and answers like a smart friend who's read your file."
@@ -78,7 +78,7 @@ export const HealthChat = () => {
   }
 
   return (
-    <AppShell pageTitle="Health Chat">
+    <AppShell pageTitle="Health Chat" showDisclaimer>
       {/* Dark hero card */}
       <div className="bg-[#131313] rounded-[14px] p-6 shadow-card">
         <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-[#D4A574] mb-2">Ask Anything</p>

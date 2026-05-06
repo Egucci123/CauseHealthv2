@@ -626,7 +626,7 @@ export const WellnessPlanPage = () => {
   };
 
   return (
-    <AppShell pageTitle="Wellness Plan">
+    <AppShell pageTitle="Wellness Plan" showDisclaimer>
       {/* Plan undefined = loading. Plan null = no plan generated yet. */}
       {plan === undefined ? <WellnessSkeleton />
         : generating ? <GeneratingState />

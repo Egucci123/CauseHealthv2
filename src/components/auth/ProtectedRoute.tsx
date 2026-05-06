@@ -1,15 +1,14 @@
 // src/components/auth/ProtectedRoute.tsx
+import { useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
-import { AcceptTermsScreen, TERMS_VERSION } from './AcceptTermsScreen';
+import { ConsentGate } from './ConsentGate';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requireOnboarding?: boolean;
 }
 
-// Full-screen loading state — prevents the "black flash + redirect + remount" glitch
-// during initial auth hydration on protected routes.
 const AuthLoading = () => (
   <div className="fixed inset-0 flex items-center justify-center bg-clinical-cream">
     <div className="flex flex-col items-center gap-3">
@@ -29,10 +28,11 @@ export const ProtectedRoute = ({
   const loading = useAuthStore(s => s.loading);
   const location = useLocation();
 
-  // Wait for auth to hydrate before deciding anything — fixes the "load → black → load" flash
-  if (!initialized || loading) {
-    return <AuthLoading />;
-  }
+  // Local override flag — flips true when the consent gate finishes,
+  // so this render cycle proceeds without waiting for a profile refetch.
+  const [consentJustCompleted, setConsentJustCompleted] = useState(false);
+
+  if (!initialized || loading) return <AuthLoading />;
 
   if (!user) {
     return (
@@ -43,19 +43,18 @@ export const ProtectedRoute = ({
     );
   }
 
-  // If user is loaded but profile hasn't fetched yet, wait — don't render the page
-  // with a null profile (causes blank state) and don't redirect to onboarding (causes flash).
-  if (requireOnboarding && !profile) {
-    return <AuthLoading />;
-  }
+  if (requireOnboarding && !profile) return <AuthLoading />;
 
-  // ── CONSENT GATE ───────────────────────────────────────────────────
-  // Authenticated users who haven't accepted the current terms version
-  // see the full-screen consent screen. Universal — applies to every
-  // protected route, every user, until they accept. Re-fires automatically
-  // when TERMS_VERSION changes (e.g. material privacy policy update).
-  if (profile && (!profile.termsAcceptance || profile.termsAcceptance.terms_version !== TERMS_VERSION)) {
-    return <AcceptTermsScreen onAccepted={() => { /* profile re-fetched inside; ProtectedRoute re-renders */ }} />;
+  // ── CONSENT GATE ──────────────────────────────────────────────────
+  // Until the user has logged all three required consents in consent_log
+  // for the current CONSENT_POLICY_VERSION, route them through the
+  // two-screen consent flow. Universal — every user, every protected
+  // route, until fully consented. Re-fires automatically when policy
+  // version changes (existing users re-consent on next login).
+  if (profile && !consentJustCompleted) {
+    return (
+      <ConsentGate onConsented={() => setConsentJustCompleted(true)} />
+    );
   }
 
   if (requireOnboarding && profile && !profile.onboardingCompleted) {
@@ -70,13 +69,8 @@ export const PublicOnlyRoute = ({ children }: { children: React.ReactNode }) => 
   const profile = useAuthStore(s => s.profile);
   if (!initialized) return <AuthLoading />;
   if (isAuthenticated) {
-    // Don't decide where to send the user until profile has loaded.
-    // Without this guard, isOnboarded reads from a null profile (false)
-    // and a returning user with onboarding_completed=true gets bounced
-    // to /onboarding instead of /dashboard.
     if (!profile) return <AuthLoading />;
     return <Navigate to={isOnboarded ? '/dashboard' : '/onboarding'} replace />;
   }
-
   return <>{children}</>;
 };

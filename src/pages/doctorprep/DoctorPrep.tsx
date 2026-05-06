@@ -71,7 +71,7 @@ export const DoctorPrep = () => {
   };
 
   return (
-    <AppShell pageTitle="Clinical Prep">
+    <AppShell pageTitle="Clinical Prep" showDisclaimer>
       {/* Dark hero card — matches Wellness Plan + Lab Detail */}
       <div className="bg-[#131313] rounded-[14px] p-6 shadow-card">
         <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -245,7 +245,7 @@ class DoctorPrepErrorBoundary extends Component<{ children: ReactNode }, { hasEr
   render() {
     if (this.state.hasError) {
       return (
-        <AppShell pageTitle="Clinical Prep">
+        <AppShell pageTitle="Clinical Prep" showDisclaimer>
           <div className="bg-[#C94F4F]/10 border border-[#C94F4F]/30 rounded-[10px] p-8 text-center">
             <span className="material-symbols-outlined text-[#C94F4F] text-4xl mb-3 block">error</span>
             <p className="text-body text-clinical-charcoal font-semibold mb-2">Something went wrong loading this document.</p>

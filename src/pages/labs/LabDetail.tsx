@@ -274,7 +274,7 @@ export const LabDetail = () => {
   // Skeleton until query resolves at least once. Realtime + 2s polling
   // refresh data silently in the background after that.
   if (!data) return (
-    <AppShell pageTitle="Lab Results">
+    <AppShell pageTitle="Lab Results" showDisclaimer>
       <div className="space-y-4">
         {[1, 2, 3, 4].map(i => (
           <div key={i} className="bg-clinical-white rounded-[10px] p-8 animate-pulse border-t-[3px] border-[#E8E3DB]">
@@ -286,7 +286,7 @@ export const LabDetail = () => {
   );
 
   if (isError || (!isLoading && !data)) return (
-    <AppShell pageTitle="Lab Results">
+    <AppShell pageTitle="Lab Results" showDisclaimer>
       <div className="bg-clinical-white rounded-[10px] shadow-card border-t-[3px] border-[#C94F4F] p-12 text-center">
         <span className="material-symbols-outlined text-[#C94F4F] text-5xl mb-4 block">error</span>
         <p className="text-authority text-2xl text-clinical-charcoal font-bold mb-2">Lab report not found</p>
@@ -297,7 +297,7 @@ export const LabDetail = () => {
   );
 
   if (!data) return (
-    <AppShell pageTitle="Lab Results">
+    <AppShell pageTitle="Lab Results" showDisclaimer>
       <div className="text-center py-20">
         <p className="text-authority text-2xl text-clinical-charcoal font-bold mb-2">Lab report not found</p>
         <button onClick={() => navigate('/labs')} className="text-precision text-[0.68rem] text-primary-container font-bold tracking-widest uppercase hover:underline">View All Lab Reports</button>
@@ -391,7 +391,7 @@ export const LabDetail = () => {
   };
 
   return (
-    <AppShell pageTitle="Lab Results">
+    <AppShell pageTitle="Lab Results" showDisclaimer>
       {/* Critical / Emergency banner — ALWAYS visible to ALL tiers (safety, no paywall) */}
       {criticalFindings.length > 0 && <CriticalBanner findings={criticalFindings} />}
 
