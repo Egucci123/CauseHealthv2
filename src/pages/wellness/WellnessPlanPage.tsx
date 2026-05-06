@@ -694,27 +694,49 @@ export const WellnessPlanPage = () => {
             );
             if (validRetests.length === 0) return null;
 
+            // Routing philosophy: PCP is the default. Most blood tests
+            // (including ApoB/Lp(a)/Free T3/MMA) belong here — your PCP can
+            // order them with the ICD-10 codes we provide. Only route OUT
+            // when there's a real reason: imaging needs a separate order;
+            // functional tests are insurance-denied even with good codes;
+            // GI tests fold into the existing GI follow-up visit.
             const SPECIALIST_META: Record<string, { title: string; explanation: string; icon: string; accent: string }> = {
-              pcp:            { title: 'For your PCP visit',         icon: 'medical_services',  accent: '#1B423A', explanation: 'The basics any primary care doctor will order at your 12-week follow-up. All insurance-covered with the ICD-10 codes paired here.' },
-              gi:             { title: 'For your GI doctor',          icon: 'restaurant',         accent: '#8B6F47', explanation: 'Tests your gastroenterologist orders. Bring this list to your UC follow-up — most are covered with K51.90 / K50.90.' },
-              hepatology:     { title: 'For a hepatology referral',   icon: 'medication',         accent: '#5C8FA8', explanation: 'Liver-specific tests. If your PCP sees ALT remains elevated, ask for a hepatology referral and bring this list.' },
-              cardiology:     { title: 'For preventive cardiology',   icon: 'monitor_heart',      accent: '#C94F4F', explanation: 'Advanced lipid + cardiovascular risk markers. Some PCPs order these; if not, ask for a cardiology referral.' },
-              endocrinology:  { title: 'For an endocrinologist',      icon: 'biotech',            accent: '#7B5CA0', explanation: 'Full thyroid panel, hormone, and adrenal workup. PCPs often only order TSH — these go deeper.' },
-              sleep_medicine: { title: 'For a sleep medicine referral', icon: 'bedtime',          accent: '#3D4F6A', explanation: 'Sleep study to evaluate apnea and oxygenation. Most insurances cover this with snoring, fatigue, or polycythemia documented.' },
-              rheumatology:   { title: 'For a rheumatology referral', icon: 'health_and_safety',  accent: '#A0563D', explanation: 'Autoimmune workup tests. Ask your PCP for a referral if joint symptoms persist or autoimmune dx is suspected.' },
-              nephrology:     { title: 'For a nephrology referral',   icon: 'water_drop',         accent: '#4A7C8D', explanation: 'Advanced kidney function tests. Refer if eGFR persistently abnormal.' },
-              hematology:     { title: 'For a hematology referral',   icon: 'opacity',            accent: '#8E2A2A', explanation: 'Advanced blood disorder workup. For unexplained CBC patterns or rule-outs.' },
-              functional:     { title: 'For a functional medicine doctor', icon: 'spa',           accent: '#5F7A4D', explanation: "Tests most PCPs don't order routinely. If your PCP declines, a functional medicine MD or naturopathic doctor will run these — often with cash-pay options under $100." },
-              imaging:        { title: 'Imaging to consider',         icon: 'visibility',         accent: '#6B6B6B', explanation: 'Non-blood tests — ultrasound, FibroScan, sleep study, CAC. These need a separate order or referral; insurance coverage varies by indication.' },
-              mental_health:  { title: 'Mental health screening',     icon: 'psychology',         accent: '#7B6FA0', explanation: 'Standard screening tools your PCP can administer in 5 minutes during a visit.' },
+              pcp:           { title: 'Tests to ask your PCP for',   icon: 'medical_services', accent: '#1B423A', explanation: 'Bring this list to your primary care follow-up. Each test pairs with an ICD-10 code your PCP can use to get insurance to cover it. Yes, even the advanced markers (ApoB, Lp(a), Free T3, etc.) — a good PCP will run them with the right diagnosis code.' },
+              gi:            { title: 'Tests at your GI follow-up',  icon: 'restaurant',       accent: '#8B6F47', explanation: 'These fold into your existing GI visits — no extra copay. Your gastroenterologist routinely orders these for UC/Crohn\'s monitoring.' },
+              imaging:       { title: 'Imaging to schedule',         icon: 'visibility',       accent: '#6B6B6B', explanation: 'Non-blood studies — ultrasound, FibroScan, sleep study, CAC, DEXA. These need separate orders. Your PCP can refer you with appropriate documentation; insurance coverage varies by indication.' },
+              functional:    { title: 'Cash-pay / functional MD',    icon: 'spa',              accent: '#5F7A4D', explanation: 'Tests insurance often denies even with good ICD-10 codes (DUTCH cortisol, organic acids, comprehensive stool). A functional medicine MD or direct-to-consumer lab will run these — usually $100–300 cash-pay total.' },
+              mental_health: { title: 'Mental health screening',     icon: 'psychology',       accent: '#7B6FA0', explanation: 'Standard screening tools (PHQ-9, GAD-7) your PCP can administer in 5 minutes during your existing visit. No referral needed.' },
+              // Legacy specialist keys still mapped — fall back to PCP visually
+              // if the AI emits them, since most are covered there now.
+              cardiology:    { title: 'Tests to ask your PCP for',   icon: 'medical_services', accent: '#1B423A', explanation: 'Bring this list to your primary care follow-up. ApoB, Lp(a), and CAC-related discussion are PCP-orderable with the right ICD-10.' },
+              endocrinology: { title: 'Tests to ask your PCP for',   icon: 'medical_services', accent: '#1B423A', explanation: 'Free T3, Reverse T3, hormone panels — your PCP can order these with R53.83 or appropriate symptom code.' },
+              sleep_medicine:{ title: 'Imaging to schedule',         icon: 'visibility',       accent: '#6B6B6B', explanation: 'Sleep study (HSAT or polysomnography). Your PCP can order or refer.' },
+              hepatology:    { title: 'Tests to ask your PCP for',   icon: 'medical_services', accent: '#1B423A', explanation: 'Liver enzymes + GGT — PCP-orderable. Hepatology referral only if ALT remains elevated >60 across two draws.' },
+              rheumatology:  { title: 'Tests to ask your PCP for',   icon: 'medical_services', accent: '#1B423A', explanation: 'ANA reflex / RF / anti-CCP — initial autoimmune workup is PCP-orderable. Rheumatology referral only if positive.' },
+              nephrology:    { title: 'Tests to ask your PCP for',   icon: 'medical_services', accent: '#1B423A', explanation: 'eGFR + UACR + cystatin C — PCP-orderable. Nephrology referral only if GFR<60 sustained.' },
+              hematology:    { title: 'Tests to ask your PCP for',   icon: 'medical_services', accent: '#1B423A', explanation: 'CBC + iron studies — PCP-orderable. Hematology referral only for unexplained patterns.' },
             };
 
+            // Collapse legacy specialty buckets into the simplified 5-folder
+            // model: pcp / gi / imaging / functional / mental_health.
+            // cardiology/endocrinology/etc. all go to PCP since a good PCP
+            // can order their tests with the right ICD-10.
+            const COLLAPSE: Record<string, string> = {
+              cardiology: 'pcp',
+              endocrinology: 'pcp',
+              hepatology: 'pcp',
+              rheumatology: 'pcp',
+              nephrology: 'pcp',
+              hematology: 'pcp',
+              sleep_medicine: 'imaging', // sleep study IS an imaging-class study
+            };
             const groups: Record<string, any[]> = {};
             for (const r of validRetests) {
-              const key = (r.specialist ?? 'pcp') as string;
+              const raw = (r.specialist ?? 'pcp') as string;
+              const key = COLLAPSE[raw] ?? raw;
               (groups[key] ??= []).push(r);
             }
-            const order: string[] = ['pcp', 'gi', 'hepatology', 'cardiology', 'endocrinology', 'sleep_medicine', 'rheumatology', 'nephrology', 'hematology', 'functional', 'imaging', 'mental_health'];
+            const order: string[] = ['pcp', 'gi', 'imaging', 'functional', 'mental_health'];
 
             return (
               <>

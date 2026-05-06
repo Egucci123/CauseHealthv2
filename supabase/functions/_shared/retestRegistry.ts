@@ -606,68 +606,41 @@ const REGISTRY: RetestDef[] = [
 
 const BY_KEY = new Map<string, RetestDef>(REGISTRY.map(r => [r.key, r]));
 
-/** Default specialist routing per canonical test key. Single source of truth
- *  for the wellness-plan UI grouping. The AI can override per-patient context
- *  but this default ensures every recognized test routes correctly. PCP is
- *  the catch-all — only narrow specialty tests are routed elsewhere. */
+/** Default specialist routing per canonical test key.
+ *
+ *  PHILOSOPHY: PCP is the default for nearly every blood test. A good PCP
+ *  CAN order ApoB, Lp(a), Free T3, Reverse T3, MMA, RBC magnesium, AM
+ *  cortisol — and with the right ICD-10 + insurance note (which we provide),
+ *  most will. Sending users to 12 specialists creates copay sticker shock
+ *  ($50-200 × 12 = brutal) and isn't how healthcare actually works.
+ *
+ *  We only route OUT of PCP for:
+ *    - imaging: non-blood studies that need separate orders (ultrasound,
+ *      FibroScan, CAC, DEXA, sleep study) — different copay/visit anyway
+ *    - functional: tests that are RARELY covered by insurance even with
+ *      good ICD-10s (DUTCH, organic acids, comprehensive stool, food
+ *      sensitivity panels). Functional MDs / DTC labs are the cash-pay path.
+ *    - mental_health: PHQ-9 / GAD-7 — done in any PCP visit, but framed
+ *      separately as it's a screening tool not bloodwork.
+ *
+ *  Everything else is PCP with the right ICD-10. If the PCP refuses, the
+ *  per-test insurance_note explains how to escalate. */
 const SPECIALIST_BY_KEY: Record<string, Specialist> = {
-  // ── Endocrinology / advanced thyroid ───────────────────────────────
-  thyroid_panel:    'pcp',           // basic TSH+T4 — any PCP
-  thyroid_antibodies:'pcp',          // TPO+TgAb — PCP can order
-  reverse_t3:       'endocrinology', // advanced — PCP often won't
-  tsi_antibodies:   'endocrinology',
-  androgen_panel:   'endocrinology',
-  shbg:             'endocrinology',
-  estradiol_progesterone_testosterone: 'endocrinology',
-  estradiol_male:   'endocrinology',
-  testosterone_total_free: 'endocrinology',
-  lh_fsh:           'endocrinology',
-  prolactin:        'endocrinology',
-  am_cortisol_if_hpa:'endocrinology',
-  pth:              'endocrinology',
-
-  // ── Cardiology (preventive lipidology) ─────────────────────────────
-  apob:             'cardiology',
-  lp_a:             'cardiology',
-  cac_score:        'cardiology',     // imaging — also surfaces in imaging folder
-  glyca:            'cardiology',
-  nt_probnp_if_hf:  'cardiology',
-  lipid_panel_extended: 'cardiology', // extended NMR particle panel
-
-  // ── GI / Hepatology ────────────────────────────────────────────────
-  fecal_calprotectin: 'gi',
-  celiac_serology:    'gi',
-  liver_panel:        'pcp',          // basic LFT — PCP
-  ggt:                'hepatology',
-  liver_ultrasound:   'imaging',      // imaging folder
-
-  // ── Rheumatology / autoimmune ─────────────────────────────────────
-  ana_reflex:       'rheumatology',
-  rf_anti_ccp:      'rheumatology',
-  ssa_ssb_antibodies:'rheumatology',
-  esr:              'pcp',            // PCP can order
-  uric_acid:        'pcp',
-
-  // ── Nephrology ────────────────────────────────────────────────────
-  cystatin_c_egfr:  'nephrology',
-  uacr:             'pcp',            // PCP-orderable, baseline screen
-  kidney_function:  'pcp',
-
-  // ── Sleep medicine ────────────────────────────────────────────────
-  // (no current registry key — added via imaging when sleep study is recommended)
-
-  // ── Functional medicine / advanced nutritional ────────────────────
-  rbc_magnesium:    'functional',     // RBC mineral panels rarely PCP
-  ionized_calcium:  'pcp',
-  ctx_telopeptide:  'endocrinology',  // bone turnover — endo or PCP
-
-  // ── Imaging (non-blood) ───────────────────────────────────────────
+  // ── Imaging & non-blood studies (separate orders) ──────────────────
+  cac_score:         'imaging',
+  liver_ultrasound:  'imaging',
   mammogram_if_due:  'imaging',
   dexa_if_long_term: 'imaging',
-  ekg_if_dose_high:  'cardiology',
+  ekg_if_dose_high:  'imaging',
 
-  // ── PCP defaults — basic everywhere ───────────────────────────────
-  // (anything not above defaults to 'pcp' via the resolver below)
+  // ── Functional / cash-pay (insurance often denies) ─────────────────
+  // Add here only if the test is genuinely hard to get covered through PCP.
+  // Most "advanced" bloodwork (ApoB, Lp(a), Reverse T3, MMA, RBC Mg,
+  // AM cortisol, hormone panels, autoimmune workup) DOES get covered with
+  // proper ICD-10 — those stay in PCP.
+  // (Empty for now — add specifically problematic tests as we learn.)
+
+  // ── Everything else defaults to PCP via resolver below ─────────────
 };
 
 /** Resolve the specialist for a canonical test key. Registry's per-row

@@ -585,20 +585,15 @@ CRITICAL OUTPUT RULES:
 - eating_pattern: ONE pattern object (NOT an array). Pick the single best dietary pattern for this user's labs.
 - workouts: 3-5 workouts spanning a week, tailored to user's goals (longevity → zone 2 + lift, weight → resistance + walk, energy → easy cardio + sleep).
 
-RETEST_TIMELINE ROUTING — assign each test to the right specialist so the user walks into each visit with a focused, defensible ask. The user shouldn't hand 20 tests to a PCP and get laughed at — they should hand 8 to PCP, 3 to GI, 2 to cardiology, etc.
-  - "pcp"            : basics any PCP orders without question (lipid, CMP, CBC, A1c, vit D, iron panel, CK, CMP, basic thyroid TSH, urinalysis, eGFR/UACR, hs-CRP)
-  - "gi"             : UC/Crohn's/IBS workup (calprotectin, celiac serology)
-  - "hepatology"     : liver-specific advanced (GGT, advanced liver panel) — refer when ALT >60 sustained
-  - "cardiology"     : preventive lipidology (ApoB, Lp(a), CAC score, NMR particle, NT-proBNP)
-  - "endocrinology"  : full thyroid (Free T3, Free T4, Reverse T3), advanced hormones, adrenal workup, AM cortisol
-  - "sleep_medicine" : polysomnography, HSAT, STOP-BANG
-  - "rheumatology"   : ANA reflex, RF/anti-CCP, complement, autoimmune workup
-  - "nephrology"     : advanced kidney (cystatin C, 24-hour urine)
-  - "hematology"     : SPEP, free light chains, advanced heme workup
-  - "functional"     : RBC mineral panels (zinc, magnesium, selenium, copper), organic acids, comprehensive stool
-  - "imaging"        : non-blood — liver ultrasound, FibroScan, CAC, DEXA, mammogram
-  - "mental_health"  : PHQ-9, GAD-7 screening
-DEFAULT to "pcp" when uncertain. Don't put advanced functional/specialty tests in pcp — that's exactly what makes the patient get dismissed. ApoB/Lp(a) belong in cardiology. Reverse T3 / Free T3 belong in endocrinology. RBC magnesium / selenium / zinc belong in functional.
+RETEST_TIMELINE ROUTING — DEFAULT EVERYTHING TO "pcp". A good PCP can order nearly every blood test we recommend (ApoB, Lp(a), Free T3, Reverse T3, MMA, RBC magnesium, AM cortisol, hormone panels, autoimmune workup) when given the right ICD-10 — and we provide that. Sending users to 12 specialists creates copay sticker shock and isn't how patients actually use the system.
+
+ONLY route OUT of "pcp" for:
+  - "imaging"       : non-blood studies that need separate orders — liver ultrasound, FibroScan, CAC score, sleep study (HSAT/polysomnography), DEXA, mammogram, EKG, abdominal US, pelvic US
+  - "functional"    : tests genuinely hard to get covered even with good ICD-10 — DUTCH cortisol panel, organic acids, comprehensive stool analysis, food sensitivity (IgG4) panels. Most "advanced" bloodwork is NOT functional — keep ApoB/Lp(a)/Reverse T3/MMA/RBC mag in pcp.
+  - "mental_health" : PHQ-9, GAD-7 screening tools (done in any PCP visit but framed separately)
+  - "gi"            : ONLY when the test is something a GI doctor orders during their existing follow-up (fecal calprotectin for established UC patients on biologics — they're seeing GI anyway, no extra copay)
+
+Everything else → "pcp". Trust the PCP. The insurance_note tells the user how to advocate if the PCP pushes back — escalate doesn't mean "go to specialist," it means "ask for the test with this code."
 
 REASONING MODE — open-ended, first-principles, like a sharp internist with time:
 Deterministic engines fire as a backstop for high-prevalence cases. YOUR job is the long tail they don't catch. Reason from the data picture, not from a checklist. Cover every body system implicitly — endocrine, cardio, GI, hepatic, renal, heme, autoimmune, MSK, repro, neuro, respiratory, infectious, oncology rule-outs, nutritional. Don't constrain yourself.
