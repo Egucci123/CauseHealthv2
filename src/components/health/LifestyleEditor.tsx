@@ -44,40 +44,44 @@ const SectionHeader = ({ icon, title, subtitle }: { icon: string; title: string;
   </div>
 );
 
-export const LifestyleEditor = ({ value, onChange }: Props) => {
-  const ToggleButtons = ({ options, val, onPick }: { options: { value: string; label: string }[]; val: string | undefined; onPick: (v: string) => void }) => (
-    <div className="flex gap-2 flex-wrap">
-      {options.map(opt => (
-        <button key={opt.value} onClick={() => onPick(opt.value)} style={{ borderRadius: '4px' }}
-          className={`flex-1 min-w-[80px] py-2.5 text-body text-sm border transition-colors ${val === opt.value ? 'bg-primary-container border-primary-container text-white' : 'border-outline-variant/20 text-clinical-stone hover:border-outline-variant/40'}`}>
-          {opt.label}
+// CRITICAL: these helpers MUST live at module scope, not inside
+// LifestyleEditor's body. If defined inside, they get recreated as a
+// brand-new component type on every parent render — React then unmounts
+// + remounts the entire subtree (including <input type="range">), which
+// kills active drag gestures at every state change. That was the
+// real cause of "slider stops at each number, have to reclick to keep going".
+const ToggleButtons = ({ options, val, onPick }: { options: { value: string; label: string }[]; val: string | undefined; onPick: (v: string) => void }) => (
+  <div className="flex gap-2 flex-wrap">
+    {options.map(opt => (
+      <button key={opt.value} onClick={() => onPick(opt.value)} style={{ borderRadius: '4px' }}
+        className={`flex-1 min-w-[80px] py-2.5 text-body text-sm border transition-colors ${val === opt.value ? 'bg-primary-container border-primary-container text-white' : 'border-outline-variant/20 text-clinical-stone hover:border-outline-variant/40'}`}>
+        {opt.label}
+      </button>
+    ))}
+  </div>
+);
+
+const ChipSelect = ({ items, selected, onToggle }: { items: string[]; selected: string[]; onToggle: (item: string) => void }) => (
+  <div className="flex flex-wrap gap-2">
+    {items.map(item => {
+      const sel = selected.includes(item);
+      return (
+        <button key={item} onClick={() => onToggle(item)} style={{ borderRadius: '4px' }}
+          className={`text-body text-sm px-3 py-2 border transition-all ${sel ? 'bg-primary-container border-primary-container text-white' : 'border-outline-variant/20 text-clinical-stone hover:border-outline-variant/40'}`}>
+          {item}
         </button>
-      ))}
-    </div>
-  );
+      );
+    })}
+  </div>
+);
 
-  const ChipSelect = ({ items, selected, onToggle }: { items: string[]; selected: string[]; onToggle: (item: string) => void }) => (
-    <div className="flex flex-wrap gap-2">
-      {items.map(item => {
-        const sel = selected.includes(item);
-        return (
-          <button key={item} onClick={() => onToggle(item)} style={{ borderRadius: '4px' }}
-            className={`text-body text-sm px-3 py-2 border transition-all ${sel ? 'bg-primary-container border-primary-container text-white' : 'border-outline-variant/20 text-clinical-stone hover:border-outline-variant/40'}`}>
-            {item}
-          </button>
-        );
-      })}
-    </div>
-  );
+const SectionCard = ({ children }: { children: React.ReactNode }) => (
+  <div className="bg-clinical-white rounded-[10px] border border-outline-variant/15 p-5 md:p-6">
+    {children}
+  </div>
+);
 
-  // Card wrapper for each section — clean visual separation so users see
-  // every section as they scroll instead of having to discover tabs.
-  const SectionCard = ({ children }: { children: React.ReactNode }) => (
-    <div className="bg-clinical-white rounded-[10px] border border-outline-variant/15 p-5 md:p-6">
-      {children}
-    </div>
-  );
-
+export const LifestyleEditor = ({ value, onChange }: Props) => {
   return (
     <div className="space-y-5">
       {/* ── SLEEP ───────────────────────────────────────────── */}

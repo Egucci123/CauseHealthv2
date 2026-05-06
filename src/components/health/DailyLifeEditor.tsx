@@ -108,51 +108,58 @@ const DLSectionHeader = ({ icon, title, subtitle }: { icon: string; title: strin
   </div>
 );
 
+// CRITICAL: helpers MUST be at module scope — same reason as LifestyleEditor.
+// Defining inside the component recreates them as new component types every
+// render, which unmounts + remounts the entire subtree (including the
+// <input type="range">), killing active drag gestures.
+const DLToggle = <T extends string | undefined>({ options, val, onPick }: { options: { value: T; label: string }[]; val: T | undefined; onPick: (v: T) => void }) => (
+  <div className="flex gap-2 flex-wrap">
+    {options.map(opt => (
+      <button key={String(opt.value)} onClick={() => onPick(opt.value)} style={{ borderRadius: '4px' }}
+        className={`flex-1 min-w-[80px] py-2.5 text-body text-sm border transition-colors ${val === opt.value ? 'bg-primary-container border-primary-container text-white' : 'border-outline-variant/20 text-clinical-stone hover:border-outline-variant/40'}`}>
+        {opt.label}
+      </button>
+    ))}
+  </div>
+);
+
+const DLIconGrid = <T extends string | undefined>({ options, val, onPick, cols = 3 }: { options: { value: T; label: string; icon: string }[]; val: T | undefined; onPick: (v: T) => void; cols?: number }) => (
+  <div className={`grid gap-2 ${cols === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
+    {options.map(opt => (
+      <button key={String(opt.value)} onClick={() => onPick(opt.value)} style={{ borderRadius: '4px' }}
+        className={`flex flex-col items-center gap-1 py-3 px-2 border text-center transition-all ${val === opt.value ? 'bg-primary-container/10 border-primary-container/40 text-primary-container' : 'border-outline-variant/20 text-clinical-stone hover:border-outline-variant/40'}`}>
+        <span className="text-xl">{opt.icon}</span>
+        <span className="text-body text-xs font-medium">{opt.label}</span>
+      </button>
+    ))}
+  </div>
+);
+
+const DLChipMulti = ({ items, selected, onToggle }: { items: string[]; selected: string[]; onToggle: (s: string) => void }) => (
+  <div className="flex flex-wrap gap-2">
+    {items.map(item => {
+      const sel = selected.includes(item);
+      return (
+        <button key={item} onClick={() => onToggle(item)} style={{ borderRadius: '4px' }}
+          className={`text-body text-sm px-3 py-2 border transition-all ${sel ? 'bg-primary-container border-primary-container text-white' : 'border-outline-variant/20 text-clinical-stone hover:border-outline-variant/40'}`}>
+          {item}
+        </button>
+      );
+    })}
+  </div>
+);
+
+const DLSectionCard = ({ children }: { children: React.ReactNode }) => (
+  <div className="bg-clinical-white rounded-[10px] border border-outline-variant/15 p-5 md:p-6">
+    {children}
+  </div>
+);
+
 export const DailyLifeEditor = ({ value, onChange }: Props) => {
-  const Toggle = <T extends string | undefined>({ options, val, onPick }: { options: { value: T; label: string }[]; val: T | undefined; onPick: (v: T) => void }) => (
-    <div className="flex gap-2 flex-wrap">
-      {options.map(opt => (
-        <button key={String(opt.value)} onClick={() => onPick(opt.value)} style={{ borderRadius: '4px' }}
-          className={`flex-1 min-w-[80px] py-2.5 text-body text-sm border transition-colors ${val === opt.value ? 'bg-primary-container border-primary-container text-white' : 'border-outline-variant/20 text-clinical-stone hover:border-outline-variant/40'}`}>
-          {opt.label}
-        </button>
-      ))}
-    </div>
-  );
-
-  const IconGrid = <T extends string | undefined>({ options, val, onPick, cols = 3 }: { options: { value: T; label: string; icon: string }[]; val: T | undefined; onPick: (v: T) => void; cols?: number }) => (
-    <div className={`grid gap-2 ${cols === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
-      {options.map(opt => (
-        <button key={String(opt.value)} onClick={() => onPick(opt.value)} style={{ borderRadius: '4px' }}
-          className={`flex flex-col items-center gap-1 py-3 px-2 border text-center transition-all ${val === opt.value ? 'bg-primary-container/10 border-primary-container/40 text-primary-container' : 'border-outline-variant/20 text-clinical-stone hover:border-outline-variant/40'}`}>
-          <span className="text-xl">{opt.icon}</span>
-          <span className="text-body text-xs font-medium">{opt.label}</span>
-        </button>
-      ))}
-    </div>
-  );
-
-  const ChipMulti = ({ items, selected, onToggle }: { items: string[]; selected: string[]; onToggle: (s: string) => void }) => (
-    <div className="flex flex-wrap gap-2">
-      {items.map(item => {
-        const sel = selected.includes(item);
-        return (
-          <button key={item} onClick={() => onToggle(item)} style={{ borderRadius: '4px' }}
-            className={`text-body text-sm px-3 py-2 border transition-all ${sel ? 'bg-primary-container border-primary-container text-white' : 'border-outline-variant/20 text-clinical-stone hover:border-outline-variant/40'}`}>
-            {item}
-          </button>
-        );
-      })}
-    </div>
-  );
-
-  // Card wrapper for each section — clear visual separation as users scroll.
-  const SectionCard = ({ children }: { children: React.ReactNode }) => (
-    <div className="bg-clinical-white rounded-[10px] border border-outline-variant/15 p-5 md:p-6">
-      {children}
-    </div>
-  );
-
+  const Toggle = DLToggle;
+  const IconGrid = DLIconGrid;
+  const ChipMulti = DLChipMulti;
+  const SectionCard = DLSectionCard;
   return (
     <div className="space-y-5">
       {/* ── WORK ────────────────────────────────────────────── */}
