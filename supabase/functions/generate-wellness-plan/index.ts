@@ -20,6 +20,7 @@ import { detectLabPatterns } from '../_shared/labPatternRegistry.ts';
 import { runSuspectedConditionsBackstop } from '../_shared/suspectedConditionsBackstop.ts';
 import { detectCriticalFindings } from '../_shared/criticalFindingsBackstop.ts';
 import { screenInteractions } from '../_shared/drugInteractionEngine.ts';
+import { computeProgressDeltas, renderPriorDrawForPrompt, type ProgressSummary } from '../_shared/longitudinalDelta.ts';
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -158,6 +159,50 @@ serve(async (req) => {
         const { data } = await supabase.from('lab_values').select('*').eq('draw_id', drawId);
         console.log('[wellness] Fallback drawId:', drawId, 'lab_values count:', data?.length);
         labValues = data ?? [];
+      }
+    }
+
+    // ── LONGITUDINAL: fetch prior draw + compute progress deltas ─────────
+    // Universal: works for any patient, any markers, any condition. When
+    // there's no prior draw (first-time user), `progressSummary` stays null
+    // and the rest of the pipeline behaves exactly as before. When there
+    // IS a prior draw, the AI gets a structured comparison block + the
+    // plan persists `progress_summary` for the UI to render the "from /
+    // through / to" progress card.
+    let progressSummary: ProgressSummary | null = null;
+    let priorLabValues: any[] = [];
+    let priorDrawId: string | null = null;
+    let priorDrawDate: string | null = null;
+    if (drawId) {
+      // Find the most recent draw for this user that ISN'T the current one.
+      // We sort by draw_date desc, then created_at desc as tiebreaker — so
+      // two draws on the same day fall back to creation order.
+      const { data: allDraws } = await supabase
+        .from('lab_draws')
+        .select('id, draw_date, created_at')
+        .eq('user_id', userId)
+        .order('draw_date', { ascending: false })
+        .order('created_at', { ascending: false });
+      const priorDraw = (allDraws ?? []).find((d: any) => d.id !== drawId);
+      if (priorDraw) {
+        priorDrawId = priorDraw.id;
+        priorDrawDate = priorDraw.draw_date;
+        const { data: priorVals } = await supabase
+          .from('lab_values')
+          .select('marker_name, value, unit, optimal_flag, standard_flag')
+          .eq('draw_id', priorDrawId);
+        priorLabValues = priorVals ?? [];
+        if (priorLabValues.length > 0 && labValues.length > 0) {
+          progressSummary = computeProgressDeltas(
+            labValues,
+            priorLabValues,
+            String(priorDrawDate ?? new Date().toISOString().slice(0, 10)),
+            String(latestDrawRes.data?.draw_date ?? new Date().toISOString().slice(0, 10)),
+          );
+          console.log(`[wellness] longitudinal: prior=${priorDrawDate}, ${progressSummary.movements.length} markers compared, ${progressSummary.rollup.improved} improved / ${progressSummary.rollup.worsened} worsened / ${progressSummary.rollup.stable} stable`);
+        }
+      } else {
+        console.log('[wellness] longitudinal: first draw for this user — no prior comparison');
       }
     }
 
@@ -661,6 +706,8 @@ SUPPLEMENT-LAB INTERACTION KNOWLEDGE (use when interpreting labs and building st
 - Vitamin C high-dose: can raise serum glucose readings on some glucometers.
 If user is on a supplement that explains an "abnormal" lab (e.g., creatine→creatinine, biotin→TSH), call that out in summary instead of treating it as pathology.
 
+${renderPriorDrawForPrompt(progressSummary)}
+
 ALL LAB VALUES:
 ${allLabsStr.slice(0, 4000)}
 
@@ -1037,6 +1084,15 @@ CALIBRATION (applies to ALL arrays): Healthy patient with clean labs → 0-2 ent
     if (!Array.isArray(plan.predicted_changes_ai)) plan.predicted_changes_ai = [];
     if (!Array.isArray(plan.already_at_goal_ai)) plan.already_at_goal_ai = [];
     if (!Array.isArray(plan.test_quality_caveats_ai)) plan.test_quality_caveats_ai = [];
+
+    // ── LONGITUDINAL: persist the deterministic progress summary ─────────
+    // The AI used this data to reason (via the prompt block); we attach OUR
+    // version to the plan so the UI renders deterministic deltas, not AI
+    // fabricated numbers. Empty/null when this is the user's first draw.
+    if (progressSummary) {
+      plan.progress_summary = progressSummary;
+      console.log(`[wellness-plan] progress_summary attached: ${progressSummary.movements.length} movements, ${progressSummary.rollup.improved} improved / ${progressSummary.rollup.worsened} worsened`);
+    }
 
     // ── Source attribution on every AI-produced array ────────────────────
     // Tag each entry with source: 'ai' so the UI/audit can distinguish

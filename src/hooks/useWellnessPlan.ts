@@ -77,6 +77,36 @@ export interface WellnessPlanData {
     insurance_note?: string;
     priority?: 'urgent' | 'high' | 'moderate';
   }[];
+  /** LONGITUDINAL — present only when this plan was generated against a
+   *  retest (i.e., the user had a prior lab draw). Universal: works for any
+   *  marker, any patient, any condition. Powers the "Progress since [date]"
+   *  card on the wellness plan page. Null/absent for first-time users. */
+  progress_summary?: {
+    prior_draw_date: string;
+    weeks_between: number;
+    movements: Array<{
+      marker: string;
+      unit: string;
+      prior_value: number | null;
+      current_value: number | null;
+      prior_display: string;
+      current_display: string;
+      delta: number | null;
+      pct_change: number | null;
+      prior_tier: number;
+      current_tier: number;
+      direction: 'improved' | 'worsened' | 'stable' | 'new_marker' | 'unclear';
+      magnitude: 'major' | 'moderate' | 'minor' | 'none';
+    }>;
+    new_markers: string[];
+    retired_markers: string[];
+    rollup: {
+      improved: number;
+      worsened: number;
+      stable: number;
+      total_compared: number;
+    };
+  };
   /** Drug-supplement interactions found by the safety engine.
    *  'block' severity = supplement was REMOVED from supplement_stack.
    *  'caution' severity = supplement is still in stack but with a warning. */

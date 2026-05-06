@@ -10,6 +10,7 @@ import { LifestyleInterventions } from '../../components/wellness/LifestyleInter
 import { ActionPlan } from '../../components/wellness/ActionPlan';
 import { PossibleConditions } from '../../components/wellness/PossibleConditions';
 import { InteractionWarnings } from '../../components/wellness/InteractionWarnings';
+import { ProgressSummary } from '../../components/wellness/ProgressSummary';
 import { TransformationForecast } from '../../components/wellness/TransformationForecast';
 import { useWellnessPlan, useGenerateWellnessPlan } from '../../hooks/useWellnessPlan';
 import { useLatestLabDraw, useLatestLabValues } from '../../hooks/useLabData';
@@ -678,6 +679,24 @@ export const WellnessPlanPage = () => {
 
           {/* Transformation forecast — pure math, big motivation */}
           {forecasts.length > 0 && <TransformationForecast forecasts={forecasts} />}
+
+          {/* LONGITUDINAL — Progress since prior draw. Only renders if
+              this plan was generated against a retest (user has 2+ draws).
+              Universal: any marker, any patient. Shown high on the page so
+              users see their progress story before the next-step asks. */}
+          {plan.progress_summary && plan.progress_summary.movements.length > 0 && (
+            <FolderSection
+              icon="trending_up"
+              title={`Progress since your last draw`}
+              count={plan.progress_summary.rollup.total_compared}
+              countLabel="markers"
+              explanation="What changed between your prior labs and this draw. Direction is measured against each marker's optimal range — 'improved' means closer to optimal, 'worsened' means further. This is the story of whether the plan worked."
+              accentColor="#1B423A"
+              defaultOpen
+            >
+              <ProgressSummary summary={plan.progress_summary} />
+            </FolderSection>
+          )}
 
           {/* Single unified test list — re-measures + new tests in one folder.
               The split into 'retest' vs 'new tests' was a UX experiment that
