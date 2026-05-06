@@ -42,6 +42,55 @@ serve(async (req) => {
       supabase.from('lab_draws').select('id').eq('user_id', userId).order('draw_date', { ascending: false }).limit(1).maybeSingle(),
     ]);
 
+    // ── REGEN RATE LIMITING ─────────────────────────────────────────────
+    // Two-layer protection against runaway regenerations:
+    //   1. Per-draw cap: max 3 generations per lab upload. Aligns with the
+    //      "$19 per analysis" pricing — one analysis, one plan, with 2 regens
+    //      of headroom for users who add a missed symptom/condition. After 3,
+    //      the user must upload new labs to get a fresh plan.
+    //   2. Cooldown: 30-minute minimum between attempts. Prevents rapid-fire
+    //      spam from a confused user clicking Regenerate 5 times in a row.
+    //
+    // Universal — applies to every user. Anti-abuse, not punitive.
+    const draftDrawId = latestDrawRes.data?.id ?? null;
+    if (draftDrawId) {
+      const { data: priorPlans } = await supabase
+        .from('wellness_plans')
+        .select('id, created_at')
+        .eq('user_id', userId)
+        .eq('draw_id', draftDrawId)
+        .eq('generation_status', 'complete')
+        .order('created_at', { ascending: false });
+
+      const planCount = priorPlans?.length ?? 0;
+      const PER_DRAW_CAP = 3;
+      const COOLDOWN_MIN = 30;
+
+      if (planCount >= PER_DRAW_CAP) {
+        return new Response(JSON.stringify({
+          error: `You've used all ${PER_DRAW_CAP} generations for this lab upload. Upload new labs to generate a fresh plan.`,
+          code: 'REGEN_LIMIT_REACHED',
+          limit: PER_DRAW_CAP,
+          used: planCount,
+        }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      const lastPlanAt = priorPlans?.[0]?.created_at;
+      if (lastPlanAt) {
+        const minutesSince = (Date.now() - new Date(lastPlanAt).getTime()) / 60000;
+        if (minutesSince < COOLDOWN_MIN) {
+          const wait = Math.ceil(COOLDOWN_MIN - minutesSince);
+          return new Response(JSON.stringify({
+            error: `Please wait ${wait} more minute${wait === 1 ? '' : 's'} before regenerating. (Cooldown: ${COOLDOWN_MIN} min between generations.)`,
+            code: 'REGEN_COOLDOWN',
+            waitMinutes: wait,
+          }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+      }
+
+      console.log(`[wellness-plan] regen check passed: ${planCount}/${PER_DRAW_CAP} used for this draw`);
+    }
+
     const profile = profileRes.data; const meds = medsRes.data ?? []; const symptoms = symptomsRes.data ?? [];
     const conditions = conditionsRes.data ?? [];
     const supps = suppsRes.data ?? [];
