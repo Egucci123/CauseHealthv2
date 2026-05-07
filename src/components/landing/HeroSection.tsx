@@ -160,11 +160,11 @@ export const HeroSection = () => (
           </div>
 
           <h1 className="text-authority font-bold text-clinical-charcoal leading-tight mb-2">
-            <span className="text-5xl md:text-6xl block">Turn your doctor</span>
-            <span className="text-5xl md:text-6xl block">into a functional</span>
+            <span className="text-5xl md:text-6xl block">Bloodwork answers</span>
+            <span className="text-5xl md:text-6xl block">your doctor doesn't</span>
           </h1>
           <h2 className="text-authority text-4xl md:text-5xl font-bold text-primary-container leading-tight mb-8">
-            health doctor —<br />for $19.
+            have time to give —<br />for $19.
           </h2>
 
           <p className="text-body text-clinical-stone text-lg leading-relaxed mb-4 max-w-lg">
