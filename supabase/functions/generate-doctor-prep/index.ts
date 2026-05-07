@@ -8,6 +8,7 @@ import { GOAL_LABELS, formatGoals } from '../_shared/goals.ts';
 import { hasCondition } from '../_shared/conditionAliases.ts';
 import { isOnMed } from '../_shared/medicationAliases.ts';
 import { checkRegenCap, regenLimitError } from '../_shared/regenCap.ts';
+import { runMedicationAlternativesEngine } from '../_shared/medicationAlternativesEngine.ts';
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -914,6 +915,34 @@ reason_to_consider must cite the SPECIFIC patient finding that triggers this ent
     if (!doc.headline) doc.headline = '';
     if (!Array.isArray(doc.medication_alternatives)) doc.medication_alternatives = [];
     if (!Array.isArray(doc.possible_conditions)) doc.possible_conditions = [];
+
+    // ── Deterministic medication alternatives (universal backstop) ───────
+    // The AI prompt asks for these but underfires on textbook cases (e.g.
+    // atorvastatin + ALT > 60). The engine fires deterministically for the
+    // highest-prevalence cases (statin + ALT, statin + myalgia, metformin
+    // + measured B12 deficiency, long-term PPI + measured Mg/B12 low).
+    // Merges with whatever the AI returned, deduped by current_medication.
+    {
+      const labCtx = labValues.map((v: any) => ({
+        marker_name: v.marker_name,
+        value: v.value,
+        optimal_flag: v.optimal_flag,
+        standard_flag: v.standard_flag,
+      }));
+      const merged = runMedicationAlternativesEngine(
+        {
+          medsLower: (medsStr ?? '').toLowerCase(),
+          conditionsLower: (condStr ?? '').toLowerCase(),
+          symptomsLower: (sympStr ?? '').toLowerCase(),
+          labValues: labCtx,
+        },
+        doc.medication_alternatives,
+      );
+      if (merged.length !== doc.medication_alternatives.length) {
+        console.log(`[doctor-prep] med-alternatives engine added ${merged.length - doc.medication_alternatives.length} entry/entries`);
+      }
+      doc.medication_alternatives = merged;
+    }
 
     // ── DISCLAIMER (deterministic) ─────────────────────────────────────
     // Same wording on every doctor-prep doc. Treat as legal boilerplate.
