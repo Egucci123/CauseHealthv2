@@ -94,6 +94,11 @@ export const RedeemCodeForm = ({ compact = false }: { compact?: boolean }) => {
               subscriptionStatus: 'active',
               subscriptionExpiresAt: data.expires_at ?? null,
               compCodeUsed: code.trim().toUpperCase(),
+              // Code redemption grants +1 upload credit (parity with $19
+              // unlock). The DB-side RPC already did this; we patch local
+              // state so the upload button is unlocked instantly without
+              // waiting for fetchProfile.
+              uploadCredits: (auth.profile.uploadCredits ?? 0) + 1,
             },
           });
         }

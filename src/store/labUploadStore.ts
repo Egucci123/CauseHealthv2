@@ -176,28 +176,26 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
         // pack grants +1. Atomic decrement happens server-side via the
         // consume_upload_credit RPC after the lab_draws row is inserted, so
         // two concurrent uploads can't both pass a stale client check.
+        // Credits required for everyone — paying users AND comp users.
+        // The $19 unlock and the redeem-code flow both grant +1 credit
+        // (parity); each additional upload costs $5. Comp doesn't mean
+        // unlimited.
         const profile = useAuthStore.getState().profile;
-        const isComp = profile?.subscriptionTier === 'comp'
-          && (profile?.subscriptionStatus === 'active' || profile?.subscriptionStatus === 'trialing');
-        if (!isComp) {
-          const credits = profile?.uploadCredits ?? 0;
-          if (credits <= 0) {
-            // Branch on whether they've ever unlocked. Pre-unlock → $19 flow.
-            // Post-unlock with 0 credits → $5 flow. We do NOT auto-redirect
-            // anymore — the LabUpload page renders a paywall card with both
-            // "Unlock" and "Have a code?" so users with comp codes don't get
-            // shoved into Stripe.
-            const hasUnlocked = !!profile?.unlockPurchasedAt
-              || profile?.subscriptionTier === 'pro';
-            set({
-              phase: 'needs_payment',
-              isRunning: false,
-              paymentTier: hasUnlocked ? 'upload_pack' : 'unlock',
-              errorMessage: null,
-              statusMessage: '',
-            });
-            return;
-          }
+        const credits = profile?.uploadCredits ?? 0;
+        if (credits <= 0) {
+          // Branch on whether they've ever unlocked OR redeemed a code:
+          // pre-unlock → $19 flow; post-unlock OR comp → $5 flow.
+          const hasUnlocked = !!profile?.unlockPurchasedAt
+            || profile?.subscriptionTier === 'pro'
+            || profile?.subscriptionTier === 'comp';
+          set({
+            phase: 'needs_payment',
+            isRunning: false,
+            paymentTier: hasUnlocked ? 'upload_pack' : 'unlock',
+            errorMessage: null,
+            statusMessage: '',
+          });
+          return;
         }
 
         // 0. Ensure fresh auth session — critical for mobile where tokens go stale.
@@ -257,32 +255,29 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
         if (!draw) throw new Error('Failed to create lab record (no row returned — RLS may have blocked the read after insert)');
         set({ drawId: draw.id });
 
-        // Consume an upload credit — atomic, server-side. Comp users skip
-        // (they have unlimited). If the RPC returns -1, the user somehow had
-        // 0 credits at insert time (race with another tab) — log it but don't
-        // hard-fail; the draw is already created. Refund logic can run later.
+        // Consume an upload credit — atomic, server-side. Universal: comp
+        // users decrement too (parity with paying users — comp grants 1
+        // credit on redemption, then $5/each after). If the RPC returns
+        // -1, the user somehow had 0 credits at insert time (race with
+        // another tab) — log it but don't hard-fail; the draw is already
+        // created. Refund logic can run later.
         const profileNow = useAuthStore.getState().profile;
-        const isCompNow = profileNow?.subscriptionTier === 'comp'
-          && (profileNow?.subscriptionStatus === 'active' || profileNow?.subscriptionStatus === 'trialing');
-        if (!isCompNow) {
-          try {
-            const { data: newBalance, error: rpcErr } = await supabase.rpc('consume_upload_credit', { p_user_id: userId });
-            if (rpcErr) {
-              console.warn('[LabUpload] consume_upload_credit failed:', rpcErr.message);
-            } else {
-              // Patch local profile so the UI reflects the new balance immediately.
-              if (profileNow) {
-                useAuthStore.setState({
-                  profile: { ...profileNow, uploadCredits: Math.max(0, newBalance ?? 0) },
-                });
-              }
-              if ((newBalance ?? 0) < 0) {
-                console.warn('[LabUpload] consume_upload_credit returned -1 — race or stale balance');
-              }
+        try {
+          const { data: newBalance, error: rpcErr } = await supabase.rpc('consume_upload_credit', { p_user_id: userId });
+          if (rpcErr) {
+            console.warn('[LabUpload] consume_upload_credit failed:', rpcErr.message);
+          } else {
+            if (profileNow) {
+              useAuthStore.setState({
+                profile: { ...profileNow, uploadCredits: Math.max(0, newBalance ?? 0) },
+              });
             }
-          } catch (e) {
-            console.warn('[LabUpload] consume_upload_credit threw:', e);
+            if ((newBalance ?? 0) < 0) {
+              console.warn('[LabUpload] consume_upload_credit returned -1 — race or stale balance');
+            }
           }
+        } catch (e) {
+          console.warn('[LabUpload] consume_upload_credit threw:', e);
         }
 
         // 3. Try client-side text extraction first (PDFs only)
