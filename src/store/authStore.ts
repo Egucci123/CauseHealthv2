@@ -256,6 +256,8 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
           subscriptionStatus:   data.subscription_status ?? 'inactive',
           subscriptionExpiresAt: data.subscription_expires_at ?? null,
           compCodeUsed:         data.comp_code_used ?? null,
+          uploadCredits:        data.upload_credits ?? 0,
+          unlockPurchasedAt:    data.unlock_purchased_at ?? null,
           onboardingCompleted:  data.onboarding_completed,
           termsAcceptance:      data.terms_acceptance ?? null,
           primaryGoals:         data.primary_goals,

@@ -1,17 +1,14 @@
-// supabase/functions/create-checkout-session/index.ts
+// supabase/functions/create-upload-checkout/index.ts
 //
-// $19 one-time UNLOCK checkout.
+// $5 one-time UPLOAD-PACK checkout.
 //
-// Grants the user pro-tier access + 1 lab-draw upload credit (their first
-// upload). After unlock, additional draw uploads cost $5 each via the
-// separate create-upload-checkout function.
+// Grants +1 lab-draw upload credit. Triggered when a user with
+// upload_credits=0 attempts to upload a brand-new lab draw.
 //
-// This was previously mode:'subscription' for a recurring $19/mo plan;
-// flipped to mode:'payment' to match the marketed "$19 one-time / lifetime"
-// pricing in the PaywallGate UI.
+// Append-to-existing-draw is FREE (handled by useAppendToDraw — does not
+// hit this function).
 //
-// Env: STRIPE_UNLOCK_PRICE_ID (preferred). Falls back to STRIPE_PRICE_ID
-// for backwards-compat during the migration window.
+// Env: STRIPE_UPLOAD_PRICE_ID (required).
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import Stripe from 'https://esm.sh/stripe@13.10.0?target=deno'
@@ -30,13 +27,12 @@ serve(async (req) => {
     try {
       const body = await req.json().catch(() => ({}))
       if (typeof body?.origin === 'string') origin = body.origin
-    } catch { /* no body, that's fine */ }
+    } catch { /* no body */ }
     const APP_URL = origin || Deno.env.get('APP_URL') || 'https://causehealth.app'
 
     const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: authHeader } } })
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
-      console.warn('[checkout-unlock] auth failed:', authError?.message)
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
@@ -54,9 +50,9 @@ serve(async (req) => {
       await admin.from('profiles').update({ stripe_customer_id: customerId }).eq('id', user.id)
     }
 
-    const priceId = Deno.env.get('STRIPE_UNLOCK_PRICE_ID') ?? Deno.env.get('STRIPE_PRICE_ID')
+    const priceId = Deno.env.get('STRIPE_UPLOAD_PRICE_ID')
     if (!priceId) {
-      return new Response(JSON.stringify({ error: 'Server misconfigured: STRIPE_UNLOCK_PRICE_ID not set' }), {
+      return new Response(JSON.stringify({ error: 'Server misconfigured: STRIPE_UPLOAD_PRICE_ID not set' }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
@@ -65,22 +61,18 @@ serve(async (req) => {
       customer: customerId,
       payment_method_types: ['card'],
       mode: 'payment',
-      // client_reference_id ensures the webhook can resolve the user even if metadata gets dropped.
       client_reference_id: user.id,
       line_items: [{ price: priceId, quantity: 1 }],
-      // Reuse the existing ?subscription=success handler in
-      // SubscriptionManagement — it already does optimistic Pro flip + retry-fetch.
-      success_url: `${APP_URL}/settings?tab=subscription&subscription=success`,
-      cancel_url: `${APP_URL}/settings?tab=subscription&subscription=canceled`,
-      // Tag the session so the webhook knows which product was purchased.
+      success_url: `${APP_URL}/labs?upload=success`,
+      cancel_url: `${APP_URL}/labs?upload=canceled`,
       metadata: {
         supabase_user_id: user.id,
-        purchase_type: 'unlock',
+        purchase_type: 'upload_pack',
       },
       payment_intent_data: {
         metadata: {
           supabase_user_id: user.id,
-          purchase_type: 'unlock',
+          purchase_type: 'upload_pack',
         },
       },
       allow_promotion_codes: true,
@@ -88,7 +80,7 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({ url: session.url }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
   } catch (err) {
-    console.error('[checkout-unlock] error:', err)
+    console.error('[checkout-upload] error:', err)
     return new Response(JSON.stringify({ error: (err as Error)?.message ?? 'Checkout failed' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
   }
 })

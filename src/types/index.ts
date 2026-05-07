@@ -66,6 +66,13 @@ export interface Profile {
   subscriptionStatus:   SubscriptionStatus;
   subscriptionExpiresAt: string | null;
   compCodeUsed:         string | null;
+  /** Remaining lab-draw upload credits.
+   *  +1 from $19 unlock, +1 from each $5 upload pack. Decremented when a
+   *  brand-new lab_draws row is created. Append-to-existing-draw is free
+   *  and does NOT consume. */
+  uploadCredits:        number;
+  /** When the user paid the one-time $19 unlock. NULL = never paid. */
+  unlockPurchasedAt:    string | null;
   onboardingCompleted:  boolean;
   /** Terms / Privacy / Disclaimer consent record. Set the first time the
    *  user clicks Accept on the consent screen at signup. Re-shown if

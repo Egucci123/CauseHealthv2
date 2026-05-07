@@ -1,6 +1,6 @@
 // src/pages/labs/LabUpload.tsx
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { AppShell } from '../../components/layout/AppShell';
 import { SectionHeader } from '../../components/ui/Card';
@@ -16,7 +16,38 @@ export const LabUpload = () => {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const user = useAuthStore(s => s.user);
+  const [searchParams, setSearchParams] = useSearchParams();
   const { phase, progress, statusMessage, drawId, extraction, errorMessage, completedDrawId, reset, startUpload, confirmAndAnalyze, resumeFromDraw } = useLabUploadStore();
+
+  // Returning from a $5 upload-pack Stripe checkout. Optimistic +1 credit so
+  // the user can immediately upload again without waiting on the webhook,
+  // then background-refetch the profile to confirm the real balance.
+  useEffect(() => {
+    const result = searchParams.get('upload');
+    if (result === 'success') {
+      const auth = useAuthStore.getState();
+      if (auth.profile) {
+        useAuthStore.setState({
+          profile: {
+            ...auth.profile,
+            uploadCredits: (auth.profile.uploadCredits ?? 0) + 1,
+          },
+        });
+      }
+      // Background-confirm — webhook may lag a few seconds.
+      const fetchWithRetry = async () => {
+        const delays = [0, 2000, 5000, 10000];
+        for (const d of delays) {
+          if (d > 0) await new Promise(r => setTimeout(r, d));
+          try { await useAuthStore.getState().fetchProfile(); } catch {}
+        }
+      };
+      fetchWithRetry();
+      setSearchParams({});
+    } else if (result === 'canceled') {
+      setSearchParams({});
+    }
+  }, [searchParams, setSearchParams]);
 
   const isActive = ['uploading', 'extracting', 'analyzing'].includes(phase);
 

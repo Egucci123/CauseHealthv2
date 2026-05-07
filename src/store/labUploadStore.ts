@@ -160,20 +160,42 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
       set({ phase: 'uploading', progress: 0, statusMessage: `Uploading ${fileCount} file${plural ? 's' : ''} to secure storage...`, errorMessage: null });
 
       try {
-        // ── Free-tier cap: 1 lab upload per rolling 30 days ──
-        // Pro / comp users have no cap. Server-enforced — but we check client-side
-        // first so we never delete the user's files trying to upload over the cap.
+        // ── Credit gating ──
+        // Comp users (gifted access) bypass credit checks entirely. Everyone else
+        // (free OR paid one-time) needs upload_credits > 0 to start a NEW draw.
+        // (Append-to-existing-draw goes through useAppendToDraw and is free.)
+        //
+        // The $19 unlock grants +1 credit (their first upload). Each $5 upload
+        // pack grants +1. Atomic decrement happens server-side via the
+        // consume_upload_credit RPC after the lab_draws row is inserted, so
+        // two concurrent uploads can't both pass a stale client check.
         const profile = useAuthStore.getState().profile;
-        const isPro = profile && (profile.subscriptionTier === 'pro' || profile.subscriptionTier === 'comp')
-          && (profile.subscriptionStatus === 'active' || profile.subscriptionStatus === 'trialing');
-        if (!isPro) {
-          const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000).toISOString();
-          const { count } = await supabase.from('lab_draws').select('id', { count: 'exact', head: true }).eq('user_id', userId).gte('created_at', thirtyDaysAgo);
-          if ((count ?? 0) >= 1) {
+        const isComp = profile?.subscriptionTier === 'comp'
+          && (profile?.subscriptionStatus === 'active' || profile?.subscriptionStatus === 'trialing');
+        if (!isComp) {
+          const credits = profile?.uploadCredits ?? 0;
+          if (credits <= 0) {
+            // Branch on whether they've ever unlocked. Pre-unlock → $19 flow.
+            // Post-unlock with 0 credits → $5 flow.
+            const hasUnlocked = !!profile?.unlockPurchasedAt
+              || profile?.subscriptionTier === 'pro';
+            const fnName = hasUnlocked ? 'create-upload-checkout' : 'create-checkout-session';
             set({
               phase: 'error', isRunning: false,
-              errorMessage: 'Free plan includes 1 lab upload per month. Each additional analysis is $19 one-time, or redeem a code in Settings.',
+              errorMessage: hasUnlocked
+                ? 'You’re out of upload credits. Each additional lab draw is $5 one-time. Redirecting you to checkout…'
+                : 'Unlock CauseHealth for $19 one-time to upload your first lab draw. Redirecting…',
             });
+            try {
+              const { data, error } = await supabase.functions.invoke(fnName, {
+                body: { origin: window.location.origin },
+              });
+              if (!error && (data as any)?.url) {
+                window.location.href = (data as any).url;
+              }
+            } catch (e) {
+              console.warn('[LabUpload] checkout redirect failed:', e);
+            }
             return;
           }
         }
@@ -234,6 +256,34 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
         if (drawErr) throw new Error(`Failed to create lab record: ${drawErr.message}`);
         if (!draw) throw new Error('Failed to create lab record (no row returned — RLS may have blocked the read after insert)');
         set({ drawId: draw.id });
+
+        // Consume an upload credit — atomic, server-side. Comp users skip
+        // (they have unlimited). If the RPC returns -1, the user somehow had
+        // 0 credits at insert time (race with another tab) — log it but don't
+        // hard-fail; the draw is already created. Refund logic can run later.
+        const profileNow = useAuthStore.getState().profile;
+        const isCompNow = profileNow?.subscriptionTier === 'comp'
+          && (profileNow?.subscriptionStatus === 'active' || profileNow?.subscriptionStatus === 'trialing');
+        if (!isCompNow) {
+          try {
+            const { data: newBalance, error: rpcErr } = await supabase.rpc('consume_upload_credit', { p_user_id: userId });
+            if (rpcErr) {
+              console.warn('[LabUpload] consume_upload_credit failed:', rpcErr.message);
+            } else {
+              // Patch local profile so the UI reflects the new balance immediately.
+              if (profileNow) {
+                useAuthStore.setState({
+                  profile: { ...profileNow, uploadCredits: Math.max(0, newBalance ?? 0) },
+                });
+              }
+              if ((newBalance ?? 0) < 0) {
+                console.warn('[LabUpload] consume_upload_credit returned -1 — race or stale balance');
+              }
+            }
+          } catch (e) {
+            console.warn('[LabUpload] consume_upload_credit threw:', e);
+          }
+        }
 
         // 3. Try client-side text extraction first (PDFs only)
         set({ phase: 'extracting', statusMessage: `Reading ${plural ? `${fileCount} lab reports` : 'your lab report'}...`, progress: 35 });

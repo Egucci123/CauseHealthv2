@@ -56,6 +56,12 @@ export const SubscriptionManagement = () => {
             ...auth.profile,
             subscriptionTier: 'pro',
             subscriptionStatus: 'active',
+            // $19 unlock grants +1 upload credit (their first lab draw upload).
+            // The webhook will set this server-side too — this is just the
+            // optimistic patch so the upload button is unblocked the instant
+            // they land back on the app.
+            uploadCredits: (auth.profile.uploadCredits ?? 0) + 1,
+            unlockPurchasedAt: auth.profile.unlockPurchasedAt ?? new Date().toISOString(),
           },
         });
       }
