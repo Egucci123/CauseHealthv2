@@ -9,6 +9,12 @@ export interface TestToRequest {
   icd10_primary: string; icd10_description: string;
   icd10_secondary?: string; icd10_secondary_description?: string;
   priority: 'urgent' | 'high' | 'moderate'; insurance_note: string;
+  /** Where this test belongs at follow-up. Mirrors the wellness plan's
+   *  retest_timeline.specialist so PDFs + UI can group by venue (PCP /
+   *  GI / Imaging / etc.). */
+  specialist?: 'pcp' | 'gi' | 'imaging' | 'functional' | 'mental_health'
+    | 'cardiology' | 'endocrinology' | 'sleep_medicine' | 'hepatology'
+    | 'rheumatology' | 'nephrology' | 'hematology';
 }
 
 export interface DoctorPrepDocument {

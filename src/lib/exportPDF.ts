@@ -1,8 +1,40 @@
 // src/lib/exportPDF.ts
 import jsPDF from 'jspdf';
 import type { WellnessPlanData } from '../hooks/useWellnessPlan';
-import type { DoctorPrepDocument } from '../hooks/useDoctorPrep';
+import type { DoctorPrepDocument, TestToRequest } from '../hooks/useDoctorPrep';
 import { format } from 'date-fns';
+
+// ── Specialist routing for test grouping ───────────────────────────────
+// Mirrors the on-screen Wellness Plan grouping (5 buckets: PCP / GI /
+// Imaging / Functional / Mental Health). Legacy specialist keys collapse
+// into the simplified set so old plans render correctly.
+const SPECIALIST_TITLES: Record<string, string> = {
+  pcp:           'Tests to ask your PCP for',
+  gi:            'Tests at your GI follow-up',
+  imaging:       'Imaging to schedule',
+  functional:    'Cash-pay / functional MD',
+  mental_health: 'Mental health screening',
+};
+const SPECIALIST_COLLAPSE: Record<string, string> = {
+  cardiology: 'pcp', endocrinology: 'pcp', hepatology: 'pcp',
+  rheumatology: 'pcp', nephrology: 'pcp', hematology: 'pcp',
+  sleep_medicine: 'imaging',
+};
+const SPECIALIST_ORDER = ['pcp', 'gi', 'imaging', 'functional', 'mental_health'] as const;
+
+/** Group tests_to_request by specialist, in display order. Returns only
+ *  buckets that have at least one test. */
+function groupTestsBySpecialist(tests: TestToRequest[]): Array<{ key: string; title: string; items: TestToRequest[] }> {
+  const buckets: Record<string, TestToRequest[]> = {};
+  for (const t of tests ?? []) {
+    const raw = String((t as any).specialist ?? 'pcp');
+    const key = SPECIALIST_COLLAPSE[raw] ?? raw;
+    (buckets[key] ??= []).push(t);
+  }
+  return SPECIALIST_ORDER
+    .filter(k => buckets[k]?.length)
+    .map(k => ({ key: k, title: SPECIALIST_TITLES[k] ?? 'Tests to discuss', items: buckets[k] }));
+}
 
 export function exportWellnessPlanPDF(plan: WellnessPlanData, userName: string) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -224,30 +256,31 @@ export function exportPatientVisitGuidePDF(doc: DoctorPrepDocument, userName: st
     { size: 8.5, color: [80, 80, 80], italic: true, gap: 5 }
   );
 
-  // 1. AI-suggested reactive tests (responding to specific abnormalities)
+  // Tests grouped by specialist (PCP / GI / Imaging / etc.) — patient
+  // copy is intentionally lighter than the doctor copy: short "why" only,
+  // no insurance note, no ICD-10. The full clinical-justification text
+  // and insurance note live in the doctor's clinical PDF.
   if (doc.tests_to_request?.length) {
-    para(isHealthyMode ? 'Top requests:' : 'Tests based on your abnormal labs:', { bold: true, size: 9, color: [27, 67, 50], gap: 3 });
-    doc.tests_to_request.forEach((t, i) => {
-      checkPage(28);
-      pdf.setFontSize(9.5); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(19, 19, 19);
-      pdf.text(stripUnsupportedChars(`${i + 1}. ${t.test_name}`), margin, y); y += 5;
-
-      pdf.setFontSize(8.5); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(212, 165, 116);
-      pdf.text('Why this test matters for you:', margin + 3, y); y += 4;
-      pdf.setFont('helvetica', 'normal'); pdf.setTextColor(40, 40, 40);
-      const whyLines = pdf.splitTextToSize(stripUnsupportedChars(t.clinical_justification), contentW - 6);
-      pdf.text(whyLines, margin + 3, y); y += whyLines.length * 3.8 + 2;
-
-      if (t.insurance_note) {
-        pdf.setFont('helvetica', 'bold'); pdf.setTextColor(212, 165, 116); pdf.setFontSize(8);
-        pdf.text('Insurance / cost note:', margin + 3, y); y += 3.5;
-        pdf.setFont('helvetica', 'italic'); pdf.setTextColor(80, 80, 80);
-        const insLines = pdf.splitTextToSize(stripUnsupportedChars(t.insurance_note), contentW - 6);
-        pdf.text(insLines, margin + 3, y); y += insLines.length * 3.5 + 4;
-      } else {
-        y += 2;
+    const groups = groupTestsBySpecialist(doc.tests_to_request);
+    let counter = 1;
+    for (const group of groups) {
+      checkPage(20);
+      para(group.title, { bold: true, size: 9.5, color: [27, 67, 50], gap: 2 });
+      for (const t of group.items) {
+        checkPage(18);
+        pdf.setFontSize(9.5); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(19, 19, 19);
+        pdf.text(stripUnsupportedChars(`${counter}. ${t.test_name}`), margin, y); y += 5;
+        counter++;
+        pdf.setFont('helvetica', 'normal'); pdf.setTextColor(60, 60, 60); pdf.setFontSize(8.5);
+        // Patient copy: keep just the why-this-matters explanation in
+        // plain language. Drop "Insurance / cost note" detail and
+        // trigger-letter prefixes — those belong to the doctor's copy.
+        const why = stripUnsupportedChars(String(t.clinical_justification ?? '').replace(/^\([a-z]\)\s*/i, ''));
+        const whyLines = pdf.splitTextToSize(why, contentW - 6);
+        pdf.text(whyLines, margin + 3, y); y += whyLines.length * 3.6 + 4;
       }
-    });
+      y += 2;
+    }
   }
 
   // Panel-gap baseline section permanently removed. The AI's tests_to_request
@@ -269,10 +302,9 @@ export function exportPatientVisitGuidePDF(doc: DoctorPrepDocument, userName: st
       pdf.setFontSize(10); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(19, 19, 19);
       const conf = String(c.confidence ?? 'low').toUpperCase();
       pdf.text(stripUnsupportedChars(`${i + 1}. ${c.name}  [${conf}]`), margin, y); y += 5;
-      if (c.icd10) {
-        pdf.setFontSize(8); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(140, 130, 110);
-        pdf.text(stripUnsupportedChars(`ICD-10  ${c.icd10}`), margin + 3, y); y += 4;
-      }
+      // ICD-10 codes intentionally omitted from the patient copy — those
+      // are clinical reference for the doctor and live in the clinical
+      // PDF (exportDoctorPrepPDF). Patient copy stays plain-language.
       if (c.evidence) {
         pdf.setFontSize(8.5); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(212, 165, 116);
         pdf.text('Why this is on the differential:', margin + 3, y); y += 4;
@@ -505,19 +537,41 @@ export function exportDoctorPrepPDF(doc: DoctorPrepDocument, userName: string) {
     });
   }
 
-  // Tests to Request
-  addSectionHeader('Tests to Request');
-  doc.tests_to_request?.forEach((test, i) => {
-    checkPage(22);
-    pdf.setFontSize(9); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(26, 26, 26);
-    pdf.text(stripUnsupportedChars(`${i + 1}. ${test.test_name} [${test.priority.toUpperCase()}]`), margin, y); y += 5;
-    pdf.setFontSize(7.5); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(107, 107, 107);
-    pdf.text(stripUnsupportedChars(`ICD-10: ${test.icd10_primary} - ${test.icd10_description}`), margin + 3, y); y += 4;
-    if (test.icd10_secondary) { pdf.text(stripUnsupportedChars(`ICD-10: ${test.icd10_secondary} - ${test.icd10_secondary_description}`), margin + 3, y); y += 4; }
-    pdf.setTextColor(26, 26, 26);
-    const jLines = pdf.splitTextToSize(stripUnsupportedChars(test.clinical_justification), contentW - 3);
-    pdf.text(jLines, margin + 3, y); y += jLines.length * 3.5 + 5;
-  });
+  // Tests to Request — grouped by specialist (PCP / GI / Imaging /
+  // Functional / Mental Health). Doctor copy keeps full clinical detail:
+  // ICD-10 codes, priority badge, full justification, insurance note.
+  if (doc.tests_to_request?.length) {
+    addSectionHeader('Tests to Request');
+    const groups = groupTestsBySpecialist(doc.tests_to_request);
+    let counter = 1;
+    for (const group of groups) {
+      checkPage(18);
+      // Specialist subheader
+      pdf.setFontSize(9); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(27, 67, 50);
+      pdf.text(stripUnsupportedChars(group.title.toUpperCase()), margin, y); y += 5;
+      // Underline
+      pdf.setDrawColor(212, 165, 116); pdf.setLineWidth(0.4);
+      pdf.line(margin, y - 1, margin + 60, y - 1); y += 1;
+
+      for (const test of group.items) {
+        checkPage(22);
+        pdf.setFontSize(9); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(26, 26, 26);
+        pdf.text(stripUnsupportedChars(`${counter}. ${test.test_name} [${test.priority.toUpperCase()}]`), margin, y); y += 5;
+        counter++;
+        pdf.setFontSize(7.5); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(107, 107, 107);
+        if (test.icd10_primary) {
+          pdf.text(stripUnsupportedChars(`ICD-10: ${test.icd10_primary} - ${test.icd10_description ?? ''}`), margin + 3, y); y += 4;
+        }
+        if (test.icd10_secondary) {
+          pdf.text(stripUnsupportedChars(`ICD-10: ${test.icd10_secondary} - ${test.icd10_secondary_description ?? ''}`), margin + 3, y); y += 4;
+        }
+        pdf.setTextColor(26, 26, 26);
+        const jLines = pdf.splitTextToSize(stripUnsupportedChars(test.clinical_justification), contentW - 3);
+        pdf.text(jLines, margin + 3, y); y += jLines.length * 3.5 + 5;
+      }
+      y += 2;
+    }
+  }
 
   // Comprehensive Health Screening / Tier 1-2-3 block permanently removed.
   // Test recommendations come exclusively from doc.tests_to_request, which

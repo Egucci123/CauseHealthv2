@@ -844,6 +844,10 @@ CRITICAL OUTPUT RULES (for the new card-stack UI):
           icd10_description: t.icd10_description ?? '',
           priority: t.priority ?? 'moderate',
           insurance_note: t.insurance_note ?? 'Discuss with doctor; covered with documented finding.',
+          // Preserve specialist routing so PDFs + UI can group by venue
+          // (PCP / GI / Imaging / Functional / Mental Health). Falls back
+          // to 'pcp' if the wellness plan didn't tag it.
+          specialist: t.specialist ?? 'pcp',
         }));
         console.log(`[doctor-prep] Sourced tests_to_request from wellness plan (${doc.tests_to_request.length} tests)`);
       } else {
