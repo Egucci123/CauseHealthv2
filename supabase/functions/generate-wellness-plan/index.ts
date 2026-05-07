@@ -475,7 +475,10 @@ HARD RULES — FOLLOW EXACTLY:
 
    TEST-FIRST DEFAULT (universal): for any nutrient where the lab test is cheap, standard, and PCP-orderable, recommend the TEST in retest_timeline FIRST. Empirical supplementation is allowed only for the approved exceptions below — do NOT invent additional empirical recommendations outside this list.
 
-   APPROVED EMPIRICAL EXCEPTIONS (the ONLY ones — match patient against each trigger):
+   APPROVED EMPIRICAL EXCEPTIONS — MUST-FIRE when triggers met:
+   For each rule below, evaluate against this patient. If the trigger is met, the supplement MUST appear in supplement_stack (subject only to the per-category cap). Do not shift an empirical to test-first when the trigger is already met — the rule below decided test-first vs empirical was already adjudicated. Only drop an empirical if (a) a higher-priority same-category supplement also fires (per the priority order: lab_finding > medication_depletion > disease_mechanism > empirical), or (b) the supplement would collide with the user's existing stack at full dose (in which case, note "already at adequate dose" and skip rather than drop a different empirical for it).
+
+   Each rule below:
 
    ── Medication-driven (sourced_from: medication_depletion) ──
      1. STATIN → CoQ10 (Ubiquinol) 100-200mg/day · category liver_metabolic
@@ -1204,10 +1207,21 @@ CALIBRATION (applies to ALL arrays): Healthy patient with clean labs → 0-2 ent
     // is present, drop AI entries whose names match any of `suppressRe`.
     // Add new pairs here whenever an AI hypothesis duplicates a backstop's
     // simpler-first take.
-    const ALTERNATES: { triggerRe: RegExp; suppressRe: RegExp[] }[] = [
+    // Linked-alternates suppression. Each rule says: when an entry whose
+    // name matches `triggerRe` is present, suppress entries whose name
+    // matches any of `suppressRe`. Optionally `requiresEvidenceMatch`
+    // narrows the suppression to only entries whose evidence string cites
+    // the same finding — so independent diagnoses (real OSA based on
+    // snoring + BMI 35) survive while AI-inferred-from-RBC diagnoses
+    // (Mitchell case) get suppressed.
+    const ALTERNATES: { triggerRe: RegExp; suppressRe: RegExp[]; requiresEvidenceMatch?: RegExp }[] = [
       // Hemoconcentration / dehydration suppresses absolute erythrocytosis,
-      // polycythemia, secondary erythrocytosis from OSA — simpler explanation
-      // for the same RBC-line elevation pattern.
+      // polycythemia, AND OSA-as-cause-of-RBC-elevation — simpler
+      // explanation for the same RBC-line pattern. Sleep apnea entries
+      // are only suppressed if the evidence cites RBC/Hgb/Hct (i.e. the
+      // AI invoked OSA specifically because of the RBC pattern). Sleep
+      // apnea raised on independent grounds (snoring, BMI, Epworth)
+      // survives.
       {
         triggerRe: /hemoconcentr|dehydrat|underhydrat/i,
         suppressRe: [
@@ -1216,7 +1230,11 @@ CALIBRATION (applies to ALL arrays): Healthy patient with clean labs → 0-2 ent
           /high red blood cell count/i,
           /high hemoglobin/i,
           /high hematocrit/i,
+          /sleep apnea/i,
         ],
+        // OSA entries are suppressed only when invoked for the RBC pattern.
+        // Standalone OSA diagnoses (snoring, BMI 35, Epworth) survive.
+        requiresEvidenceMatch: /\b(rbc|hct|hgb|hemoglobin|hematocrit|red blood cell|chronic hypoxemia|hypoxemia)\b/i,
       },
       // (Add future linked alternates here as new backstops land.)
     ];
@@ -1230,11 +1248,14 @@ CALIBRATION (applies to ALL arrays): Healthy patient with clean labs → 0-2 ent
         const triggerEntry = plan.suspected_conditions.find((c: any) => alt.triggerRe.test(String(c.name ?? '')));
         if (!triggerEntry) continue;
         for (const c of plan.suspected_conditions) {
-          if (c === triggerEntry) continue;  // never suppress the trigger itself
-          if (c.source === 'deterministic') continue;  // never suppress backstops (they're vetted)
-          if (alt.suppressRe.some(re => re.test(String(c.name ?? '')))) {
-            suppressedSet.add(String(c.name));
-          }
+          if (c === triggerEntry) continue;
+          if (c.source === 'deterministic') continue;
+          if (!alt.suppressRe.some(re => re.test(String(c.name ?? '')))) continue;
+          // If this rule requires the suppressed entry's evidence to cite
+          // the shared finding, only suppress if it does. Lets standalone
+          // diagnoses survive when their evidence is independent.
+          if (alt.requiresEvidenceMatch && !alt.requiresEvidenceMatch.test(String(c.evidence ?? ''))) continue;
+          suppressedSet.add(String(c.name));
         }
       }
       if (suppressedSet.size > 0) {
@@ -1286,13 +1307,14 @@ CALIBRATION (applies to ALL arrays): Healthy patient with clean labs → 0-2 ent
       }
       return scrubPlaceholders(obj);
     }
-    plan.summary = scrubPlaceholders(plan.summary);
-    plan.headline = scrubPlaceholders(plan.headline);
-    if (Array.isArray(plan.multi_marker_patterns)) plan.multi_marker_patterns = plan.multi_marker_patterns.map(scrubDeep);
-    if (Array.isArray(plan.suspected_conditions)) plan.suspected_conditions = plan.suspected_conditions.map(scrubDeep);
-    if (Array.isArray(plan.today_actions)) plan.today_actions = plan.today_actions.map(scrubDeep);
-    if (Array.isArray(plan.supplement_stack)) plan.supplement_stack = plan.supplement_stack.map(scrubDeep);
-    if (Array.isArray(plan.retest_timeline)) plan.retest_timeline = plan.retest_timeline.map(scrubDeep);
+    // Recurse over EVERY field in the plan, including workouts,
+    // action_plan, symptoms_addressed, lifestyle_interventions, etc.
+    // Skips the _audit and _classification metadata blocks (internal,
+    // never user-facing).
+    for (const key of Object.keys(plan)) {
+      if (key.startsWith('_')) continue;
+      plan[key] = scrubDeep(plan[key]);
+    }
 
     // ── Universal: every confirmatory_test gets a clinical "why" ─────────
     // The user's question — "if my labs already show this, why do I need
