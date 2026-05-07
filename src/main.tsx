@@ -33,6 +33,13 @@ const RouteLogger = () => {
   const loc = useLocation();
   React.useEffect(() => {
     logEvent('route_change', { pathname: loc.pathname, search: loc.search });
+    // Force-refresh every query on route change. refetchOnMount: 'always' alone
+    // wasn't enough — when a user just generated a plan and navigates to
+    // /wellness, the previous "no plan" cache was being kept (placeholderData:
+    // keepPreviousData) until the background refetch resolved, so the user saw
+    // stale empty state and had to manually refresh. Invalidating here marks
+    // every cached query stale, so the very next read fetches fresh.
+    queryClient.invalidateQueries();
     // Snapshot DOM after React has rendered so we capture what the user sees
     const timer = setTimeout(() => {
       try {
