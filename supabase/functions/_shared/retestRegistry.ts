@@ -56,7 +56,7 @@ const REGISTRY: RetestDef[] = [
     icd10Description: 'Hypothyroidism, unspecified',
     insuranceNote: 'Universally covered — quarterly when on replacement.',
     defaultPriority: 'high',
-    aliases: [/thyroid panel/i, /\btsh\b/i, /free t[34]\b/i, /\bft[34]\b/i],
+    aliases: [/thyroid panel/i, /\btsh\b/i, /free\s*t[34]\b/i, /\bft[34]\b/i, /reverse\s*t3/i, /\brt3\b/i, /thyroid\s*workup/i],
     surfaces: 'both',
   },
   {
@@ -66,7 +66,7 @@ const REGISTRY: RetestDef[] = [
     icd10Description: "Autoimmune thyroiditis (Hashimoto's)",
     insuranceNote: 'Covered for any patient with thyroid dysfunction or family history.',
     defaultPriority: 'high',
-    aliases: [/\btpo( ab)?\b/i, /thyroid peroxidase/i, /thyroglobulin ab/i, /thyroid antibod/i, /\btg ab\b/i],
+    aliases: [/\btpo( ab| antibod| anti-body)?\b/i, /thyroid peroxidase/i, /thyroglobulin\s+(ab|antibod|anti-body)/i, /thyroid\s+antibod/i, /\btg\s*(ab|antibod)\b/i, /\bhashimoto'?s?\s+antibod/i],
     surfaces: 'both',
   },
   {

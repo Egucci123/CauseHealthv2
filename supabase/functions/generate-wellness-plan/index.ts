@@ -9,7 +9,7 @@ import { isOnMed } from '../_shared/medicationAliases.ts';
 import { classifyPatient } from '../_shared/patientClassifier.ts';
 import { runAdequacyChecks, runSelfSupplementChecks } from '../_shared/replacementTherapyChecks.ts';
 import { runPathways } from '../_shared/pathwayEngine.ts';
-import { pushRetestByKey, finalizeRetestTimeline } from '../_shared/retestRegistry.ts';
+import { pushRetestByKey, finalizeRetestTimeline, RETEST_REGISTRY } from '../_shared/retestRegistry.ts';
 import { detectAlreadyOptimal, applyAlreadyOptimalScrub } from '../_shared/alreadyOptimalFilter.ts';
 import { detectTestQualityIssues } from '../_shared/testQualityFlagger.ts';
 import { buildCausalChain, renderChainForPrompt } from '../_shared/causalChainBuilder.ts';
@@ -1280,6 +1280,89 @@ CALIBRATION (applies to ALL arrays): Healthy patient with clean labs → 0-2 ent
       );
       const dropped = before - plan.suspected_conditions.length;
       if (dropped > 0) console.log(`[wellness-plan] dropped ${dropped} self-reported-behavior entries from suspected_conditions`);
+    }
+
+    // ── Promote confirmatory_tests → retest_timeline (universal) ────────
+    // When a suspected_condition fires (deterministic OR AI), every test
+    // in its confirmatory_tests must also appear in retest_timeline so it
+    // shows up in Doctor Prep. Otherwise the user sees the test in the
+    // Possible Conditions card but the doctor doesn't see it on the prep
+    // sheet. Mitchell case: Subclinical Hashimoto's listed Free T4, Free
+    // T3, Reverse T3, TPO, TgAb as confirmatory tests — none made it to
+    // the retest list, so the doctor visit didn't include the full thyroid
+    // workup.
+    //
+    // Skip if a similar marker is already in retest_timeline (case-
+    // insensitive substring match against existing markers).
+    if (!Array.isArray(plan.retest_timeline)) plan.retest_timeline = [];
+    {
+      // Resolve test name → canonical entry from RETEST_REGISTRY when
+      // possible. If a confirmatory test ('Free T4') matches the registry
+      // key 'thyroid_panel', we promote with the canonical name 'Thyroid
+      // Panel (TSH + Free T4 + Free T3)' so the user sees the consolidated
+      // workup, not 5 separate thyroid lines.
+      const seenKeys = new Set<string>();
+      const existingMarkerLower = new Set<string>();
+      for (const r of plan.retest_timeline) {
+        const m = String(r.marker ?? '').toLowerCase().trim();
+        if (m) existingMarkerLower.add(m);
+        // Pre-seed seenKeys from existing entries so we don't double-promote
+        for (const def of RETEST_REGISTRY) {
+          if (def.aliases.some((re: RegExp) => re.test(String(r.marker ?? '')))) {
+            seenKeys.add(def.key);
+            break;
+          }
+        }
+      }
+      const promotions: any[] = [];
+      const promoted: string[] = [];
+      for (const c of plan.suspected_conditions) {
+        const tests = Array.isArray(c.confirmatory_tests) ? c.confirmatory_tests : [];
+        for (const t of tests) {
+          const testName = (typeof t === 'string' ? t : t?.test ?? '').trim();
+          if (!testName) continue;
+          // Skip non-lab items (interventions, questionnaires, etc.)
+          if (/\btrial\b|\bdiary\b|\blog\b|\bquestionnaire\b|circumference|mallampati|spo2/i.test(testName)) continue;
+          // Resolve to canonical registry entry if possible
+          let canonicalName = testName;
+          let canonicalKey: string | undefined;
+          for (const def of RETEST_REGISTRY) {
+            if (def.aliases.some((re: RegExp) => re.test(testName))) {
+              canonicalName = def.canonical;
+              canonicalKey = def.key;
+              break;
+            }
+          }
+          // Dedup by registry key when one exists
+          if (canonicalKey && seenKeys.has(canonicalKey)) continue;
+          // Substring fallback dedup for tests not in registry
+          const lowerCanonical = canonicalName.toLowerCase();
+          let alreadyCovered = false;
+          for (const existing of existingMarkerLower) {
+            if (existing.includes(lowerCanonical) || lowerCanonical.includes(existing)) { alreadyCovered = true; break; }
+          }
+          if (alreadyCovered) continue;
+
+          if (canonicalKey) seenKeys.add(canonicalKey);
+          existingMarkerLower.add(lowerCanonical);
+          promotions.push({
+            marker: canonicalName,
+            retest_at: '12 weeks',
+            why: `(b) Confirmatory workup for ${c.name} — see Possible Conditions for the rationale.`,
+            specialist: 'pcp',
+            // High priority — confirmatory tests for active suspicions are
+            // more important than standard-of-care baseline gaps.
+            priority: 'high',
+          });
+          promoted.push(canonicalName);
+        }
+      }
+      // PREPEND promoted tests so they survive the cap in finalize. They're
+      // tied to a specific differential, not a "while we're at it" baseline.
+      if (promotions.length > 0) {
+        plan.retest_timeline = [...promotions, ...plan.retest_timeline];
+        console.log(`[wellness-plan] promoted ${promoted.length} confirmatory_tests to retest_timeline (top): ${promoted.join(', ')}`);
+      }
     }
 
     // ── Placeholder-leak scrub (universal) ──────────────────────────────
