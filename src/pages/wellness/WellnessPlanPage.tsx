@@ -32,6 +32,22 @@ const TABS: { key: TabKey; label: string; shortLabel?: string; icon: string }[] 
 
 const todayKey = () => new Date().toISOString().slice(0, 10);
 
+/** Cap the hero headline at 9 words / 70 chars so existing AI-generated
+ *  long headlines don't balloon the dark hero card on mobile. Mirrors
+ *  the server-side truncation in generate-wellness-plan/index.ts so old
+ *  plans render correctly without forcing a regen. */
+function capHeadline(s: string): string {
+  if (!s) return s;
+  if (s.length <= 70 && s.split(/\s+/).length <= 9) return s;
+  // First sentence break
+  const sentenceEnd = s.search(/[—–.;]\s/);
+  let out = sentenceEnd > 20 && sentenceEnd < 70 ? s.slice(0, sentenceEnd + 1).trim() : s;
+  const words = out.split(/\s+/);
+  if (words.length > 9) out = words.slice(0, 9).join(' ').replace(/[,;:]$/, '') + '.';
+  if (out.length > 70) out = out.slice(0, 67).trimEnd() + '...';
+  return out;
+}
+
 const WellnessSkeleton = () => (
   <div className="space-y-4 animate-pulse">
     <div className="h-24 bg-[#E8E3DB] rounded-[10px]" />
@@ -646,7 +662,7 @@ export const WellnessPlanPage = () => {
             <div className="flex items-start justify-between gap-3 mb-3 flex-wrap">
               <div className="flex-1 min-w-0">
                 <p className="text-precision text-[0.6rem] font-bold text-on-surface-variant tracking-widest uppercase mb-2">Your Plan</p>
-                <p className="text-authority text-base sm:text-xl md:text-2xl text-on-surface font-bold leading-snug sm:leading-tight">{plan.headline || plan.summary?.split('.')[0] || 'Your personalized plan'}</p>
+                <p className="text-authority text-base sm:text-xl md:text-2xl text-on-surface font-bold leading-snug sm:leading-tight">{capHeadline(plan.headline || plan.summary?.split('.')[0] || 'Your personalized plan')}</p>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 {plan.plan_mode === 'optimization' && (
