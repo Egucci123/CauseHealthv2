@@ -18,7 +18,7 @@ import { supabase } from './supabase';
 
 /** Bumped any time the legal text materially changes. Existing users with
  *  consent for an older version are re-prompted on next login. */
-export const CONSENT_POLICY_VERSION = '2.0';
+export const CONSENT_POLICY_VERSION = '2.1';
 
 export type ConsentType =
   | 'terms'

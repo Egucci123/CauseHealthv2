@@ -18,6 +18,25 @@ export const Privacy = () => (
           <p className="mt-2">By using CauseHealth, you agree to this Privacy Policy. Please also read our <a href="/terms" className="text-primary-container hover:underline">Terms of Service</a> and <a href="/disclaimer" className="text-primary-container hover:underline">Medical Disclaimer</a>.</p>
         </Section>
 
+        <Section title="1a. HIPAA Does Not Apply to CauseHealth">
+          <p>
+            <strong>CauseHealth is not a HIPAA covered entity.</strong> The Health Insurance Portability and Accountability Act (HIPAA) regulates healthcare providers who bill electronically, health plans, healthcare clearinghouses, and their "business associates." CauseHealth is a consumer health information and wellness service that you voluntarily upload your own data to — it is none of those things, does not bill insurance, and does not enter into business associate agreements.
+          </p>
+          <p className="mt-2">
+            HIPAA's specific protections, breach-notification rules, and patient-rights provisions <strong>do not apply</strong> to your data on CauseHealth. The protections we provide are governed instead by this Privacy Policy and by the laws below:
+          </p>
+          <ul className="list-disc pl-5 space-y-1 mt-2">
+            <li><strong>FTC Health Breach Notification Rule (16 CFR Part 318)</strong> — we notify affected users within 60 days of any security breach that exposes identifiable health information.</li>
+            <li><strong>California Consumer Privacy Act (CCPA / CPRA)</strong> — California residents have access, deletion, correction, and "do not sell/share" rights described in Section 9.</li>
+            <li><strong>EU General Data Protection Regulation (GDPR)</strong> — EEA, UK, and Switzerland residents have the rights described in Section 9, with explicit consent recorded for special-category health data under Article 9.</li>
+            <li><strong>Washington My Health My Data Act (MHMDA, RCW 19.373)</strong> — applies to all consumer health data we collect, including from users outside Washington state, with the standalone authorization captured at signup.</li>
+            <li>Other applicable state and federal consumer-data laws.</li>
+          </ul>
+          <p className="mt-2">
+            If you require HIPAA-covered handling of your health information, do not use CauseHealth. Have your healthcare provider keep that information in their HIPAA-covered systems instead.
+          </p>
+        </Section>
+
         <Section title="2. What We Collect">
           <p><strong>Account information</strong></p>
           <ul className="list-disc pl-5 space-y-1 mt-1 mb-3">

@@ -23,6 +23,23 @@ export const Disclaimer = () => (
         </section>
 
         <section>
+          <h2 className="text-authority text-2xl text-clinical-charcoal font-bold mb-3">CauseHealth is not HIPAA-covered</h2>
+          <p className="text-body text-clinical-charcoal leading-relaxed">
+            <strong>HIPAA does not apply to CauseHealth.</strong> The Health Insurance Portability
+            and Accountability Act regulates healthcare providers, health plans, and their business
+            associates. CauseHealth is a consumer health information service that you voluntarily
+            upload your own data to — it is none of those things and does not bill insurance.
+          </p>
+          <p className="text-body text-clinical-charcoal leading-relaxed mt-3">
+            The privacy and security of your data on CauseHealth are protected by our Privacy
+            Policy, the FTC Health Breach Notification Rule, the California Consumer Privacy Act
+            (CCPA), the EU General Data Protection Regulation (GDPR), and the Washington My Health
+            My Data Act — not by HIPAA. If you require HIPAA-covered handling, keep that
+            information in your healthcare provider's HIPAA-covered systems instead.
+          </p>
+        </section>
+
+        <section>
           <h2 className="text-authority text-2xl text-clinical-charcoal font-bold mb-3">Always talk to your doctor</h2>
           <p className="text-body text-clinical-charcoal leading-relaxed">
             Discuss every finding, supplement change, medication adjustment, or dietary

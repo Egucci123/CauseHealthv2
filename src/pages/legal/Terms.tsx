@@ -47,6 +47,26 @@ export const Terms = () => (
           </ul>
         </Section>
 
+        <Section title="4a. HIPAA Does Not Apply to CauseHealth">
+          <p className="mt-2">
+            <strong>CauseHealth is not a HIPAA covered entity.</strong> The Health Insurance Portability and Accountability Act (HIPAA) regulates a specific set of organizations: healthcare providers who bill electronically, health plans, healthcare clearinghouses, and the "business associates" of those entities. CauseHealth is a consumer health information and wellness service that you voluntarily upload your own data to — it is none of those things, does not bill insurance, and does not enter into business associate agreements.
+          </p>
+          <p className="mt-3">
+            This means HIPAA's specific protections, breach-notification rules, and patient-rights provisions <strong>do not apply</strong> to your data on CauseHealth. The protections we provide your data are governed instead by:
+          </p>
+          <ul className="list-disc pl-5 space-y-1 mt-2">
+            <li>Our Privacy Policy and the security practices described in it</li>
+            <li>The <strong>FTC Health Breach Notification Rule</strong> (16 CFR Part 318), which requires us to notify you within 60 days of a security breach affecting your identifiable health information</li>
+            <li>The <strong>California Consumer Privacy Act (CCPA / CPRA)</strong> if you reside in California</li>
+            <li>The <strong>EU General Data Protection Regulation (GDPR)</strong> if you reside in the European Economic Area, the United Kingdom, or Switzerland</li>
+            <li>The <strong>Washington My Health My Data Act (MHMDA, RCW 19.373)</strong>, which applies to all consumer health data we collect — even from users outside Washington state</li>
+            <li>Other applicable state and federal consumer-data laws</li>
+          </ul>
+          <p className="mt-3">
+            If you require HIPAA-covered handling of your health information, do not use CauseHealth. Have your healthcare provider keep that information in their HIPAA-covered systems instead.
+          </p>
+        </Section>
+
         <Section title="5. Your Responsibility for Your Health">
           <ul className="list-disc pl-5 space-y-2 mt-2">
             <li><strong>You are solely responsible for all decisions you make about your health.</strong></li>

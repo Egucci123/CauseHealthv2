@@ -139,6 +139,14 @@ export const AcceptTermsScreen = ({ onAccepted }: Props) => {
               <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-primary-container mb-2">Document 2 of 3</p>
               <h2 className="text-authority text-xl text-clinical-charcoal font-bold mb-4">Privacy Policy</h2>
 
+              <h3 className="text-authority text-base font-semibold mt-4 mb-2">HIPAA does not apply to CauseHealth</h3>
+              <p>
+                <strong>CauseHealth is not a HIPAA covered entity.</strong> HIPAA regulates healthcare providers, health plans, and their business associates — CauseHealth is a consumer health information service that you voluntarily upload your own data to, and is none of those. HIPAA does NOT govern your data here.
+              </p>
+              <p className="mt-2">
+                Your data is instead protected by our Privacy Policy and by: the FTC Health Breach Notification Rule (60-day breach notification), the California Consumer Privacy Act (CCPA), the EU General Data Protection Regulation (GDPR), and the Washington My Health My Data Act (MHMDA) — applied universally, not just to WA users. If you require HIPAA-covered handling, keep that information in your healthcare provider's systems instead.
+              </p>
+
               <h3 className="text-authority text-base font-semibold mt-4 mb-2">What we collect</h3>
               <ul className="list-disc pl-5 space-y-1 mt-1">
                 <li><strong>Account:</strong> email, name, DOB, sex, height/weight, goals.</li>
