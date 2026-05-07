@@ -1,4 +1,5 @@
 // src/components/auth/AuthLayout.tsx
+import { useEffect } from 'react';
 
 interface AuthLayoutProps {
   children:    React.ReactNode;
@@ -14,6 +15,14 @@ export const AuthLayout = ({
   maxWidth = 'md',
 }: AuthLayoutProps) => {
   const widths = { sm: 'max-w-sm', md: 'max-w-md' };
+
+  // iOS Safari + saved-password autofill scrolls the password field into view
+  // on mount, which hides the Google button + magic-link button above the
+  // fold. Force the window back to the top so the user lands on the auth
+  // options, not partway down the form.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#131313] flex flex-col">
