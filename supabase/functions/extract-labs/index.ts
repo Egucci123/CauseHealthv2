@@ -46,33 +46,73 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'No PDF data provided' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const ac = new AbortController();
-    const t = setTimeout(() => ac.abort(), 120000);
-    let response: Response;
-    try {
-      response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST', signal: ac.signal,
-        headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 8000, messages }),
-      });
-    } catch (e: any) {
-      clearTimeout(t);
+    // Single Anthropic call wrapped in a function so we can retry transient
+    // failures (5xx Anthropic errors, malformed JSON responses) without
+    // surfacing them to the user as "Failed to parse AI response."
+    async function callAnthropic(): Promise<{ status: number; body: any; rawText: string }> {
+      const ac = new AbortController();
+      const t = setTimeout(() => ac.abort(), 120000);
+      let response: Response;
+      try {
+        response = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST', signal: ac.signal,
+          headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+          body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 8000, messages }),
+        });
+      } finally {
+        clearTimeout(t);
+      }
+      if (!response.ok) {
+        const errText = await response.text();
+        return { status: response.status, body: null, rawText: errText };
+      }
+      const aiResponse = await response.json();
+      const rawText = (aiResponse.content?.[0]?.text ?? '').replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      return { status: response.status, body: aiResponse, rawText };
+    }
+
+    function tryParse(rawText: string): any | null {
+      try {
+        const lb = rawText.lastIndexOf('}');
+        const sliced = lb > 0 ? rawText.slice(0, lb + 1) : rawText;
+        const obj = JSON.parse(sliced);
+        if (!obj || !Array.isArray(obj.values)) return null;
+        return obj;
+      } catch { return null; }
+    }
+
+    // Attempt 1
+    let attempt: { status: number; body: any; rawText: string };
+    try { attempt = await callAnthropic(); }
+    catch (e: any) {
       if (e?.name === 'AbortError') return new Response(JSON.stringify({ error: 'Extraction timed out' }), { status: 504, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       throw e;
     }
-    clearTimeout(t);
+    let parsed = attempt.status === 200 ? tryParse(attempt.rawText) : null;
 
-    if (!response.ok) { const err = await response.text(); return new Response(JSON.stringify({ error: 'AI extraction failed', detail: err }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }); }
+    // Auto-retry once on transient failure: 5xx Anthropic, or 200 with
+    // unparseable response (truncation / malformed JSON / apology text).
+    // Backoff 1.5s before retrying — long enough that Anthropic's transient
+    // blip clears, short enough that user doesn't notice in the upload UI.
+    const isTransient = attempt.status >= 500 || (attempt.status === 200 && parsed === null);
+    if (isTransient) {
+      console.warn(`[extract-labs] Attempt 1 failed (status=${attempt.status}, parsed=${parsed !== null}), retrying once...`);
+      await new Promise(r => setTimeout(r, 1500));
+      try { attempt = await callAnthropic(); }
+      catch (e: any) {
+        if (e?.name === 'AbortError') return new Response(JSON.stringify({ error: 'Extraction timed out' }), { status: 504, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        throw e;
+      }
+      parsed = attempt.status === 200 ? tryParse(attempt.rawText) : null;
+    }
 
-    const aiResponse = await response.json();
-    const cleaned = (aiResponse.content?.[0]?.text ?? '').replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-
-    let parsed;
-    try {
-      const lb = cleaned.lastIndexOf('}');
-      parsed = JSON.parse(lb > 0 ? cleaned.slice(0, lb + 1) : cleaned);
-    } catch { return new Response(JSON.stringify({ error: 'Failed to parse AI response' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }); }
-    if (!parsed.values || !Array.isArray(parsed.values)) return new Response(JSON.stringify({ error: 'Missing values array' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    if (attempt.status !== 200) {
+      return new Response(JSON.stringify({ error: 'AI extraction failed', detail: attempt.rawText }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    if (parsed === null) {
+      return new Response(JSON.stringify({ error: 'Failed to parse AI response after retry. Try uploading the file again, or use Manual Entry.' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    if (drawDate) parsed.draw_date = drawDate;
     if (drawDate) parsed.draw_date = drawDate;
 
     // ── DEDUPE + VALIDATE ───────────────────────────────────────────────────
