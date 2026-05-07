@@ -763,6 +763,13 @@ For EACH of these arrays, fill in OPEN-ENDED. Empty array if nothing fits. No pa
 
     CAP AT 5 — better 5 strong unknowns than 10 mixed quality. If you have more than 5 candidates, drop the weakest. The doctor reads 4-5 and engages; reads 10 and dismisses.
 
+    INTENSITY CALIBRATION — the user reads this list and gets either "informed" or "alarmed":
+    1. SIMPLER EXPLANATION FIRST — if a borderline finding has a benign / mechanical / lifestyle explanation (dehydration, recent exercise, supplement artifact, OTC med, lab timing, normal stress response), THAT is the primary differential. Disease entries are rule-outs only after the simpler explanation has been excluded. Example: Hgb 17.3 + albumin 5.2 + creatinine 1.25 in a 28yo who exercises = hemoconcentration FIRST; absolute erythrocytosis only if hydration trial fails.
+    2. NO PARALLEL PILE-ON — if one root-cause hypothesis (sleep deprivation, hemoconcentration, insulin resistance, hypothyroidism) plausibly explains the entire symptom + lab picture, do NOT also list 2-3 alternative root causes for the same picture. List the strongest single hypothesis with its rule-outs in confirmatory_tests. The user shouldn't read 4 different "what's wrong with me" theories.
+    3. DOWNSTREAM EFFECTS ARE NOT SEPARATE CONDITIONS — if "Sleep apnea" causes "secondary erythrocytosis" causes "elevated MPV", that's ONE entry (sleep apnea) with the cascade described in evidence. Not three.
+    4. CONFIDENCE TIER — High confidence requires (a) multiple confirming markers AND (b) symptoms that fit AND (c) no simpler explanation. A borderline single marker in a young healthy patient is moderate or low — never high. Calling something "high confidence" without those three is overcalling.
+    5. TONE — "rule-out", "consider", "screen for" — never "you have", "you're at risk for", or imply a diagnosis. The user is the patient, not the doctor; the framing should be "things worth your doctor's time" not "things you should worry about tonight".
+
 For each suspected_condition: confidence (high/moderate/low), 1-sentence evidence string citing SPECIFIC values + symptoms, confirmatory_tests (what the doctor should order to confirm), primary ICD-10, what_to_ask_doctor (the literal sentence to say at the visit).
 
 UNIVERSAL RULE — every confirmatory_test MUST include WHY the test matters:
@@ -1177,6 +1184,55 @@ CALIBRATION (applies to ALL arrays): Healthy patient with clean labs → 0-2 ent
     if (backstopEntries.length > 0) {
       plan.suspected_conditions.push(...backstopEntries);
       console.log(`[wellness-plan] suspected backstop fired: ${backstopEntries.map(e => e.name).join(', ')}`);
+    }
+
+    // ── Linked-alternates suppression (universal) ────────────────────────
+    // Some backstops fire a "simpler / cheaper / more common" explanation
+    // for the same finding the AI raised as a more dramatic differential.
+    // When that happens, the simpler one wins and the dramatic AI entry
+    // is suppressed — otherwise the user reads 2 explanations for the
+    // same lab picture and gets alarmed.
+    //
+    // Rule format: if a deterministic entry whose name matches `triggerRe`
+    // is present, drop AI entries whose names match any of `suppressRe`.
+    // Add new pairs here whenever an AI hypothesis duplicates a backstop's
+    // simpler-first take.
+    const ALTERNATES: { triggerRe: RegExp; suppressRe: RegExp[] }[] = [
+      // Hemoconcentration / dehydration suppresses absolute erythrocytosis,
+      // polycythemia, secondary erythrocytosis from OSA — simpler explanation
+      // for the same RBC-line elevation pattern.
+      {
+        triggerRe: /hemoconcentr|dehydrat|underhydrat/i,
+        suppressRe: [
+          /erythrocytosis/i,
+          /polycythemia/i,
+          /high red blood cell count/i,
+          /high hemoglobin/i,
+          /high hematocrit/i,
+        ],
+      },
+      // (Add future linked alternates here as new backstops land.)
+    ];
+    {
+      const before = plan.suspected_conditions.length;
+      const triggers = plan.suspected_conditions.filter((c: any) => c.source === 'deterministic');
+      const suppressedSet = new Set<string>();
+      for (const alt of ALTERNATES) {
+        const triggered = triggers.some((t: any) => alt.triggerRe.test(String(t.name ?? '')));
+        if (!triggered) continue;
+        for (const c of plan.suspected_conditions) {
+          if (c.source === 'deterministic') continue;  // never suppress backstops
+          if (alt.suppressRe.some(re => re.test(String(c.name ?? '')))) {
+            suppressedSet.add(String(c.name));
+          }
+        }
+      }
+      if (suppressedSet.size > 0) {
+        plan.suspected_conditions = plan.suspected_conditions.filter(
+          (c: any) => !suppressedSet.has(String(c.name)),
+        );
+        console.log(`[wellness-plan] linked-alternates suppressed ${before - plan.suspected_conditions.length} AI entries: ${[...suppressedSet].join(', ')}`);
+      }
     }
 
     // ── Universal: every confirmatory_test gets a clinical "why" ─────────
