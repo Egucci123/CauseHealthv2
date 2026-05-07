@@ -7,6 +7,7 @@ import { isHealthyMode } from '../_shared/healthMode.ts';
 import { GOAL_LABELS, formatGoals } from '../_shared/goals.ts';
 import { hasCondition } from '../_shared/conditionAliases.ts';
 import { isOnMed } from '../_shared/medicationAliases.ts';
+import { checkRegenCap, regenLimitError } from '../_shared/regenCap.ts';
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -34,6 +35,18 @@ serve(async (req) => {
 
     const profile = profileRes.data; const meds = medsRes.data ?? []; const symptoms = symptomsRes.data ?? [];
     const conditions = conditionsRes.data ?? []; const latestDraw = latestDrawRes.data;
+
+    // ── Regen cap: 2 doctor preps per lab dataset (universal) ───────────
+    if (latestDraw?.id) {
+      const cap = await checkRegenCap(supabase, userId, latestDraw.id, 'doctor_prep');
+      if (!cap.allowed) {
+        return new Response(
+          JSON.stringify(regenLimitError('doctor_prep', cap.used, cap.cap)),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+      console.log(`[doctor-prep] regen check passed: ${cap.used}/${cap.cap}`);
+    }
     const supps = suppsRes.data ?? [];
     const suppsStr = supps.map((s: any) => `${s.name}${s.dose ? ` (${s.dose})` : ''}`).join(', ') || 'None';
     let labValues: any[] = [];
@@ -888,7 +901,11 @@ CRITICAL OUTPUT RULES (for the new card-stack UI):
     if (!doc.generated_at) doc.generated_at = new Date().toISOString();
     if (!doc.document_date) doc.document_date = new Date().toISOString().split('T')[0];
 
-    await supabase.from('doctor_prep_documents').insert({ user_id: userId, document_data: doc });
+    await supabase.from('doctor_prep_documents').insert({
+      user_id: userId,
+      document_data: doc,
+      draw_id: latestDraw?.id ?? null,
+    });
     return new Response(JSON.stringify(doc), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (err) {
     return new Response(JSON.stringify({ error: String(err) }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });

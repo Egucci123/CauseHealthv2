@@ -40,7 +40,7 @@ serve(async (req) => {
     // with an analysis, it's a duplicate call — return success idempotently.
     const { data: currentDraw } = await supabase
       .from('lab_draws')
-      .select('processing_status, analysis_result, updated_at')
+      .select('processing_status, analysis_result, updated_at, analysis_count')
       .eq('id', drawId)
       .single();
     if (currentDraw?.processing_status === 'complete' && currentDraw?.analysis_result) {
@@ -50,6 +50,26 @@ serve(async (req) => {
       if (Date.now() - updatedAt < 60_000) {
         return new Response(JSON.stringify({ ...currentDraw.analysis_result, _idempotent: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
+    }
+
+    // ── Regen cap: 2 analyses per lab dataset (universal) ───────────────
+    // analysis_count tracks how many times analyze-labs has run for this
+    // draw. First run: 0 → 1 (allowed). Second run: 1 → 2 (allowed). Third
+    // run: blocked. New uploads (different lab values) start a fresh
+    // count on a new draw.
+    const ANALYSIS_CAP = 2;
+    const currentAnalysisCount = currentDraw?.analysis_count ?? 0;
+    if (currentAnalysisCount >= ANALYSIS_CAP) {
+      return new Response(
+        JSON.stringify({
+          error: `You've used all ${ANALYSIS_CAP} lab analyses for this dataset. Upload genuinely new labs (different values) to start fresh.`,
+          code: 'REGEN_LIMIT_REACHED',
+          limit: ANALYSIS_CAP,
+          used: currentAnalysisCount,
+          kind: 'analysis',
+        }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
     }
 
     const [{ data: labValues }, { data: profile }, { data: meds }, { data: symptoms }, { data: conditionsData }] = await Promise.all([
@@ -532,7 +552,14 @@ We do NOT recommend GI-MAP, hair tissue mineral, organic acids, food sensitivity
       analysis.priority_findings.push(...trendFindings);
     }
 
-    await supabase.from('lab_draws').update({ analysis_result: analysis, processing_status: 'complete' }).eq('id', drawId);
+    await supabase
+      .from('lab_draws')
+      .update({
+        analysis_result: analysis,
+        processing_status: 'complete',
+        analysis_count: (currentAnalysisCount ?? 0) + 1,
+      })
+      .eq('id', drawId);
 
     // Generate priority alerts from analysis findings
     if (analysis.priority_findings && Array.isArray(analysis.priority_findings)) {

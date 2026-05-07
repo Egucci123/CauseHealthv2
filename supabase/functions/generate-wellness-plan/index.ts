@@ -81,7 +81,7 @@ serve(async (req) => {
       };
 
       const currentHash = await hashLabs(draftDrawId);
-      const PER_DATASET_CAP = 3;
+      const PER_DATASET_CAP = 2;
       let totalPlans = 0;
 
       if (currentHash) {
