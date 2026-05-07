@@ -646,7 +646,7 @@ export const WellnessPlanPage = () => {
             <div className="flex items-start justify-between gap-3 mb-3 flex-wrap">
               <div className="flex-1 min-w-0">
                 <p className="text-precision text-[0.6rem] font-bold text-on-surface-variant tracking-widest uppercase mb-2">Your Plan</p>
-                <p className="text-authority text-2xl text-on-surface font-bold leading-tight">{plan.headline || plan.summary?.split('.')[0] || 'Your personalized plan'}</p>
+                <p className="text-authority text-base sm:text-xl md:text-2xl text-on-surface font-bold leading-snug sm:leading-tight">{plan.headline || plan.summary?.split('.')[0] || 'Your personalized plan'}</p>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 {plan.plan_mode === 'optimization' && (
