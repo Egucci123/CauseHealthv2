@@ -484,7 +484,8 @@ HARD RULES — FOLLOW EXACTLY:
      4. Long-term PPI (>2yr) → Magnesium Glycinate 200-400mg evening · category sleep_stress
 
    ── Lab-pattern-driven (sourced_from: empirical) ──
-     5. TG >150 OR self-reported low fish intake → Omega-3 EPA/DHA 1-2g/day · category inflammation_cardio
+     5. TG >150 → Omega-3 EPA/DHA 1-2g/day · category inflammation_cardio · sourced_from lab_finding (cite TG value).
+        Note: low fish intake / borderline LDL / mild LDL elevation alone do NOT trigger lab_finding for omega-3 — that's a symptom/lifestyle case which goes in #9 below as empirical.
      6. ALT >60 with no other liver clue + no statin → NAC 600-1200mg/day (alt to milk thistle) · category liver_metabolic
 
    ── Symptom-driven (sourced_from: empirical) — fire only if symptom-cluster threshold met ──
@@ -762,6 +763,7 @@ For EACH of these arrays, fill in OPEN-ENDED. Empty array if nothing fits. No pa
     5. DUPLICATES — If two entries share the same root finding (polycythemia + sleep apnea both citing Hct), pick the upstream one. Polycythemia secondary to sleep apnea = ONE entry: sleep apnea, with "+ secondary polycythemia" in the evidence.
     6. CONTRADICTIONS — Gilbert with elevated ALT (Gilbert needs normal LFTs). Hypothyroid with TSH 1.93 (dead-center optimal). Check evidence supports entry.
     7. "TEST WASN'T DONE" ENTRIES — That's a retest_timeline reason, not a differential.
+    8. SELF-REPORTED BEHAVIORS — sleep deprivation, alcohol use, smoking, lack of exercise, dietary patterns, stress. These are USER-REPORTED behaviors, not hidden conditions for the doctor to investigate. Talk about them in summary / today_actions / lifestyle_interventions instead. The differential list is for HIDDEN clinical conditions only — things the doctor needs to test FOR, not behaviors the user is already aware of.
 
     HARD INCLUSIONS — these ARE proper differentials:
     - Hidden conditions where the data fits but the diagnosis is missing (NAFLD on hepatic+metabolic pattern; insulin resistance despite normal A1c; sleep apnea on polycythemia+symptoms; hemochromatosis if iron pattern fits; PCOS on hyperandrogenism; subclinical Hashimoto's if TPO+ or TSH>2.5; FH if LDL>190 family hx; multiple myeloma rule-out if unexplained globulin + age 60+; statin-induced myopathy on CK + symptoms; Cushing's on hyperandrogenism + cortisol clues)
@@ -1220,13 +1222,16 @@ CALIBRATION (applies to ALL arrays): Healthy patient with clean labs → 0-2 ent
     ];
     {
       const before = plan.suspected_conditions.length;
-      const triggers = plan.suspected_conditions.filter((c: any) => c.source === 'deterministic');
+      // Trigger can be EITHER a deterministic backstop OR an AI entry — if
+      // any entry's name matches the trigger, the suppression fires on
+      // alternative-explanation entries that aren't the trigger itself.
       const suppressedSet = new Set<string>();
       for (const alt of ALTERNATES) {
-        const triggered = triggers.some((t: any) => alt.triggerRe.test(String(t.name ?? '')));
-        if (!triggered) continue;
+        const triggerEntry = plan.suspected_conditions.find((c: any) => alt.triggerRe.test(String(c.name ?? '')));
+        if (!triggerEntry) continue;
         for (const c of plan.suspected_conditions) {
-          if (c.source === 'deterministic') continue;  // never suppress backstops
+          if (c === triggerEntry) continue;  // never suppress the trigger itself
+          if (c.source === 'deterministic') continue;  // never suppress backstops (they're vetted)
           if (alt.suppressRe.some(re => re.test(String(c.name ?? '')))) {
             suppressedSet.add(String(c.name));
           }
@@ -1239,6 +1244,55 @@ CALIBRATION (applies to ALL arrays): Healthy patient with clean labs → 0-2 ent
         console.log(`[wellness-plan] linked-alternates suppressed ${before - plan.suspected_conditions.length} AI entries: ${[...suppressedSet].join(', ')}`);
       }
     }
+
+    // ── Self-reported behaviors are NOT differentials (universal scrub) ──
+    // The user reports sleep difficulty / alcohol / smoking / poor diet —
+    // those drive symptoms but they're not "hidden conditions" the doctor
+    // needs to investigate. They belong in summary + today_actions, not in
+    // the differential list. Mitchell case: AI raised "Chronic sleep
+    // deprivation" as a high-confidence suspected_condition. Scrub it.
+    {
+      const BEHAVIOR_RE = /^(chronic )?sleep deprivation\b|behavioral insomnia|^poor sleep hygiene|^alcohol use\b|^smoking\b|^sedentary\b|^poor diet\b|^stress\b|^sleep loss\b/i;
+      const before = plan.suspected_conditions.length;
+      plan.suspected_conditions = plan.suspected_conditions.filter(
+        (c: any) => !BEHAVIOR_RE.test(String(c.name ?? '').trim()),
+      );
+      const dropped = before - plan.suspected_conditions.length;
+      if (dropped > 0) console.log(`[wellness-plan] dropped ${dropped} self-reported-behavior entries from suspected_conditions`);
+    }
+
+    // ── Placeholder-leak scrub (universal) ──────────────────────────────
+    // The prompt uses generic stand-ins like "inflammation marker" as
+    // examples. The AI sometimes literally inserts those phrases as if
+    // they were real test/marker names ("inflammation marker (inflammation
+    // marker) not yet tested"). Scrub them and replace with proper test
+    // names where possible.
+    const PLACEHOLDER_FIXES: Array<[RegExp, string]> = [
+      [/\binflammation marker\s*\(inflammation marker\)\s*/gi, 'hs-CRP '],
+      [/\binflammation markers?\b/gi, 'hs-CRP'],
+    ];
+    function scrubPlaceholders(s: any): any {
+      if (typeof s !== 'string') return s;
+      let out = s;
+      for (const [re, repl] of PLACEHOLDER_FIXES) out = out.replace(re, repl);
+      return out;
+    }
+    function scrubDeep(obj: any): any {
+      if (Array.isArray(obj)) return obj.map(scrubDeep);
+      if (obj && typeof obj === 'object') {
+        const next: any = {};
+        for (const k of Object.keys(obj)) next[k] = scrubDeep(obj[k]);
+        return next;
+      }
+      return scrubPlaceholders(obj);
+    }
+    plan.summary = scrubPlaceholders(plan.summary);
+    plan.headline = scrubPlaceholders(plan.headline);
+    if (Array.isArray(plan.multi_marker_patterns)) plan.multi_marker_patterns = plan.multi_marker_patterns.map(scrubDeep);
+    if (Array.isArray(plan.suspected_conditions)) plan.suspected_conditions = plan.suspected_conditions.map(scrubDeep);
+    if (Array.isArray(plan.today_actions)) plan.today_actions = plan.today_actions.map(scrubDeep);
+    if (Array.isArray(plan.supplement_stack)) plan.supplement_stack = plan.supplement_stack.map(scrubDeep);
+    if (Array.isArray(plan.retest_timeline)) plan.retest_timeline = plan.retest_timeline.map(scrubDeep);
 
     // ── Universal: every confirmatory_test gets a clinical "why" ─────────
     // The user's question — "if my labs already show this, why do I need
