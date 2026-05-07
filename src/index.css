@@ -57,6 +57,23 @@ p, span, h1, h2, h3, h4, h5, h6, td, li, a, label {
   word-break: break-word;
 }
 
+/* iOS Safari "zoom-in on input focus" fix.
+ *
+ * iOS auto-zooms when the user taps any input/select/textarea whose
+ * font-size is < 16px — and it does NOT zoom back out on blur. The user
+ * has to pinch-zoom out manually after every field. The fix is universal:
+ * force every form control to be at least 16px on phones. Doesn't affect
+ * desktop (where zoom-on-focus doesn't happen). Tailwind text-sm/text-xs
+ * inputs scattered across onboarding all get bumped to 16px on mobile.
+ */
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
 /* Body background MUST match the public + onboarding + auth pages
    (clinical cream). When React unmounts one route before mounting the next,
    this is what's briefly visible — used to be black, causing a jarring flash
