@@ -7,31 +7,52 @@
   box-sizing: border-box;
 }
 
-/* Mobile zoom-out fix.
+/* Mobile zoom-out fix — aggressive version.
  *
- * If ANY element overflows past the viewport width — a fixed-pixel-width
- * card, a long unbreakable string (lab marker name, ICD-10 code, URL),
- * a wide flex row that won't wrap — iOS Safari reacts by shrinking the
- * whole page so it fits, which looks like the user has to "zoom out to
- * see everything." This kills horizontal overflow at the document level
- * so an offending child can never push the page wider than the screen.
- *
- * overflow-x:clip > overflow-x:hidden because clip doesn't make the
- * element a scroll container (so position:sticky inside still works).
+ * If ANY element overflows past the viewport width, iOS Safari reacts by
+ * shrinking the whole page (the "have to pinch-zoom out to see everything"
+ * symptom). Earlier attempt used `overflow-x: clip` but that's unreliable
+ * on older Safari versions. This version uses `overflow-x: hidden` (broadly
+ * supported), explicit width constraints on every level of the layout, and
+ * a defensive `* { max-width: 100% }` so even fixed-pixel children get
+ * pulled back inside the viewport.
  */
-html, body {
+html {
+  width: 100%;
   max-width: 100vw;
-  overflow-x: clip;
+  overflow-x: hidden;
 }
-
+body {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+  position: relative;
+}
 #root {
+  width: 100%;
   max-width: 100vw;
-  overflow-x: clip;
+  overflow-x: hidden;
 }
 
-/* Long strings (URLs, lab marker names with no spaces, etc.) can also
- * cause horizontal overflow on small screens. Force them to break. */
-p, span, h1, h2, h3, h4, h5, h6, td, li {
+/* Defensive — no descendant should ever exceed its container's width on
+ * mobile. Won't affect explicitly-scrollable horizontal containers (those
+ * use overflow-x: auto and pass through). Allowed to be overridden by
+ * components that need to scroll horizontally on purpose (e.g. wide tables).
+ */
+@media (max-width: 767px) {
+  body * {
+    max-width: 100%;
+  }
+  /* Images & SVGs: cap at container width and keep aspect */
+  img, svg, video, canvas {
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+/* Long strings (URLs, lab marker names, ICD-10 codes) breaking out of
+ * their container is another zoom-out trigger. Force them to wrap. */
+p, span, h1, h2, h3, h4, h5, h6, td, li, a, label {
   overflow-wrap: anywhere;
   word-break: break-word;
 }
