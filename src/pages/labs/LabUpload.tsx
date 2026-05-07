@@ -1,5 +1,5 @@
 // src/pages/labs/LabUpload.tsx
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { AppShell } from '../../components/layout/AppShell';
@@ -11,13 +11,16 @@ import { ManualEntry } from '../../components/labs/ManualEntry';
 import { useLabUploadStore } from '../../store/labUploadStore';
 import { useAuthStore } from '../../store/authStore';
 import { logEvent } from '../../lib/clientLog';
+import { supabase } from '../../lib/supabase';
+import { Button } from '../../components/ui/Button';
+import { RedeemCodeForm } from '../../components/paywall/PaywallGate';
 
 export const LabUpload = () => {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const user = useAuthStore(s => s.user);
   const [searchParams, setSearchParams] = useSearchParams();
-  const { phase, progress, statusMessage, drawId, extraction, errorMessage, completedDrawId, reset, startUpload, confirmAndAnalyze, resumeFromDraw } = useLabUploadStore();
+  const { phase, progress, statusMessage, drawId, extraction, errorMessage, completedDrawId, paymentTier, reset, startUpload, confirmAndAnalyze, resumeFromDraw } = useLabUploadStore();
 
   // Returning from a $5 upload-pack Stripe checkout. Optimistic +1 credit so
   // the user can immediately upload again without waiting on the webhook,
@@ -161,6 +164,10 @@ export const LabUpload = () => {
           </div>
         )}
 
+        {phase === 'needs_payment' && (
+          <UploadPaywallCard tier={paymentTier ?? 'unlock'} onCancel={reset} />
+        )}
+
         {phase === 'error' && (
           <div className="space-y-6">
             <div className="bg-[#C94F4F]/10 border border-[#C94F4F]/30 rounded-[10px] p-6">
@@ -178,5 +185,97 @@ export const LabUpload = () => {
         )}
       </div>
     </AppShell>
+  );
+};
+
+// ── Upload paywall ─────────────────────────────────────────────────────
+// Rendered when upload is blocked on $19 unlock or $5 upload-pack. Mirrors
+// the look and feel of PaywallGate (Wellness Plan / Doctor Prep) so the
+// pricing UX is consistent everywhere a user might pay.
+const UploadPaywallCard = ({ tier, onCancel }: { tier: 'unlock' | 'upload_pack'; onCancel: () => void }) => {
+  const [showRedeem, setShowRedeem] = useState(false);
+  const [launching, setLaunching] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const launchCheckout = async () => {
+    setLaunching(true);
+    setError(null);
+    try {
+      const fnName = tier === 'unlock' ? 'create-checkout-session' : 'create-upload-checkout';
+      const { data, error: invokeErr } = await supabase.functions.invoke(fnName, {
+        body: { origin: window.location.origin },
+      });
+      if (invokeErr || !(data as any)?.url) {
+        setError((invokeErr as any)?.message ?? 'Could not start checkout. Try again or use a code.');
+        setLaunching(false);
+        return;
+      }
+      window.location.href = (data as any).url;
+    } catch (e: any) {
+      setError(e?.message ?? 'Could not start checkout.');
+      setLaunching(false);
+    }
+  };
+
+  const isUnlock = tier === 'unlock';
+  const price = isUnlock ? '$19' : '$5';
+  const headline = isUnlock ? 'Unlock CauseHealth' : 'New lab draw';
+  const description = isUnlock
+    ? 'One-time payment unlocks your account and your first lab analysis. No subscription.'
+    : 'Each additional lab draw upload is a one-time charge. Append-to-existing-draw is always free.';
+  const sub = isUnlock ? 'Lifetime account access' : 'Includes full re-analysis';
+
+  return (
+    <div className="bg-clinical-white rounded-[14px] shadow-card border-t-[3px] border-[#D4A574] p-8 sm:p-10 text-center max-w-xl mx-auto">
+      <div className="w-14 h-14 bg-[#D4A574]/15 rounded-full flex items-center justify-center mx-auto mb-5">
+        <span className="material-symbols-outlined text-[#D4A574] text-2xl">lock</span>
+      </div>
+      <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-[#D4A574] mb-2">
+        {isUnlock ? 'Unlock to upload' : 'Add upload credit'}
+      </p>
+      <p className="text-authority text-2xl text-clinical-charcoal font-bold mb-2">{headline}</p>
+      <p className="text-body text-clinical-stone text-sm mb-6 max-w-sm mx-auto leading-relaxed">{description}</p>
+      <p className="text-authority text-3xl text-clinical-charcoal font-bold mb-1">
+        {price}<span className="text-base text-clinical-stone font-normal"> one-time</span>
+      </p>
+      <p className="text-precision text-[0.65rem] text-clinical-stone tracking-wide mb-6">{sub}</p>
+
+      <div className="flex flex-col gap-3 max-w-sm mx-auto">
+        <Button
+          variant="primary"
+          size="lg"
+          icon="auto_awesome"
+          className="w-full"
+          loading={launching}
+          onClick={launchCheckout}
+        >
+          {isUnlock ? 'Unlock for $19' : 'Add credit for $5'}
+        </Button>
+
+        <button
+          onClick={() => setShowRedeem(v => !v)}
+          className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-clinical-cream/60 border border-[#D4A574]/40 hover:border-[#D4A574] hover:bg-clinical-cream transition-colors"
+          style={{ borderRadius: '6px' }}
+        >
+          <span className="material-symbols-outlined text-[#D4A574] text-[18px]">redeem</span>
+          <span className="text-body text-clinical-charcoal text-sm font-semibold">
+            {showRedeem ? 'Hide code field' : 'Have a code?'}
+          </span>
+        </button>
+
+        {showRedeem && <RedeemCodeForm compact />}
+
+        {error && (
+          <p className="text-body text-[#C94F4F] text-xs leading-snug mt-1">{error}</p>
+        )}
+
+        <button
+          onClick={onCancel}
+          className="text-precision text-[0.65rem] text-clinical-stone tracking-widest uppercase hover:text-clinical-charcoal transition-colors py-2 mt-1"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
   );
 };

@@ -34,16 +34,25 @@ const PaywallCard = ({ feature, description }: { feature: string; description?: 
       )}
       <p className="text-authority text-3xl text-clinical-charcoal font-bold mb-1">$19<span className="text-base text-clinical-stone font-normal"> one-time</span></p>
       <p className="text-precision text-[0.65rem] text-clinical-stone tracking-wide mb-6">Lifetime access · No subscription</p>
-      <div className="flex flex-col gap-2 max-w-sm mx-auto">
+      <div className="flex flex-col gap-3 max-w-sm mx-auto">
         <Link to="/settings?tab=subscription">
           <Button variant="primary" size="lg" icon="auto_awesome" className="w-full">Unlock for $19</Button>
         </Link>
+
+        {/* "Have a code?" — much more visible than the prior 10px monospace
+            link. Now a full-width secondary button with brand-gold border so
+            it reads as a real, clickable alternative. */}
         <button
           onClick={() => setShowRedeem(v => !v)}
-          className="text-precision text-[0.65rem] font-bold tracking-wider uppercase text-clinical-stone hover:text-clinical-charcoal py-2"
+          className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-clinical-cream/60 border border-[#D4A574]/40 hover:border-[#D4A574] hover:bg-clinical-cream transition-colors"
+          style={{ borderRadius: '6px' }}
         >
-          {showRedeem ? 'Hide code redeem' : 'Have a code?'}
+          <span className="material-symbols-outlined text-[#D4A574] text-[18px]">redeem</span>
+          <span className="text-body text-clinical-charcoal text-sm font-semibold">
+            {showRedeem ? 'Hide code field' : 'Have a code?'}
+          </span>
         </button>
+
         {showRedeem && <RedeemCodeForm compact />}
       </div>
     </div>

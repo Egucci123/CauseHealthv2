@@ -6,7 +6,10 @@ import { useAuthStore } from './authStore';
 import { extractPDFText, looksLikeLabReport } from '../lib/pdfParser';
 import { logEvent } from '../lib/clientLog';
 
-export type UploadPhase = 'idle' | 'uploading' | 'extracting' | 'reviewing' | 'analyzing' | 'complete' | 'error' | 'manual';
+export type UploadPhase = 'idle' | 'uploading' | 'extracting' | 'reviewing' | 'analyzing' | 'complete' | 'error' | 'manual' | 'needs_payment';
+
+/** Which Stripe flow to launch from the paywall card. */
+export type PaymentTier = 'unlock' | 'upload_pack';
 
 export interface ExtractedValue {
   id: string; marker_name: string; value: number; unit: string;
@@ -28,6 +31,9 @@ interface LabUploadStore {
   errorMessage: string | null;
   completedDrawId: string | null;
   isRunning: boolean;
+  /** When phase === 'needs_payment', tells the UI which checkout to launch
+   *  if the user clicks "Unlock for $X". null otherwise. */
+  paymentTier: PaymentTier | null;
 
   reset: () => void;
   startUpload: (files: File[], userId: string) => void;
@@ -49,8 +55,9 @@ function stopProgress() { if (_progressInterval) { clearInterval(_progressInterv
 export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
   phase: 'idle', progress: 0, statusMessage: '', drawId: null,
   extraction: null, errorMessage: null, completedDrawId: null, isRunning: false,
+  paymentTier: null,
 
-  reset: () => set({ phase: 'idle', progress: 0, statusMessage: '', drawId: null, extraction: null, errorMessage: null, completedDrawId: null, isRunning: false }),
+  reset: () => set({ phase: 'idle', progress: 0, statusMessage: '', drawId: null, extraction: null, errorMessage: null, completedDrawId: null, isRunning: false, paymentTier: null }),
 
   updateExtraction: (values) => set(s => ({ extraction: s.extraction ? { ...s.extraction, values } : null })),
 
@@ -176,26 +183,19 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
           const credits = profile?.uploadCredits ?? 0;
           if (credits <= 0) {
             // Branch on whether they've ever unlocked. Pre-unlock → $19 flow.
-            // Post-unlock with 0 credits → $5 flow.
+            // Post-unlock with 0 credits → $5 flow. We do NOT auto-redirect
+            // anymore — the LabUpload page renders a paywall card with both
+            // "Unlock" and "Have a code?" so users with comp codes don't get
+            // shoved into Stripe.
             const hasUnlocked = !!profile?.unlockPurchasedAt
               || profile?.subscriptionTier === 'pro';
-            const fnName = hasUnlocked ? 'create-upload-checkout' : 'create-checkout-session';
             set({
-              phase: 'error', isRunning: false,
-              errorMessage: hasUnlocked
-                ? 'You’re out of upload credits. Each additional lab draw is $5 one-time. Redirecting you to checkout…'
-                : 'Unlock CauseHealth for $19 one-time to upload your first lab draw. Redirecting…',
+              phase: 'needs_payment',
+              isRunning: false,
+              paymentTier: hasUnlocked ? 'upload_pack' : 'unlock',
+              errorMessage: null,
+              statusMessage: '',
             });
-            try {
-              const { data, error } = await supabase.functions.invoke(fnName, {
-                body: { origin: window.location.origin },
-              });
-              if (!error && (data as any)?.url) {
-                window.location.href = (data as any).url;
-              }
-            } catch (e) {
-              console.warn('[LabUpload] checkout redirect failed:', e);
-            }
             return;
           }
         }
