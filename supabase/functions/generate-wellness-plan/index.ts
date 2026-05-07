@@ -779,6 +779,17 @@ Each "why" must be SPECIFIC to this patient's data, not generic. Don't say "to c
 Schema for confirmatory_tests:
   [{ "test": "Fasting insulin", "why": "Quantifies IR via HOMA-IR (insulin × glucose / 405). Your TG/HDL ratio of 8 already screams IR, but HOMA-IR gives a real number that decides whether diet alone is enough or you need metformin. Also distinguishes compensated IR (your pancreas working overtime) from β-cell burnout starting." }, ...]
 
+CRITICAL FORMAT RULES for confirmatory_tests (these have produced bugs in the past — get them right):
+  1. The "test" field MUST be the literal test name as it appears on a lab order — e.g., "Fasting insulin", "TPO Antibodies", "ApoB", "Home Sleep Apnea Test (HSAT)". NEVER leave it empty. NEVER bury the test name inside the "why" field with an empty "test". If you don't have a specific test to recommend, drop the entry entirely.
+  2. The "why" field is the rationale ONLY — it does NOT need to repeat the test name. Start with the reason ("Quantifies…", "Distinguishes…", "Rules out…").
+  3. Every entry must be a {test, why} object — never a bare string.
+
+UNIVERSAL RULE — NEVER assert values for tests you weren't given:
+If a marker isn't in the patient's lab panel, you do NOT know its value. Do NOT write things like "hsCRP is likely elevated" or "ferritin is probably <30" or "inflammation marker likely high" as if you measured them. The patient will read these as actual results. Frame untested markers ONLY as predictions or recommendations:
+  ✅ ALLOWED: "predicted hsCRP elevation pending test", "ferritin not in panel — order to confirm", "we expect cortisol to normalize once sleep extends"
+  ❌ FORBIDDEN: "hsCRP likely elevated", "ferritin probably low", "inflammation marker is high", "your cortisol is flattened"
+This rule applies to EVERY field — multi_marker_patterns evidence, today_actions why, supplement_stack evidence_note, suspected_conditions evidence, summary, headline. Untested = predicted, never asserted.
+
 CALIBRATION (applies to ALL arrays): Healthy patient with clean labs → 0-2 entries each. Multi-issue patient → 4-7 well-evidenced entries (NOT 13 weakly-evidenced). Don't pad, don't skip. Better than a doctor = catching what 12 minutes can't see, with the evidence to back it up.` }],
       }),
     });
@@ -1171,24 +1182,35 @@ CALIBRATION (applies to ALL arrays): Healthy patient with clean labs → 0-2 ent
     // ── Universal: every confirmatory_test gets a clinical "why" ─────────
     // The user's question — "if my labs already show this, why do I need
     // ANOTHER test?" — has to be answered for EVERY test we recommend.
-    // AI prompt requires it for AI entries, but those can come back as
-    // plain string[]. Backstop entries are always plain string[]. Run a
-    // post-process: any string entry gets transformed into {test, why}
-    // via the rationale library. Already-shaped {test, why} entries pass
-    // through unchanged.
+    // AI prompt requires it for AI entries; backstop entries are plain
+    // string[]. Post-process normalizes both into {test, why} via the
+    // rationale library.
+    //
+    // BUG GUARD (Mitchell case): the AI sometimes returns
+    //   { "test": "", "why": "..." }
+    // — putting the test name inside the prose of why and leaving test
+    // empty. That renders as a blank box. Drop any such entry; we'd
+    // rather show 1 well-formed test than 3 with a blank.
     plan.suspected_conditions = plan.suspected_conditions.map((c: any) => {
       if (!Array.isArray(c.confirmatory_tests)) return c;
-      const upgraded = c.confirmatory_tests.map((t: any) => {
-        if (typeof t === 'string') {
-          const fromLib = attachWhys([t])[0];
-          return fromLib;
-        }
-        // Already an object — make sure it has both fields
-        if (t && typeof t === 'object' && t.test) {
-          return { test: t.test, why: t.why ?? attachWhys([t.test])[0].why };
-        }
-        return t;
-      });
+      const upgraded = c.confirmatory_tests
+        .map((t: any) => {
+          if (typeof t === 'string') {
+            const trimmed = t.trim();
+            if (!trimmed) return null;
+            return attachWhys([trimmed])[0];
+          }
+          if (t && typeof t === 'object') {
+            const testName = String(t.test ?? '').trim();
+            if (!testName) return null;  // drop empty-test entries
+            return {
+              test: testName,
+              why: String(t.why ?? '').trim() || attachWhys([testName])[0].why,
+            };
+          }
+          return null;
+        })
+        .filter((t: any) => t !== null);
       return { ...c, confirmatory_tests: upgraded };
     });
 

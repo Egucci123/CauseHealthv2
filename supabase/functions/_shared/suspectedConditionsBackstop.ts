@@ -73,6 +73,75 @@ interface BackstopRule {
 }
 
 const RULES: BackstopRule[] = [
+  // ── Hemoconcentration / dehydration (universal, must-not-miss) ─────────
+  // Real-case validation (Mitchell, 28yo): the AI jumped straight to
+  // OSA / chronic hypoxemia → EPO-driven erythrocytosis as the explanation
+  // for high RBC/Hgb/Hct. But hemoconcentration from chronic underhydration
+  // is a much simpler explanation and statistically more common — every
+  // blood component reads "high" because plasma volume is low.
+  //
+  // The signature: HIGH albumin (the most specific marker — albumin doesn't
+  // physiologically rise, it concentrates) + at least one of HIGH Hgb / Hct /
+  // RBC. Optionally supported by upper-half urine specific gravity and mild
+  // creatinine bump. Hydration trial first is non-invasive, free, and
+  // reverses the pattern in 1–2 weeks if dehydration is the cause. OSA
+  // workup escalates only if hydration trial fails.
+  //
+  // Universal — fires on every patient where the chemistry pattern matches,
+  // regardless of age/sex/symptoms. Not constrained to suspicion of OSA.
+  {
+    key: 'hemoconcentration_dehydration',
+    alreadyRaisedIf: [/hemoconcentr/i, /dehydrat/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const albumin = mark(ctx.labValues, [/^albumin\b/i]);
+      const hgb = mark(ctx.labValues, [/^hemoglobin\b/i]);
+      const hct = mark(ctx.labValues, [/^hematocrit\b/i]);
+      const rbc = mark(ctx.labValues, [/red blood cell count|^rbc\b/i]);
+      const cre = mark(ctx.labValues, [/^creatinine\b/i]);
+      const sg = mark(ctx.labValues, [/specific gravity/i]);
+
+      // Albumin is the keystone — it has to be high for this to be hemoconc
+      // rather than absolute erythrocytosis. Use clinical threshold of >5.0
+      // (most labs cap normal at 5.0–5.1). If albumin isn't measured, we
+      // can't distinguish hemoconc from real erythrocytosis — skip.
+      if (!albumin || albumin.value <= 5.0) return null;
+
+      // At least one RBC-line marker has to be high to make this relevant.
+      const hgbHigh = hgb && hgb.value > (hgb.value > 100 ? 17.5 /* female */ : 17.5);
+      // Use sex-aware threshold: 17 g/dL female, 18 g/dL male — but sex isn't
+      // always reliable, so use a loose 16.5+ threshold and let pattern carry.
+      const isHgbHigh = hgb && hgb.value >= 16.5;
+      const isHctHigh = hct && hct.value >= 49;
+      const isRbcHigh = rbc && rbc.value >= 5.5;
+      if (!isHgbHigh && !isHctHigh && !isRbcHigh) return null;
+
+      // Build evidence string
+      const cluesArr: string[] = [`Albumin ${albumin.value} g/dL (high — concentrated)`];
+      if (hgb && isHgbHigh) cluesArr.push(`Hgb ${hgb.value} g/dL`);
+      if (hct && isHctHigh) cluesArr.push(`Hct ${hct.value}%`);
+      if (rbc && isRbcHigh) cluesArr.push(`RBC ${rbc.value} M/uL`);
+      if (cre && cre.value > 1.1) cluesArr.push(`Cre ${cre.value} mg/dL (mild)`);
+      if (sg && sg.value >= 1.020) cluesArr.push(`Urine SG ${sg.value} (concentrated)`);
+      const clues = cluesArr.join(', ');
+
+      return {
+        name: 'Hemoconcentration / chronic underhydration (rule-out before erythrocytosis)',
+        category: 'metabolic',
+        confidence: 'high',
+        evidence: `${clues}. Every blood component reads high because plasma volume is low — classic hemoconcentration. Albumin is the keystone marker (it concentrates, doesn\'t physiologically rise). Statistically much more common than absolute erythrocytosis in a fit adult.`,
+        confirmatory_tests: [
+          'Hydration trial (3L water/day + electrolytes) for 14 days',
+          'Repeat CBC + albumin after trial',
+          'Urine specific gravity (random sample)',
+        ],
+        icd10: 'E86.0',
+        what_to_ask_doctor: "My albumin, hemoglobin, and hematocrit are all elevated together — could this be hemoconcentration from underhydration rather than a blood disorder? Can we do a 2-week hydration trial and recheck before more invasive workup?",
+        source: 'deterministic',
+      };
+    },
+  },
+
   // ── Hashimoto's thyroiditis / Hypothyroidism (universal) ───────────────
   // Real-case validation (PMC12988615) caught this rule was too narrow:
   //   - Only checked TSH + 3 specific symptoms (fatigue, hair loss, cold)
@@ -149,7 +218,13 @@ const RULES: BackstopRule[] = [
       const cold = symptom(ctx.symptomsLower, [/cold (hand|feet|intoler)/i]);
       const moodIssues = symptom(ctx.symptomsLower, [/anxiety/i, /depress|low mood|mood swing/i]);
       const symptomCount = [fatigue, brainFog, weightGain, hairLoss, cold, moodIssues].filter(Boolean).length;
-      if (tsh.value >= 2.5 && symptomCount >= 2) {
+      // Threshold tiered to symptom count to avoid over-flagging: at TSH 2.0–2.5
+      // we need 3+ symptoms; at TSH ≥ 2.5 we need only 2+. Functional optimal
+      // is < 2.0; anyone above that with multiple hypothyroid symptoms gets
+      // the conversation started.
+      const tshSubclinicalLow = tsh.value >= 2.0 && tsh.value < 2.5 && symptomCount >= 3;
+      const tshSubclinicalHigh = tsh.value >= 2.5 && symptomCount >= 2;
+      if (tshSubclinicalLow || tshSubclinicalHigh) {
         const matched = [
           fatigue ? 'fatigue' : null,
           brainFog ? 'brain fog/memory' : null,

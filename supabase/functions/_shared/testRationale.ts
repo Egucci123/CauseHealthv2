@@ -111,6 +111,14 @@ const RATIONALE: Record<string, string> = {
     'Specific for rheumatoid arthritis (~95% specificity). Positive in early RA before joint damage shows on imaging — catches it when DMARDs can prevent erosions.',
   'Celiac panel (TTG-IgA + total IgA)':
     'Screens for celiac while patient is still eating gluten. Total IgA needed because IgA deficiency causes false-negative TTG. Indicated for unexplained anemia, GI symptoms, fatigue, or first-degree relative.',
+
+  // ── Hemoconcentration / hydration ──────────────────────────────────────
+  'Hydration trial (3L water/day + electrolytes) for 14 days':
+    'Cheapest and safest first move when albumin + Hgb + Hct are all elevated together. If hemoconcentration is the cause, the entire pattern reverses on a re-test in 2 weeks. If it doesn\'t, you\'ve ruled out the most common explanation and earned the right to escalate to OSA / EPO / marrow workup.',
+  'Repeat CBC + albumin after trial':
+    'After 14 days of adequate hydration, this confirms whether the elevated RBC line + albumin pattern resolves (hemoconcentration → reversed) or persists (true erythrocytosis → escalate workup). Without this measurement, you can\'t tell which path you\'re on.',
+  'Urine specific gravity (random sample)':
+    'Direct measure of urine concentration. >1.025 strongly suggests dehydration. Free, fast, and confirms what the blood-side pattern is hinting at.',
 };
 
 /** Generic fallback when a test isn't in the rationale library. Picks one
