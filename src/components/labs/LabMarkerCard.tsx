@@ -9,6 +9,7 @@ import { Badge } from '../ui/Badge';
 import { ClinicalLink } from '../ui/Button';
 import { Sparkline } from '../ui/Sparkline';
 import { MarkerTerm } from '../ui/MarkerTerm';
+import { findGlossaryEntry } from '../../data/biomarkerGlossary';
 import { useMarkerHistory } from '../../hooks/useMarkerHistory';
 import { useSubscription } from '../../lib/subscription';
 import { useAuthStore } from '../../store/authStore';
@@ -61,6 +62,11 @@ export const LabMarkerCard = ({ value, analysis, onAddToPrep }: LabMarkerCardPro
     : null;
   // Free users see the flag + dot bar + sparkline. AI explanations are locked.
   const showAnalysis = isPro && !!analysis;
+  // Glossary entry — drives the always-visible "Why this matters" line
+  // shown to ALL users (free and Pro) so even pre-paywall users understand
+  // what each marker is and why it's worth tracking. The full glossary
+  // popup is still available via the MarkerTerm tap.
+  const glossary = findGlossaryEntry(value.marker_name);
   const topBorder = status === 'urgent' ? 'border-t-[3px] border-[#C94F4F]' : status === 'monitor' ? 'border-t-[3px] border-[#E8922A]' : 'border-t-[3px] border-[#D4A574]';
 
   // Fetch historical values for this marker — sparkline + previous comparison
@@ -94,6 +100,22 @@ export const LabMarkerCard = ({ value, analysis, onAddToPrep }: LabMarkerCardPro
           </div>
           <Badge status={status} />
         </div>
+
+        {/* Why this marker matters — universal, always visible (free + Pro).
+            Pulled from the biomarker glossary. Pre-empts the user's
+            "why does this matter?" question on every single marker. Tapping
+            the marker name (handled by MarkerTerm above) opens the full
+            popup with What it is / If high / If low / Optimal vs Standard. */}
+        {glossary?.whyItMatters && (
+          <div className="mb-5 -mt-2 bg-clinical-cream/50 rounded-md p-3 border-l-2 border-primary-container/40">
+            <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-primary-container mb-1">
+              Why this matters
+            </p>
+            <p className="text-body text-clinical-charcoal text-sm leading-relaxed">
+              {glossary.whyItMatters}
+            </p>
+          </div>
+        )}
 
         {/* Visual-first: dot-on-bar at the top so even a glance tells the story */}
         {value.optimal_low != null && value.optimal_high != null && (
