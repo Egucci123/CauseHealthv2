@@ -7,21 +7,25 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { AuthLayout } from '../../components/auth/AuthLayout';
 import {
   GoogleButton, AuthDivider, PasswordField,
-  PasswordStrength, AuthCheckbox, ErrorBanner,
+  PasswordStrength, ErrorBanner,
 } from '../../components/auth/AuthComponents';
 import { MagicLinkForm } from '../../components/auth/MagicLinkForm';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { useAuthStore } from '../../store/authStore';
 
+// Terms / Privacy / AI-processing / Health-data-authorization consent is
+// captured AFTER signup via ConsentGate (three audited screens, IP-stamped
+// server-side, written to consent_log). We deliberately do NOT collect
+// consent inline here — bundling it with account creation violates GDPR
+// Recital 32 (separate consent moments) and Washington MHMDA standalone-
+// authorization requirements.
 const schema = z.object({
   firstName:       z.string().min(2, 'First name must be at least 2 characters'),
   lastName:        z.string().min(2, 'Last name must be at least 2 characters'),
   email:           z.string().email('Please enter a valid email address'),
   password:        z.string().min(8, 'Password must be at least 8 characters'),
   confirmPassword: z.string(),
-  acceptTerms:     z.boolean().refine(v => v, 'You must accept the terms of service'),
-  acceptPrivacy:   z.boolean().refine(v => v, 'You must accept the privacy policy'),
 }).refine(d => d.password === d.confirmPassword, {
   message: 'Passwords do not match',
   path:    ['confirmPassword'],
@@ -42,11 +46,7 @@ export const Register = () => {
     handleSubmit,
     formState: { errors, isSubmitting },
     setValue,
-    watch,
   } = useForm<FormData>({ resolver: zodResolver(schema) });
-
-  const acceptTerms   = watch('acceptTerms');
-  const acceptPrivacy = watch('acceptPrivacy');
 
   const onSubmit = async (data: FormData) => {
     setServerError(null);
@@ -151,26 +151,12 @@ export const Register = () => {
           autoComplete="new-password"
         />
 
-        <div className="space-y-3 pt-2">
-          <AuthCheckbox
-            checked={acceptTerms ?? false}
-            onChange={(val) => setValue('acceptTerms', val, { shouldValidate: true })}
-            error={errors.acceptTerms?.message}
-          >
-            I agree to the{' '}
-            <a href="/terms" className="text-primary-container hover:underline">Terms of Service</a>
-          </AuthCheckbox>
-
-          <AuthCheckbox
-            checked={acceptPrivacy ?? false}
-            onChange={(val) => setValue('acceptPrivacy', val, { shouldValidate: true })}
-            error={errors.acceptPrivacy?.message}
-          >
-            I agree to the{' '}
-            <a href="/privacy" className="text-primary-container hover:underline">Privacy Policy</a>
-            {' '}and understand this is an educational tool, not medical advice.
-          </AuthCheckbox>
-        </div>
+        <p className="text-precision text-[0.65rem] text-clinical-stone/70 tracking-wide leading-relaxed pt-1">
+          By creating an account you'll be asked to review and accept our{' '}
+          <a href="/terms" className="text-primary-container hover:underline">Terms</a>,{' '}
+          <a href="/privacy" className="text-primary-container hover:underline">Privacy Policy</a>,
+          and health-data authorization on the next screen.
+        </p>
 
         <Button
           type="submit"
