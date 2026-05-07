@@ -25,7 +25,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           px-4 py-3
           text-clinical-charcoal
           placeholder-clinical-stone/60
-          text-body text-sm
+          text-body text-base sm:text-sm
           focus:border-primary-container
           focus:ring-1 focus:ring-primary-container
           focus:outline-none
@@ -69,7 +69,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(({ label, error
         border ${error ? 'border-[#C94F4F]' : 'border-outline-variant/20'}
         px-4 py-3
         text-clinical-charcoal
-        text-body text-sm
+        text-body text-base sm:text-sm
         focus:border-primary-container
         focus:ring-1 focus:ring-primary-container
         focus:outline-none
