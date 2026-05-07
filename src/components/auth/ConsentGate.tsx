@@ -34,6 +34,7 @@ import { useAuthStore } from '../../store/authStore';
 import { getMissingConsents, isFullyConsented, type ConsentType } from '../../lib/consent';
 import { AcceptTermsScreen } from './AcceptTermsScreen';
 import { HealthDataConsentScreen } from './HealthDataConsentScreen';
+import { WashingtonHealthDataConsentScreen } from './WashingtonHealthDataConsentScreen';
 
 const Loading = () => (
   <div className="fixed inset-0 flex items-center justify-center bg-clinical-cream">
@@ -48,21 +49,23 @@ interface Props {
   onConsented: () => void;
 }
 
-const REQUIRED: ConsentType[] = ['terms', 'ai_processing', 'health_data_authorization'];
+const REQUIRED: ConsentType[] = [
+  'terms',
+  'ai_processing',
+  'health_data_authorization',
+  'mhmda_wa_authorization',
+];
 
 export const ConsentGate = ({ onConsented }: Props) => {
   const userId = useAuthStore(s => s.user?.id);
   const [missing, setMissing] = useState<Set<ConsentType> | null>(null);
   // Local cache of consents this session has successfully recorded. Persists
-  // across re-renders and renders so a slow-propagating DB read can't undo
-  // a write we know succeeded. Ref so it survives state updates without
-  // triggering its own re-render.
+  // across re-renders so a slow-propagating DB read can't undo a write we
+  // know succeeded.
   const justRecordedRef = useRef<Set<ConsentType>>(new Set());
 
   const computeMissing = (dbMissing: Set<ConsentType>): Set<ConsentType> => {
     const merged = new Set(dbMissing);
-    // Anything we recorded this session is NOT missing, even if the DB read
-    // hasn't propagated yet.
     for (const t of justRecordedRef.current) merged.delete(t);
     return merged;
   };
@@ -81,22 +84,15 @@ export const ConsentGate = ({ onConsented }: Props) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
-  // Called by each screen when it has successfully recorded one or more
-  // consents. We update the local "just recorded" set IMMEDIATELY (no race),
-  // then re-query DB for any others we might have missed. The local set
-  // takes precedence over DB results.
   const recordedAndRefresh = async (...types: ConsentType[]) => {
     if (!userId) return;
     for (const t of types) justRecordedRef.current.add(t);
-    // Compute new missing immediately from the local set (covers all required types)
     const localMissing = new Set<ConsentType>(REQUIRED.filter(t => !justRecordedRef.current.has(t)));
     setMissing(localMissing);
     if (isFullyConsented(localMissing)) {
       onConsented();
       return;
     }
-    // Background: also re-fetch from DB so future renders are accurate.
-    // If DB shows fewer missing than local, take the DB version (more accurate).
     try {
       const dbMissing = await getMissingConsents(userId);
       const merged = computeMissing(dbMissing);
@@ -115,6 +111,16 @@ export const ConsentGate = ({ onConsented }: Props) => {
     return (
       <HealthDataConsentScreen
         onAccepted={() => recordedAndRefresh('ai_processing', 'health_data_authorization')}
+      />
+    );
+  }
+
+  // WA-specific MHMDA authorization — always shown LAST so it stands alone
+  // as its own dedicated step (private right of action exposure mitigation).
+  if (missing.has('mhmda_wa_authorization')) {
+    return (
+      <WashingtonHealthDataConsentScreen
+        onAccepted={() => recordedAndRefresh('mhmda_wa_authorization')}
       />
     );
   }

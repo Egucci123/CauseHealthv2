@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { AuthLayout } from '../../components/auth/AuthLayout';
 import {
   GoogleButton, AuthDivider, PasswordField,
-  PasswordStrength, ErrorBanner,
+  PasswordStrength, AuthCheckbox, ErrorBanner,
 } from '../../components/auth/AuthComponents';
 import { MagicLinkForm } from '../../components/auth/MagicLinkForm';
 import { Input } from '../../components/ui/Input';
@@ -26,6 +26,11 @@ const schema = z.object({
   email:           z.string().email('Please enter a valid email address'),
   password:        z.string().min(8, 'Password must be at least 8 characters'),
   confirmPassword: z.string(),
+  // Age gate. Terms require 18+ and we have no parental-consent flow for
+  // minors. The DOB collected in onboarding (Step 1) re-validates this with
+  // an actual birthdate; this checkbox is the upfront attestation so a
+  // minor can't get through signup at all.
+  ageConfirmed:    z.boolean().refine(v => v, 'You must be 18 or older to use CauseHealth.'),
 }).refine(d => d.password === d.confirmPassword, {
   message: 'Passwords do not match',
   path:    ['confirmPassword'],
@@ -46,7 +51,10 @@ export const Register = () => {
     handleSubmit,
     formState: { errors, isSubmitting },
     setValue,
+    watch,
   } = useForm<FormData>({ resolver: zodResolver(schema) });
+
+  const ageConfirmed = watch('ageConfirmed');
 
   const onSubmit = async (data: FormData) => {
     setServerError(null);
@@ -151,7 +159,17 @@ export const Register = () => {
           autoComplete="new-password"
         />
 
-        <p className="text-precision text-[0.65rem] text-clinical-stone/70 tracking-wide leading-relaxed pt-1">
+        <div className="pt-1">
+          <AuthCheckbox
+            checked={ageConfirmed ?? false}
+            onChange={(val) => setValue('ageConfirmed', val, { shouldValidate: true })}
+            error={errors.ageConfirmed?.message}
+          >
+            I confirm I am 18 years of age or older.
+          </AuthCheckbox>
+        </div>
+
+        <p className="text-precision text-[0.65rem] text-clinical-stone/70 tracking-wide leading-relaxed">
           By creating an account you'll be asked to review and accept our{' '}
           <a href="/terms" className="text-primary-container hover:underline">Terms</a>,{' '}
           <a href="/privacy" className="text-primary-container hover:underline">Privacy Policy</a>,

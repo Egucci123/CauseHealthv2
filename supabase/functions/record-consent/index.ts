@@ -26,7 +26,12 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-const ALLOWED_TYPES = new Set(['terms', 'ai_processing', 'health_data_authorization']);
+const ALLOWED_TYPES = new Set([
+  'terms',
+  'ai_processing',
+  'health_data_authorization',
+  'mhmda_wa_authorization',
+]);
 
 function clientIpFrom(req: Request): string | null {
   // Supabase runs behind a proxy. The real IP comes through these headers

@@ -1,11 +1,18 @@
 // src/lib/consent.ts
 //
 // Consent recording + checking — universal helper used by the consent screens
-// and the gate. Three types are required for full consent (each captured at
-// its own UI moment per GDPR + MHMDA):
+// and the gate. Four types required for full consent, all UNIVERSAL (shown
+// to every user regardless of geolocation, belt-and-suspenders coverage):
+//
 //   1. terms                       — ToS + Privacy bundle
 //   2. ai_processing               — Health-data AI processing (GDPR Art 9)
-//   3. health_data_authorization   — Standalone health data collection auth (MHMDA)
+//   3. health_data_authorization   — Generic health data collection auth
+//   4. mhmda_wa_authorization      — Washington MHMDA statutory-wording auth
+//
+// MHMDA-WA is shown universally rather than IP-gated so a non-WA user
+// who is actually located in WA (VPN, traveling, lookup failure) still
+// gets the protected wording. The "Washington State" header is intentional
+// — it signals the statutory framework being relied on.
 
 import { supabase } from './supabase';
 
@@ -13,9 +20,18 @@ import { supabase } from './supabase';
  *  consent for an older version are re-prompted on next login. */
 export const CONSENT_POLICY_VERSION = '2.0';
 
-export type ConsentType = 'terms' | 'ai_processing' | 'health_data_authorization';
+export type ConsentType =
+  | 'terms'
+  | 'ai_processing'
+  | 'health_data_authorization'
+  | 'mhmda_wa_authorization';
 
-const REQUIRED_CONSENTS: ConsentType[] = ['terms', 'ai_processing', 'health_data_authorization'];
+const REQUIRED_CONSENTS: ConsentType[] = [
+  'terms',
+  'ai_processing',
+  'health_data_authorization',
+  'mhmda_wa_authorization',
+];
 
 /** Record a single consent event via the record-consent edge function.
  *  The edge function captures IP + user_agent server-side. Returns the
@@ -62,8 +78,6 @@ export async function getMissingConsents(userId: string): Promise<Set<ConsentTyp
     .eq('policy_version', CONSENT_POLICY_VERSION);
 
   if (error) {
-    // On read failure, default to "all required" — fail-safe; user re-consents
-    // rather than slip through. Better than the opposite.
     console.warn('[consent] read failed, treating as missing:', error.message);
     return new Set(REQUIRED_CONSENTS);
   }

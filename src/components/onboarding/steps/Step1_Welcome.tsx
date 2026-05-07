@@ -21,9 +21,11 @@ const schema = z.object({
       const d = new Date(v);
       if (isNaN(d.getTime())) return false;
       const age = (Date.now() - d.getTime()) / 31_557_600_000;
-      return age >= 13 && age <= 120;
+      // 18+ enforced — Terms require it, and we have no parental-consent flow
+      // for minors. <18 = hard block, surfaces a clear age-gate error.
+      return age >= 18 && age <= 120;
     },
-    { message: 'Enter a valid date of birth' }
+    { message: 'You must be 18 or older to use CauseHealth.' }
   ),
   sex: z.string().min(1, 'Required — drives hormone + CBC ranges'),
   heightFt: z.string().optional(),
