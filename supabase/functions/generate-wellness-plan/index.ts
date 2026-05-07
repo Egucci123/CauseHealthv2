@@ -420,10 +420,9 @@ serve(async (req) => {
         model: 'claude-haiku-4-5-20251001', max_tokens: 14000,
         system: [{ type: 'text', cache_control: { type: 'ephemeral' }, text: `You are CauseHealth AI. Return ONLY valid JSON.
 
-GLOBAL VOICE RULES (CRITICAL — these apply to EVERY string in the JSON):
-- 6TH-GRADE READING LEVEL. PERIOD. If your friend who failed high school chemistry can't read it, you wrote it wrong.
-- BREVITY IS A FEATURE, NOT A SUGGESTION. The user's friend reading this is tired, on lunch break, has 30 seconds. Long paragraphs make him close the tab.
-- HARD CAPS:
+GLOBAL VOICE RULES (CRITICAL — apply to EVERY string in the JSON):
+- 6TH-GRADE READING LEVEL. If your friend who failed high school chemistry can't read it, rewrite.
+- BREVITY MANDATORY. HARD CAPS:
     summary: 3 short sentences MAX (≤45 words total)
     symptoms_addressed.how_addressed: 30 WORDS MAX. Two short sentences. Cause + plan. Nothing more.
     retest_timeline.why: 25 WORDS MAX. One sentence. Trigger + what change to expect.
@@ -504,8 +503,6 @@ HARD RULES — FOLLOW EXACTLY:
    STACK SIZE: a healthy young patient with multi-symptom complaint typically lands at 3-5 supplements (1-2 sleep_stress, 1 nutrient_repletion B-complex or D3, 1 inflammation_cardio omega-3 if joint/muscle/TG fires, 1 condition_therapy if a dx applies). NEVER more than 5 unless the patient has multiple confirmed lab deficiencies. If the cap forces a choice, prioritize: lab_finding > medication_depletion > disease_mechanism > empirical > optimization.
 
    ALTERNATIVES — only list TRUE alternatives (different form of same molecule, e.g., Magnesium Glycinate ↔ Magnesium Threonate; Methylcobalamin ↔ Hydroxocobalamin). Do NOT list a different molecule as an alternative (e.g., L-Glycine is NOT an alternative to Magnesium Glycinate). If you can't list a true alternative, leave alternatives as []. Max 2 alternatives per supplement.
-
-   STILL TEST-FIRST (cheap test changes the answer): Methylfolate (test serum + RBC folate); Berberine (test fasting insulin + HOMA-IR — A1c alone insufficient); Iron (ALWAYS test ferritin/iron/TIBC/sat — risk to heterozygous hemochromatosis carriers); B12 (add MMA test, don't auto-add unless long-term metformin); Curcumin (has interactions — prefer milk thistle for ALT elevation); Selenium for Hashimoto's (test TPO Ab first).
 
    IF the relevant lab IS on this draw AND shows deficiency, sourced_from becomes "lab_finding" with the medication named as the likely cause in why (no double-counting).
 
@@ -677,18 +674,7 @@ ${causalChain.nodes.length > 0 ? renderChainForPrompt(causalChain) + '\n' : ''}
 ${predictions.length > 0 ? renderPredictionsForPrompt(predictions) + '\n' : ''}
 ${synthesis.specialtyCount >= 2 ? renderSynthesisForPrompt(synthesis) + '\n' : ''}
 ${labPatternsForPrompt}
-${isOptimizationMode ? `OPTIMIZATION CONTEXT: Patient labs are mostly healthy. Frame the plan around longevity optimization, not disease treatment. Phase names: "Build Foundation (Months 1-2)", "Optimize (Months 3-4)", "Sustain & Track (Months 5-6)". Retest cadence is 6 months, set retest_at: "6 months". Lifestyle interventions focus on longevity science: zone 2 cardio, resistance training, sleep optimization, cold/heat exposure, stress resilience, metabolic health.
-
-CRITICAL — optimization mode does NOT relax the strict triage rule. For healthy patients with limited tested markers, retest_timeline should fill STANDARD-OF-CARE BASELINE GAPS — tests the doctor SHOULD have ordered for someone this age/sex but didn't:
-  ALL adults (18+): lipid panel, A1c (every 3yr from 35), TSH at least once, vitamin D at least once, ferritin (esp menstruating women), hs-CRP once for CV risk, B12 once.
-  35+: add ApoB and Lp(a) once-in-lifetime.
-  45+: add coronary calcium score once.
-  50+: add DEXA (women), colorectal screening discussion.
-  Women any age: iron panel if menstruating + symptoms.
-  Men 35+: total T + SHBG + estradiol once at baseline.
-
-The algorithm: look at what's in the draw → compare to the age/sex baseline → recommend the MISSING ones, cap at 5.
-DO NOT add cortisol, zinc, free testosterone, homocysteine, full thyroid antibodies, MMA, etc. UNLESS the patient has a specific symptom or marker that triggers it. Those are NOT standard-of-care baselines for an asymptomatic young adult.` : ''}
+${isOptimizationMode ? `OPTIMIZATION CONTEXT: Patient labs are mostly healthy. Frame around longevity optimization, not disease treatment. Phase names: "Build Foundation (Months 1-2)", "Optimize (Months 3-4)", "Sustain & Track (Months 5-6)". Retest cadence is 6 months (retest_at: "6 months"). Apply the standard-of-care baseline rule + triage rule + exclusions defined in the system prompt — no relaxation, no longevity wishlists. Cap retest_timeline at 5 entries.` : ''}
 DIAGNOSED CONDITIONS (GROUND TRUTH — never substitute these with related conditions; never call UC 'Crohn's' or vice versa; never infer a different diagnosis from medications): ${condStr}
 MEDICATIONS: ${medsStr}
 CURRENT SUPPLEMENTS (already taking — do NOT re-recommend; account for lab interactions and avoid stacking duplicates): ${suppsStr}
