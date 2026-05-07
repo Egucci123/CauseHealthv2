@@ -4,6 +4,7 @@ import { ScrollToTop } from './components/ScrollToTop';
 
 // Public pages
 import { Landing } from './pages/Landing';
+import { Share } from './pages/Share';
 import { Terms } from './pages/legal/Terms';
 import { Privacy } from './pages/legal/Privacy';
 import { Disclaimer } from './pages/legal/Disclaimer';
@@ -90,6 +91,7 @@ function App() {
     <Routes>
       {/* Public */}
       <Route path="/" element={<Landing />} />
+      <Route path="/share" element={<Share />} />
       <Route path="/terms" element={<Terms />} />
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/disclaimer" element={<Disclaimer />} />
