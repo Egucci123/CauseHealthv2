@@ -255,30 +255,13 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
         if (!draw) throw new Error('Failed to create lab record (no row returned — RLS may have blocked the read after insert)');
         set({ drawId: draw.id });
 
-        // Consume an upload credit — atomic, server-side. Universal: comp
-        // users decrement too (parity with paying users — comp grants 1
-        // credit on redemption, then $5/each after). If the RPC returns
-        // -1, the user somehow had 0 credits at insert time (race with
-        // another tab) — log it but don't hard-fail; the draw is already
-        // created. Refund logic can run later.
-        const profileNow = useAuthStore.getState().profile;
-        try {
-          const { data: newBalance, error: rpcErr } = await supabase.rpc('consume_upload_credit', { p_user_id: userId });
-          if (rpcErr) {
-            console.warn('[LabUpload] consume_upload_credit failed:', rpcErr.message);
-          } else {
-            if (profileNow) {
-              useAuthStore.setState({
-                profile: { ...profileNow, uploadCredits: Math.max(0, newBalance ?? 0) },
-              });
-            }
-            if ((newBalance ?? 0) < 0) {
-              console.warn('[LabUpload] consume_upload_credit returned -1 — race or stale balance');
-            }
-          }
-        } catch (e) {
-          console.warn('[LabUpload] consume_upload_credit threw:', e);
-        }
+        // NOTE: credit consumption was moved from here (pre-extraction) to
+        // AFTER extract-labs returns valid values. If we deduct first, a
+        // failed AI extraction (transient Anthropic 5xx, malformed JSON,
+        // unreadable PDF) burns the user's credit even though we never
+        // delivered them anything. By deferring consumption to the success
+        // path, any extraction failure leaves the credit intact and the user
+        // can retry without paying again.
 
         // 3. Try client-side text extraction first (PDFs only)
         set({ phase: 'extracting', statusMessage: `Reading ${plural ? `${fileCount} lab reports` : 'your lab report'}...`, progress: 35 });
@@ -492,6 +475,30 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
           const { error: persistErr } = await supabase.from('lab_values').insert(persistRows);
           if (persistErr) console.warn('[LabUpload] Pre-review persist failed:', persistErr.message);
         } catch (e) { console.warn('[LabUpload] Pre-review persist exception:', e); }
+
+        // ── Consume credit NOW that extraction returned real values ──
+        // Pre-extraction consumption was burning credits on AI failures.
+        // Deferring to the success path means any retry of a failed
+        // extraction stays free. RPC is atomic server-side; concurrent
+        // tabs can't both win.
+        try {
+          const profileNow = useAuthStore.getState().profile;
+          const { data: newBalance, error: rpcErr } = await supabase.rpc('consume_upload_credit', { p_user_id: userId });
+          if (rpcErr) {
+            console.warn('[LabUpload] consume_upload_credit failed:', rpcErr.message);
+          } else {
+            if (profileNow) {
+              useAuthStore.setState({
+                profile: { ...profileNow, uploadCredits: Math.max(0, newBalance ?? 0) },
+              });
+            }
+            if ((newBalance ?? 0) < 0) {
+              console.warn('[LabUpload] consume_upload_credit returned -1 — race with another tab');
+            }
+          }
+        } catch (e) {
+          console.warn('[LabUpload] consume_upload_credit threw:', e);
+        }
 
         stopProgress();
         set({ extraction, phase: 'reviewing', statusMessage: `Found ${extraction.values.length} lab values${plural ? ` across ${fileCount} files` : ''}. Please review.`, progress: 90, isRunning: false });
