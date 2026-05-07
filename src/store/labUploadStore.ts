@@ -885,8 +885,11 @@ export function checkWatchList(value: number, markerName: string): string | null
   // HDL 40-49 (within standard but lower-protective)
   if (/(\bhdl\b|hdl cholesterol)/.test(n) && value >= 40 && value < 50)
     return 'Lower-end protective cholesterol — exercise and omega-3 raise it.';
-  // hs-CRP 0.5-1.0 (cardio risk band, still within standard <3)
-  if (/(hs-?crp|c-reactive protein,? cardiac|high sensitivity c)/.test(n) && value >= 0.5 && value < 3)
+  // hs-CRP / CRP 0.5-3 (cardio risk band, still within standard <3 for hs-CRP).
+  // Catches all lab-report variants: 'hs-CRP', 'CRP', 'C-Reactive Protein',
+  // 'C-Reactive Protein, Quant', 'C-Reactive Protein, Cardiac', 'high sensitivity C-reactive...',
+  // etc. Any inflammation marker ≥0.5 in mg/L scale belongs on the watch list.
+  if (/(\bhs-?crp\b|\bcrp\b|c-reactive protein|high sensitivity c)/.test(n) && value >= 0.5 && value < 3)
     return 'Detectable inflammation — track and reduce.';
   // Homocysteine 10-15 (within standard <15)
   if (/homocysteine/.test(n) && value >= 10 && value < 15)
