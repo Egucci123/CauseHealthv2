@@ -88,7 +88,10 @@ serve(async (req) => {
         response = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST', signal: ac.signal,
           headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-          body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 8000, messages }),
+          // 16K tokens is enough for a comprehensive lab panel (60+ markers
+          // with units, ranges, flags). 8K was getting truncated mid-JSON
+          // on dense panels, which the parser then rejected as malformed.
+          body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 16000, messages }),
         });
       } finally {
         clearTimeout(t);

@@ -400,36 +400,55 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
             return;
           }
         } else if (!textExtractionFailed && pdfFiles.length > 0) {
-          // Text extraction worked — send combined text in one call.
-          // RESTORED to the simple version from 85d3191 (which worked). The
-          // Promise.race timeout wrapper added in d874b4c was causing the hangs.
-          set({ statusMessage: 'Analyzing lab values...', progress: 55 });
-          startProgress(set, 55, 85, 30000);
-          const maxChars = Math.min(fileCount * 12000, 24000);
+          // Text extraction worked — send each PDF's text as its own AI call
+          // instead of combining + truncating to 24KB. The combined-and-cap
+          // approach broke at 5+ files because the truncation could land
+          // mid-row and Anthropic returned malformed JSON. Per-file calls
+          // mean each lab gets the AI's full attention with no truncation
+          // and the parser has a clean shot.
+          let lastError = '';
+          for (let i = 0; i < allTexts.length; i++) {
+            const fileLabel = pdfFiles[i]?.name ?? `PDF ${i + 1}`;
+            set({ statusMessage: `Analyzing ${i + 1} of ${allTexts.length}: ${fileLabel}`, progress: 55 + Math.round((i / allTexts.length) * 30) });
+            startProgress(set, 55 + Math.round((i / allTexts.length) * 30), 55 + Math.round(((i + 1) / allTexts.length) * 30), 30000);
 
-          const extractStart = Date.now();
-          const { data: textData, error: textErr } = await supabase.functions.invoke('extract-labs', {
-            body: { pdfText: combinedText.slice(0, maxChars) },
-          });
-          logEvent('extract_labs_returned', {
-            duration_ms: Date.now() - extractStart,
-            has_values: Array.isArray((textData as any)?.values),
-            err: textErr?.message ?? null,
-          });
-          stopProgress();
-          if (textErr) {
-            let detail = textErr.message;
-            let code: string | null = null;
-            try { const ctx = (textErr as any).context; if (ctx instanceof Response) { const t = await ctx.json(); detail = t?.error || t?.detail || JSON.stringify(t); code = t?.code ?? null; } } catch {}
-            if (code === 'NO_CREDITS' || /no upload credits/i.test(detail)) {
-              throw new Error('NO_CREDITS');
+            const extractStart = Date.now();
+            // Per-file cap of 24KB is plenty for a single lab panel —
+            // truncation here is rare and harmless because we're not
+            // splicing across documents anymore.
+            const text = allTexts[i].slice(0, 24000);
+            const { data: textData, error: textErr } = await supabase.functions.invoke('extract-labs', {
+              body: { pdfText: text },
+            });
+            logEvent('extract_labs_returned', {
+              file_index: i,
+              duration_ms: Date.now() - extractStart,
+              has_values: Array.isArray((textData as any)?.values),
+              err: textErr?.message ?? null,
+            });
+            stopProgress();
+            if (textErr) {
+              let detail = textErr.message;
+              let code: string | null = null;
+              try { const ctx = (textErr as any).context; if (ctx instanceof Response) { const t = await ctx.json(); detail = t?.error || t?.detail || JSON.stringify(t); code = t?.code ?? null; } } catch {}
+              if (code === 'NO_CREDITS' || /no upload credits/i.test(detail)) {
+                throw new Error('NO_CREDITS');
+              }
+              // One file failed — log and continue. We'll still surface
+              // values from the files that succeeded. Only throw if EVERY
+              // file fails (caught below).
+              lastError = detail;
+              console.warn(`[LabUpload] file ${i + 1} extraction failed:`, detail);
+              continue;
             }
-            throw new Error(`Extraction failed: ${detail}`);
+            if (Array.isArray((textData as any)?.values)) allValues.push(...(textData as any).values);
+            if ((textData as any)?.draw_date && !extractedDrawDate) extractedDrawDate = (textData as any).draw_date;
+            if ((textData as any)?.lab_name && !extractedLabName) extractedLabName = (textData as any).lab_name;
+            if ((textData as any)?.ordering_provider && !extractedProvider) extractedProvider = (textData as any).ordering_provider;
           }
-          if (Array.isArray((textData as any)?.values)) allValues.push(...(textData as any).values);
-          if ((textData as any)?.draw_date && !extractedDrawDate) extractedDrawDate = (textData as any).draw_date;
-          if ((textData as any)?.lab_name && !extractedLabName) extractedLabName = (textData as any).lab_name;
-          if ((textData as any)?.ordering_provider && !extractedProvider) extractedProvider = (textData as any).ordering_provider;
+          if (allValues.length === 0 && lastError) {
+            throw new Error(`Extraction failed: ${lastError}`);
+          }
         }
 
         // Build extraction result from merged values
