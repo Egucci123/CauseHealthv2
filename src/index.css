@@ -7,6 +7,35 @@
   box-sizing: border-box;
 }
 
+/* Mobile zoom-out fix.
+ *
+ * If ANY element overflows past the viewport width — a fixed-pixel-width
+ * card, a long unbreakable string (lab marker name, ICD-10 code, URL),
+ * a wide flex row that won't wrap — iOS Safari reacts by shrinking the
+ * whole page so it fits, which looks like the user has to "zoom out to
+ * see everything." This kills horizontal overflow at the document level
+ * so an offending child can never push the page wider than the screen.
+ *
+ * overflow-x:clip > overflow-x:hidden because clip doesn't make the
+ * element a scroll container (so position:sticky inside still works).
+ */
+html, body {
+  max-width: 100vw;
+  overflow-x: clip;
+}
+
+#root {
+  max-width: 100vw;
+  overflow-x: clip;
+}
+
+/* Long strings (URLs, lab marker names with no spaces, etc.) can also
+ * cause horizontal overflow on small screens. Force them to break. */
+p, span, h1, h2, h3, h4, h5, h6, td, li {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 /* Body background MUST match the public + onboarding + auth pages
    (clinical cream). When React unmounts one route before mounting the next,
    this is what's briefly visible — used to be black, causing a jarring flash
