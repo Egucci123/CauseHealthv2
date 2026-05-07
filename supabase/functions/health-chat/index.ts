@@ -36,8 +36,40 @@ serve(async (req) => {
     const userSuppsStr = userSupps.map((s: any) => `${s.name}${s.dose ? ` (${s.dose})` : ''}`).join(', ') || 'None';
     let labValues: any[] = [];
 
+    // ── Chat cap: 100 messages per dataset (per upload) ─────────────────
+    // Same per-dataset budget pattern as analyze-labs (2 cap on analyses).
+    // Each upload = fresh 100. Wellness plan / doctor prep regens on the
+    // same dataset share the budget — they're the same conversation
+    // context. Returns 429 + CHAT_LIMIT_REACHED for the frontend to
+    // surface a soft-paywall ("upload new labs to keep chatting"). Users
+    // with no draw at all (chatting before any upload) skip the cap —
+    // they shouldn't be common since chat surfaces post-paywall, but
+    // defensive.
+    const CHAT_CAP = 100;
+    let drawIdForCounter: string | null = null;
+    let chatCountBefore = 0;
     if (latestDrawRes.data) {
-      const { data } = await supabase.from('lab_values').select('*').eq('draw_id', latestDrawRes.data.id);
+      drawIdForCounter = latestDrawRes.data.id;
+      // Pull current count + lab values in one extra round-trip
+      const { data: drawRow } = await supabase
+        .from('lab_draws')
+        .select('chat_message_count')
+        .eq('id', drawIdForCounter)
+        .single();
+      chatCountBefore = drawRow?.chat_message_count ?? 0;
+      if (chatCountBefore >= CHAT_CAP) {
+        return new Response(
+          JSON.stringify({
+            error: `You've used all ${CHAT_CAP} chat messages for this lab dataset. Upload new labs to keep chatting, or your next analysis will start a fresh ${CHAT_CAP}.`,
+            code: 'CHAT_LIMIT_REACHED',
+            limit: CHAT_CAP,
+            used: chatCountBefore,
+            kind: 'chat',
+          }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+      const { data } = await supabase.from('lab_values').select('*').eq('draw_id', drawIdForCounter);
       labValues = data ?? [];
     }
 
@@ -204,7 +236,29 @@ RULES:
       reply = reply.replace(/CHIPS:\s*.+?$/im, '').trim();
     }
 
-    return new Response(JSON.stringify({ reply, chips }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    // ── Increment chat counter after successful response ────────────────
+    // Fire-and-forget: a missed increment is far better UX than failing
+    // the response. The cap is a guardrail, not a billing system.
+    if (drawIdForCounter) {
+      supabase
+        .from('lab_draws')
+        .update({ chat_message_count: chatCountBefore + 1 })
+        .eq('id', drawIdForCounter)
+        .then(({ error }) => {
+          if (error) console.warn('[health-chat] chat_message_count update failed:', error.message);
+        });
+    }
+
+    return new Response(
+      JSON.stringify({
+        reply,
+        chips,
+        chatBudget: drawIdForCounter
+          ? { used: chatCountBefore + 1, limit: CHAT_CAP, remaining: Math.max(0, CHAT_CAP - chatCountBefore - 1) }
+          : null,
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    );
   } catch (err) {
     return new Response(JSON.stringify({ error: String(err) }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }

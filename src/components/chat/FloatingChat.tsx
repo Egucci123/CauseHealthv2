@@ -223,6 +223,19 @@ export const FloatingChat = () => {
         }),
       });
       const data = await res.json();
+      // Soft-block on chat cap (429 + CHAT_LIMIT_REACHED). Render as a
+      // system note with the upload-CTA chip so the user knows they
+      // hit the budget, not a content failure.
+      if (res.status === 429 && data?.code === 'CHAT_LIMIT_REACHED') {
+        const limitMsg = data.error ?? 'You\'ve used all your chat messages for this lab dataset. Upload new labs to keep chatting.';
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: limitMsg,
+          timestamp: new Date().toISOString(),
+          chips: ['Upload new labs ($5)'],
+        }]);
+        return;
+      }
       const reply = data.reply ?? data.error ?? 'Something went wrong. Please try again.';
       const chips: string[] = Array.isArray(data.chips) ? data.chips : [];
       setMessages(prev => [...prev, { role: 'assistant', content: reply, timestamp: new Date().toISOString(), chips }]);

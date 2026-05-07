@@ -50,6 +50,19 @@ export const HealthChat = () => {
         }),
       });
       const data = await res.json();
+      // Soft-block when chat cap is reached. The server returns 429 +
+      // CHAT_LIMIT_REACHED — render the message as a system note rather
+      // than a normal assistant reply so the user understands it's a
+      // budget signal, not a content answer.
+      if (res.status === 429 && data?.code === 'CHAT_LIMIT_REACHED') {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: data.error ?? 'You\'ve used all your chat messages for this lab dataset. Upload new labs to keep chatting.',
+          timestamp: new Date(),
+          chips: ['Upload new labs ($5)'],
+        }]);
+        return;
+      }
       const reply = data.reply ?? data.error ?? 'Something went wrong. Please try again.';
       const chips: string[] = Array.isArray(data.chips) ? data.chips : [];
       setMessages(prev => [...prev, { role: 'assistant', content: reply, timestamp: new Date(), chips }]);
