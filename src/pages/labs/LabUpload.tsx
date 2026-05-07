@@ -25,6 +25,8 @@ export const LabUpload = () => {
   // Returning from a $5 upload-pack Stripe checkout. Optimistic +1 credit so
   // the user can immediately upload again without waiting on the webhook,
   // then background-refetch the profile to confirm the real balance.
+  // Plus: auto-resume the upload they had pending pre-paywall (files stashed
+  // in IndexedDB before Stripe redirect — see lib/pendingUpload.ts).
   useEffect(() => {
     const result = searchParams.get('upload');
     if (result === 'success') {
@@ -46,11 +48,39 @@ export const LabUpload = () => {
         }
       };
       fetchWithRetry();
+
+      // Auto-resume the stashed upload — fire-and-forget so we don't block
+      // the URL cleanup. If files are present in IndexedDB, kick off the
+      // upload with them and clear the stash. If not (user clicked Cancel
+      // on Stripe, or stash expired), we just land on the normal upload UI.
+      (async () => {
+        if (!user?.id) return;
+        try {
+          const { loadPendingUpload, clearPendingUpload } = await import('../../lib/pendingUpload');
+          const files = await loadPendingUpload(user.id);
+          if (files && files.length > 0) {
+            logEvent('labupload_auto_resume_after_stripe', { file_count: files.length });
+            await clearPendingUpload(user.id);
+            // Small delay so the optimistic +1 credit is in zustand before
+            // startUpload reads it (otherwise it'd hit the gate again).
+            setTimeout(() => {
+              const store = useLabUploadStore.getState();
+              store.reset();
+              store.startUpload(files, user.id);
+            }, 100);
+          }
+        } catch (e) { console.warn('[LabUpload] auto-resume failed:', e); }
+      })();
+
       setSearchParams({});
     } else if (result === 'canceled') {
+      // User backed out of Stripe — files still in IndexedDB, they can
+      // click Upload again and it'll try the same paywall flow OR they
+      // can pick different files. Don't clear the stash on cancel —
+      // the 1-hour TTL handles that.
       setSearchParams({});
     }
-  }, [searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams, user?.id]);
 
   const isActive = ['uploading', 'extracting', 'analyzing'].includes(phase);
 

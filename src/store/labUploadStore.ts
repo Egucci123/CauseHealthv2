@@ -188,6 +188,14 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
           const hasUnlocked = !!profile?.unlockPurchasedAt
             || profile?.subscriptionTier === 'pro'
             || profile?.subscriptionTier === 'comp';
+          // Stash the picked files in IndexedDB BEFORE the Stripe redirect
+          // so the post-payment landing can auto-resume the upload with
+          // the same files — no re-pick required. structured-clone handles
+          // File objects natively. TTL 1h (see pendingUpload.ts).
+          try {
+            const { savePendingUpload } = await import('../lib/pendingUpload');
+            await savePendingUpload(userId, files);
+          } catch (e) { console.warn('[LabUpload] stash files failed:', e); }
           set({
             phase: 'needs_payment',
             isRunning: false,
@@ -553,6 +561,11 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
           const hasUnlocked = !!profile?.unlockPurchasedAt
             || profile?.subscriptionTier === 'pro'
             || profile?.subscriptionTier === 'comp';
+          // Stash files for post-Stripe auto-resume (server-gate path).
+          try {
+            const { savePendingUpload } = await import('../lib/pendingUpload');
+            await savePendingUpload(userId, files);
+          } catch (e) { console.warn('[LabUpload] stash files (server-gate) failed:', e); }
           set({
             phase: 'needs_payment',
             isRunning: false,
