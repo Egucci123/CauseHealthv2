@@ -75,13 +75,22 @@ export const PossibleConditionsCard = ({ conditions }: { conditions: SuspectedCo
                   <p className="text-precision text-[0.6rem] text-clinical-stone uppercase tracking-widest mb-2">
                     Tests to confirm
                   </p>
-                  <div className="flex flex-wrap gap-2">
-                    {c.confirmatory_tests.map((t, j) => (
-                      <span key={j} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-clinical-cream/60" style={{ borderRadius: '2px' }}>
-                        <span className="material-symbols-outlined text-[12px] text-clinical-stone">science</span>
-                        <span className="text-body text-clinical-charcoal text-xs">{t}</span>
-                      </span>
-                    ))}
+                  <div className="space-y-2">
+                    {c.confirmatory_tests.map((t: any, j: number) => {
+                      const testName = typeof t === 'string' ? t : t.test;
+                      const why = typeof t === 'string' ? null : t.why;
+                      return (
+                        <div key={j} className="bg-clinical-cream/60 p-3" style={{ borderRadius: '2px' }}>
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <span className="material-symbols-outlined text-[14px] text-primary-container">science</span>
+                            <span className="text-body text-clinical-charcoal text-sm font-semibold">{testName}</span>
+                          </div>
+                          {why && (
+                            <p className="text-body text-clinical-stone text-xs leading-relaxed pl-[20px]">{why}</p>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}

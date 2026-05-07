@@ -21,6 +21,7 @@ import { runSuspectedConditionsBackstop } from '../_shared/suspectedConditionsBa
 import { detectCriticalFindings } from '../_shared/criticalFindingsBackstop.ts';
 import { screenInteractions } from '../_shared/drugInteractionEngine.ts';
 import { computeProgressDeltas, renderPriorDrawForPrompt, type ProgressSummary } from '../_shared/longitudinalDelta.ts';
+import { attachWhys } from '../_shared/testRationale.ts';
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -764,6 +765,20 @@ For EACH of these arrays, fill in OPEN-ENDED. Empty array if nothing fits. No pa
 
 For each suspected_condition: confidence (high/moderate/low), 1-sentence evidence string citing SPECIFIC values + symptoms, confirmatory_tests (what the doctor should order to confirm), primary ICD-10, what_to_ask_doctor (the literal sentence to say at the visit).
 
+UNIVERSAL RULE — every confirmatory_test MUST include WHY the test matters:
+For each test in confirmatory_tests, attach a "why" field (1-2 sentences) answering: what does this test ADD beyond what the current bloodwork shows? The user is rightly skeptical — if their existing labs already strongly suggest the condition, they want to know why another test is needed. Cover ONE OR MORE of these reasons explicitly:
+  (a) QUANTIFICATION — gives a real number for severity (e.g., "HOMA-IR puts a number on how severe the IR is — guides intervention intensity from diet alone vs. metformin vs. GLP-1")
+  (b) STAGING — distinguishes early vs late-stage of the same condition (e.g., "fasting insulin distinguishes compensated IR (high insulin, normal glucose, pancreas winning) from late-stage IR (insulin dropping while glucose creeps up — pancreas failing). Same A1c, completely different urgency.")
+  (c) TREATMENT-UNLOCK — the number is what insurance/the doctor needs to actually prescribe a treatment (e.g., "HOMA-IR > 2.5 documented in the chart is what gets metformin or GLP-1 covered. Without it, the diagnosis is hand-wavy.")
+  (d) TRACKING BASELINE — measures intervention response faster than existing labs (e.g., "fasting insulin moves in 4-6 weeks; A1c lags 3 months. Without a starting number you can't measure if your intervention is working.")
+  (e) DIFFERENTIAL — distinguishes the suspected condition from a near-mimic (e.g., "anti-TPO distinguishes Hashimoto's from non-autoimmune subclinical hypothyroidism — same TSH, completely different long-term trajectory and treatment.")
+  (f) SAFETY — rules out a more dangerous mimic (e.g., "free T4 + TSH together rules out central hypothyroidism (pituitary problem) which TSH alone misses.")
+
+Each "why" must be SPECIFIC to this patient's data, not generic. Don't say "to confirm" — explain what changes.
+
+Schema for confirmatory_tests:
+  [{ "test": "Fasting insulin", "why": "Quantifies IR via HOMA-IR (insulin × glucose / 405). Your TG/HDL ratio of 8 already screams IR, but HOMA-IR gives a real number that decides whether diet alone is enough or you need metformin. Also distinguishes compensated IR (your pancreas working overtime) from β-cell burnout starting." }, ...]
+
 CALIBRATION (applies to ALL arrays): Healthy patient with clean labs → 0-2 entries each. Multi-issue patient → 4-7 well-evidenced entries (NOT 13 weakly-evidenced). Don't pad, don't skip. Better than a doctor = catching what 12 minutes can't see, with the evidence to back it up.` }],
       }),
     });
@@ -1152,6 +1167,30 @@ CALIBRATION (applies to ALL arrays): Healthy patient with clean labs → 0-2 ent
       plan.suspected_conditions.push(...backstopEntries);
       console.log(`[wellness-plan] suspected backstop fired: ${backstopEntries.map(e => e.name).join(', ')}`);
     }
+
+    // ── Universal: every confirmatory_test gets a clinical "why" ─────────
+    // The user's question — "if my labs already show this, why do I need
+    // ANOTHER test?" — has to be answered for EVERY test we recommend.
+    // AI prompt requires it for AI entries, but those can come back as
+    // plain string[]. Backstop entries are always plain string[]. Run a
+    // post-process: any string entry gets transformed into {test, why}
+    // via the rationale library. Already-shaped {test, why} entries pass
+    // through unchanged.
+    plan.suspected_conditions = plan.suspected_conditions.map((c: any) => {
+      if (!Array.isArray(c.confirmatory_tests)) return c;
+      const upgraded = c.confirmatory_tests.map((t: any) => {
+        if (typeof t === 'string') {
+          const fromLib = attachWhys([t])[0];
+          return fromLib;
+        }
+        // Already an object — make sure it has both fields
+        if (t && typeof t === 'object' && t.test) {
+          return { test: t.test, why: t.why ?? attachWhys([t.test])[0].why };
+        }
+        return t;
+      });
+      return { ...c, confirmatory_tests: upgraded };
+    });
 
     // ── DEDUP + CAP suspected_conditions (universal) ─────────────────────
     // The AI sometimes lists the same condition twice with different framings

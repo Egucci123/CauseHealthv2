@@ -126,7 +126,11 @@ export interface WellnessPlanData {
     category?: string;
     confidence?: 'high' | 'moderate' | 'low';
     evidence?: string;
-    confirmatory_tests?: string[];
+    /** Each entry can be either a plain string (legacy plans) or
+     *  { test, why } where 'why' explains what the test adds beyond
+     *  current bloodwork (quantification / staging / treatment-unlock /
+     *  tracking baseline / differential / safety). UI handles both. */
+    confirmatory_tests?: Array<string | { test: string; why?: string }>;
     icd10?: string;
     what_to_ask_doctor?: string;
     source?: 'ai' | 'deterministic';

@@ -96,16 +96,26 @@ export const PossibleConditions = ({ conditions }: PossibleConditionsProps) => {
                   <p className="text-precision text-[0.6rem] text-clinical-stone tracking-widest uppercase mb-1.5">
                     Tests to confirm
                   </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {c.confirmatory_tests.map((t, j) => (
-                      <span
-                        key={j}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-clinical-cream/60 rounded-md"
-                      >
-                        <span className="material-symbols-outlined text-[12px] text-clinical-stone">science</span>
-                        <span className="text-body text-clinical-charcoal text-xs">{t}</span>
-                      </span>
-                    ))}
+                  <div className="space-y-2">
+                    {c.confirmatory_tests.map((t, j) => {
+                      // Each test is either a plain string (legacy) or
+                      // { test, why } (new plans with rationale).
+                      const testName = typeof t === 'string' ? t : t.test;
+                      const why = typeof t === 'string' ? null : t.why;
+                      return (
+                        <div key={j} className="bg-clinical-cream/40 rounded-md p-3">
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <span className="material-symbols-outlined text-[14px] text-primary-container">science</span>
+                            <span className="text-body text-clinical-charcoal text-sm font-semibold">{testName}</span>
+                          </div>
+                          {why && (
+                            <p className="text-body text-clinical-stone text-xs leading-relaxed pl-[20px]">
+                              {why}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
