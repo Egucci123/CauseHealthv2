@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  CauseHealth Facebook cover photo.
+  1640x924 — Facebook's recommended upload size.
+  Mobile crops the sides; safe zone is the center 851x315.
+  Profile pic overlays bottom-left ~170px in, ~50px from bottom — the
+  layout below leaves that area clear.
+
+  To export to PNG:
+    - https://cloudconvert.com/svg-to-png (set width=1640), OR
+    - In Figma: paste, select all, export 1640x924 PNG.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1640 924" width="1640" height="924">
+  <defs>
+    <!-- Background: brand charcoal with a subtle off-center clinical-green glow -->
+    <radialGradient id="cover-bg" cx="78%" cy="42%" r="85%">
+      <stop offset="0%" stop-color="#1B4332" stop-opacity="0.55" />
+      <stop offset="55%" stop-color="#131313" />
+      <stop offset="100%" stop-color="#0A0A0A" />
+    </radialGradient>
+    <!-- Accent line gradient -->
+    <linearGradient id="line" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#D4A574" stop-opacity="0" />
+      <stop offset="50%" stop-color="#D4A574" />
+      <stop offset="100%" stop-color="#D4A574" stop-opacity="0" />
+    </linearGradient>
+  </defs>
+
+  <rect width="1640" height="924" fill="url(#cover-bg)" />
+
+  <!-- Top eyebrow — mono uppercase, gold -->
+  <text
+    x="560"
+    y="218"
+    font-family="'JetBrains Mono', 'Courier New', monospace"
+    font-weight="700"
+    font-size="22"
+    fill="#D4A574"
+    letter-spacing="9"
+  >CLINICAL HEALTH INTELLIGENCE</text>
+
+  <!-- Wordmark — large serif, gold period -->
+  <text
+    x="560"
+    y="362"
+    font-family="'Fraunces', 'Times New Roman', serif"
+    font-weight="700"
+    font-size="148"
+    fill="#FFFFFF"
+    letter-spacing="-3"
+  >CauseHealth<tspan fill="#D4A574">.</tspan></text>
+
+  <!-- Headline — sans, white -->
+  <text
+    x="560"
+    y="475"
+    font-family="'DM Sans', 'Helvetica', sans-serif"
+    font-weight="500"
+    font-size="44"
+    fill="#FFFFFF"
+  >Bloodwork your 12-minute</text>
+  <text
+    x="560"
+    y="535"
+    font-family="'DM Sans', 'Helvetica', sans-serif"
+    font-weight="500"
+    font-size="44"
+    fill="#FFFFFF"
+  >doctor visit can't decode.</text>
+
+  <!-- Sub — sans, lighter -->
+  <text
+    x="560"
+    y="610"
+    font-family="'DM Sans', 'Helvetica', sans-serif"
+    font-weight="400"
+    font-size="26"
+    fill="#A8A8A8"
+  >Cross-specialty AI catches missed diagnoses, drug-nutrient depletions,</text>
+  <text
+    x="560"
+    y="645"
+    font-family="'DM Sans', 'Helvetica', sans-serif"
+    font-weight="400"
+    font-size="26"
+    fill="#A8A8A8"
+  >and the patterns that show up months before a diagnosis.</text>
+
+  <!-- Pricing pill — bottom right, away from profile pic overlay -->
+  <g transform="translate(1180, 770)">
+    <rect
+      x="0"
+      y="0"
+      width="370"
+      height="76"
+      rx="6"
+      fill="#1B4332"
+      stroke="#D4A574"
+      stroke-width="1.5"
+    />
+    <text
+      x="22"
+      y="50"
+      font-family="'JetBrains Mono', 'Courier New', monospace"
+      font-weight="700"
+      font-size="22"
+      fill="#D4A574"
+      letter-spacing="2"
+    >$19 ONE-TIME · NO SUBSCRIPTION</text>
+  </g>
+
+  <!-- Subtle accent line under the wordmark area -->
+  <rect x="560" y="395" width="280" height="2" fill="url(#line)" />
+</svg>
