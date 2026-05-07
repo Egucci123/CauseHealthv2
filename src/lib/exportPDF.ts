@@ -348,6 +348,53 @@ export function exportPatientVisitGuidePDF(doc: DoctorPrepDocument, userName: st
     });
   }
 
+  // ── Medication alternatives — patient-side framing ───────────────────
+  // Only renders if AI populated. Plain language: "ask your doctor if X
+  // would be better than Y". No clinical jargon. Patient is the messenger,
+  // doctor is the decider.
+  if (Array.isArray(doc.medication_alternatives) && doc.medication_alternatives.length > 0) {
+    sectionHeader('Ask about better-tolerated alternatives');
+    pdf.setFontSize(8.5); pdf.setFont('helvetica', 'italic'); pdf.setTextColor(80, 80, 80);
+    const intro = "Some of your current medications may have alternatives that don't have the same side effects or nutrient depletions. These are conversation starters — only your doctor can decide what's right.";
+    const introLines = pdf.splitTextToSize(stripUnsupportedChars(intro), contentW);
+    pdf.text(introLines, margin, y); y += introLines.length * 3.6 + 5;
+    doc.medication_alternatives.forEach((m, i) => {
+      checkPage(24);
+      pdf.setFontSize(9.5); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(19, 19, 19);
+      pdf.text(stripUnsupportedChars(`${i + 1}. ${m.current_medication}`), margin, y); y += 5;
+      const reason = (m as any).reason_to_consider;
+      if (reason) {
+        pdf.setFont('helvetica', 'normal'); pdf.setTextColor(60, 60, 60); pdf.setFontSize(8.5);
+        const rl = pdf.splitTextToSize(stripUnsupportedChars(reason), contentW - 6);
+        pdf.text(rl, margin + 3, y); y += rl.length * 3.6 + 2;
+      }
+      const phrm = m.pharmaceutical_alternatives ?? [];
+      if (phrm.length > 0) {
+        pdf.setFont('helvetica', 'bold'); pdf.setTextColor(212, 165, 116); pdf.setFontSize(8);
+        pdf.text('Drugs to ask your doctor about:', margin + 3, y); y += 4;
+        pdf.setFont('helvetica', 'normal'); pdf.setTextColor(40, 40, 40);
+        phrm.forEach(a => {
+          const txt = `• ${a.name}: ${a.reason}`;
+          const lines = pdf.splitTextToSize(stripUnsupportedChars(txt), contentW - 9);
+          pdf.text(lines, margin + 6, y); y += lines.length * 3.5 + 1;
+        });
+        y += 1;
+      }
+      const nat = m.natural_alternatives ?? [];
+      if (nat.length > 0) {
+        pdf.setFont('helvetica', 'bold'); pdf.setTextColor(212, 165, 116); pdf.setFontSize(8);
+        pdf.text('Lifestyle changes that can help:', margin + 3, y); y += 4;
+        pdf.setFont('helvetica', 'normal'); pdf.setTextColor(40, 40, 40);
+        nat.forEach(a => {
+          const txt = `• ${a.name}: ${a.reason}`;
+          const lines = pdf.splitTextToSize(stripUnsupportedChars(txt), contentW - 9);
+          pdf.text(lines, margin + 6, y); y += lines.length * 3.5 + 1;
+        });
+      }
+      y += 3;
+    });
+  }
+
   // ── Other points to bring up ─────────────────────────────────────────
   if (doc.discussion_points?.length) {
     sectionHeader('Other things to bring up');
@@ -578,6 +625,51 @@ export function exportDoctorPrepPDF(doc: DoctorPrepDocument, userName: string) {
   // is filtered by the strict triage rule (symptom OR med depletion OR
   // out-of-range marker OR early-detection pattern). No more hardcoded
   // baseline-for-everyone lists in any PDF or page.
+
+  // Medication alternatives — only renders when AI populated with strict-bar
+  // entries (specific finding + genuinely better drug exists + guideline-
+  // supported). Empty array = section skipped entirely.
+  if (Array.isArray(doc.medication_alternatives) && doc.medication_alternatives.length > 0) {
+    addSectionHeader('Medication Alternatives to Consider');
+    pdf.setFontSize(8); pdf.setFont('helvetica', 'italic'); pdf.setTextColor(107, 107, 107);
+    pdf.text(stripUnsupportedChars('Surfaced only when a specific finding in this patient suggests a meaningfully better-tolerated or more effective option exists. Discuss before changing anything.'), margin, y, { maxWidth: contentW });
+    y += 8;
+    doc.medication_alternatives.forEach((m, i) => {
+      checkPage(30);
+      pdf.setFontSize(9); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(19, 19, 19);
+      pdf.text(stripUnsupportedChars(`${i + 1}. ${m.current_medication}`), margin, y); y += 5;
+      const reason = (m as any).reason_to_consider;
+      if (reason) {
+        pdf.setFont('helvetica', 'italic'); pdf.setTextColor(60, 60, 60); pdf.setFontSize(8);
+        const rl = pdf.splitTextToSize(stripUnsupportedChars(`Why considering: ${reason}`), contentW - 6);
+        pdf.text(rl, margin + 3, y); y += rl.length * 3.5 + 3;
+      }
+      const phrm = m.pharmaceutical_alternatives ?? [];
+      if (phrm.length > 0) {
+        pdf.setFont('helvetica', 'bold'); pdf.setTextColor(212, 165, 116); pdf.setFontSize(8);
+        pdf.text('Pharmaceutical alternatives:', margin + 3, y); y += 4;
+        pdf.setFont('helvetica', 'normal'); pdf.setTextColor(40, 40, 40);
+        phrm.forEach(a => {
+          const txt = `• ${a.name} — ${a.reason}`;
+          const lines = pdf.splitTextToSize(stripUnsupportedChars(txt), contentW - 9);
+          pdf.text(lines, margin + 6, y); y += lines.length * 3.5 + 1;
+        });
+        y += 1;
+      }
+      const nat = m.natural_alternatives ?? [];
+      if (nat.length > 0) {
+        pdf.setFont('helvetica', 'bold'); pdf.setTextColor(212, 165, 116); pdf.setFontSize(8);
+        pdf.text('Lifestyle / natural options:', margin + 3, y); y += 4;
+        pdf.setFont('helvetica', 'normal'); pdf.setTextColor(40, 40, 40);
+        nat.forEach(a => {
+          const txt = `• ${a.name} — ${a.reason}`;
+          const lines = pdf.splitTextToSize(stripUnsupportedChars(txt), contentW - 9);
+          pdf.text(lines, margin + 6, y); y += lines.length * 3.5 + 1;
+        });
+      }
+      y += 4;
+    });
+  }
 
   // Discussion Points
   addSectionHeader('Points to Raise');

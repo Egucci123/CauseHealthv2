@@ -32,6 +32,10 @@ export interface DoctorPrepDocument {
   discussion_points: string[];
   medication_alternatives?: Array<{
     current_medication: string;
+    /** 1 sentence — the specific finding in THIS patient that warrants
+     *  considering an alternative (ALT 97 elevation on atorvastatin, etc.).
+     *  Empty string if not applicable. */
+    reason_to_consider?: string;
     pharmaceutical_alternatives: Array<{ name: string; reason: string }>;
     natural_alternatives: Array<{ name: string; reason: string }>;
   }>;
