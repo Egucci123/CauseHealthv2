@@ -2,32 +2,34 @@
 import { LandingNav } from '../../components/landing/LandingNav';
 import { LandingFooter } from '../../components/landing/LandingFooter';
 
+// Single inbox for everything: support@causehealth.app. Subject line
+// pre-filled per category so triage stays easy on Evan's end.
 const REASONS: { emoji: string; title: string; body: string; cta: string; href: string }[] = [
   {
     emoji: '🐛',
     title: 'Found a bug?',
     body: "Tell us what happened, what you expected, and the page you were on. Screenshot helps. We'll get on it.",
-    cta: 'hello@causehealth.app',
-    href: 'mailto:hello@causehealth.app?subject=Bug%20report',
+    cta: 'support@causehealth.app',
+    href: 'mailto:support@causehealth.app?subject=Bug%20report',
   },
   {
     emoji: '💡',
     title: 'Have an idea?',
     body: "Feature requests, biomarkers we don't cover, ways the AI could be sharper — we read every email.",
-    cta: 'feedback@causehealth.app',
-    href: 'mailto:feedback@causehealth.app?subject=Feature%20idea',
+    cta: 'support@causehealth.app',
+    href: 'mailto:support@causehealth.app?subject=Feature%20idea',
   },
   {
     emoji: '🤝',
     title: 'Partnership or press?',
     body: 'Podcasters, clinicians, integrators, journalists — we love hearing from people building in this space.',
-    cta: 'partners@causehealth.app',
-    href: 'mailto:partners@causehealth.app?subject=Partnership',
+    cta: 'support@causehealth.app',
+    href: 'mailto:support@causehealth.app?subject=Partnership',
   },
   {
     emoji: '🩺',
-    title: 'Medical concern?',
-    body: "We're educational only — we can't give medical advice. For urgent matters call your doctor or 911. For interpretation questions, email us.",
+    title: 'Question about your account or labs?',
+    body: "We're educational only — we can't give medical advice. For urgent matters call your doctor or 911. For account, billing, or how-to questions, email us.",
     cta: 'support@causehealth.app',
     href: 'mailto:support@causehealth.app?subject=Question',
   },

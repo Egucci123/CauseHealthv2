@@ -180,7 +180,7 @@ export const AcceptTermsScreen = ({ onAccepted }: Props) => {
               <ul className="list-disc pl-5 space-y-1 mt-1">
                 <li><strong>Access</strong> all data we hold (Settings &rarr; Export All Data &mdash; JSON + CSV formats).</li>
                 <li><strong>Delete</strong> your data and account (Settings &rarr; Delete Account &mdash; complete within 30 days).</li>
-                <li><strong>Withdraw consent</strong> at any time (privacy@causehealth.app).</li>
+                <li><strong>Withdraw consent</strong> at any time (support@causehealth.app).</li>
                 <li><strong>Appeal</strong> any denial within 45 days.</li>
               </ul>
               <p className="mt-2">CCPA (California), GDPR (EEA/UK/Switzerland), and Washington My Health My Data Act rights are honored. Full details at <a href="/privacy" className="text-primary-container underline" target="_blank" rel="noreferrer">/privacy</a>.</p>

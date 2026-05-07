@@ -113,7 +113,7 @@ export const Disclaimer = () => (
         <section>
           <h2 className="text-authority text-2xl text-clinical-charcoal font-bold mb-3">Questions</h2>
           <p className="text-body text-clinical-charcoal leading-relaxed">
-            Reach us at <a href="mailto:hello@causehealth.app" className="text-primary-container underline">hello@causehealth.app</a> with any
+            Reach us at <a href="mailto:support@causehealth.app" className="text-primary-container underline">support@causehealth.app</a> with any
             concerns about how to interpret findings or use the platform safely.
           </p>
         </section>

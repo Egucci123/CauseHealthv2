@@ -136,10 +136,10 @@ export const Privacy = () => (
           <p><strong>Your rights regarding Consumer Health Data:</strong></p>
           <ul className="list-disc pl-5 space-y-1 mt-1 mb-3">
             <li><strong>Right to access:</strong> Request a copy of all Consumer Health Data we hold about you. Use the "Export All Data" button in Settings.</li>
-            <li><strong>Right to delete:</strong> Request that we delete your Consumer Health Data. Use the "Delete Account" button in Settings, or contact us at <a href="mailto:privacy@causehealth.app" className="text-primary-container hover:underline">privacy@causehealth.app</a>.</li>
-            <li><strong>Right to withdraw consent:</strong> You may withdraw consent for any specific processing at any time by contacting us at <a href="mailto:privacy@causehealth.app" className="text-primary-container hover:underline">privacy@causehealth.app</a>. Note: withdrawing consent for core processing means we can no longer provide the Service.</li>
+            <li><strong>Right to delete:</strong> Request that we delete your Consumer Health Data. Use the "Delete Account" button in Settings, or contact us at <a href="mailto:support@causehealth.app" className="text-primary-container hover:underline">support@causehealth.app</a>.</li>
+            <li><strong>Right to withdraw consent:</strong> You may withdraw consent for any specific processing at any time by contacting us at <a href="mailto:support@causehealth.app" className="text-primary-container hover:underline">support@causehealth.app</a>. Note: withdrawing consent for core processing means we can no longer provide the Service.</li>
             <li><strong>Right to non-discrimination:</strong> We will not discriminate against you for exercising any of these rights.</li>
-            <li><strong>Right to appeal:</strong> If we deny any of these requests, you may appeal by emailing <a href="mailto:privacy@causehealth.app" className="text-primary-container hover:underline">privacy@causehealth.app</a>. We will respond within 45 days.</li>
+            <li><strong>Right to appeal:</strong> If we deny any of these requests, you may appeal by emailing <a href="mailto:support@causehealth.app" className="text-primary-container hover:underline">support@causehealth.app</a>. We will respond within 45 days.</li>
           </ul>
 
           <p><strong>We do NOT sell Consumer Health Data.</strong> "Sale" includes any exchange of health data for monetary or other valuable consideration. We have never sold Consumer Health Data and have no plans to.</p>
@@ -157,7 +157,7 @@ export const Privacy = () => (
             <li>Right to limit use of sensitive personal information</li>
             <li>Right to non-discrimination for exercising these rights</li>
           </ul>
-          <p>To exercise these rights, use the data export and deletion tools in Settings, or email <a href="mailto:privacy@causehealth.app" className="text-primary-container hover:underline">privacy@causehealth.app</a>. We will respond within 45 days.</p>
+          <p>To exercise these rights, use the data export and deletion tools in Settings, or email <a href="mailto:support@causehealth.app" className="text-primary-container hover:underline">support@causehealth.app</a>. We will respond within 45 days.</p>
         </Section>
 
         <Section title="7. Your Privacy Rights (GDPR — European Economic Area)">
@@ -172,7 +172,7 @@ export const Privacy = () => (
             <li>Right not to be subject to automated decision-making</li>
             <li>Right to lodge a complaint with a supervisory authority</li>
           </ul>
-          <p>To exercise these rights, email <a href="mailto:privacy@causehealth.app" className="text-primary-container hover:underline">privacy@causehealth.app</a>.</p>
+          <p>To exercise these rights, email <a href="mailto:support@causehealth.app" className="text-primary-container hover:underline">support@causehealth.app</a>.</p>
           <p className="mt-2">Our legal basis for processing health data is your explicit consent (Article 9(2)(a) GDPR), provided when you accept these Terms at signup.</p>
         </Section>
 
@@ -206,7 +206,7 @@ export const Privacy = () => (
         </Section>
 
         <Section title="11. Children's Privacy">
-          <p>CauseHealth is intended for adults 18 and older. We do not knowingly collect personal information from anyone under 18. If you believe a minor has used CauseHealth, please contact us at <a href="mailto:privacy@causehealth.app" className="text-primary-container hover:underline">privacy@causehealth.app</a> and we will delete the account.</p>
+          <p>CauseHealth is intended for adults 18 and older. We do not knowingly collect personal information from anyone under 18. If you believe a minor has used CauseHealth, please contact us at <a href="mailto:support@causehealth.app" className="text-primary-container hover:underline">support@causehealth.app</a> and we will delete the account.</p>
         </Section>
 
         <Section title="12. International Users">
@@ -219,7 +219,7 @@ export const Privacy = () => (
 
         <Section title="14. Contact Us">
           <p>For privacy questions, data requests, or to exercise any of your rights:</p>
-          <p className="mt-2"><a href="mailto:privacy@causehealth.app" className="text-primary-container hover:underline">privacy@causehealth.app</a></p>
+          <p className="mt-2"><a href="mailto:support@causehealth.app" className="text-primary-container hover:underline">support@causehealth.app</a></p>
         </Section>
       </div>
     </div>
