@@ -12,10 +12,24 @@
 // policy version. Shows the screens in order until all three are logged.
 // Calls onConsented() when fully done.
 //
-// Universal — same flow for every user, every signup. Re-shown when
-// CONSENT_POLICY_VERSION changes.
+// CRITICAL race-condition fix: the record-consent edge function INSERTs
+// using the service-role client (one PostgREST connection), but the
+// frontend re-reads via the user's JWT (potentially a different pooler
+// connection). PostgREST + Supavisor can have sub-second eventual
+// consistency between writes and reads. So a successful INSERT followed
+// immediately by a SELECT can return zero rows.
+//
+// The symptom users hit: accept terms → screen shows again → refresh →
+// re-accept → eventually goes through. The DB write succeeded the first
+// time, but the SELECT race made it look like it didn't.
+//
+// Fix: maintain a LOCAL set of consent types we just successfully
+// recorded. After recordConsent returns 201 (write succeeded), we know
+// for a fact that consent is logged — we don't need the DB to confirm
+// it. The local set is merged with the DB read so a slow-replicating
+// read doesn't undo our state.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuthStore } from '../../store/authStore';
 import { getMissingConsents, isFullyConsented, type ConsentType } from '../../lib/consent';
 import { AcceptTermsScreen } from './AcceptTermsScreen';
@@ -34,55 +48,76 @@ interface Props {
   onConsented: () => void;
 }
 
+const REQUIRED: ConsentType[] = ['terms', 'ai_processing', 'health_data_authorization'];
+
 export const ConsentGate = ({ onConsented }: Props) => {
   const userId = useAuthStore(s => s.user?.id);
   const [missing, setMissing] = useState<Set<ConsentType> | null>(null);
+  // Local cache of consents this session has successfully recorded. Persists
+  // across re-renders and renders so a slow-propagating DB read can't undo
+  // a write we know succeeded. Ref so it survives state updates without
+  // triggering its own re-render.
+  const justRecordedRef = useRef<Set<ConsentType>>(new Set());
 
-  // Initial fetch of missing consents. CRITICAL: if the user is already
-  // fully consented (returning user, navigated back from onboarding, etc.),
-  // we MUST signal the parent immediately. Otherwise we sit on the
-  // "Checking consent" spinner forever — there's no screen to accept,
-  // refresh() never runs, onConsented() never fires.
+  const computeMissing = (dbMissing: Set<ConsentType>): Set<ConsentType> => {
+    const merged = new Set(dbMissing);
+    // Anything we recorded this session is NOT missing, even if the DB read
+    // hasn't propagated yet.
+    for (const t of justRecordedRef.current) merged.delete(t);
+    return merged;
+  };
+
   useEffect(() => {
     let cancelled = false;
     if (!userId) return;
     (async () => {
-      const m = await getMissingConsents(userId);
+      const dbMissing = await getMissingConsents(userId);
       if (cancelled) return;
+      const m = computeMissing(dbMissing);
       setMissing(m);
-      // Auto-bypass when there's nothing to consent to (returning users,
-      // browser back navigation, etc.). This is the bug fix.
       if (isFullyConsented(m)) onConsented();
     })();
     return () => { cancelled = true; };
-    // onConsented intentionally omitted from deps — it's a fresh closure
-    // on every parent render, but its behavior is stable (always calls
-    // the same setState). Including it would cause an infinite loop.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
-  // After a screen records consent, refresh the missing set
-  const refresh = async () => {
+  // Called by each screen when it has successfully recorded one or more
+  // consents. We update the local "just recorded" set IMMEDIATELY (no race),
+  // then re-query DB for any others we might have missed. The local set
+  // takes precedence over DB results.
+  const recordedAndRefresh = async (...types: ConsentType[]) => {
     if (!userId) return;
-    const m = await getMissingConsents(userId);
-    setMissing(m);
-    if (isFullyConsented(m)) onConsented();
+    for (const t of types) justRecordedRef.current.add(t);
+    // Compute new missing immediately from the local set (covers all required types)
+    const localMissing = new Set<ConsentType>(REQUIRED.filter(t => !justRecordedRef.current.has(t)));
+    setMissing(localMissing);
+    if (isFullyConsented(localMissing)) {
+      onConsented();
+      return;
+    }
+    // Background: also re-fetch from DB so future renders are accurate.
+    // If DB shows fewer missing than local, take the DB version (more accurate).
+    try {
+      const dbMissing = await getMissingConsents(userId);
+      const merged = computeMissing(dbMissing);
+      setMissing(merged);
+      if (isFullyConsented(merged)) onConsented();
+    } catch { /* DB read failed — local set is fine */ }
   };
 
   if (missing === null) return <Loading />;
 
-  // Step 1: terms not yet accepted → show AcceptTermsScreen
   if (missing.has('terms')) {
-    return <AcceptTermsScreen onAccepted={refresh} />;
+    return <AcceptTermsScreen onAccepted={() => recordedAndRefresh('terms')} />;
   }
 
-  // Step 2: terms done but health-data consents missing → show HealthDataConsentScreen
   if (missing.has('ai_processing') || missing.has('health_data_authorization')) {
-    return <HealthDataConsentScreen onAccepted={refresh} />;
+    return (
+      <HealthDataConsentScreen
+        onAccepted={() => recordedAndRefresh('ai_processing', 'health_data_authorization')}
+      />
+    );
   }
 
-  // All three logged — useEffect above already called onConsented(). The
-  // parent will re-render and stop showing this gate. Render loading just
-  // for the single tick before that re-render lands.
   return <Loading />;
 };
