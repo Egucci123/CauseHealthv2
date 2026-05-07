@@ -469,32 +469,37 @@ HARD RULES — FOLLOW EXACTLY:
    Valid sourced_from values:
    - "lab_finding": a SPECIFIC lab value out of standard range OR on the curated Watch list on THIS draw (e.g. ferritin 28, vitamin D 24, hs-CRP 0.8, HbA1c 5.5). Cite the marker and value in why. Healthy values do NOT earn supplements.
    - "disease_mechanism": user has a CONFIRMED diagnosed condition where the supplement has strong evidence as adjunct therapy (UC → curcumin / omega-3 / S. boulardii; Hashimoto's → selenium IF TPO+ confirmed; T2D → berberine; PCOS → inositol IF diagnosis confirmed; TRT → DHEA only if labs warrant). The diagnosis IS the evidence; no lab finding required.
+   - "medication_depletion": user is on a drug whose well-documented depletion fires an approved empirical (statin → CoQ10, long-term metformin → B12, long-term PPI → Mg/B12). MUST cite the medication in why. Do NOT use this source if there's no medication.
+   - "empirical": symptom pattern + universally-safe supplement + universally-prevalent deficiency + no lab confirmation yet. The supplement is recommended on the strength of the symptom cluster alone (see APPROVED EMPIRICAL list below). Frame in why as "based on your symptom cluster — confirm with lab when convenient" so the user knows this isn't a confirmed deficiency response.
    - "optimization": OFF BY DEFAULT. Only allowed if user's PRIMARY goal is "longevity" AND no out-of-range markers, no symptoms, no medication depletions to address. Even then, max 1-2 entries (omega-3 if dietary intake is low, vitamin D if sub-optimal but in standard range). NOT a longevity stack. NEVER NAD+ / NMN / Resveratrol / Spermidine / methylene blue / speculative anti-aging compounds.
 
-   "medication_depletion" — TEST FIRST as the default, with narrow exceptions for empirical supplementation. The pattern:
+   TEST-FIRST DEFAULT (universal): for any nutrient where the lab test is cheap, standard, and PCP-orderable, recommend the TEST in retest_timeline FIRST. Empirical supplementation is allowed only for the approved exceptions below — do NOT invent additional empirical recommendations outside this list.
 
-   DEFAULT (test first, supplement when lab confirms):
-     For most drug→nutrient depletions where the lab test is cheap, standard, and PCP-orderable, recommend the TEST in retest_timeline. Examples:
-       - Metformin → B12 + MMA + homocysteine (don't auto-add B12 supplement)
-       - Mesalamine → serum folate + RBC folate (don't auto-add folate)
-       - PPI → Mg + B12 (don't auto-add Mg or B12)
-       - SSRI → Na (BMP — already standard)
-       - Levothyroxine → no auto-test, just note Fe interaction
-     a) Add the relevant TEST to retest_timeline
-     b) Once a future lab confirms deficiency, sourced_from becomes "lab_finding".
+   APPROVED EMPIRICAL EXCEPTIONS (the ONLY ones — match patient against each trigger):
 
-   EMPIRICAL SUPPLEMENTATION ALLOWED (no lab confirmation needed) when ALL THREE are true:
-     1. The depletion / mechanism is near-universal in the relevant population (well-documented mainstream evidence)
-     2. The supplement is broadly safe with no major interactions (safety profile = OTC/multi-decade evidence)
-     3. The lab test is either impractical/expensive OR the supplement is so safe that test-first creates unnecessary friction
+   ── Medication-driven (sourced_from: medication_depletion) ──
+     1. STATIN → CoQ10 (Ubiquinol) 100-200mg/day · category liver_metabolic
+     2. ALT >60 OR hepatotoxic med (statin/methotrexate/isoniazid/valproate/acetaminophen >3g) → Milk Thistle (Silymarin) 200-400mg/day · category liver_metabolic
+     3. Long-term METFORMIN (>5yr) → B12 Methylcobalamin 500-1000mcg sublingual (prefer test-first if recent B12/MMA available) · category nutrient_repletion
+     4. Long-term PPI (>2yr) → Magnesium Glycinate 200-400mg evening · category sleep_stress
 
-   APPROVED EMPIRICAL EXCEPTIONS (the ONLY ones — do not invent more):
-     - statin → CoQ10 (Ubiquinol) 100-200mg/day · liver_metabolic · sourced_from medication_depletion
-     - ALT >60 OR hepatotoxic med (statin/methotrexate/isoniazid/valproate/acetaminophen >3g) → Milk Thistle (Silymarin) 200-400mg/day · liver_metabolic
-     - Sleep complaint → Magnesium Glycinate 200-400mg evening · sleep_stress
-     - TG >150 OR low fish intake → Omega-3 EPA/DHA 1-2g/day · inflammation_cardio
-     - Long-term metformin (>5yr) → B12 Methylcobalamin 500-1000mcg sublingual (prefer test-first if recent B12/MMA available) · nutrient_repletion
-     - Long-term PPI (>2yr) → Magnesium Glycinate · sleep_stress
+   ── Lab-pattern-driven (sourced_from: empirical) ──
+     5. TG >150 OR self-reported low fish intake → Omega-3 EPA/DHA 1-2g/day · category inflammation_cardio
+     6. ALT >60 with no other liver clue + no statin → NAC 600-1200mg/day (alt to milk thistle) · category liver_metabolic
+
+   ── Symptom-driven (sourced_from: empirical) — fire only if symptom-cluster threshold met ──
+     7. SLEEP COMPLAINT (sleep onset, mid-night waking, sleep difficulty rated 4+/10, OR insomnia in conditions) → Magnesium Glycinate 200-400mg evening · category sleep_stress
+     8. ANXIETY OR SLEEP-ONSET DIFFICULTY (anxiety 4+/10, sleep onset >30min, OR mind-racing) AND no SSRI/MAOI/serotonergic med → L-Theanine 100-200mg evening · category sleep_stress (alternative to mag if mag already covered)
+     9. JOINT PAIN OR MUSCLE ACHES (joint pain 4+/10 OR muscle pain 4+/10) AND no fish-oil overlap → Omega-3 EPA/DHA 2g/day · category inflammation_cardio
+     10. FATIGUE + BRAIN FOG + MOOD CLUSTER (≥3 of: fatigue 4+/10, brain fog 4+/10, depression/low mood 4+/10, poor memory 4+/10) AND no recent B12/folate/D labs in panel → B-Complex (methylated, with B12, folate, B6) 1 capsule/day · category nutrient_repletion · "Symptom cluster fits B-vitamin / methylation insufficiency — empirical based on the pattern; order B12 + MMA + serum folate + 25-OH-D when convenient to confirm and tailor."
+     11. UNIVERSAL VITAMIN D EMPIRICAL (sourced_from: empirical) — fire when 25-OH-D NOT in panel AND any of: age 40+, BMI 30+, joint pain 4+/10, mood 4+/10, fatigue 4+/10, autoimmune dx, recurrent infections, dark skin, limited-sun lifestyle (winter / latitude / indoor work). Recommend Vitamin D3 2000-5000 IU/day with food · category nutrient_repletion · "70%+ of US adults are sub-optimal for vitamin D; symptom pattern fits insufficiency. Confirm with 25-OH-D test (target 30-50 ng/mL) — adjust dose when result returns."
+     12. ACNE 3+/10 OR RECURRENT INFECTIONS OR HYPOGONADISM RISK (without zinc lab) → Zinc Picolinate 15-25mg/day with food · category nutrient_repletion · "Universal-safety dose under 40mg. Confirm with serum zinc + RBC zinc when convenient." (Skip if user is on copper-balancing IUD or has Wilson's-related labs.)
+
+   STILL TEST-FIRST (cheap test changes the answer): Methylfolate alone (test serum + RBC folate); Berberine (test fasting insulin + HOMA-IR — A1c alone insufficient); Iron (ALWAYS test ferritin/iron/TIBC/sat — risk to heterozygous hemochromatosis carriers); B12 standalone outside the cluster trigger above (add MMA test); Curcumin (interactions); Selenium for Hashimoto's (TPO Ab first); DHEA (always test).
+
+   STACK SIZE: a healthy young patient with multi-symptom complaint typically lands at 3-5 supplements (1-2 sleep_stress, 1 nutrient_repletion B-complex or D3, 1 inflammation_cardio omega-3 if joint/muscle/TG fires, 1 condition_therapy if a dx applies). NEVER more than 5 unless the patient has multiple confirmed lab deficiencies. If the cap forces a choice, prioritize: lab_finding > medication_depletion > disease_mechanism > empirical > optimization.
+
+   ALTERNATIVES — only list TRUE alternatives (different form of same molecule, e.g., Magnesium Glycinate ↔ Magnesium Threonate; Methylcobalamin ↔ Hydroxocobalamin). Do NOT list a different molecule as an alternative (e.g., L-Glycine is NOT an alternative to Magnesium Glycinate). If you can't list a true alternative, leave alternatives as []. Max 2 alternatives per supplement.
 
    STILL TEST-FIRST (cheap test changes the answer): Methylfolate (test serum + RBC folate); Berberine (test fasting insulin + HOMA-IR — A1c alone insufficient); Iron (ALWAYS test ferritin/iron/TIBC/sat — risk to heterozygous hemochromatosis carriers); B12 (add MMA test, don't auto-add unless long-term metformin); Curcumin (has interactions — prefer milk thistle for ALT elevation); Selenium for Hashimoto's (test TPO Ab first).
 
