@@ -82,24 +82,24 @@ export const DoctorPrep = () => {
             <p className="text-body text-on-surface-variant text-sm mt-2 max-w-md">A clinical document your doctor takes seriously. ICD-10 codes, exact tests, prepared questions.</p>
           </div>
           {doc && !generating && (
-            <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap w-full md:w-auto md:flex-shrink-0">
               <button
                 onClick={handleExportPatientGuide}
-                className="inline-flex items-center gap-1.5 text-precision text-[0.65rem] font-bold tracking-wider uppercase px-3 py-2 bg-white/10 hover:bg-white/20 text-on-surface rounded-[8px] transition-colors"
+                className="flex-1 md:flex-none inline-flex items-center justify-center gap-1.5 text-precision text-[0.65rem] font-bold tracking-wider uppercase px-3 py-2 bg-white/10 hover:bg-white/20 text-on-surface rounded-[8px] transition-colors"
                 title="Plain-English guide for you, with scripts and what to do if your doctor pushes back"
               >
                 <span className="material-symbols-outlined text-[14px]">person</span>Your Guide
               </button>
               <button
                 onClick={handleExport}
-                className="inline-flex items-center gap-1.5 text-precision text-[0.65rem] font-bold tracking-wider uppercase px-3 py-2 bg-white/10 hover:bg-white/20 text-on-surface rounded-[8px] transition-colors"
+                className="flex-1 md:flex-none inline-flex items-center justify-center gap-1.5 text-precision text-[0.65rem] font-bold tracking-wider uppercase px-3 py-2 bg-white/10 hover:bg-white/20 text-on-surface rounded-[8px] transition-colors"
                 title="Clinical document for your doctor"
               >
                 <span className="material-symbols-outlined text-[14px]">medical_services</span>Doctor PDF
               </button>
               <button
                 onClick={handleGenerate}
-                className="inline-flex items-center gap-1.5 text-precision text-[0.65rem] font-bold tracking-wider uppercase px-3 py-2 bg-[#D4A574] hover:bg-[#B8915F] text-clinical-charcoal rounded-[8px] transition-colors"
+                className="flex-1 md:flex-none inline-flex items-center justify-center gap-1.5 text-precision text-[0.65rem] font-bold tracking-wider uppercase px-3 py-2 bg-[#D4A574] hover:bg-[#B8915F] text-clinical-charcoal rounded-[8px] transition-colors"
               >
                 <span className="material-symbols-outlined text-[14px]">refresh</span>Regenerate
               </button>
@@ -157,12 +157,12 @@ export const DoctorPrep = () => {
           feature="Doctor Prep"
           description="A clinical summary your doctor takes seriously — exact tests to ask for with ICD-10 codes, prepared questions, and visit-ready card stacks."
         >
-          <div className="bg-clinical-white rounded-[10px] shadow-card border-t-[3px] border-primary-container p-12 text-center">
+          <div className="bg-clinical-white rounded-[10px] shadow-card border-t-[3px] border-primary-container p-6 sm:p-12 text-center">
             <span className="material-symbols-outlined text-clinical-stone text-5xl mb-4 block">description</span>
-            <p className="text-authority text-2xl text-clinical-charcoal font-bold mb-3">Ready to prepare your appointment</p>
-            <p className="text-body text-clinical-stone mb-2 max-w-sm mx-auto leading-relaxed">Generate a clinical document with your lab findings, ICD-10 codes, and specific test requests.</p>
+            <p className="text-authority text-xl sm:text-2xl text-clinical-charcoal font-bold mb-3">Ready to prepare your appointment</p>
+            <p className="text-body text-clinical-stone text-sm sm:text-base mb-2 max-w-sm mx-auto leading-relaxed">Generate a clinical document with your lab findings, ICD-10 codes, and specific test requests.</p>
             <p className="text-precision text-[0.6rem] text-clinical-stone tracking-wide mb-8">Best results when labs are uploaded and analyzed</p>
-            <Button variant="primary" size="lg" loading={generating} onClick={handleGenerate} icon="auto_awesome">Generate Clinical Summary</Button>
+            <Button variant="primary" size="lg" loading={generating} onClick={handleGenerate} icon="auto_awesome" className="w-full sm:w-auto">Generate Clinical Summary</Button>
           </div>
         </PaywallGate>
       ) : (
