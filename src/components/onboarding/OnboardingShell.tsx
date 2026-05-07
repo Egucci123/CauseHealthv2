@@ -45,7 +45,7 @@ export const OnboardingShell = ({
         <div className="max-w-2xl mx-auto">
           <div className="flex justify-between items-center mb-5">
             <span className="text-xl font-serif text-white">
-              CauseHealth<span className="text-primary-container">.</span>
+              CauseHealth<span className="text-white">.</span>
             </span>
             <span className="text-precision text-[0.68rem] text-on-surface-variant tracking-widest uppercase">
               Step {currentStep} of {totalSteps}

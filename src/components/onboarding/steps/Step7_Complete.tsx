@@ -16,7 +16,7 @@ export const Step7_Complete = () => {
       <div className="bg-[#131313] px-6 py-5">
         <div className="max-w-2xl mx-auto">
           <div className="flex justify-between items-center mb-5">
-            <span className="text-xl font-serif text-white">CauseHealth<span className="text-primary-container">.</span></span>
+            <span className="text-xl font-serif text-white">CauseHealth<span className="text-white">.</span></span>
             <span className="text-precision text-[0.68rem] text-on-surface-variant tracking-widest uppercase">Setup Complete</span>
           </div>
           <div className="flex gap-1.5">

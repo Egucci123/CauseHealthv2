@@ -44,7 +44,7 @@ export const LandingNav = () => {
       >
         <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
           <a href="/" className="text-2xl font-serif text-white hover:opacity-90 transition-opacity">
-            CauseHealth<span className="text-primary-container">.</span>
+            CauseHealth<span className="text-white">.</span>
           </a>
 
           <div className="hidden md:flex items-center gap-8">

@@ -30,7 +30,7 @@ export const Sidebar = ({ currentPath: _currentPath }: SidebarProps) => {
     <aside className="hidden md:flex flex-col h-full w-72 fixed left-0 top-0 border-r border-[#414844]/15 bg-[#131313] z-50">
       <div className="px-6 py-8">
         <button onClick={() => navigate('/dashboard')} className="text-3xl font-serif text-white hover:opacity-90 transition-opacity text-left">
-          CauseHealth<span className="text-primary-container">.</span>
+          CauseHealth<span className="text-white">.</span>
         </button>
       </div>
 

@@ -25,7 +25,7 @@ export const LandingFooter = () => (
       <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
         <div className="md:col-span-1">
           <a href="/" className="text-2xl font-serif text-white mb-4 block">
-            CauseHealth<span className="text-primary-container">.</span>
+            CauseHealth<span className="text-white">.</span>
           </a>
           <p className="text-body text-on-surface-variant text-sm leading-relaxed">
             Root cause medicine.<br />Finally accessible.

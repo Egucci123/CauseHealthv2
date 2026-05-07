@@ -28,7 +28,7 @@ export const AuthLayout = ({
     <div className="min-h-screen bg-[#131313] flex flex-col">
       <nav className="px-6 py-5 flex justify-between items-center border-b border-[#414844]/15">
         <a href="/" className="text-xl font-serif text-white hover:opacity-90 transition-opacity">
-          CauseHealth<span className="text-primary-container">.</span>
+          CauseHealth<span className="text-white">.</span>
         </a>
         <p className="text-precision text-[0.68rem] text-on-surface-variant tracking-widest uppercase hidden md:block">
           Clinical Health Intelligence
