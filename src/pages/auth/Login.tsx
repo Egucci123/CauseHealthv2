@@ -29,6 +29,11 @@ export const Login = () => {
   const [serverError, setServerError] = useState<string | null>(null);
   const [passwordVal, setPasswordVal] = useState('');
   const [showMagicLink, setShowMagicLink] = useState(false);
+  // Hide password form behind a toggle so iOS Safari's saved-password autofill
+  // chooser doesn't auto-scroll the page past the Google + magic-link buttons
+  // on mount. The chooser only appears once an autocomplete="current-password"
+  // input is in the DOM.
+  const [showPassword, setShowPassword] = useState(false);
 
   const redirectTo = searchParams.get('redirectTo') ?? '/dashboard';
 
@@ -83,12 +88,24 @@ export const Login = () => {
         </div>
       )}
 
-      <AuthDivider />
+      <button
+        type="button"
+        onClick={() => setShowPassword((v) => !v)}
+        className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-3 border border-outline-variant/20 hover:border-primary-container/40 bg-clinical-white transition-colors"
+        style={{ borderRadius: '6px' }}
+      >
+        <span className="material-symbols-outlined text-primary-container text-[18px]">lock</span>
+        <span className="text-body text-clinical-charcoal text-sm font-medium">{showPassword ? 'Hide password sign-in' : 'Sign in with password'}</span>
+      </button>
 
-      <ErrorBanner message={serverError} />
-      {serverError && <div className="mb-4" />}
+      {showPassword && (
+        <>
+          <AuthDivider />
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
+          <ErrorBanner message={serverError} />
+          {serverError && <div className="mb-4" />}
+
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
         <Input
           label="Email Address"
           type="email"
@@ -138,7 +155,9 @@ export const Login = () => {
         >
           Sign In
         </Button>
-      </form>
+          </form>
+        </>
+      )}
 
       <p className="text-body text-clinical-stone text-sm text-center mt-6">
         Don't have an account?{' '}
