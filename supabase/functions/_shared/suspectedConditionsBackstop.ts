@@ -91,7 +91,13 @@ const RULES: BackstopRule[] = [
   // regardless of age/sex/symptoms. Not constrained to suspicion of OSA.
   {
     key: 'hemoconcentration_dehydration',
-    alreadyRaisedIf: [/hemoconcentr/i, /dehydrat/i],
+    // Only skip if the AI raised hemoconcentration AS THE PRIMARY condition
+    // (name starts with one of these terms). If the AI just mentioned it in
+    // passing inside a combined name like "high red blood cell count (likely
+    // OSA or hemoconcentration)", we still want the backstop to fire its
+    // hydration-trial-first entry — otherwise the user gets sent for an
+    // expensive sleep study before the cheap dehydration rule-out.
+    alreadyRaisedIf: [/^hemoconcentr/i, /^dehydrat/i, /^chronic underhydrat/i, /^underhydrat/i],
     skipIfDx: [],
     detect: (ctx) => {
       const albumin = mark(ctx.labValues, [/^albumin\b/i]);
