@@ -99,11 +99,25 @@ export const LabDetail = () => {
       return { draw: drawRes.data, values: valuesRes.data ?? [], analysis: drawRes.data.analysis_result };
     },
     staleTime: 0, refetchOnMount: 'always', refetchOnWindowFocus: true,
-    // Poll fast (2s) while processing — analysis transitions happen mid-poll
-    // and a 5s gap was leaving the UI on stale data even after completion.
+    // Poll fast (2s) while processing OR while we haven't seen analysis_result
+    // yet. Without the second condition, when processing_status flips to
+    // 'complete' BEFORE analysis_result lands (race between two writes), the
+    // poll stopped and the page hung on 'complete_no_analysis' until the user
+    // manually refreshed. Now we keep polling until both signals are present.
     refetchInterval: (query) => {
-      const status = query.state.data?.draw?.processing_status;
-      return status === 'processing' ? 2000 : false;
+      const draw = query.state.data?.draw;
+      const status = draw?.processing_status;
+      const hasAnalysis = !!query.state.data?.analysis;
+      if (status === 'processing') return 2000;
+      if (status === 'complete' && !hasAnalysis) {
+        // Cap waiting-for-analysis polling at 3 minutes. If analysis hasn't
+        // landed by then, something genuinely went wrong upstream and the
+        // user should see the failure UI instead of a perpetual spinner.
+        const ageMs = draw?.created_at ? Date.now() - new Date(draw.created_at).getTime() : 0;
+        if (ageMs > 3 * 60 * 1000) return false;
+        return 2000;
+      }
+      return false;
     },
     // Keep polling even when the tab is in the background. Without this, a
     // user who switches tabs mid-analysis (very common — they're killing
