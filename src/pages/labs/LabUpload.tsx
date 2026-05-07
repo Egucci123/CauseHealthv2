@@ -162,7 +162,15 @@ export const LabUpload = () => {
               </div>
             </div>
             <ManualEntry drawId={drawId} onComplete={(id) => navigate(`/labs/${id}`)} />
-            <button onClick={reset} className="text-precision text-[0.68rem] text-clinical-stone tracking-widest uppercase hover:text-clinical-charcoal transition-colors">Try a Different File</button>
+            <div className="flex flex-wrap items-center gap-4 pt-2">
+              <button onClick={reset} className="text-precision text-[0.68rem] text-primary-container font-bold tracking-widest uppercase hover:underline">Try a Different File</button>
+              <button
+                onClick={() => { reset(); navigate('/dashboard'); }}
+                className="text-precision text-[0.68rem] text-clinical-stone tracking-widest uppercase hover:text-clinical-charcoal transition-colors"
+              >
+                Cancel — Back to Dashboard
+              </button>
+            </div>
           </div>
         )}
 
@@ -174,10 +182,17 @@ export const LabUpload = () => {
                 <div><p className="text-body text-clinical-charcoal font-semibold mb-1">Something went wrong</p><p className="text-body text-clinical-stone text-sm">{errorMessage}</p></div>
               </div>
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap items-center gap-4">
               <button onClick={reset} className="text-precision text-[0.68rem] text-primary-container font-bold tracking-widest uppercase hover:underline">Try Again</button>
               <span className="text-clinical-stone">·</span>
               <button onClick={reset} className="text-precision text-[0.68rem] text-clinical-stone tracking-widest uppercase hover:text-clinical-charcoal transition-colors">Enter Manually</button>
+              <span className="text-clinical-stone">·</span>
+              <button
+                onClick={() => { reset(); navigate('/dashboard'); }}
+                className="text-precision text-[0.68rem] text-clinical-stone tracking-widest uppercase hover:text-clinical-charcoal transition-colors"
+              >
+                Back to Dashboard
+              </button>
             </div>
           </div>
         )}
