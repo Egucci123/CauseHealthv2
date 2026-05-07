@@ -23,11 +23,11 @@ import { format } from 'date-fns';
 
 type TabKey = 'today' | 'eat' | 'move' | 'take';
 
-const TABS: { key: TabKey; label: string; icon: string }[] = [
-  { key: 'today', label: 'Today', icon: 'today' },
-  { key: 'eat', label: 'Food Playbook', icon: 'restaurant' },
-  { key: 'move', label: 'Move', icon: 'directions_run' },
-  { key: 'take', label: 'Take', icon: 'medication' },
+const TABS: { key: TabKey; label: string; shortLabel?: string; icon: string }[] = [
+  { key: 'today', label: 'Today',         icon: 'today' },
+  { key: 'eat',   label: 'Food Playbook', shortLabel: 'Food', icon: 'restaurant' },
+  { key: 'move',  label: 'Move',          icon: 'directions_run' },
+  { key: 'take',  label: 'Take',          icon: 'medication' },
 ];
 
 const todayKey = () => new Date().toISOString().slice(0, 10);
@@ -882,7 +882,7 @@ export const WellnessPlanPage = () => {
 
           {/* Tab nav */}
           <TabNav
-            tabs={TABS.map(t => ({ id: t.key, label: t.label, icon: t.icon }))}
+            tabs={TABS.map(t => ({ id: t.key, label: t.label, shortLabel: t.shortLabel, icon: t.icon }))}
             active={tab}
             onChange={(id) => setTab(id as TabKey)}
             variant="full"

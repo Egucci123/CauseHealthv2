@@ -19,6 +19,10 @@ import { useEffect, useRef, useState } from 'react';
 export interface TabDef<T extends string = string> {
   id: T;
   label: string;
+  /** Optional short label rendered below the sm: breakpoint (mobile).
+   *  Lets long labels like "Clinical Summary" / "Suggested Tests" use
+   *  "Summary" / "Tests" on phones without horizontal scroll. */
+  shortLabel?: string;
   /** Material Symbols icon name. Optional — text-only tabs are fine. */
   icon?: string;
 }
@@ -56,9 +60,11 @@ export function TabNav<T extends string>({ tabs, active, onChange, variant = 'fu
     };
   }, [tabs.length]);
 
+  // Aggressive mobile shrinkage. With short labels on mobile, 4 tabs fit
+  // in a 360px viewport without horizontal scroll.
   const minWClass = variant === 'compact'
-    ? 'min-w-[72px] sm:min-w-[90px]'
-    : 'min-w-[88px] sm:min-w-[110px]';
+    ? 'min-w-[64px] sm:min-w-[90px]'
+    : 'min-w-[68px] sm:min-w-[110px]';
 
   return (
     <div className="relative">
@@ -78,8 +84,8 @@ export function TabNav<T extends string>({ tabs, active, onChange, variant = 'fu
               onClick={() => onChange(tab.id)}
               className={`
                 flex-1 ${minWClass}
-                ${variant === 'full' ? 'flex items-center justify-center gap-1.5' : 'block'}
-                py-2.5 px-3 rounded-[8px] transition-all
+                ${variant === 'full' ? 'flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5' : 'block'}
+                py-2 sm:py-2.5 px-2 sm:px-3 rounded-[8px] transition-all
                 cursor-pointer
                 ${isActive
                   ? 'bg-clinical-white shadow-card border border-primary-container/15'
@@ -94,11 +100,19 @@ export function TabNav<T extends string>({ tabs, active, onChange, variant = 'fu
                 </span>
               )}
               <span
-                className={`text-precision text-[0.68rem] font-bold tracking-wider whitespace-nowrap ${
+                className={`text-precision text-[0.62rem] sm:text-[0.68rem] font-bold tracking-wide sm:tracking-wider whitespace-nowrap ${
                   isActive ? 'text-clinical-charcoal' : 'text-clinical-stone'
                 }`}
               >
-                {tab.label}
+                {/* Short label on mobile if provided, full on sm+. Two
+                    spans stacked with display toggles so we don't need a
+                    JS-side viewport check. */}
+                {tab.shortLabel ? (
+                  <>
+                    <span className="sm:hidden">{tab.shortLabel}</span>
+                    <span className="hidden sm:inline">{tab.label}</span>
+                  </>
+                ) : tab.label}
               </span>
             </button>
           );

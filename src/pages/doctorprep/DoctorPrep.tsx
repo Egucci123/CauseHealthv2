@@ -22,10 +22,10 @@ import { exportDoctorPrepPDF, exportPatientVisitGuidePDF } from '../../lib/expor
 import { format } from 'date-fns';
 
 const TABS = [
-  { id: 'visit', label: 'At Your Visit', icon: 'fact_check' },
-  { id: 'summary', label: 'Clinical Summary', icon: 'description' },
-  { id: 'tests', label: 'Suggested Tests', icon: 'biotech' },
-  { id: 'medications', label: 'Medications', icon: 'medication' },
+  { id: 'visit',       label: 'At Your Visit',     shortLabel: 'Visit',   icon: 'fact_check' },
+  { id: 'summary',     label: 'Clinical Summary',  shortLabel: 'Summary', icon: 'description' },
+  { id: 'tests',       label: 'Suggested Tests',   shortLabel: 'Tests',   icon: 'biotech' },
+  { id: 'medications', label: 'Medications',       shortLabel: 'Meds',    icon: 'medication' },
 ];
 
 export const DoctorPrep = () => {
