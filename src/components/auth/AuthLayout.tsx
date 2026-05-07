@@ -26,7 +26,11 @@ export const AuthLayout = ({
         </p>
       </nav>
 
-      <div className="flex-1 flex items-center justify-center px-6 py-12">
+      {/* items-start on mobile — login card is taller than short viewports,
+          so vertical-centering pushes the top of the card (Google button +
+          magic-link button) above the fold and the user only sees the email
+          form. md:items-center restores the desktop look on bigger screens. */}
+      <div className="flex-1 flex items-start md:items-center justify-center px-6 py-8 md:py-12">
         <div className={`w-full ${widths[maxWidth]}`}>
           <div className="bg-clinical-white rounded-[10px] overflow-hidden shadow-card-md">
             <div className="bg-[#1C1B1B] px-8 py-6 border-b border-[#414844]/20">
