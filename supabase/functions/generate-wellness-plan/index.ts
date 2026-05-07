@@ -1,7 +1,7 @@
 // supabase/functions/generate-wellness-plan/index.ts
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { GOAL_LABELS, formatGoals } from '../_shared/goals.ts';
+import { GOAL_LABELS, formatGoals, goalBranchFor } from '../_shared/goals.ts';
 import { buildRareDiseaseBlocklist, extractRareDiseaseContext } from '../_shared/rareDiseaseGate.ts';
 import { buildUniversalTestInjections } from '../_shared/testInjectors.ts';
 import { hasCondition, detectConditions } from '../_shared/conditionAliases.ts';
@@ -612,18 +612,7 @@ HARD RULES — FOLLOW EXACTLY:
    IMPORTANT — UNIFORMITY WITH CLINICAL PREP: retest_timeline markers MUST match Clinical Prep's tests_to_request. Same rule, same triggers, same trigger letters. The user should see ONE coherent test list across both pages.
    GATE ON RARE STUFF: NEVER mention JAK2, ANA reflex, HLA-B27, multiple myeloma SPEP/UPEP, hereditary hemochromatosis genetics, MTHFR, pituitary MRI, Cushing's 24h cortisol anywhere in the plan unless the patient's markers genuinely meet the gate threshold. Server-side scrubber will strip leftover mentions, but don't generate them in the first place.
 9. WRITING STYLE: Write like a knowledgeable friend, not a medical textbook. Instead of "HPA-axis dysregulation" say "your stress hormones are elevated." Explain the WHY in plain English. Keep the action plan actionable — specific things to do, not vague clinical language.
-10. GOAL-DRIVEN BRANCHING (HARD RULE — the plan structure CHANGES based on the user's PRIMARY goal, the FIRST goal listed). The summary MUST open with how the plan ties to the primary goal. Workouts + today_actions + lifestyle_interventions + action_plan phases visibly branch by goal:
-
-    longevity      → 3 zone-2 + 3 strength + 1 mobility/wk; protein 1g/lb; TRE 12-14h, 30g fiber, sauna, cold. Phases: metabolic (1) → strength+VO2max (2) → track (3).
-    energy         → light zone-2 weeks 1-4, ramp strength weeks 5-12, no HIIT until baseline. Morning sun, protein breakfast, no screens 1h pre-bed, cool bedroom. Phases: foundation (1) → production (2) → resilience (3).
-    weight         → 4 strength + 2-3 zone-2 low-impact; protein every meal, 10-min walk after meals, no liquid calories, TRE 14-16h. Phases: insulin sensitivity (1) → recomp (2) → maintenance (3).
-    hormones       → heavy compound strength 3x + zone-2 2x; sleep 8h, sun exposure, zinc/cholesterol-rich meals, BF% 12-18%(M)/18-25%(F), alcohol <3/wk. Phases: foundation (1) → optimize (2) → maintain (3).
-    gut_health     → gentle zone-2 + yoga weeks 1-4; chew thoroughly, stop eating 3h pre-bed, food/symptom journal, 30g fiber, fermented foods, low-FODMAP trial if relevant. Phases: triggers (1) → repair (2) → reintroduce (3).
-    off_medications → NEVER recommend stopping meds; work WITH the doctor toward reduction. Lifestyle changes for insulin resistance / BP / lipids. Phases: habits (1) → improvement (2) → revisit (3).
-    heart_health   → 4 zone-2 + 2 strength + flex; 30g fiber, omega-3 food, 30-min walk, home BP weekly, Mediterranean. Phases: lipid+inflammation (1) → cardio capacity (2) → maintain (3).
-    hair_regrowth  → protein at breakfast, scalp massage 5min/day, sleep 8h, iron-rich food; address ferritin <50, full thyroid, stress, no harsh treatments. Phases: nutrition (1) → scalp+cycle (2) → maintain (3).
-    autoimmune     → gentle zone-2 + strength, NO overtraining; anti-inflammatory diet, identify triggers, sleep non-negotiable. Phases: lower inflammation (1) → triggers (2) → remission (3).
-    pain           → gentle movement, build strength carefully, daily mobility; anti-inflammatory diet, omega-3, magnesium, sleep, stress, weight if relevant.
+10. GOAL-DRIVEN BRANCHING (HARD RULE — the plan structure CHANGES based on the user's PRIMARY goal, the FIRST goal listed). The summary MUST open with how the plan ties to the primary goal. Workouts + today_actions + lifestyle_interventions + action_plan phases must follow the goal-specific tilt provided in the user message under "PRIMARY GOAL TILT".
 
 11. EATING PATTERN — THE DIET, NOT THE MEALS:
     CauseHealth tells the user WHAT KIND of eater to be, not what to cook tonight. We are not a meal planner. Output a single dietary pattern tied to their labs/conditions/goals. The frontend appends a static set of trusted recipe site links so the user finds actual recipes off-platform.
@@ -655,6 +644,7 @@ HARD RULES — FOLLOW EXACTLY:
 
 PATIENT: ${age ? `${age}yo` : 'age unknown'} ${profile?.sex ?? ''}
 USER'S PRIMARY GOAL (the structural anchor for the plan — branch around this per rule 10): ${userGoals[0] ? (GOAL_LABELS[userGoals[0]] ?? userGoals[0]) : 'understand bloodwork'}
+PRIMARY GOAL TILT (apply this to workouts / today_actions / lifestyle_interventions / action_plan phases): ${goalBranchFor(userGoals[0])}
 USER'S OTHER GOALS (secondary): ${goalsStr}
 MODE: ${classification.mode} (reasons: ${classification.reasons.join('; ')})
 RETEST_CADENCE: ${classification.retestCadence}
