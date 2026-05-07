@@ -22,7 +22,7 @@ import { detectCriticalFindings } from '../_shared/criticalFindingsBackstop.ts';
 import { screenInteractions } from '../_shared/drugInteractionEngine.ts';
 import { computeProgressDeltas, renderPriorDrawForPrompt, type ProgressSummary } from '../_shared/longitudinalDelta.ts';
 import { attachWhys } from '../_shared/testRationale.ts';
-import { buildSupplementLabInteractionBlock } from '../_shared/supplementLabInteractions.ts';
+import { buildSupplementLabInteractionBlock, buildDrugInteractionFlags } from '../_shared/supplementLabInteractions.ts';
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -507,7 +507,7 @@ HARD RULES — FOLLOW EXACTLY:
 
    IF the relevant lab IS on this draw AND shows deficiency, sourced_from becomes "lab_finding" with the medication named as the likely cause in why (no double-counting).
 
-   PRACTICAL_NOTE — REQUIRED on every supplement, ONE short sentence combining (1) why this timing/form (absorption/GABA/circadian), (2) any interaction with the user's actual meds, (3) any avoid-caveat (empty stomach, with calcium, etc.). High-impact interactions to flag if relevant: berberine+statin (liver-processed, check with doctor); vitamin K2+warfarin (affects INR, MD only); St John's Wort+SSRI (serotonin syndrome — never combine); calcium/iron+levothyroxine (4hr apart); magnesium+antibiotic (2hr apart); curcumin+blood thinner (potentiation); DHEA+hormone cancer hx (avoid); saw palmetto+PSA monitoring (masks). If timing is generic ("with food"), still note why that form was chosen.
+   PRACTICAL_NOTE — REQUIRED on every supplement, ONE short sentence combining (1) why this timing/form (absorption/GABA/circadian), (2) any interaction with the user's actual meds (see DRUG-INTERACTION FLAGS in user message for the flags relevant to THIS patient's meds), (3) any avoid-caveat (empty stomach, with calcium, etc.). If timing is generic ("with food"), still note why that form was chosen.
    Speculative supplements → put the test in retest_timeline, not a supplement.
 3. CONDITIONS — GROUND TRUTH RULE: Use the user's DIAGNOSED CONDITIONS list verbatim.
    - Never substitute related conditions (UC ≠ Crohn's, even though they share treatments).
@@ -656,6 +656,7 @@ ${labPatternsForPrompt}
 ${isOptimizationMode ? `OPTIMIZATION CONTEXT: Patient labs are mostly healthy. Frame around longevity optimization, not disease treatment. Phase names: "Build Foundation (Months 1-2)", "Optimize (Months 3-4)", "Sustain & Track (Months 5-6)". Retest cadence is 6 months (retest_at: "6 months"). Apply the standard-of-care baseline rule + triage rule + exclusions defined in the system prompt — no relaxation, no longevity wishlists. Cap retest_timeline at 5 entries.` : ''}
 DIAGNOSED CONDITIONS (GROUND TRUTH — never substitute these with related conditions; never call UC 'Crohn's' or vice versa; never infer a different diagnosis from medications): ${condStr}
 ${conditionTestPanelsFor(detectedConditionKeys)}MEDICATIONS: ${medsStr}
+DRUG-INTERACTION FLAGS (for PRACTICAL_NOTE field on each supplement):${buildDrugInteractionFlags(medsStr) || ' (none triggered for this patient\'s meds)'}
 CURRENT SUPPLEMENTS (already taking — do NOT re-recommend; account for lab interactions and avoid stacking duplicates): ${suppsStr}
 SYMPTOMS (for context only — do NOT supplement based on symptoms alone): ${sympStr}
 LIFESTYLE_CONTEXT (drives meals + workout realism — see hard rule 11 below): ${lifestyleStr}

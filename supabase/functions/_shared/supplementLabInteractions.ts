@@ -91,6 +91,52 @@ const RULES: InteractionRule[] = [
   },
 ];
 
+// ── Drug-class interaction warnings for the PRACTICAL_NOTE field ──────
+// These were a static list in the prompt's PRACTICAL_NOTE rule. Only a
+// few apply per patient depending on their meds. Build the conditional
+// list based on the user's actual medications so the AI only sees the
+// flags it could conceivably trigger.
+
+interface DrugInteractionRule {
+  /** Regex matched against the user's medication list. */
+  med: RegExp[];
+  /** Warning text format: "supplement+drug (consequence)" */
+  warning: string;
+}
+
+const DRUG_INTERACTION_FLAGS: DrugInteractionRule[] = [
+  { med: [/statin\b|atorvastatin|rosuvastatin|simvastatin|pravastatin|pitavastatin/i],
+    warning: 'berberine+statin (both liver-processed, check with doctor)' },
+  { med: [/warfarin|coumadin/i],
+    warning: 'vitamin K2+warfarin (affects INR, MD only); curcumin+warfarin (potentiation); omega-3+warfarin (additive bleeding)' },
+  { med: [/ssri|sertraline|fluoxetine|escitalopram|citalopram|paroxetine/i],
+    warning: 'St John\'s Wort+SSRI (serotonin syndrome — never combine)' },
+  { med: [/levothyroxine|synthroid|t4|liothyronine|cytomel/i],
+    warning: 'calcium/iron+levothyroxine (separate by 4 hours); magnesium+levothyroxine (2 hours)' },
+  { med: [/antibiotic|amoxicillin|azithromycin|doxycycline|cipro|levofloxacin|tetracycline/i],
+    warning: 'magnesium/calcium/iron+antibiotic (separate by 2 hours)' },
+  { med: [/aspirin|clopidogrel|plavix|apixaban|eliquis|rivaroxaban|xarelto/i],
+    warning: 'curcumin+blood thinner (potentiation); omega-3+anticoagulant (caution)' },
+  { med: [/finasteride|tamoxifen|aromatase inhibitor|leuprolide|estrogen-receptor/i],
+    warning: 'DHEA+hormone-cancer history (avoid); saw palmetto+PSA monitoring (masks BPH/cancer)' },
+];
+
+/** Build the prompt-injectable list of drug-supplement interaction
+ *  warnings for THIS patient's meds. Returns either:
+ *  - "High-impact interactions to flag if relevant: ..." (specific list)
+ *  - empty string (no relevant interactions, AI skips this guidance)
+ */
+export function buildDrugInteractionFlags(medsStr: string): string {
+  if (!medsStr || medsStr.trim().toLowerCase() === 'none') return '';
+  const lower = medsStr.toLowerCase();
+  const matched: string[] = [];
+  for (const rule of DRUG_INTERACTION_FLAGS) {
+    if (rule.med.some(re => re.test(lower))) matched.push(rule.warning);
+  }
+  if (matched.length === 0) return '';
+  return ` High-impact interactions to flag if relevant for THIS patient's meds: ${matched.join('; ')}.`;
+}
+
 /** Filter the interaction reference to entries that match the user's
  *  current_supplements list. Returns the formatted block (with header +
  *  closing reminder) ready to inject. Empty string if no matches. */
