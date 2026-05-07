@@ -1,9 +1,10 @@
 // src/pages/labs/LabUpload.tsx
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { AppShell } from '../../components/layout/AppShell';
 import { SectionHeader } from '../../components/ui/Card';
+import { Button } from '../../components/ui/Button';
 import { DropZone } from '../../components/labs/DropZone';
 import { ExtractionProgress } from '../../components/labs/ExtractionProgress';
 import { ReviewTable } from '../../components/labs/ReviewTable';
@@ -12,13 +13,14 @@ import { useLabUploadStore } from '../../store/labUploadStore';
 import { useAuthStore } from '../../store/authStore';
 import { logEvent } from '../../lib/clientLog';
 import { PaywallGate } from '../../components/paywall/PaywallGate';
+import { supabase } from '../../lib/supabase';
 
 export const LabUpload = () => {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const user = useAuthStore(s => s.user);
   const [searchParams, setSearchParams] = useSearchParams();
-  const { phase, progress, statusMessage, drawId, extraction, errorMessage, completedDrawId, reset, startUpload, confirmAndAnalyze, resumeFromDraw } = useLabUploadStore();
+  const { phase, progress, statusMessage, drawId, extraction, errorMessage, completedDrawId, paymentTier, reset, startUpload, confirmAndAnalyze, resumeFromDraw } = useLabUploadStore();
 
   // Returning from a $5 upload-pack Stripe checkout. Optimistic +1 credit so
   // the user can immediately upload again without waiting on the webhook,
@@ -152,6 +154,13 @@ export const LabUpload = () => {
             onConfirm={(values, overrides) => handleConfirm(values, overrides)} onStartOver={reset} loading={false} />
         )}
 
+        {/* needs_payment phase — store sets this when credits=0. Surfaces a
+            clear paywall card with an upload-pack ($5) or unlock ($19)
+            checkout, so the user is never staring at a blank screen. */}
+        {phase === 'needs_payment' && (
+          <NeedsPaymentCard tier={paymentTier ?? 'unlock'} onCancel={() => { reset(); navigate('/dashboard'); }} />
+        )}
+
         {phase === 'manual' && (
           <div className="space-y-6">
             <div className="bg-[#E8922A]/10 border border-[#E8922A]/30 rounded-lg p-5 flex items-start gap-3">
@@ -202,3 +211,62 @@ export const LabUpload = () => {
   );
 };
 
+// ── needs_payment paywall card ──────────────────────────────────────────
+// Renders when labUploadStore sets phase='needs_payment' (credit balance
+// is 0 and user needs to pay). Different from PaywallGate (which fires
+// pre-unlock) — this fires for unlocked users who used their credit and
+// need a $5 upload-pack to add another draw.
+const NeedsPaymentCard = ({ tier, onCancel }: { tier: 'unlock' | 'upload_pack'; onCancel: () => void }) => {
+  const [launching, setLaunching] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const isUnlock = tier === 'unlock';
+  const price = isUnlock ? '$19' : '$5';
+  const headline = isUnlock ? 'Unlock CauseHealth' : 'Add a lab-upload credit';
+  const description = isUnlock
+    ? "One-time $19 unlocks your account and your first lab analysis. No subscription."
+    : "Each new lab draw is $5 one-time. Append-to-existing-draw is always free.";
+
+  const launch = async () => {
+    setLaunching(true);
+    setError(null);
+    try {
+      const fnName = isUnlock ? 'create-checkout-session' : 'create-upload-checkout';
+      const { data, error: invokeErr } = await supabase.functions.invoke(fnName, { body: { origin: window.location.origin } });
+      if (invokeErr || !(data as any)?.url) {
+        setError((invokeErr as any)?.message ?? 'Could not start checkout.');
+        setLaunching(false);
+        return;
+      }
+      window.location.href = (data as any).url;
+    } catch (e: any) {
+      setError(e?.message ?? 'Could not start checkout.');
+      setLaunching(false);
+    }
+  };
+
+  return (
+    <div className="bg-clinical-white rounded-[14px] shadow-card border-t-[3px] border-[#D4A574] p-6 sm:p-10 text-center max-w-xl mx-auto">
+      <div className="w-14 h-14 bg-[#D4A574]/15 rounded-full flex items-center justify-center mx-auto mb-5">
+        <span className="material-symbols-outlined text-[#D4A574] text-2xl">lock</span>
+      </div>
+      <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-[#D4A574] mb-2">
+        {isUnlock ? 'Unlock to upload' : 'Add upload credit'}
+      </p>
+      <p className="text-authority text-2xl text-clinical-charcoal font-bold mb-2">{headline}</p>
+      <p className="text-body text-clinical-stone text-sm mb-6 max-w-sm mx-auto leading-relaxed">{description}</p>
+      <p className="text-authority text-3xl text-clinical-charcoal font-bold mb-1">
+        {price}<span className="text-base text-clinical-stone font-normal"> one-time</span>
+      </p>
+      <p className="text-precision text-[0.65rem] text-clinical-stone tracking-wide mb-6">No subscription</p>
+      <div className="flex flex-col gap-3 max-w-sm mx-auto">
+        <Button variant="primary" size="lg" icon="auto_awesome" className="w-full" loading={launching} onClick={launch}>
+          {isUnlock ? 'Unlock for $19' : 'Add credit for $5'}
+        </Button>
+        {error && <p className="text-body text-[#C94F4F] text-xs leading-snug">{error}</p>}
+        <button onClick={onCancel} className="text-precision text-[0.65rem] text-clinical-stone tracking-widest uppercase hover:text-clinical-charcoal transition-colors py-2">
+          Cancel — Back to Dashboard
+        </button>
+      </div>
+    </div>
+  );
+};
