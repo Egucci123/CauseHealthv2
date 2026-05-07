@@ -22,6 +22,7 @@ import { detectCriticalFindings } from '../_shared/criticalFindingsBackstop.ts';
 import { screenInteractions } from '../_shared/drugInteractionEngine.ts';
 import { computeProgressDeltas, renderPriorDrawForPrompt, type ProgressSummary } from '../_shared/longitudinalDelta.ts';
 import { attachWhys } from '../_shared/testRationale.ts';
+import { buildSupplementLabInteractionBlock } from '../_shared/supplementLabInteractions.ts';
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -659,26 +660,7 @@ CURRENT SUPPLEMENTS (already taking — do NOT re-recommend; account for lab int
 SYMPTOMS (for context only — do NOT supplement based on symptoms alone): ${sympStr}
 LIFESTYLE_CONTEXT (drives meals + workout realism — see hard rule 11 below): ${lifestyleStr}
 
-SUPPLEMENT-LAB INTERACTION KNOWLEDGE (use when interpreting labs and building stack):
-- Biotin (>1mg/day): falsely alters TSH/T3/T4/Troponin/Vit D — pause 72hr before retest.
-- Creatine: raises serum creatinine ~10–20% (artifact, not kidney damage); use cystatin-C for true GFR.
-- Vitamin D3: raises 25-OH-D; if user already on D3, "low D" needs dose review, not new D.
-- B12 supplementation: makes serum B12 unreliable; use MMA/homocysteine if concerned.
-- Iron: raises ferritin/iron/sat — don't add iron without checking current ferritin.
-- Niacin (≥500mg): raises HDL, lowers TG/LDL, can elevate ALT/uric acid/glucose.
-- Omega-3 (≥2g EPA/DHA): lowers TG and CRP; thins blood — caution with anticoagulants.
-- Berberine: lowers fasting glucose/A1c/LDL — overlaps with metformin effect.
-- Magnesium: corrects suboptimal Mg, supports BP and insulin sensitivity.
-- Vitamin K2: critical with warfarin (affects INR) — never recommend without MD.
-- DHEA: raises DHEA-S, downstream estradiol/testosterone.
-- TRT/testosterone: raises Hct (polycythemia risk), suppresses LH/FSH.
-- Whey/high protein: raises BUN slightly (not kidney pathology).
-- Curcumin: lowers CRP and ALT; mild blood thinner.
-- TMG/methylfolate/B12: lowers homocysteine.
-- Saw palmetto: can lower PSA (mask BPH/cancer detection).
-- Ashwagandha: lowers cortisol; can raise T4 — caution in hyperthyroid.
-- Vitamin C high-dose: can raise serum glucose readings on some glucometers.
-If user is on a supplement that explains an "abnormal" lab (e.g., creatine→creatinine, biotin→TSH), call that out in summary instead of treating it as pathology.
+${buildSupplementLabInteractionBlock(suppsStr)}
 
 ${renderPriorDrawForPrompt(progressSummary)}
 
