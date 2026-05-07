@@ -34,27 +34,24 @@ body {
   overflow-x: hidden;
 }
 
-/* Defensive — no descendant should ever exceed its container's width on
- * mobile. Won't affect explicitly-scrollable horizontal containers (those
- * use overflow-x: auto and pass through). Allowed to be overridden by
- * components that need to scroll horizontally on purpose (e.g. wide tables).
- */
-@media (max-width: 767px) {
-  body * {
-    max-width: 100%;
-  }
-  /* Images & SVGs: cap at container width and keep aspect */
-  img, svg, video, canvas {
-    max-width: 100%;
-    height: auto;
-  }
+/* Images & SVGs: cap at container width and keep aspect — universal,
+ * doesn't squash flex/grid layouts. */
+img, svg, video, canvas {
+  max-width: 100%;
+  height: auto;
 }
 
 /* Long strings (URLs, lab marker names, ICD-10 codes) breaking out of
- * their container is another zoom-out trigger. Force them to wrap. */
-p, span, h1, h2, h3, h4, h5, h6, td, li, a, label {
-  overflow-wrap: anywhere;
-  word-break: break-word;
+ * their container is another zoom-out trigger. Use overflow-wrap:
+ * break-word — it ONLY breaks long unbreakable strings, NOT every word.
+ * (overflow-wrap: anywhere was breaking normal sentences mid-character
+ * on mobile; break-word leaves normal text alone.)
+ *
+ * Intentionally NOT applied to elements that drive layout width like
+ * tab navs / button groups — those need their natural width to lay out
+ * horizontally without letter-stacking. */
+p, h1, h2, h3, h4, h5, h6, td, li {
+  overflow-wrap: break-word;
 }
 
 /* iOS Safari "zoom-in on input focus" fix.
