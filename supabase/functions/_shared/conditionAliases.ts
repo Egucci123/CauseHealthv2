@@ -684,3 +684,45 @@ export function describeMatchedConditions(userConditionsText: string): string {
 
 export const CONDITION_REGISTRY = ALL;
 export const CONDITION_CATEGORY_DEFAULTS = T2_CATEGORY_DEFAULTS;
+
+// ── Condition-specific test panels for the wellness-plan prompt ────────
+// Each entry corresponds to a canonical condition key returned by
+// detectConditions(). The text is what gets injected into the prompt's
+// retest_timeline guidance — only conditions the patient actually has
+// fire (vs the previous static block listing all 13 panels on every call).
+const CONDITION_TEST_PANELS: Record<string, string> = {
+  ibd:                    'IBD (UC/Crohn\'s): Fecal Calprotectin, Celiac Serology, Iron Panel, Vit D + B12 + Folate workups',
+  hashimotos:             'Hashimoto\'s: TSH+Free T3+Free T4, TPO Ab + Tg Ab if not done',
+  graves:                 'Graves: TSH+Free T3+Free T4 + TSI Ab',
+  t2d:                    'T2D/prediabetes: A1c, Fasting Insulin + HOMA-IR, Lipid Panel, UACR, eGFR',
+  pcos:                   'PCOS: Total+Free T, DHEA-S, LH:FSH, SHBG, Fasting Insulin + HOMA-IR',
+  hypertension:           'Hypertension: BMP/CMP, UACR, Lipid Panel, A1c',
+  ckd:                    'CKD: Cystatin C+eGFR, UACR, BMP, PTH, Vit D, Iron Panel',
+  cad:                    'CHF/CAD: Lipid + ApoB, hs-CRP, NT-proBNP if HF, A1c',
+  lupus:                  'Lupus/RA/SLE: ESR+hs-CRP, ANA reflex (only if ANA+), CBC, CMP, UACR',
+  ra:                     'Lupus/RA/SLE: ESR+hs-CRP, ANA reflex (only if ANA+), CBC, CMP, UACR',
+  osteoporosis:           'Osteoporosis: Calcium, Vit D, PTH, DEXA if 50+ or long-term steroids',
+  depression:             'Mood disorders: TSH, Vit D, B12+MMA, hs-CRP',
+  anxiety:                'Mood disorders: TSH, Vit D, B12+MMA, hs-CRP',
+  // Chronic-fatigue panel maps off self-reported fatigue, not a diagnosis,
+  // so it isn't in this registry — fatigue is covered by the symptom→test map.
+};
+
+/** Build the condition-specific test panel block for the wellness-plan
+ *  user message. Returns only the lines for conditions this patient has.
+ *  Empty string if no matches (no need to show the section header).
+ *
+ *  Saves ~150 tokens per call vs the 13-line static block.
+ */
+export function conditionTestPanelsFor(detectedKeys: string[]): string {
+  const lines: string[] = [];
+  const seen = new Set<string>();
+  for (const key of detectedKeys) {
+    const text = CONDITION_TEST_PANELS[key];
+    if (!text || seen.has(text)) continue;
+    seen.add(text);
+    lines.push(`     ${text}`);
+  }
+  if (lines.length === 0) return '';
+  return `   CONDITION-SPECIFIC TESTS (for this patient's diagnosed conditions — layer ON TOP of standard panels, not replace):\n${lines.join('\n')}\n`;
+}

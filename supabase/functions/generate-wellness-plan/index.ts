@@ -4,7 +4,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { GOAL_LABELS, formatGoals, goalBranchFor } from '../_shared/goals.ts';
 import { buildRareDiseaseBlocklist, extractRareDiseaseContext } from '../_shared/rareDiseaseGate.ts';
 import { buildUniversalTestInjections } from '../_shared/testInjectors.ts';
-import { hasCondition, detectConditions } from '../_shared/conditionAliases.ts';
+import { hasCondition, detectConditions, conditionTestPanelsFor } from '../_shared/conditionAliases.ts';
 import { isOnMed } from '../_shared/medicationAliases.ts';
 import { classifyPatient } from '../_shared/patientClassifier.ts';
 import { runAdequacyChecks, runSelfSupplementChecks } from '../_shared/replacementTherapyChecks.ts';
@@ -535,19 +535,7 @@ HARD RULES — FOLLOW EXACTLY:
    TREATMENT mode (something needs fixing — any out-of-range marker, any chronic diagnosed condition like UC/Crohn's/Hashimoto's/Graves/T2D/RA/lupus/PCOS/CKD/HTN/CHF/etc., or multi-system pattern): COMPREHENSIVE retest at week 12 — this is the protocol close-out. Include ALL currently-abnormal markers, ALL tests triggered by symptoms, ALL medication-depletion tests, AND any standard-of-care baseline gaps. Multi-system patients should have 14-20 entries — be COMPREHENSIVE. retest_at: '12 weeks'. Hard-capped at 20. DO NOT undershoot.
    OPTIMIZATION mode (no out-of-range markers, no chronic conditions, no symptoms): cadence is 6 MONTHS, list is 4-7 entries (standard-of-care baseline gaps for age/sex). UP TO 10 if symptoms are present that warrant workup. retest_at: '6 months'.
 
-   CONDITION-SPECIFIC TESTS (universal — layer on top of standard panels, not replace):
-     IBD (UC/Crohn's): Fecal Calprotectin, Celiac Serology, Iron Panel, Vit D + B12 + Folate workups
-     Hashimoto's: TSH+Free T3+Free T4, TPO Ab + Tg Ab if not done
-     Graves: TSH+Free T3+Free T4 + TSI Ab
-     T2D/prediabetes: A1c, Fasting Insulin + HOMA-IR, Lipid Panel, UACR, eGFR
-     PCOS: Total+Free T, DHEA-S, LH:FSH, SHBG, Fasting Insulin + HOMA-IR
-     Hypertension: BMP/CMP, UACR, Lipid Panel, A1c
-     CKD: Cystatin C+eGFR, UACR, BMP, PTH, Vit D, Iron Panel
-     CHF/CAD: Lipid + ApoB, hs-CRP, NT-proBNP if HF, A1c
-     Lupus/RA/SLE: ESR+hs-CRP, ANA reflex (only if ANA+), CBC, CMP, UACR
-     Osteoporosis: Calcium, Vit D, PTH, DEXA if 50+ or long-term steroids
-     Mood disorders: TSH, Vit D, B12+MMA, hs-CRP
-     Chronic fatigue: CBC, Ferritin, B12+MMA, Vit D, TSH, A1c, AM cortisol if HPA signs
+   CONDITION-SPECIFIC TESTS — if the user has a diagnosed condition that requires a workup beyond the standard panels, add the relevant condition-specific tests. The user message lists the panels triggered by THIS patient's diagnosed conditions under "CONDITION-SPECIFIC TESTS"; layer those on top of the standard panels, do not replace.
 
    CONSOLIDATE INTO STANDARD PANELS — this is critical. Doctors order panels, not individual markers. Never list ALT, AST, bilirubin, glucose as four separate entries — they are ALL part of the CMP. Never list TG, LDL, total cholesterol, HDL as four entries — they are ALL the Lipid Panel. The retest list should reflect what the doctor will actually order.
    STANDARD PANEL GROUPINGS (use exactly these names; combine markers into ONE entry per panel):
@@ -666,7 +654,7 @@ ${synthesis.specialtyCount >= 2 ? renderSynthesisForPrompt(synthesis) + '\n' : '
 ${labPatternsForPrompt}
 ${isOptimizationMode ? `OPTIMIZATION CONTEXT: Patient labs are mostly healthy. Frame around longevity optimization, not disease treatment. Phase names: "Build Foundation (Months 1-2)", "Optimize (Months 3-4)", "Sustain & Track (Months 5-6)". Retest cadence is 6 months (retest_at: "6 months"). Apply the standard-of-care baseline rule + triage rule + exclusions defined in the system prompt — no relaxation, no longevity wishlists. Cap retest_timeline at 5 entries.` : ''}
 DIAGNOSED CONDITIONS (GROUND TRUTH — never substitute these with related conditions; never call UC 'Crohn's' or vice versa; never infer a different diagnosis from medications): ${condStr}
-MEDICATIONS: ${medsStr}
+${conditionTestPanelsFor(detectedConditionKeys)}MEDICATIONS: ${medsStr}
 CURRENT SUPPLEMENTS (already taking — do NOT re-recommend; account for lab interactions and avoid stacking duplicates): ${suppsStr}
 SYMPTOMS (for context only — do NOT supplement based on symptoms alone): ${sympStr}
 LIFESTYLE_CONTEXT (drives meals + workout realism — see hard rule 11 below): ${lifestyleStr}
