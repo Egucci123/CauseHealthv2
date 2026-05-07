@@ -3,6 +3,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useQueryClient } from '@tanstack/react-query';
+import { supabase } from '../../lib/supabase';
 import { AppShell } from '../../components/layout/AppShell';
 import { Button } from '../../components/ui/Button';
 import { TabNav } from '../../components/ui/TabNav';
@@ -608,11 +610,48 @@ const TakeTab = ({ plan }: { plan: any }) => {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export const WellnessPlanPage = () => {
   const { profile, user } = useAuthStore();
+  const qc = useQueryClient();
   const { data: plan} = useWellnessPlan();
   const { generate, generating } = useGenerateWellnessPlan();
   const { data: latestDraw } = useLatestLabDraw();
   const { data: latestValues } = useLatestLabValues();
   const [tab, setTab] = useState<TabKey>('today');
+
+  // ── Force-fresh on mount + realtime so the plan appears the instant it's
+  // ready, never requires a manual refresh. Three-layer safety:
+  //   1. Invalidate the wellness-plan + activePlan queries on mount → fetch fresh.
+  //   2. Realtime subscription on wellness_plans → flips the moment a row writes.
+  //   3. Lightweight 3s polling for 90s after mount as a backstop in case
+  //      realtime is throttled / dropped by the browser.
+  useEffect(() => {
+    if (!user?.id) return;
+    qc.invalidateQueries({ queryKey: ['wellness-plan', user.id] });
+    qc.invalidateQueries({ queryKey: ['activePlan', user.id] });
+
+    const channelId = `wellness-plan-${user.id}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+    const channel = supabase
+      .channel(channelId)
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'wellness_plans', filter: `user_id=eq.${user.id}` },
+        () => {
+          qc.invalidateQueries({ queryKey: ['wellness-plan', user.id] });
+          qc.invalidateQueries({ queryKey: ['activePlan', user.id] });
+        }
+      )
+      .subscribe();
+
+    // 3s polling backstop, capped at 90s after mount.
+    const startedAt = Date.now();
+    const interval = setInterval(() => {
+      if (Date.now() - startedAt > 90_000) { clearInterval(interval); return; }
+      qc.invalidateQueries({ queryKey: ['wellness-plan', user.id] });
+    }, 3000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(interval);
+    };
+  }, [user?.id, qc]);
 
   const forecasts = (latestValues && latestValues.length > 0) ? buildForecasts(latestValues as any) : [];
 

@@ -1,5 +1,7 @@
 // src/pages/doctorprep/DoctorPrep.tsx
-import { useState, Component, type ReactNode } from 'react';
+import { useState, useEffect, Component, type ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { supabase } from '../../lib/supabase';
 import { AppShell } from '../../components/layout/AppShell';
 import { Button } from '../../components/ui/Button';
 import { ClinicalSummary } from '../../components/doctorprep/ClinicalSummary';
@@ -29,12 +31,36 @@ const TABS = [
 ];
 
 export const DoctorPrep = () => {
-  const { profile } = useAuthStore();
+  const { profile, user } = useAuthStore();
+  const qc = useQueryClient();
   const [activeTab, setActiveTab] = useState<'visit' | 'summary' | 'tests' | 'medications'>('visit');
   const { data: doc} = useLatestDoctorPrep();
   const { generate, generating } = useGenerateDoctorPrep();
   const { data: latestDraw } = useLatestLabDraw();
   const { data: latestValues } = useLatestLabValues();
+
+  // Force-fresh on mount + realtime so the doctor prep appears the instant
+  // generation completes — no manual refresh required. Same pattern as
+  // WellnessPlanPage: invalidate-on-mount + realtime subscription + 90s
+  // polling backstop.
+  useEffect(() => {
+    if (!user?.id) return;
+    qc.invalidateQueries({ queryKey: ['doctor-prep', user.id] });
+    const channelId = `doctor-prep-${user.id}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+    const channel = supabase
+      .channel(channelId)
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'doctor_prep_documents', filter: `user_id=eq.${user.id}` },
+        () => { qc.invalidateQueries({ queryKey: ['doctor-prep', user.id] }); }
+      )
+      .subscribe();
+    const startedAt = Date.now();
+    const interval = setInterval(() => {
+      if (Date.now() - startedAt > 90_000) { clearInterval(interval); return; }
+      qc.invalidateQueries({ queryKey: ['doctor-prep', user.id] });
+    }, 3000);
+    return () => { supabase.removeChannel(channel); clearInterval(interval); };
+  }, [user?.id, qc]);
 
   const ageNum = profile?.dateOfBirth
     ? Math.floor((Date.now() - new Date(profile.dateOfBirth).getTime()) / 31_557_600_000)
