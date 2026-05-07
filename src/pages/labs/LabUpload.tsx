@@ -120,12 +120,32 @@ export const LabUpload = () => {
     confirmAndAnalyze(values, overrides, user.id);
   };
 
+  // Pre-flight credit gate. Render the paywall card immediately on page
+  // mount if the user can't upload — don't let them go through the motions
+  // of picking a file before discovering they're paywalled. Mirrors the UX
+  // of Wellness Plan / Doctor Prep, which gate at the page level via
+  // PaywallGate. Comp users (gifted access) skip this check.
+  const profile = useAuthStore(s => s.profile);
+  const isComp = profile?.subscriptionTier === 'comp'
+    && (profile?.subscriptionStatus === 'active' || profile?.subscriptionStatus === 'trialing');
+  const credits = profile?.uploadCredits ?? 0;
+  const hasUnlocked = !!profile?.unlockPurchasedAt || profile?.subscriptionTier === 'pro';
+  // Only gate while the upload flow is at rest — once an upload is in
+  // progress / reviewing / completing, never paywall mid-flight.
+  const atRest = phase === 'idle';
+  const needsPayment = !isComp && credits <= 0 && atRest;
+  const preFlightTier: 'unlock' | 'upload_pack' = hasUnlocked ? 'upload_pack' : 'unlock';
+
   return (
     <AppShell pageTitle="Upload Lab Results">
       <SectionHeader title="Upload Lab Report" description="Upload your bloodwork PDF to get root cause analysis, optimal range interpretation, and personalized recommendations." />
 
       <div className="max-w-2xl">
-        {phase === 'idle' && (
+        {needsPayment && (
+          <UploadPaywallCard tier={preFlightTier} onCancel={() => navigate('/dashboard')} />
+        )}
+
+        {!needsPayment && phase === 'idle' && (
           <div className="space-y-8">
             <DropZone onFilesSelect={handleUpload} />
             <div className="text-center">
