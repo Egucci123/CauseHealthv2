@@ -1,13 +1,44 @@
 // supabase/functions/extract-labs/index.ts
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!;
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const corsHeaders = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type' };
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
+    // ── Server-side credit gate ──
+    // The client also gates on profile.uploadCredits, but client state can
+    // be stale (e.g., consume RPC silently failed, optimistic +1 fired
+    // erroneously, profile didn't refresh). Without this server check, a
+    // user with 0 credits could still trigger an Anthropic call and burn
+    // our money. Authoritative source-of-truth = the profiles table.
+    const authHeader = req.headers.get('Authorization') ?? '';
+    const jwt = authHeader.replace(/^Bearer\s+/i, '');
+    if (!jwt) {
+      return new Response(JSON.stringify({ error: 'Missing auth token' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const { data: userRes, error: userErr } = await admin.auth.getUser(jwt);
+    if (userErr || !userRes?.user?.id) {
+      return new Response(JSON.stringify({ error: 'Invalid auth token' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    const userId = userRes.user.id;
+    const { data: prof, error: profErr } = await admin.from('profiles').select('upload_credits').eq('id', userId).single();
+    if (profErr) {
+      console.warn('[extract-labs] profile lookup failed:', profErr.message);
+      return new Response(JSON.stringify({ error: 'Could not verify credits' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    const credits = (prof as any)?.upload_credits ?? 0;
+    if (credits <= 0) {
+      console.warn('[extract-labs] credit gate blocked user', userId, 'credits=', credits);
+      return new Response(JSON.stringify({ error: 'No upload credits remaining', code: 'NO_CREDITS' }), { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     const body = await req.json();
     const { pdfText, pdfBase64, imageBase64, imageMimeType, drawDate } = body;
 

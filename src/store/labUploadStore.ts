@@ -318,7 +318,12 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
               if (invokeErr) {
                 const ctx = (invokeErr as any).context;
                 let detail = invokeErr.message;
-                try { if (ctx instanceof Response) { const t = await ctx.json(); detail = t?.error || t?.detail || JSON.stringify(t); } } catch {}
+                let code: string | null = null;
+                try { if (ctx instanceof Response) { const t = await ctx.json(); detail = t?.error || t?.detail || JSON.stringify(t); code = t?.code ?? null; } } catch {}
+                // Server-side credit gate: short-circuit to paywall via main catch.
+                if (code === 'NO_CREDITS' || /no upload credits/i.test(detail)) {
+                  throw new Error('NO_CREDITS');
+                }
                 lastError = detail;
                 continue;
               }
@@ -364,7 +369,11 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
               if (invokeErr) {
                 const ctx = (invokeErr as any).context;
                 let detail = invokeErr.message;
-                try { if (ctx instanceof Response) { const t = await ctx.json(); detail = t?.error || t?.detail || JSON.stringify(t); } } catch {}
+                let code: string | null = null;
+                try { if (ctx instanceof Response) { const t = await ctx.json(); detail = t?.error || t?.detail || JSON.stringify(t); code = t?.code ?? null; } } catch {}
+                if (code === 'NO_CREDITS' || /no upload credits/i.test(detail)) {
+                  throw new Error('NO_CREDITS');
+                }
                 lastError = detail;
                 continue;
               }
@@ -410,7 +419,11 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
           stopProgress();
           if (textErr) {
             let detail = textErr.message;
-            try { const ctx = (textErr as any).context; if (ctx instanceof Response) { const t = await ctx.json(); detail = t?.error || t?.detail || JSON.stringify(t); } } catch {}
+            let code: string | null = null;
+            try { const ctx = (textErr as any).context; if (ctx instanceof Response) { const t = await ctx.json(); detail = t?.error || t?.detail || JSON.stringify(t); code = t?.code ?? null; } } catch {}
+            if (code === 'NO_CREDITS' || /no upload credits/i.test(detail)) {
+              throw new Error('NO_CREDITS');
+            }
             throw new Error(`Extraction failed: ${detail}`);
           }
           if (Array.isArray((textData as any)?.values)) allValues.push(...(textData as any).values);
@@ -505,11 +518,31 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
       } catch (err: any) {
         stopProgress();
         const drawId = get().drawId;
+        const msg = err?.message ?? String(err);
         logEvent('upload_failed', {
-          message: err?.message?.slice(0, 500) || String(err).slice(0, 500),
+          message: msg.slice(0, 500),
           stack: err?.stack?.slice(0, 1000) ?? null,
           had_draw: !!drawId,
         });
+        // Server-side credit gate fired (extract-labs returned 402 NO_CREDITS).
+        // This means the client thought the user had credits but the DB said 0.
+        // Refresh the client's profile from DB and surface the paywall instead
+        // of a generic extraction-error message.
+        if (msg.includes('NO_CREDITS') || msg.includes('No upload credits')) {
+          try { await useAuthStore.getState().fetchProfile(); } catch {}
+          const profile = useAuthStore.getState().profile;
+          const hasUnlocked = !!profile?.unlockPurchasedAt
+            || profile?.subscriptionTier === 'pro'
+            || profile?.subscriptionTier === 'comp';
+          set({
+            phase: 'needs_payment',
+            isRunning: false,
+            paymentTier: hasUnlocked ? 'upload_pack' : 'unlock',
+            errorMessage: null,
+            statusMessage: '',
+          });
+          return;
+        }
         // DO NOT delete the draw on extraction failure — the user's PDFs are
         // already in storage and the lab_draws row has the right user_id +
         // raw_pdf_url. They can switch to manual entry, retry extraction, or
@@ -518,10 +551,10 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
           set({
             phase: 'manual', drawId, extraction: null, isRunning: false,
             errorMessage: null,
-            statusMessage: `Extraction hit an error: ${String(err).slice(0, 120)}. Your files are saved — enter values manually below or refresh to retry.`,
+            statusMessage: `Extraction hit an error: ${msg.slice(0, 120)}. Your files are saved — enter values manually below or refresh to retry.`,
           });
         } else {
-          set({ phase: 'error', errorMessage: String(err), isRunning: false });
+          set({ phase: 'error', errorMessage: msg, isRunning: false });
         }
       }
     })();
