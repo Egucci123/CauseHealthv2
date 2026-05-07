@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AppShell } from '../../components/layout/AppShell';
 import { Button } from '../../components/ui/Button';
+import { TabNav } from '../../components/ui/TabNav';
 import { FolderSection } from '../../components/ui/FolderSection';
 import { LifestyleInterventions } from '../../components/wellness/LifestyleInterventions';
 import { ActionPlan } from '../../components/wellness/ActionPlan';
@@ -880,20 +881,12 @@ export const WellnessPlanPage = () => {
           )}
 
           {/* Tab nav */}
-          <div className="flex gap-1 bg-clinical-cream rounded-[10px] p-1 overflow-x-auto">
-            {TABS.map(t => (
-              <button
-                key={t.key}
-                onClick={() => setTab(t.key)}
-                className={`flex-1 min-w-[80px] flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-[8px] transition-all ${
-                  tab === t.key ? 'bg-clinical-white shadow-card' : 'hover:bg-clinical-white/50'
-                }`}
-              >
-                <span className={`material-symbols-outlined text-[18px] ${tab === t.key ? 'text-primary-container' : 'text-clinical-stone'}`}>{t.icon}</span>
-                <span className={`text-precision text-[0.7rem] font-bold tracking-wide ${tab === t.key ? 'text-clinical-charcoal' : 'text-clinical-stone'}`}>{t.label}</span>
-              </button>
-            ))}
-          </div>
+          <TabNav
+            tabs={TABS.map(t => ({ id: t.key, label: t.label, icon: t.icon }))}
+            active={tab}
+            onChange={(id) => setTab(id as TabKey)}
+            variant="full"
+          />
 
           {/* Tab body */}
           <AnimatePresence mode="wait">

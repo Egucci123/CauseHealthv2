@@ -7,6 +7,7 @@ import { TestsToRequest } from '../../components/doctorprep/TestsToRequest';
 import { PossibleConditionsCard } from '../../components/doctorprep/PossibleConditionsCard';
 import { VisitCardStacks } from '../../components/doctorprep/VisitCardStacks';
 import { MedicationsTab } from '../../components/doctorprep/MedicationsTab';
+import { TabNav } from '../../components/ui/TabNav';
 import { isHealthyMode as computeIsHealthyMode } from '../../lib/healthMode';
 import { useLatestDoctorPrep, useGenerateDoctorPrep } from '../../hooks/useDoctorPrep';
 import { useLatestLabDraw, useLatestLabValues } from '../../hooks/useLabData';
@@ -167,20 +168,7 @@ export const DoctorPrep = () => {
       ) : (
         <div className="space-y-5">
           {/* Tab nav — same segmented-control style as Wellness Plan + Lab Detail */}
-          <div className="flex gap-1 bg-clinical-cream rounded-[10px] p-1 overflow-x-auto">
-            {TABS.map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`flex-1 min-w-[110px] flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-[8px] transition-all ${
-                  activeTab === tab.id ? 'bg-clinical-white shadow-card' : 'hover:bg-clinical-white/50'
-                }`}
-              >
-                <span className={`material-symbols-outlined text-[16px] ${activeTab === tab.id ? 'text-primary-container' : 'text-clinical-stone'}`}>{tab.icon}</span>
-                <span className={`text-precision text-[0.68rem] font-bold tracking-wider ${activeTab === tab.id ? 'text-clinical-charcoal' : 'text-clinical-stone'}`}>{tab.label}</span>
-              </button>
-            ))}
-          </div>
+          <TabNav tabs={TABS} active={activeTab} onChange={(id) => setActiveTab(id as any)} variant="full" />
 
           {activeTab === 'visit' && (
             <>

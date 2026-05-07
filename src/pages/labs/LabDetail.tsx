@@ -5,6 +5,7 @@ import { format } from 'date-fns';
 import { AppShell } from '../../components/layout/AppShell';
 import { SectionLabel } from '../../components/ui/SectionLabel';
 import { Button } from '../../components/ui/Button';
+import { TabNav } from '../../components/ui/TabNav';
 import { LabMarkerCard } from '../../components/labs/LabMarkerCard';
 import { CriticalBanner } from '../../components/labs/CriticalBanner';
 import { TrajectoryStrip } from '../../components/labs/TrajectoryStrip';
@@ -570,22 +571,17 @@ export const LabDetail = () => {
         </button>
       )}
 
-      {/* Tab nav — same style as Wellness Plan */}
-      <div className="flex gap-1 bg-clinical-cream rounded-[10px] p-1 overflow-x-auto">
-        {[{ id: 'all', label: `All (${values.length})` }, { id: 'urgent', label: `Out of Range (${urgentCount})` }, { id: 'monitor', label: `Watch (${monitorCount})` }].map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id as any)}
-            className={`flex-1 min-w-[90px] py-2.5 px-3 rounded-[8px] transition-all ${
-              activeTab === tab.id ? 'bg-clinical-white shadow-card' : 'hover:bg-clinical-white/50'
-            }`}
-          >
-            <span className={`text-precision text-[0.7rem] font-bold tracking-wider ${activeTab === tab.id ? 'text-clinical-charcoal' : 'text-clinical-stone'}`}>
-              {tab.label}
-            </span>
-          </button>
-        ))}
-      </div>
+      {/* Tab nav — uses shared TabNav for consistent affordance + mobile fit. */}
+      <TabNav
+        tabs={[
+          { id: 'all', label: `All (${values.length})` },
+          { id: 'urgent', label: `Out of Range (${urgentCount})` },
+          { id: 'monitor', label: `Watch (${monitorCount})` },
+        ]}
+        active={activeTab}
+        onChange={(id) => setActiveTab(id as any)}
+        variant="compact"
+      />
 
       {activeTab === 'all' ? (
         <div className="space-y-8">
