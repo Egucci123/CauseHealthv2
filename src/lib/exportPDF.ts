@@ -284,8 +284,25 @@ export function exportPatientVisitGuidePDF(doc: DoctorPrepDocument, userName: st
         pdf.setFontSize(8.5); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(212, 165, 116);
         pdf.text('Tests to confirm:', margin + 3, y); y += 4;
         pdf.setFont('helvetica', 'normal'); pdf.setTextColor(40, 40, 40);
-        const tLines = pdf.splitTextToSize(stripUnsupportedChars('• ' + c.confirmatory_tests.join('\n• ')), contentW - 6);
-        pdf.text(tLines, margin + 3, y); y += tLines.length * 3.8 + 2;
+        // confirmatory_tests can be string[] (legacy) or Array<{test, why}>
+        // (current). Normalize to "Test name — rationale" strings before
+        // joining. Without this, objects string-coerce to "[object Object]".
+        const testLines: string[] = c.confirmatory_tests
+          .map((t: any) => {
+            if (typeof t === 'string') return t;
+            if (t && typeof t === 'object') {
+              const name = String(t.test ?? '').trim();
+              const why = String(t.why ?? '').trim();
+              if (!name) return '';
+              return why ? `${name} — ${why}` : name;
+            }
+            return '';
+          })
+          .filter((s: string) => s.length > 0);
+        if (testLines.length > 0) {
+          const tLines = pdf.splitTextToSize(stripUnsupportedChars('• ' + testLines.join('\n• ')), contentW - 6);
+          pdf.text(tLines, margin + 3, y); y += tLines.length * 3.8 + 2;
+        }
       }
       if (c.what_to_ask_doctor) {
         pdf.setFontSize(8.5); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(212, 165, 116);
