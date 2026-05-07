@@ -78,6 +78,23 @@ export const AcceptTermsScreen = ({ onAccepted }: Props) => {
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 sm:px-8 py-6" style={{ minHeight: '300px' }}>
           <div className="space-y-10 text-body text-clinical-charcoal text-sm leading-relaxed">
 
+            {/* HIPAA NON-COVERAGE NOTICE — prominent callout at the top of
+                the consent flow so users can't miss it while scrolling. */}
+            <section className="bg-[#E8922A]/10 border-2 border-[#E8922A]/40 rounded-[10px] p-5">
+              <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-[#9A6020] mb-2">
+                Important — read this first
+              </p>
+              <h3 className="text-authority text-base text-clinical-charcoal font-bold mb-2">
+                CauseHealth is NOT a HIPAA-covered service
+              </h3>
+              <p className="text-body text-clinical-charcoal text-sm leading-relaxed">
+                HIPAA regulates healthcare providers, health plans, and their business associates. <strong>CauseHealth is a consumer wellness service that you voluntarily upload your own data to — it is not any of those.</strong> HIPAA does NOT govern your data here.
+              </p>
+              <p className="text-body text-clinical-charcoal text-sm leading-relaxed mt-2">
+                Your data is protected by our Privacy Policy and by the FTC Health Breach Notification Rule, CCPA, GDPR, and the Washington MHMDA — applied universally to every user. If you require HIPAA-covered handling, keep that information with your healthcare provider's HIPAA-covered systems instead.
+              </p>
+            </section>
+
             {/* TERMS OF SERVICE — condensed */}
             <section>
               <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-primary-container mb-2">Document 1 of 3</p>
@@ -138,14 +155,6 @@ export const AcceptTermsScreen = ({ onAccepted }: Props) => {
             <section>
               <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-primary-container mb-2">Document 2 of 3</p>
               <h2 className="text-authority text-xl text-clinical-charcoal font-bold mb-4">Privacy Policy</h2>
-
-              <h3 className="text-authority text-base font-semibold mt-4 mb-2">HIPAA does not apply to CauseHealth</h3>
-              <p>
-                <strong>CauseHealth is not a HIPAA covered entity.</strong> HIPAA regulates healthcare providers, health plans, and their business associates — CauseHealth is a consumer health information service that you voluntarily upload your own data to, and is none of those. HIPAA does NOT govern your data here.
-              </p>
-              <p className="mt-2">
-                Your data is instead protected by our Privacy Policy and by: the FTC Health Breach Notification Rule (60-day breach notification), the California Consumer Privacy Act (CCPA), the EU General Data Protection Regulation (GDPR), and the Washington My Health My Data Act (MHMDA) — applied universally, not just to WA users. If you require HIPAA-covered handling, keep that information in your healthcare provider's systems instead.
-              </p>
 
               <h3 className="text-authority text-base font-semibold mt-4 mb-2">What we collect</h3>
               <ul className="list-disc pl-5 space-y-1 mt-1">
