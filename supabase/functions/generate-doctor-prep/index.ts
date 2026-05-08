@@ -158,34 +158,49 @@ If a PCP could reasonably look at a test and say "I won't order that" or "your i
    If you can't cite a trigger, drop the test. Differential thinking: before adding a test, ask "if this comes back abnormal, does management change?" If no, drop it.
 
    STANDARD-OF-CARE BASELINE BY AGE/SEX (trigger (d) — recommend ONLY IF the test is NOT already present in the lab values list shown to you. Check the LAB VALUES list before suggesting):
-   ALL ADULTS (18+):
-     - Lipid panel (total cholesterol, LDL, HDL, triglycerides) — every 4–6 years per AHA, more often if elevated
-     - HbA1c — every 3 years from age 35 (ADA), or any age with risk factors (BMI >25, family hx, IR signs)
-     - TSH — at least once in adulthood; recheck every 5y or when symptoms change. ESPECIALLY for women.
-     - Vitamin D (25-OH) — at least once; deficiency is endemic. Repeat if <30.
-     - Ferritin — especially menstruating women, vegetarians, endurance athletes, GI symptoms.
+
+   The framing is comprehensive baseline screen — PCPs routinely order these when a patient asks "what's a thorough adult panel?" Goal: a single set of bloodwork that maps as many underlying body systems as possible (metabolic, cardiovascular, thyroid, hormonal, nutritional, liver, kidney, inflammation) so the doctor and patient can find the cause of symptoms without bouncing between specialists. Every test below is insurance-covered with a documented finding, ICD-10-justifiable, and routinely orderable in primary care.
+
+   ALL ADULTS (18+) — comprehensive baseline:
+     METABOLIC + CV CORE
+     - CMP (Comprehensive Metabolic Panel) — kidneys, liver, electrolytes, glucose. Universal.
+     - CBC with differential — anemia, infection, immune signal. Universal.
+     - Lipid panel (total cholesterol, LDL, HDL, triglycerides) — every 4–6 years per AHA, more often if elevated.
+     - ApoB — modern primary CV risk marker (preferred over LDL alone per recent AHA/ESC guidance). Insurance-covered with hyperlipidemia or any lipid abnormality.
+     - Lp(a) — ONCE in a lifetime. Genetic CV risk, doesn't change. Most adults have never had it. Mainstream now.
+     - HbA1c — at least once in adulthood; every 3y from 35 (ADA), or any age with risk factors (BMI >25, family hx, IR signs).
      - hs-CRP — once in adulthood for cardiovascular risk stratification (AHA).
+     - Fasting insulin — if any insulin-resistance signs (TG/HDL ratio >3, waist circumference, A1c >5.4, family hx, weight-loss resistance).
+
+     THYROID
+     - TSH — at least once in adulthood; recheck every 5y or when symptoms change. ESPECIALLY for women.
+     - Free T3 + Free T4 — when TSH is borderline (>2.5 with sx, <1.0 with sx) OR any thyroid symptoms (fatigue, weight changes, temperature intolerance).
+
+     NUTRIENTS + IRON
+     - Vitamin D (25-OH) — at least once; deficiency is endemic. Repeat if <30.
      - Vitamin B12 — once in adulthood; mandatory if vegetarian, on metformin, on PPI, or >50.
-   AGE 35+ (add):
-     - ApoB — modern primary cardiovascular risk marker (preferred over LDL alone per recent AHA/ESC guidance).
-     - Lp(a) — ONCE in a lifetime. Genetic CV risk, doesn't change. Most adults have never had it.
-     - Fasting insulin — if any insulin-resistance signs (waist circumference, A1c >5.4, family hx).
-     - Free T3 + Free T4 — if TSH borderline or thyroid symptoms.
-   AGE 45+ (add):
+     - Folate (serum) — usually paired with B12 for the full methylation picture.
+     - Ferritin — especially menstruating women, vegetarians, endurance athletes, GI symptoms.
+     - Magnesium (serum) — commonly low, broadly insurance-covered. Order when fatigue, muscle cramps, sleep complaints, palpitations, or on a Mg-depleting med (PPI, diuretic).
+     - Uric acid — gout/metabolic syndrome marker. PCP-routine.
+
+     LIVER WORKUP (when ALT/AST elevated or NAFLD suspicion)
+     - GGT — adds specificity to ALT elevation (rules in cholestatic vs hepatocellular). Universally insurance-covered with documented liver enzyme abnormality.
+
+   AGE 45+ (add to the above):
      - Coronary artery calcium score (CAC) — once, if any ASCVD risk factors. Outperforms LDL for risk.
      - PSA (men) — discuss with doctor; not universal but standard to consider.
+
    AGE 50+ (add):
      - DEXA scan referral (women) — bone density baseline at menopause.
      - Colorectal screening discussion (FIT test or colonoscopy referral).
+
    WOMEN-SPECIFIC at any age:
      - Iron panel (serum iron, TIBC, ferritin, transferrin sat) if menstruating + ANY fatigue/hair issues.
      - HPV screening / pelvic exam discussion (refer, don't test in this context).
-   MEN-SPECIFIC 35+ (or any age WITH a triggering symptom):
-     - Total testosterone + SHBG + Estradiol — fire ONLY when one of these is true:
-         (i) age 35+ AND missing from labs (age-based baseline gap), OR
-         (ii) any age WITH a triggering symptom: low libido 4+/10, ED, fatigue 4+/10, poor recovery 4+/10, low mood 4+/10, gym performance decline, gynecomastia, OR
-         (iii) any age WITH a triggering lab pattern: Hgb >17 (polycythemia → TRT-monitoring relevance), low Vit D + low SHBG combo, or already on TRT/clomid/HCG.
-       DO NOT recommend universally for asymptomatic <35yo males — PCPs will reject it as "I'd only order this with symptoms." Frame justification by citing the specific trigger (a/b/c/d), never as "baseline for trend tracking" — that's the kind of soft justification PCPs reject.
+
+   MEN-SPECIFIC at any age:
+     - Total testosterone + SHBG + Estradiol — comprehensive male hormonal baseline. Insurance-covered with documented fatigue, low libido, weight changes, mood, OR simply as a baseline workup when a man says "I want a full health check." This is the modern PCP standard for any adult male asking for thorough labs — it's NOT a longevity wishlist, it's a baseline that catches hypogonadism (epidemic in modern men), TRT need, and conversion problems early. Frame the ICD-10 with whatever symptom is closest (fatigue R53.83, low libido N52.9, malaise R53.81). PCPs order this routinely when asked.
 
    When trigger (d) fires, frame the clinical_justification as: "Standard baseline for [age]yo [sex] — not present in this draw. Common gap that USPSTF / AHA / ADA recommends for routine evaluation." Tone: matter-of-fact, not alarmist.
 

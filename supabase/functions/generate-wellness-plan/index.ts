@@ -571,14 +571,20 @@ HARD RULES — FOLLOW EXACTLY:
    If none of (a)-(e) applies, DO NOT include the test. No "while we're at it" longevity tests. No "good to confirm" tests with no specific trigger.
 
    STANDARD-OF-CARE BASELINE BY AGE/SEX (trigger (d) — recommend ONLY IF the test is NOT already in the lab values list):
-     ALL adults (18+): lipid panel, HbA1c (every 3yr from 35), TSH at least once, vitamin D at least once, ferritin (esp menstruating women), hs-CRP once for CV risk, B12 once.
-     35+: add ApoB and Lp(a) once-in-lifetime, fasting insulin if any IR signs.
-     45+: add coronary calcium score once.
-     50+: add DEXA (women), colorectal screening discussion.
-     Women any age: iron panel if menstruating + symptoms.
-     Men 35+: total T + SHBG + estradiol baseline (age-driven gap). Men <35: ONLY with triggering symptom (low libido 4+/10, ED, fatigue 4+/10 + at least one supporting sign, gynecomastia) or triggering lab pattern (Hgb >17, low Vit D + low SHBG, on TRT/clomid/HCG). No universal "baseline for trend tracking" — PCPs reject that for asymptomatic young males.
 
-   Tests EXPLICITLY NOT on the standard-of-care baseline (only include via triggers (a)/(b)/(c)/(e), never via (d)): Cortisol, AM Cortisol, DHEA-S, Zinc, Free Testosterone, SHBG, Homocysteine, MMA, Free T3, Free T4, Reverse T3, TPO antibodies, thyroglobulin antibodies, NMR lipid, GI-MAP, comprehensive stool, food sensitivity panels, organic acids, hair tissue mineral analysis, micronutrient panels.
+   The framing is comprehensive baseline screen — what a PCP orders when a patient asks "what's a thorough adult panel?" Goal: cover as many underlying body systems as possible (metabolic, cardiovascular, thyroid, hormonal, nutritional, liver, kidney, inflammation) so we surface the cause of symptoms without referrals to multiple specialists. Every test below is insurance-covered with a documented finding, ICD-10-justifiable, and routinely orderable in primary care.
+
+   ALL ADULTS (18+) — comprehensive baseline:
+     METABOLIC + CV CORE: CMP, CBC w/ diff, Lipid panel, ApoB, Lp(a) (once-in-lifetime), HbA1c, hs-CRP, fasting insulin (with any IR signs).
+     THYROID: TSH; Free T3 + Free T4 if TSH borderline (>2.5 or <1.0 with symptoms).
+     NUTRIENTS: Vitamin D 25-OH, Vitamin B12, Folate, Ferritin, Magnesium (serum), Uric Acid.
+     LIVER (when ALT/AST elevated or NAFLD suspicion): GGT for cholestatic vs hepatocellular pattern.
+   AGE 45+: add coronary calcium score (once, with any ASCVD risk factor); PSA (men, discussion).
+   AGE 50+: add DEXA referral (women); colorectal screening discussion.
+   WOMEN at any age: full Iron panel if menstruating + ANY fatigue/hair issue.
+   MEN at any age: Total T + SHBG + Estradiol — comprehensive male hormonal baseline. PCPs routinely order this when a man asks for thorough labs. NOT a longevity wishlist — it catches hypogonadism (epidemic in modern men), conversion issues, and SHBG abnormalities early. Frame ICD-10 with closest symptom (fatigue R53.83, low libido N52.9, malaise R53.81) or order under "general adult medical exam" Z00.00 if asymptomatic.
+
+   Tests EXPLICITLY NOT on the standard-of-care baseline (only include via triggers (a)/(b)/(c)/(e), never via (d)): AM Cortisol, 24h cortisol, DHEA-S, Zinc, Free Testosterone (without total T already firing), Homocysteine, MMA, Reverse T3, TPO antibodies, Tg antibodies, NMR lipid, GI-MAP, comprehensive stool, food sensitivity panels, organic acids, hair tissue mineral analysis, micronutrient panels.
 
    SYMPTOM → TEST MAPPING (trigger (a) — add the relevant test if missing from draw; ONE focused workup per symptom; never functional-medicine extras):
      Fatigue: CBC, Ferritin, Iron Panel, B12+MMA, Vit D, TSH, A1c; men add T+SHBG (35+ or symptomatic)
