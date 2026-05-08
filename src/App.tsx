@@ -58,6 +58,49 @@ import { AppShell } from './components/layout/AppShell';
 
 // Route guards
 import { ProtectedRoute, PublicOnlyRoute } from './components/auth/ProtectedRoute';
+import { useAuthStore } from './store/authStore';
+import { useNavigate } from 'react-router-dom';
+
+// 404 — uses SPA navigation (no full reload), and the destination depends
+// on whether the user is signed in. A logged-in user with a typo in a URL
+// gets a "back to dashboard" CTA; a public user gets "back home". Plus a
+// "go back" option that walks browser history so a tap lands on the page
+// they actually came from. Never a dead-end.
+const NotFound = () => {
+  const navigate = useNavigate();
+  const userId = useAuthStore(s => s.user?.id);
+  const homeLabel = userId ? 'Back to Dashboard' : 'Back to Home';
+  const homePath = userId ? '/dashboard' : '/';
+  const goBack = () => {
+    if (window.history.length > 1) navigate(-1);
+    else navigate(homePath, { replace: true });
+  };
+  return (
+    <div className="min-h-screen bg-[#131313] flex items-center justify-center p-4">
+      <div className="text-center max-w-sm">
+        <p className="text-authority text-6xl text-white font-bold mb-2">404</p>
+        <p className="text-body text-on-surface-variant mb-1 text-base">Page not found.</p>
+        <p className="text-precision text-[0.65rem] text-on-surface-variant/60 mb-8 break-all">
+          {window.location.pathname}
+        </p>
+        <div className="flex flex-col gap-2 max-w-xs mx-auto">
+          <button
+            onClick={() => navigate(homePath, { replace: true })}
+            className="w-full bg-primary-container hover:bg-[#2D6A4F] text-white text-precision text-[0.68rem] font-bold tracking-widest uppercase py-3 rounded-[8px] transition-colors"
+          >
+            {homeLabel}
+          </button>
+          <button
+            onClick={goBack}
+            className="w-full bg-white/5 border border-white/10 text-on-surface-variant text-precision text-[0.65rem] font-bold tracking-widest uppercase py-2.5 rounded-[8px] hover:bg-white/10 transition-colors"
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // Insurance stub — only remaining stub page
 const PageStub = ({ title }: { title: string }) => (
@@ -134,16 +177,8 @@ function App() {
       {/* Settings */}
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
 
-      {/* 404 */}
-      <Route path="*" element={
-        <div className="min-h-screen bg-[#131313] flex items-center justify-center">
-          <div className="text-center">
-            <p className="text-authority text-6xl text-white font-bold mb-4">404</p>
-            <p className="text-body text-on-surface-variant mb-8">Page not found.</p>
-            <a href="/" className="text-precision text-[0.68rem] text-primary-container font-bold tracking-widest uppercase hover:underline">Return home</a>
-          </div>
-        </div>
-      } />
+      {/* 404 catch-all — see NotFound above. */}
+      <Route path="*" element={<NotFound />} />
     </Routes>
     </>
   );

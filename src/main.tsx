@@ -11,6 +11,7 @@ import { logEvent, setLogUserId } from './lib/clientLog';
 import { supabase } from './lib/supabase';
 import { NewVersionBanner } from './components/layout/NewVersionBanner';
 import { DebugOverlay } from './components/layout/DebugOverlay';
+import { RootErrorBoundary } from './components/RootErrorBoundary';
 import './index.css';
 
 // ── Wire user id into telemetry as soon as auth resolves ──
@@ -107,6 +108,12 @@ const AuthInitializer = ({ children }: { children: React.ReactNode }) => {
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
+    {/* RootErrorBoundary is the outermost wrapper. If anything in the tree
+        throws during render — bad selector, malformed AI response, missing
+        profile field, undefined access in a fresh component — the user
+        sees a friendly screen with Try Again / Go Back / Go Home instead
+        of the white screen of death. Every catch is logged to telemetry. */}
+    <RootErrorBoundary>
     <MotionConfig reducedMotion="user">
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
@@ -120,6 +127,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
     </QueryClientProvider>
     </MotionConfig>
+    </RootErrorBoundary>
   </React.StrictMode>,
 );
 
