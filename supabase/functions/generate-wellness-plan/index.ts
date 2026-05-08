@@ -1856,6 +1856,36 @@ CALIBRATION (applies to ALL arrays): Healthy patient with clean labs → 0-2 ent
     console.log(`[wellness-plan] retest_timeline finalized to ${plan.retest_timeline.length} entries (cap=${classification.retestCap}, mode=${classification.mode})`);
     if (!plan.generated_at) plan.generated_at = new Date().toISOString();
 
+    // ── CATEGORY NORMALIZATION ──────────────────────────────────────────
+    // Before the per-category dedup, normalize each supplement's category
+    // against the canonical registry. The AI sometimes ignores the prompt's
+    // category rule (e.g., tags CoQ10 as liver_metabolic despite explicit
+    // inflammation_cardio instruction). Without this pass, the wrong-category
+    // supplement occupies a slot and forces correct supplements to be dropped
+    // by dedup (statin user gets CoQ10 in liver_metabolic, milk thistle dies).
+    //
+    // We match by the supplement's nutrient name against each registry entry's
+    // alreadyTakingPatterns. First match wins. If nothing matches, leave the
+    // AI's category alone (could be a supplement we don't have in registry).
+    if (Array.isArray(plan.supplement_stack)) {
+      try {
+        const { SUPPLEMENT_REGISTRY } = await import('../_shared/supplementRegistry.ts');
+        for (const supp of plan.supplement_stack) {
+          const name = String(supp?.nutrient ?? '');
+          if (!name) continue;
+          for (const def of SUPPLEMENT_REGISTRY) {
+            if (def.alreadyTakingPatterns.some((re: RegExp) => re.test(name))) {
+              if (supp.category !== def.entry.category) {
+                console.log(`[wellness-plan] category normalization: '${name}' ${supp.category} → ${def.entry.category}`);
+                supp.category = def.entry.category;
+              }
+              break;
+            }
+          }
+        }
+      } catch (e) { console.warn('[wellness-plan] category normalization failed:', e); }
+    }
+
     // Final dedup: ONE supplement per category. The UI groups by category, so
     // duplicates within a category overwhelm the user (statin patient ended
     // up with 7 supplements; user explicitly asked for 1 per category, the
