@@ -239,6 +239,12 @@ export function useGenerateWellnessPlan() {
       },
       body: JSON.stringify({ userId }),
       signal: controller.signal,
+      // keepalive lets the request survive mobile-Safari backgrounding /
+      // screen-lock without being killed by the browser. Without this, a
+      // user clicks Generate, locks their phone, comes back 30s later
+      // and sees 'Generation failed' because the fetch died mid-flight.
+      // Realtime + polling on the page picks up the eventual completion.
+      keepalive: true,
     }).then(async (res) => {
       let data: any;
       try { data = await res.json(); } catch { data = null; }

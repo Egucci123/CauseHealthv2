@@ -120,6 +120,9 @@ export function useGenerateDoctorPrep() {
         'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify({ userId }),
+      // Survive mobile-Safari backgrounding mid-generation. Same pattern
+      // as wellness plan + analyze-labs.
+      keepalive: true,
     }).then(async (res) => {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error ?? 'Generation failed');
