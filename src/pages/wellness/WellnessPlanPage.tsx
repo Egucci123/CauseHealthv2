@@ -710,8 +710,34 @@ export const WellnessPlanPage = () => {
     exportWellnessPlanPDF(plan, `${profile?.firstName ?? ''} ${profile?.lastName ?? ''}`.trim() || 'Patient');
   };
 
+  // Detect regen-cap-reached errors and show a dedicated banner that's
+  // ALWAYS visible regardless of which inner view renders. Without this,
+  // the cap error only showed inside the main plan view (which gets
+  // hidden during the brief 'generating' flash after click), making it
+  // easy to miss.
+  const isCapHit = !!genError && /used all|REGEN_LIMIT|generations for these lab|Upload genuinely new labs/i.test(genError);
+
   return (
     <AppShell pageTitle="Wellness Plan" showDisclaimer>
+      {/* Top-level cap-reached banner. Survives across generating/plan/empty
+          state changes so the user always sees why their click was rejected. */}
+      {isCapHit && (
+        <div className="mb-4 bg-[#E8922A]/15 border border-[#E8922A]/40 rounded-[10px] p-4 flex items-start gap-3">
+          <span className="material-symbols-outlined text-[#E8922A] text-[22px] flex-shrink-0 mt-0.5">block</span>
+          <div className="flex-1">
+            <p className="text-authority text-clinical-charcoal text-sm font-bold mb-1">Regeneration limit reached</p>
+            <p className="text-body text-clinical-stone text-sm leading-snug mb-2">
+              You've used all 2 wellness plan generations for these specific lab values. Upload a new lab draw with genuinely different values to generate a fresh plan, or stick with your current plan.
+            </p>
+            <button
+              onClick={() => setGenError(null)}
+              className="text-precision text-[0.65rem] font-bold tracking-widest uppercase text-[#9A6020] hover:text-clinical-charcoal transition-colors"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
       {/* Plan undefined = loading. Plan null = no plan generated yet. */}
       {plan === undefined ? <WellnessSkeleton />
         : generating ? <GeneratingState />

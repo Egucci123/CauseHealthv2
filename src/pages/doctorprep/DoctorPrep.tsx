@@ -86,9 +86,17 @@ export const DoctorPrep = () => {
   const drawCreatedAt = latestDraw?.createdAt ? new Date(latestDraw.createdAt) : null;
   const hasNewerLabs = doc && docCreatedAt && drawCreatedAt && drawCreatedAt > docCreatedAt;
 
+  const [genError, setGenError] = useState<string | null>(null);
   const handleGenerate = () => {
-    generate().catch(err => console.error('[DoctorPrep] Generation error:', err));
+    setGenError(null);
+    generate().catch(err => {
+      console.error('[DoctorPrep] Generation error:', err);
+      setGenError(err?.message ?? 'Generation failed. Please try again.');
+    });
   };
+  // Cap-reached detection: surface a prominent banner so the user always
+  // sees why their click was rejected (instead of silent re-render).
+  const isCapHit = !!genError && /used all|REGEN_LIMIT|generations for these lab|Upload genuinely new labs/i.test(genError);
 
   const patientName = `${profile?.firstName ?? ''} ${profile?.lastName ?? ''}`.trim() || 'Patient';
   const handleExport = () => {
@@ -102,6 +110,24 @@ export const DoctorPrep = () => {
 
   return (
     <AppShell pageTitle="Clinical Prep" showDisclaimer>
+      {/* Cap-reached banner — top-level so it survives state changes */}
+      {isCapHit && (
+        <div className="mb-4 bg-[#E8922A]/15 border border-[#E8922A]/40 rounded-[10px] p-4 flex items-start gap-3">
+          <span className="material-symbols-outlined text-[#E8922A] text-[22px] flex-shrink-0 mt-0.5">block</span>
+          <div className="flex-1">
+            <p className="text-authority text-clinical-charcoal text-sm font-bold mb-1">Regeneration limit reached</p>
+            <p className="text-body text-clinical-stone text-sm leading-snug mb-2">
+              You've used all 2 doctor prep generations for these specific lab values. Upload a new lab draw with genuinely different values to generate a fresh prep, or stick with your current one.
+            </p>
+            <button
+              onClick={() => setGenError(null)}
+              className="text-precision text-[0.65rem] font-bold tracking-widest uppercase text-[#9A6020] hover:text-clinical-charcoal transition-colors"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
       {/* Dark hero card — matches Wellness Plan + Lab Detail */}
       <div className="bg-[#131313] rounded-[14px] p-6 shadow-card">
         <div className="flex items-start justify-between gap-3 flex-wrap">
