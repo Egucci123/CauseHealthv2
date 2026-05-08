@@ -554,6 +554,26 @@ We do NOT recommend GI-MAP, hair tissue mineral, organic acids, food sensitivity
       analysis.priority_findings.push(...trendFindings);
     }
 
+    // ── COMPLETENESS GATE ─────────────────────────────────────────────
+    // Reject half-written analyses. If salvage produced a partial result
+    // missing core fields, 500 it without bumping analysis_count — user
+    // gets a free retry instead of losing a cap slot.
+    const aMissing: string[] = [];
+    if (!analysis.summary || typeof analysis.summary !== 'string' || analysis.summary.trim().length < 20) aMissing.push('summary');
+    if (!analysis.score_headline || typeof analysis.score_headline !== 'string') aMissing.push('score_headline');
+    if (!Array.isArray(analysis.priority_findings)) aMissing.push('priority_findings');
+    if (aMissing.length > 0) {
+      console.error('[analyze-labs] completeness gate REJECTED — missing:', aMissing);
+      // Roll back processing_status to 'processing' so the UI keeps polling
+      // OR shows a retry button — don't leave it as 'complete' with no result.
+      await supabase.from('lab_draws').update({ processing_status: 'failed' }).eq('id', drawId);
+      return new Response(JSON.stringify({
+        error: `Lab analysis produced incomplete output. Missing: ${aMissing.join(', ')}. This won't count against your retest cap — try again.`,
+        code: 'INCOMPLETE_GENERATION',
+        missing_fields: aMissing,
+      }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     await supabase
       .from('lab_draws')
       .update({

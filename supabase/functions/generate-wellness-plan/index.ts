@@ -2065,6 +2065,29 @@ CALIBRATION (applies to ALL arrays): Healthy patient with clean labs → 0-2 ent
       testQualityCaveatsAi: plan.test_quality_caveats_ai ?? [],
     });
 
+    // ── COMPLETENESS GATE ─────────────────────────────────────────────
+    // Reject half-written plans BEFORE inserting. Salvage path can produce
+    // syntactically-valid JSON that's missing required core fields (e.g.
+    // max_tokens hit before action_plan was generated). Without this gate,
+    // the partial plan writes as 'complete', counts against the user's cap,
+    // and they see a broken UI. Better: 500 the response, no row created,
+    // user retries without losing a regen slot.
+    const missingFields: string[] = [];
+    if (!plan.headline || typeof plan.headline !== 'string' || plan.headline.trim().length < 5) missingFields.push('headline');
+    if (!plan.summary || typeof plan.summary !== 'string' || plan.summary.trim().length < 20) missingFields.push('summary');
+    if (!plan.action_plan?.phase_1 || !plan.action_plan?.phase_2 || !plan.action_plan?.phase_3) missingFields.push('action_plan (3 phases)');
+    if (!Array.isArray(plan.today_actions) || plan.today_actions.length === 0) missingFields.push('today_actions');
+    if (!Array.isArray(plan.retest_timeline)) missingFields.push('retest_timeline');
+    if (!Array.isArray(plan.supplement_stack)) missingFields.push('supplement_stack');
+    if (missingFields.length > 0) {
+      console.error('[wellness-plan] completeness gate REJECTED — missing:', missingFields, 'stop_reason was likely max_tokens or parse-salvage');
+      return new Response(JSON.stringify({
+        error: `Plan generation produced incomplete output. Missing: ${missingFields.join(', ')}. This won't count against your regen cap — try again.`,
+        code: 'INCOMPLETE_GENERATION',
+        missing_fields: missingFields,
+      }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     // Persist the plan. Supabase JS client returns {data, error} rather than
     // throwing — without this check, a save failure would still return a 200
     // with the plan body, and the next refetch would show the user's stale

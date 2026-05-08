@@ -1001,6 +1001,24 @@ reason_to_consider must cite the SPECIFIC patient finding that triggers this ent
     if (!doc.generated_at) doc.generated_at = new Date().toISOString();
     if (!doc.document_date) doc.document_date = new Date().toISOString().split('T')[0];
 
+    // ── COMPLETENESS GATE ─────────────────────────────────────────────
+    // Reject half-written prep BEFORE inserting. Mirrors the wellness plan
+    // gate. If salvage produced a partial doc missing core fields, 500 it
+    // and tell the user to retry without losing a cap slot.
+    const missing: string[] = [];
+    if (!doc.headline || typeof doc.headline !== 'string' || doc.headline.trim().length < 5) missing.push('headline');
+    if (!Array.isArray(doc.tests_to_request)) missing.push('tests_to_request');
+    if (!Array.isArray(doc.executive_summary) && !Array.isArray(doc.tell_doctor)) missing.push('executive_summary or tell_doctor');
+    if (!doc.chief_complaint || typeof doc.chief_complaint !== 'string') missing.push('chief_complaint');
+    if (missing.length > 0) {
+      console.error('[doctor-prep] completeness gate REJECTED — missing:', missing);
+      return new Response(JSON.stringify({
+        error: `Doctor prep generation produced incomplete output. Missing: ${missing.join(', ')}. This won't count against your regen cap — try again.`,
+        code: 'INCOMPLETE_GENERATION',
+        missing_fields: missing,
+      }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     await supabase.from('doctor_prep_documents').insert({
       user_id: userId,
       document_data: doc,
