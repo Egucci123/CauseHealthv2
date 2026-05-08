@@ -576,18 +576,19 @@ HARD RULES — FOLLOW EXACTLY:
      45+: add coronary calcium score once.
      50+: add DEXA (women), colorectal screening discussion.
      Women any age: iron panel if menstruating + symptoms.
-     Men ANY AGE: total T + SHBG + estradiol — once-in-lifetime baseline (standard CauseHealth recommendation, regardless of age or symptoms).
+     Men 35+: total T + SHBG + estradiol baseline (age-driven gap). Men <35: ONLY with triggering symptom (low libido 4+/10, ED, fatigue 4+/10 + at least one supporting sign, gynecomastia) or triggering lab pattern (Hgb >17, low Vit D + low SHBG, on TRT/clomid/HCG). No universal "baseline for trend tracking" — PCPs reject that for asymptomatic young males.
 
    Tests EXPLICITLY NOT on the standard-of-care baseline (only include via triggers (a)/(b)/(c)/(e), never via (d)): Cortisol, AM Cortisol, DHEA-S, Zinc, Free Testosterone, SHBG, Homocysteine, MMA, Free T3, Free T4, Reverse T3, TPO antibodies, thyroglobulin antibodies, NMR lipid, GI-MAP, comprehensive stool, food sensitivity panels, organic acids, hair tissue mineral analysis, micronutrient panels.
 
    SYMPTOM → TEST MAPPING (trigger (a) — add the relevant test if missing from draw; ONE focused workup per symptom; never functional-medicine extras):
-     Fatigue: CBC, Ferritin, Iron Panel, B12+MMA, Vit D, TSH, A1c, AM cortisol if HPA signs; men add T+SHBG
+     Fatigue: CBC, Ferritin, Iron Panel, B12+MMA, Vit D, TSH, A1c; men add T+SHBG (35+ or symptomatic)
      Joint pain: hs-CRP, Vit D, Uric Acid (RF/anti-CCP only if >6wk inflammatory)
-     Can't lose weight: Fasting Insulin+HOMA-IR, A1c, TSH (free T3/T4 if borderline), AM cortisol, T (men)
+     Can't lose weight: Fasting Insulin+HOMA-IR, A1c, TSH (free T3/T4 if borderline); T (men, with low-libido/ED/fatigue cluster)
      Hair loss: Ferritin+Iron Panel, Vit D, TSH+TPO; women add free T+DHEA-S if androgen pattern
      Brain fog: B12+MMA, Vit D, TSH, Ferritin, A1c
-     Low mood/depression: Vit D, B12, TSH, AM cortisol; men add T
-     Sleep issues: Vit D, Ferritin, AM cortisol, A1c, TSH
+     Low mood/depression: Vit D, B12, TSH; men add T (with low-libido/fatigue cluster)
+     Sleep issues: Vit D, Ferritin, A1c, TSH
+     AM cortisol — DO NOT add for plain fatigue/sleep/mood. PCPs reject this routinely. Order ONLY with classic Cushing's stigmata (striae + central obesity + moon face + HTN) OR Addison's stigmata (salt craving + skin hyperpigmentation + orthostatic hypotension + hyponatremia). Stress and bad sleep aren't enough.
      GI (bloating/gas/altered stool): CMP, Albumin, tTG-IgA+Total IgA (celiac)
      Acne: women → T/DHEA-S/Fasting Insulin (PCOS); men → liver + insulin
      Cold/heat intolerance: TSH, free T3, free T4, Ferritin

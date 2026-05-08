@@ -180,20 +180,24 @@ If a PCP could reasonably look at a test and say "I won't order that" or "your i
    WOMEN-SPECIFIC at any age:
      - Iron panel (serum iron, TIBC, ferritin, transferrin sat) if menstruating + ANY fatigue/hair issues.
      - HPV screening / pelvic exam discussion (refer, don't test in this context).
-   MEN-SPECIFIC 35+:
-   MEN-SPECIFIC ANY AGE:
-     - Total testosterone + SHBG + estradiol — once-in-lifetime baseline. Standard CauseHealth recommendation regardless of age or symptoms. Cheap, insurance-typically-covered, and gives the user a baseline to compare future draws against. Frame as "baseline for trend tracking" not "you have low T."
+   MEN-SPECIFIC 35+ (or any age WITH a triggering symptom):
+     - Total testosterone + SHBG + Estradiol — fire ONLY when one of these is true:
+         (i) age 35+ AND missing from labs (age-based baseline gap), OR
+         (ii) any age WITH a triggering symptom: low libido 4+/10, ED, fatigue 4+/10, poor recovery 4+/10, low mood 4+/10, gym performance decline, gynecomastia, OR
+         (iii) any age WITH a triggering lab pattern: Hgb >17 (polycythemia → TRT-monitoring relevance), low Vit D + low SHBG combo, or already on TRT/clomid/HCG.
+       DO NOT recommend universally for asymptomatic <35yo males — PCPs will reject it as "I'd only order this with symptoms." Frame justification by citing the specific trigger (a/b/c/d), never as "baseline for trend tracking" — that's the kind of soft justification PCPs reject.
 
    When trigger (d) fires, frame the clinical_justification as: "Standard baseline for [age]yo [sex] — not present in this draw. Common gap that USPSTF / AHA / ADA recommends for routine evaluation." Tone: matter-of-fact, not alarmist.
 
    SYMPTOM → STANDARD-OF-CARE TEST MAPPING (trigger (a) — ONE focused workup per symptom; never functional-medicine extras):
-     Fatigue: CBC, Ferritin + Iron Panel, B12+MMA, Vit D, TSH, A1c, AM cortisol if HPA signs; men add T+SHBG
+     Fatigue: CBC, Ferritin + Iron Panel, B12+MMA, Vit D, TSH, A1c; men add T+SHBG (if 35+ or symptomatic)
      Joint pain: hs-CRP, Vit D, Uric Acid; ESR+RF+anti-CCP only if persistent inflammatory >6wk
-     Can't lose weight: Fasting Insulin+HOMA-IR, A1c, TSH (free T3/T4 if borderline), AM cortisol, T (men)
+     Can't lose weight: Fasting Insulin+HOMA-IR, A1c, TSH (free T3/T4 if borderline); T (men, with low libido/ED/fatigue cluster)
      Hair loss: Ferritin+Iron Panel, Vit D, TSH+TPO; women add free T+DHEA-S if androgen pattern
      Brain fog: B12+MMA, Vit D, TSH, Ferritin, A1c
-     Low mood: Vit D, B12, TSH, AM cortisol if other stress; men add T
-     Sleep issues: Vit D, Ferritin (RLS), AM cortisol, A1c, TSH
+     Low mood: Vit D, B12, TSH; men add T (with low libido/fatigue cluster)
+     Sleep issues: Vit D, Ferritin (RLS), A1c, TSH
+     AM cortisol — DO NOT order routinely for fatigue/sleep/low mood. PCPs reject this. Order ONLY with classic HPA stigmata: striae + central obesity + moon face + hypertension (Cushing's screen) OR salt craving + skin hyperpigmentation + orthostatic hypotension + hyponatremia (Addison's screen). Plain stress, fatigue, or sleep complaints do NOT meet the bar.
      GI symptoms: CMP, Albumin, tTG-IgA+Total IgA, H. pylori if epigastric pain
      Acne: women → T+Free T+DHEA-S+Fasting Insulin (PCOS); men → liver + insulin (NAFLD-acne)
      Cold/heat intolerance: TSH, free T3, free T4, Ferritin
@@ -219,7 +223,7 @@ If a PCP could reasonably look at a test and say "I won't order that" or "your i
      Female 35–50 + cycle changes/hot flashes: AMH + FSH + Estradiol (perimenopause)
      Vitamin D 30–40: recheck in 3mo; <30 always retest
      Uric Acid >6 (F) or >7 (M) young patient: lifestyle + recheck
-     Calcium >10.0 repeated: PTH + Ionized Calcium (hyperparathyroidism)
+     Calcium >10.5 (or repeatedly 10.0–10.5 with bone/kidney/GI symptoms): PTH + Ionized Calcium (hyperparathyroidism). Do NOT order PTH/Ionized Ca for vitamin D deficiency alone with normal serum calcium — that's an endocrinology referral, not a PCP routine.
      Globulin >3.0: A/G ratio + total protein; investigate if >3.5 with anemia/bone pain
      GI sx + iron def or low albumin: Celiac Panel (tTG-IgA + Total IgA)
      Snoring + daytime fatigue + HTN + IR: sleep questionnaire + sleep study
