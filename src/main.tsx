@@ -33,10 +33,23 @@ const RouteLogger = () => {
   const loc = useLocation();
   React.useEffect(() => {
     logEvent('route_change', { pathname: loc.pathname, search: loc.search });
-    // (Removed: a global queryClient.invalidateQueries() on every route change.
-    // It was over-fetching and causing pages to flash skeleton/empty during
-    // navigations. Per-page invalidation + realtime subscriptions handle the
-    // 'show fresh data after generation' use case more surgically.)
+    // Refetch active data queries on route change. The previous "invalidate
+    // everything" version flashed pages empty; the "do nothing" version left
+    // pages blank until manual refresh. The right balance: refetch only the
+    // queries that are ACTIVE (currently mounted on the destination page) so
+    // they fire a fresh load while keeping their cached data visible during
+    // the refetch (placeholderData: keepPreviousData handles the no-flicker
+    // part). Skips auth/profile queries — those are managed by authStore.
+    queryClient.refetchQueries({
+      type: 'active',
+      predicate: (query) => {
+        const key = query.queryKey?.[0];
+        if (typeof key !== 'string') return false;
+        // Don't touch auth-adjacent queries — authStore handles those.
+        if (key === 'profile' || key === 'auth') return false;
+        return true;
+      },
+    });
     // Snapshot DOM after React has rendered so we capture what the user sees
     const timer = setTimeout(() => {
       try {
