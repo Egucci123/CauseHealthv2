@@ -47,6 +47,27 @@ serve(async (req) => {
         );
       }
       console.log(`[doctor-prep] regen check passed: ${cap.used}/${cap.cap}`);
+
+      // ── IDEMPOTENCY WINDOW: 30-second dedup ────────────────────────────
+      // If a doctor-prep was created for this user in the last 30 seconds,
+      // return it instead of generating a new one. Prevents double-fire
+      // (regen-click + realtime invalidation triggering two parallel runs
+      // that each consume a regen slot).
+      const thirtySecAgo = new Date(Date.now() - 30_000).toISOString();
+      const { data: recentDoc } = await supabase
+        .from('doctor_prep_documents')
+        .select('id, document_data, created_at')
+        .eq('user_id', userId)
+        .gte('created_at', thirtySecAgo)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (recentDoc?.document_data) {
+        console.log(`[doctor-prep] idempotency: returning existing doc from ${recentDoc.created_at} (within 30s window)`);
+        return new Response(JSON.stringify(recentDoc.document_data), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
     const supps = suppsRes.data ?? [];
     const suppsStr = supps.map((s: any) => `${s.name}${s.dose ? ` (${s.dose})` : ''}`).join(', ') || 'None';

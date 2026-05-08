@@ -132,6 +132,29 @@ serve(async (req) => {
       }
 
       console.log(`[wellness-plan] regen check passed: ${totalPlans}/${PER_DATASET_CAP} used for this lab dataset`);
+
+      // ── IDEMPOTENCY WINDOW: 30-second dedup ────────────────────────────
+      // If a plan was created for this user in the last 30 seconds, return
+      // it instead of generating a new one. Prevents the double-fire bug
+      // where regen-click + realtime/polling invalidation triggers two
+      // parallel generations that each consume a regen slot. Also saves
+      // the second AI call cost when the user double-clicks.
+      const thirtySecAgo = new Date(Date.now() - 30_000).toISOString();
+      const { data: recentPlan } = await supabase
+        .from('wellness_plans')
+        .select('id, plan_data, created_at')
+        .eq('user_id', userId)
+        .eq('generation_status', 'complete')
+        .gte('created_at', thirtySecAgo)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (recentPlan?.plan_data) {
+        console.log(`[wellness-plan] idempotency: returning existing plan from ${recentPlan.created_at} (within 30s window)`);
+        return new Response(JSON.stringify(recentPlan.plan_data), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     const profile = profileRes.data; const meds = medsRes.data ?? []; const symptoms = symptomsRes.data ?? [];

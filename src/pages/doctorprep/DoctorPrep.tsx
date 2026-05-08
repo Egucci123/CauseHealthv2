@@ -137,7 +137,7 @@ export const DoctorPrep = () => {
           <div className="flex-1">
             <p className="text-authority text-clinical-charcoal text-sm font-bold mb-1">Generation failed</p>
             <p className="text-body text-clinical-stone text-sm leading-snug mb-2 break-words">
-              {genError.length > 200 ? genError.slice(0, 200) + '…' : genError} Click Generate again to retry — this doesn't count against your regen limit.
+              {genError.length > 200 ? genError.slice(0, 200) + '…' : genError} Click Generate again to retry. If a partial document was saved before the failure, that retry will count against your 2-per-dataset limit — contact support if you need a refund.
             </p>
             <button
               onClick={() => setGenError(null)}
