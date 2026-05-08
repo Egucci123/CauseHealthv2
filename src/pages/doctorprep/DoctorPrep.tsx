@@ -288,7 +288,11 @@ export const DoctorPrep = () => {
           {activeTab === 'summary' && <ClinicalSummary doc={doc} />}
           {activeTab === 'tests' && (
             <div className="space-y-4">
-              <TestsToRequest tests={Array.isArray(doc.tests_to_request) ? doc.tests_to_request : []} advanced={Array.isArray(doc.advanced_screening) ? doc.advanced_screening : []} />
+              <TestsToRequest
+                tests={Array.isArray(doc.tests_to_request) ? doc.tests_to_request : []}
+                advanced={Array.isArray(doc.advanced_screening) ? doc.advanced_screening : []}
+                possibleConditions={Array.isArray(doc.possible_conditions) ? doc.possible_conditions : []}
+              />
               {Array.isArray(doc.possible_conditions) && doc.possible_conditions.length > 0 && (
                 <PossibleConditionsCard conditions={doc.possible_conditions} />
               )}

@@ -117,10 +117,77 @@ function priorityOrder(tests: TestToRequest[]): TestToRequest[] {
   ];
 }
 
-export const TestsToRequest = ({ tests, advanced }: { tests: TestToRequest[]; advanced?: TestToRequest[] }) => {
+// Pull all confirmatory_tests from possible_conditions, normalize, and
+// return only the ones NOT already covered by tests_to_request. Tests are
+// matched by lowercased core name (strip parentheticals, parenthetical
+// extensions, and 'panel'/'screen' suffixes) so 'Liver Ultrasound (NAFLD
+// assessment)' in tests_to_request matches 'Liver Ultrasound' from a
+// suspected_conditions entry.
+function normalizeTestName(s: string): string {
+  return String(s ?? '')
+    .toLowerCase()
+    .replace(/\([^)]*\)/g, '')
+    .replace(/\b(panel|screen|test|workup|study|imaging)\b/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+interface CondConfirmTest {
+  testName: string;
+  why?: string;
+  conditionName: string;
+  conditionConfidence: string;
+}
+
+function gatherConditionTests(
+  conditions: any[] | undefined,
+  alreadyCoveredTests: TestToRequest[],
+): CondConfirmTest[] {
+  if (!Array.isArray(conditions) || conditions.length === 0) return [];
+  // Build set of normalized names already in tests_to_request
+  const coveredKeys = new Set(alreadyCoveredTests.map(t => normalizeTestName(t.test_name)));
+  const seen = new Set<string>();
+  const out: CondConfirmTest[] = [];
+  for (const c of conditions) {
+    const tests = Array.isArray(c?.confirmatory_tests) ? c.confirmatory_tests : [];
+    for (const t of tests) {
+      const testName = typeof t === 'string' ? t : t?.test;
+      const why = typeof t === 'string' ? undefined : t?.why;
+      if (!testName) continue;
+      const key = normalizeTestName(testName);
+      if (!key) continue;
+      if (coveredKeys.has(key)) continue;     // already in PCP Baseline / Conditions
+      if (seen.has(key)) continue;            // dedupe within this folder
+      seen.add(key);
+      out.push({
+        testName,
+        why,
+        conditionName: String(c?.name ?? ''),
+        conditionConfidence: String(c?.confidence ?? 'low').toLowerCase(),
+      });
+    }
+  }
+  return out;
+}
+
+interface TestsToRequestProps {
+  tests: TestToRequest[];
+  advanced?: TestToRequest[];
+  possibleConditions?: any[];
+}
+
+export const TestsToRequest = ({ tests, advanced, possibleConditions }: TestsToRequestProps) => {
   const hasEssential = tests?.length > 0;
   const hasAdvanced = advanced && advanced.length > 0;
-  if (!hasEssential && !hasAdvanced) return null;
+
+  // Confirmatory tests pulled from possible_conditions, minus duplicates
+  // of anything already in tests_to_request. These are the deeper tests
+  // (often imaging or specialist referrals) that condition-investigation
+  // requires beyond the standard baseline.
+  const condTests = gatherConditionTests(possibleConditions, hasEssential ? tests : []);
+  const hasCondTests = condTests.length > 0;
+
+  if (!hasEssential && !hasAdvanced && !hasCondTests) return null;
 
   // Bucket every essential test into one of three folders.
   const pcpBaseline: TestToRequest[] = [];
@@ -199,6 +266,44 @@ export const TestsToRequest = ({ tests, advanced }: { tests: TestToRequest[]; ad
           </FolderSection>
         );
       })}
+
+      {hasCondTests && (
+        <FolderSection
+          icon="biotech"
+          title="Possible Conditions Tests"
+          count={condTests.length}
+          countLabel="tests"
+          explanation="Confirmatory workup for the differential diagnoses listed in 'Possible conditions to investigate' below. These are the tests your doctor needs to rule each pattern in or out — they go BEYOND the standard baseline because each one targets a specific suspected condition. Anything already covered by your PCP baseline above isn't repeated here."
+          accentColor="#C94F4F"
+          defaultOpen
+        >
+          <div className="space-y-3">
+            {condTests.map((t, i) => (
+              <div key={`cond-test-${i}`} className="bg-clinical-white rounded-[10px] shadow-card border-t-[3px] border-[#C94F4F] p-5">
+                <div className="flex items-start justify-between gap-2 flex-wrap mb-2">
+                  <h4 className="text-authority text-base text-clinical-charcoal font-semibold leading-tight break-words flex-1 min-w-0">{t.testName}</h4>
+                  <span className="text-precision text-[0.6rem] text-clinical-stone tracking-wider uppercase bg-clinical-cream px-2 py-0.5 rounded">
+                    Confirms condition
+                  </span>
+                </div>
+                <p className="text-precision text-[0.6rem] text-clinical-stone uppercase tracking-widest mb-1">For investigating</p>
+                <p className="text-body text-clinical-charcoal text-sm font-medium mb-2 break-words">
+                  {t.conditionName}
+                  {t.conditionConfidence && (
+                    <span className="ml-2 text-[0.7rem] text-clinical-stone tracking-wide uppercase">({t.conditionConfidence})</span>
+                  )}
+                </p>
+                {t.why && (
+                  <>
+                    <p className="text-precision text-[0.6rem] text-clinical-stone uppercase tracking-widest mb-1">Why this test</p>
+                    <p className="text-body text-clinical-charcoal text-sm leading-relaxed break-words">{t.why}</p>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        </FolderSection>
+      )}
 
       {hasAdvanced && (
         <FolderSection
