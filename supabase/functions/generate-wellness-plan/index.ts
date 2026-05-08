@@ -671,7 +671,7 @@ ${buildSupplementLabInteractionBlock(suppsStr)}
 ${renderPriorDrawForPrompt(progressSummary)}
 
 ALL LAB VALUES:
-${allLabsStr.slice(0, 4000)}
+${allLabsStr.slice(0, 10000)}
 
 NUTRIENTS NOT TESTED (do NOT recommend supplements for these — mention in disclaimer only. Do NOT add them to retest_timeline as a 'baseline gap'. The strict triage rule still applies in optimization mode — a missing test only earns a retest_timeline entry if the patient has a symptom, medication depletion, or out-of-range marker that the test would investigate. Healthy patients with no triggers get a SHORT retest list focused on actual labs to track, not a longevity wishlist.):
 ${notTestedStr}
