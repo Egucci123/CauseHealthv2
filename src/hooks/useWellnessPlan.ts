@@ -202,13 +202,17 @@ export function useGenerateWellnessPlan() {
 
   const generate = async () => {
     if (!userId) throw new Error('Not authenticated');
-    if (activeGeneration) return activeGeneration;
-    // (Removed: 30s client-side cooldown. Was causing 'click does nothing
-    // until refresh' bug — module-level lastGenerationTime persisted across
-    // navigations so a recent gen blocked the next click for 30s after the
-    // previous completed. Refresh cleared the timer. The 2-per-dataset
-    // server-side cap is the actual protection; the cooldown was redundant
-    // and broke the UX.)
+    // Only short-circuit if a gen is GENUINELY in flight (flag is true).
+    // The previous `if (activeGeneration) return activeGeneration` returned
+    // stale completed promises if .finally somehow didn't clear it (rare,
+    // but observed: 10 min after a successful gen, a click was no-oping
+    // until refresh). Now: only attach to an existing gen if it's still
+    // actively running per generatingFlag. Otherwise start fresh.
+    if (activeGeneration && generatingFlag) return activeGeneration;
+    // Defensive reset — wipe any stale module-level state before starting fresh.
+    activeGeneration = null;
+    // (Removed: 30s client-side cooldown — was redundant with server-side
+    // 2-per-dataset cap and caused 'click does nothing until refresh'.)
 
     generatingFlag = true;
     lastGenerationTime = Date.now();

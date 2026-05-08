@@ -96,11 +96,12 @@ export function useGenerateDoctorPrep() {
 
   const generate = async () => {
     if (!userId) throw new Error('Not authenticated');
-    if (activeGeneration) return activeGeneration;
-    // (Removed: 30s client-side cooldown. Same fix as useWellnessPlan —
-    // the module-level lastGenerationTime persisted across navigations
-    // and blocked re-gens for 30s after the previous completed, requiring
-    // a refresh. Server-side regen cap is the real protection.)
+    // Only short-circuit on genuinely-in-flight generations (mirror
+    // useWellnessPlan fix). Stale completed promises were causing
+    // Regenerate clicks to no-op until page refresh.
+    if (activeGeneration && generatingFlag) return activeGeneration;
+    activeGeneration = null;
+    // (Removed: 30s cooldown — redundant with server-side regen cap.)
 
     generatingFlag = true;
     lastGenerationTime = Date.now();
