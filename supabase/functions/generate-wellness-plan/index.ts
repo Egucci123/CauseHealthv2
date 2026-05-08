@@ -437,19 +437,25 @@ serve(async (req) => {
       : '';
     console.log(`[wellness-plan] lab patterns: ${detectedLabPatterns.map(p => p.key).join(', ') || 'none'}`);
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    // 130s server-side timeout so we abort BEFORE Supabase's 150s edge
+    // function platform timeout fires. Returning our own clear error
+    // beats a generic HTTP 546 from the edge layer.
+    const aiController = new AbortController();
+    const aiTimeout = setTimeout(() => aiController.abort(), 130_000);
+    let response: Response;
+    try {
+      response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
+      signal: aiController.signal,
       headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({
-        // 20K — bumped from 14K because the always-track-all-baselines rule
-        // expanded retest_timeline from ~10 entries to ~16-22, plus all the
-        // open-ended sections (predicted_changes_ai, multi_marker_patterns,
-        // suspected_conditions, etc.) — output was hitting the 14K ceiling
-        // and salvage was kicking in, then the completeness gate rejected
-        // half-written plans. 20K leaves headroom; the completeness gate
-        // still catches anything that genuinely fails. Held under Haiku 4.5's
-        // 64K limit with comfortable margin.
-        model: 'claude-haiku-4-5-20251001', max_tokens: 20000,
+        // 16K — settled here after 20K caused Anthropic to take >150s
+        // (Supabase edge function platform timeout returned HTTP 546).
+        // 16K is enough headroom for ~18-22 retest entries + open-ended
+        // sections without producing a multi-minute generation. If
+        // truncation hits, the hard-stop rule rejects without saving
+        // and the user gets a clean retry.
+        model: 'claude-haiku-4-5-20251001', max_tokens: 16000,
         system: [{ type: 'text', cache_control: { type: 'ephemeral' }, text: `You are CauseHealth AI. Return ONLY valid JSON.
 
 GLOBAL VOICE RULES (CRITICAL — apply to EVERY string in the JSON):
@@ -877,6 +883,19 @@ This rule applies to EVERY field — multi_marker_patterns evidence, today_actio
 CALIBRATION (applies to ALL arrays): Healthy patient with clean labs → 0-2 entries each. Multi-issue patient → 4-7 well-evidenced entries (NOT 13 weakly-evidenced). Don't pad, don't skip. Better than a doctor = catching what 12 minutes can't see, with the evidence to back it up.` }],
       }),
     });
+
+    } catch (e: any) {
+      clearTimeout(aiTimeout);
+      if (e?.name === 'AbortError') {
+        console.error('[generate-wellness-plan] Anthropic timeout — aborted at 130s');
+        return new Response(JSON.stringify({
+          error: 'Plan generation took too long. Anthropic AI was slow to respond. Try again — this won\'t count against your regen cap.',
+          code: 'AI_TIMEOUT',
+        }), { status: 504, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      throw e;
+    }
+    clearTimeout(aiTimeout);
 
     if (!response.ok) {
       const errBody = await response.text().catch(() => '');
