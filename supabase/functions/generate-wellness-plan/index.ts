@@ -696,14 +696,31 @@ ONLY route OUT of "pcp" for:
   - "imaging"       : non-blood studies that need separate orders — liver ultrasound, FibroScan, CAC score, sleep study (HSAT/polysomnography), DEXA, mammogram, EKG, abdominal US, pelvic US
   - "functional"    : tests genuinely hard to get covered even with good ICD-10 — DUTCH cortisol panel, organic acids, comprehensive stool analysis, food sensitivity (IgG4) panels
   - "mental_health" : PHQ-9, GAD-7 screening tools
-  - "gi"            : tests that fold into an EXISTING gastroenterology follow-up (no extra copay since patient is already being seen). UNIVERSAL TRIGGER: patient has GI dx (UC / Crohn's / IBS / celiac / chronic IBD) on conditions list → route fecal calprotectin, celiac serology, AND any test that is a direct workup of that dx (iron panel for IBD blood loss; folate/B12 for IBD malabsorption) to "gi". For non-GI patients, those tests stay in "pcp".
+  - "gi"            : ONLY these GI-only tests: fecal calprotectin, fecal lactoferrin, fecal occult blood, celiac serology (tTG-IgA + Total IgA), stool studies, H. pylori breath/stool test, endoscopy/colonoscopy referrals. Iron panel, folate, B12, magnesium, vitamin D, hs-CRP (serum), CBC, CMP — these are GENERAL blood tests that PCPs order as part of routine bloodwork EVEN IF the patient has UC/Crohn's. Do NOT route a blood test to GI just because the patient has a GI dx. The fact a test "could" be ordered alongside a GI visit doesn't make it GI-only — PCPs draw blood, GI specialists do scopes.
 
-UNIVERSAL CONDITION-FOLLOW-UP RULE: For ANY chronic condition on the patient's diagnosed list, if a test directly monitors or workups that condition AND the patient is being followed by that specialty, route to the existing specialty visit (no extra copay). Examples:
-  - GI dx + nutritional/inflammation tests → "gi"
-  - Cardiac dx + advanced lipid/cardiac markers → still "pcp" (PCP orders most lipid markers; cardiology is for procedural/imaging)
-  - Endocrine dx (diabetes, thyroid disorder) + monitoring tests → "pcp" (endocrinologist not in routine cycle)
+ROUTING DECISION TREE (per test):
+  1. Is the test a fecal/stool test, celiac panel, or endoscopy referral? → "gi"
+  2. Is the test imaging (US, CT, MRI, scope, sleep study, DEXA, EKG)? → "imaging"
+  3. Is the test a functional-medicine specialty (DUTCH, organic acids, IgG4)? → "functional"
+  4. Is the test a mental-health screen (PHQ-9, GAD-7)? → "mental_health"
+  5. EVERYTHING ELSE → "pcp", regardless of which conditions the patient has.
+
+DO NOT BE CLEVER ABOUT "FOLDING INTO SPECIALIST VISITS." Patients want their PCP to draw the blood. They book GI for scopes, not blood draws. Even with UC: iron panel, folate, B12, magnesium, vitamin D, A1c, lipids, ApoB, Lp(a), TSH, hormones — ALL "pcp". The only GI-routed tests are the ones a GI office actually performs (fecal markers, scopes, celiac serology because it's the GI workup).
 
 Everything else → "pcp". Trust the PCP. The insurance_note tells the user how to advocate if the PCP pushes back — escalate doesn't mean "go to specialist," it means "ask harder with this code."
+
+ONE TEST PER ENTRY — DO NOT COMBINE OR DUPLICATE:
+  - Bad: "hs-CRP + Fecal gut hs-CRP" (two different tests crammed into one entry)
+  - Good: separate entries for "hs-CRP (serum)" → pcp, AND "Fecal Calprotectin" → gi
+  - Bad: "Lipid Panel" entry AND "Lipid Panel + ApoB + Lp(a)" entry (duplicates)
+  - Good: ONE entry per test. If ApoB is its own retest target, it's a separate entry from Lipid Panel.
+  - Bad: "Liver Panel (ALT, AST, ALP, GGT, Bilirubin)" combined when ALT/AST are already in CMP
+  - Good: CMP entry covers ALT/AST/ALP/Bilirubin. GGT as separate entry if liver workup needed.
+  - REQUIRED tests every comprehensive baseline must include for adults (when missing from current draw):
+    CMP, CBC w/ diff, Lipid Panel, ApoB, Lp(a), HbA1c, hs-CRP, TSH, Vit D 25-OH, B12, Folate, Ferritin, Magnesium (serum), Uric Acid.
+    Men: add Total T + SHBG + Estradiol. Women menstruating + symptomatic: add full Iron Panel.
+    On statin: add CK. On metformin/PPI: B12 already in baseline. ALT/AST elevated: GGT.
+    Each as a SEPARATE entry. Don't merge them. Don't skip them.
 
 REASONING MODE — open-ended, first-principles, like a sharp internist with time:
 Deterministic engines fire as a backstop for high-prevalence cases. YOUR job is the long tail they don't catch. Reason from the data picture, not from a checklist. Cover every body system implicitly — endocrine, cardio, GI, hepatic, renal, heme, autoimmune, MSK, repro, neuro, respiratory, infectious, oncology rule-outs, nutritional. Don't constrain yourself.
