@@ -235,31 +235,26 @@ We do NOT recommend GI-MAP, hair tissue mineral, organic acids, food sensitivity
     let cleaned = rawText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     const lb = cleaned.lastIndexOf('}');
     if (lb > 0) cleaned = cleaned.slice(0, lb + 1);
+
+    // ── HARD STOP: max_tokens truncation = ALWAYS reject ────────────────
+    // If AI was cut off mid-output, sections are missing. Refuse to save
+    // partials, roll draw back to 'failed' so UI surfaces the retry path
+    // without consuming the analysis_count cap.
+    if (stopReason === 'max_tokens') {
+      console.error('[analyze-labs] REJECTED: stop_reason=max_tokens — output was truncated');
+      await supabase.from('lab_draws').update({ processing_status: 'failed' }).eq('id', drawId);
+      return new Response(JSON.stringify({
+        error: 'Lab analysis was cut off mid-output. This won\'t count against your retest cap — try again.',
+        code: 'INCOMPLETE_GENERATION',
+        stop_reason: 'max_tokens',
+      }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     let analysis;
     try { analysis = JSON.parse(cleaned); } catch (parseErr) {
       console.error(`[analyze-labs] Parse failed. stop_reason=${stopReason}, first 500 chars:`, cleaned.slice(0, 500));
-      // If truncated (max_tokens hit), try to salvage by closing open arrays/objects
-      if (stopReason === 'max_tokens') {
-        try {
-          // Close any open arrays and objects
-          let salvaged = cleaned;
-          // Count open brackets
-          const openBraces = (salvaged.match(/\{/g) || []).length - (salvaged.match(/\}/g) || []).length;
-          const openBrackets = (salvaged.match(/\[/g) || []).length - (salvaged.match(/\]/g) || []).length;
-          // Remove trailing comma and incomplete values
-          salvaged = salvaged.replace(/,\s*$/, '').replace(/,\s*"[^"]*"?\s*$/, '');
-          for (let i = 0; i < openBrackets; i++) salvaged += ']';
-          for (let i = 0; i < openBraces; i++) salvaged += '}';
-          analysis = JSON.parse(salvaged);
-          console.log('[analyze-labs] Salvaged truncated JSON successfully');
-        } catch {
-          await supabase.from('lab_draws').update({ processing_status: 'failed' }).eq('id', drawId);
-          return new Response(JSON.stringify({ error: 'Parse failed — AI output was truncated' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-        }
-      } else {
-        await supabase.from('lab_draws').update({ processing_status: 'failed' }).eq('id', drawId);
-        return new Response(JSON.stringify({ error: `Parse failed: ${String(parseErr)}` }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-      }
+      await supabase.from('lab_draws').update({ processing_status: 'failed' }).eq('id', drawId);
+      return new Response(JSON.stringify({ error: `Parse failed: ${String(parseErr)}` }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     // panel_gaps removed — Tier 1/2/3 baseline lists were retired in favor

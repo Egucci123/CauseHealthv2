@@ -440,20 +440,22 @@ reason_to_consider must cite the SPECIFIC patient finding that triggers this ent
     let rawText = (aiRes.content?.[0]?.text ?? '').replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     const lastBrace = rawText.lastIndexOf('}');
     if (lastBrace > 0) rawText = rawText.slice(0, lastBrace + 1);
+
+    // ── HARD STOP: max_tokens truncation = ALWAYS reject ────────────────
+    // If AI was cut off mid-output, sections are missing even if salvage
+    // could parse it. Refuse to save partials. User gets a clean retry.
+    if (stopReason === 'max_tokens') {
+      console.error('[doctor-prep] REJECTED: stop_reason=max_tokens — output was truncated');
+      return new Response(JSON.stringify({
+        error: 'Doctor prep was cut off mid-output. This won\'t count against your regen cap — try again.',
+        code: 'INCOMPLETE_GENERATION',
+        stop_reason: 'max_tokens',
+      }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     let doc;
     try { doc = JSON.parse(rawText); } catch {
-      // Try salvaging truncated JSON (max_tokens hit)
-      if (stopReason === 'max_tokens') {
-        try {
-          let salvaged = rawText.replace(/,\s*$/, '').replace(/,\s*"[^"]*"?\s*$/, '');
-          const openBraces = (salvaged.match(/\{/g) || []).length - (salvaged.match(/\}/g) || []).length;
-          const openBrackets = (salvaged.match(/\[/g) || []).length - (salvaged.match(/\]/g) || []).length;
-          for (let i = 0; i < openBrackets; i++) salvaged += ']';
-          for (let i = 0; i < openBraces; i++) salvaged += '}';
-          doc = JSON.parse(salvaged);
-          console.log('[doctor-prep] Salvaged truncated JSON');
-        } catch { throw new Error('Failed to parse AI response — output was truncated'); }
-      } else { throw new Error('Failed to parse AI response as JSON'); }
+      throw new Error('Failed to parse AI response as JSON');
     }
 
     // ── ICD-10 CORRECTION MAP — runs after AI, zero tokens, deterministic ────

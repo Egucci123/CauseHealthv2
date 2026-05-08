@@ -893,31 +893,29 @@ CALIBRATION (applies to ALL arrays): Healthy patient with clean labs → 0-2 ent
     if (firstBrace >= 0 && lastBrace > firstBrace) {
       rawText = rawText.slice(firstBrace, lastBrace + 1);
     }
+    // ── HARD STOP: max_tokens truncation = ALWAYS reject ────────────────
+    // Even if the JSON parses cleanly OR salvage succeeds, a max_tokens
+    // stop means the AI was cut off mid-generation. Some sections will
+    // be missing (predicted_changes, multi_marker_patterns, etc.).
+    // We refuse to save partials at all — user gets a clean error and
+    // a free retry. Better than persisting "looks complete but isn't"
+    // plans that count against the cap.
+    if (stopReason === 'max_tokens') {
+      console.error('[generate-wellness-plan] REJECTED: stop_reason=max_tokens — output was truncated regardless of JSON validity');
+      return new Response(JSON.stringify({
+        error: 'Plan generation was cut off mid-output. This won\'t count against your regen cap — try again.',
+        code: 'INCOMPLETE_GENERATION',
+        stop_reason: 'max_tokens',
+      }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
     let plan: any;
     try {
       plan = JSON.parse(rawText);
     } catch (parseErr) {
       console.error('[generate-wellness-plan] JSON parse failed', { stopReason, len: rawText.length, head: rawText.slice(0, 300), tail: rawText.slice(-300) });
-      // Truncation-salvage path (mirrors doctor-prep). If max_tokens hit, the
-      // JSON ran out mid-string. Trim the trailing partial property and
-      // close any open arrays / objects so we still ship a usable plan
-      // instead of failing the whole generation.
-      if (stopReason === 'max_tokens') {
-        try {
-          let salvaged = rawText.replace(/,\s*$/, '').replace(/,\s*"[^"]*"?\s*:?\s*[^,}\]]*$/, '');
-          // Balance brackets
-          const openBraces = (salvaged.match(/\{/g) || []).length - (salvaged.match(/\}/g) || []).length;
-          const openBrackets = (salvaged.match(/\[/g) || []).length - (salvaged.match(/\]/g) || []).length;
-          for (let i = 0; i < openBrackets; i++) salvaged += ']';
-          for (let i = 0; i < openBraces; i++) salvaged += '}';
-          plan = JSON.parse(salvaged);
-          console.log('[generate-wellness-plan] Salvaged truncated JSON');
-        } catch {
-          throw new Error('Plan response was truncated and could not be salvaged. Try regenerating — usually succeeds on second attempt.');
-        }
-      } else {
-        throw new Error('Plan JSON parse failed: ' + String(parseErr));
-      }
+      // Without a max_tokens flag, parse failures are rare structural
+      // glitches. Don't attempt salvage — reject and let the user retry.
+      throw new Error('Plan JSON parse failed: ' + String(parseErr));
     }
 
     // ── Rare-disease prose scrubber (mirrors analyze-labs / doctor-prep) ──
