@@ -785,21 +785,17 @@ export function finalizeRetestTimeline(
       if (seen.has(key)) continue;
       seen.add(key);
 
-      // ── RETEST SUPPRESSION (universal, retest-only) ──────────────
-      // If the marker is already in the current draw at HEALTHY tier,
-      // don't re-add it as a retest — it just got measured normal.
-      // Caller (currentLabs param) is what activates this — first-time
-      // users with no prior draw still get the full list because the
-      // marker isn't established yet.
+      // ── RETEST SUPPRESSION (only for once-in-lifetime tests) ─────
+      // Previously dropped any test where the marker was in the current
+      // draw at healthy tier — but that defeated the point of the retest:
+      // tracking direction-of-travel after the wellness protocol. If TSH
+      // was 1.93 today and the patient sleeps better + loses weight, you
+      // want to see if it shifts at the 12-week mark. Same for B12, A1c,
+      // lipids, vitamin D — every standard baseline gets re-measured.
+      // Only ONCE_IN_LIFETIME_KEYS (Lp(a), genetic markers) get suppressed
+      // when present + healthy — those don't change with intervention.
       const currentTier = currentTierByKey.get(key);
-      if (currentTier === 0) {
-        // Once-in-lifetime test? Always drop if normal in current draw.
-        if (ONCE_IN_LIFETIME_KEYS.has(key)) continue;
-        // For trackable tests, drop only if we're confident the user has
-        // a recent measurement (signaled by currentLabs being passed at
-        // all + matching the marker). Skip from retest.
-        continue;
-      }
+      if (currentTier === 0 && ONCE_IN_LIFETIME_KEYS.has(key)) continue;
     }
     // Backfill specialist routing on AI-generated entries that didn't have one
     if (!r.specialist) {

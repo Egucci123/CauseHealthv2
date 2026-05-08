@@ -143,16 +143,26 @@ export function buildUniversalTestInjections(ctx: InjectionContext): InjectedTes
     });
   }
 
-  // ── Statin monitoring (any muscle/joint symptom) ────────────────────────
-  if (f.onStatin && (f.hasMuscleSymptoms || f.hasJointSymptoms)) {
+  // ── Statin monitoring — UNIVERSAL CK BASELINE ───────────────────────────
+  // Every statin user gets a CK baseline + 12-week follow-up regardless of
+  // current muscle symptoms. Per AHA / ACC / FDA prescribing info: baseline
+  // CK at statin start, then check anytime the patient reports new myalgia.
+  // Including it in retest_timeline lets the patient walk into the visit
+  // with the statin-monitoring panel pre-populated. Higher priority if
+  // symptoms ARE reported.
+  if (f.onStatin) {
     tests.push({
       name: 'Creatine Kinase (CK)',
-      whyShort: 'Statin + aches → rule out myopathy',
-      whyLong: '(b) On a statin + reports muscle/joint symptoms — CK rules out statin-induced myopathy. Standard monitoring.',
+      whyShort: f.hasMuscleSymptoms || f.hasJointSymptoms
+        ? 'Statin + aches → rule out myopathy'
+        : 'Statin baseline — CK monitoring',
+      whyLong: f.hasMuscleSymptoms || f.hasJointSymptoms
+        ? '(b) On a statin + reports muscle/joint symptoms — CK rules out statin-induced myopathy.'
+        : '(b) On a statin — CK is a routine baseline + 12-week follow-up to detect statin-induced myopathy early. Standard monitoring per AHA/ACC.',
       icd10: 'M62.82',
       icd10Description: 'Rhabdomyolysis (rule-out)',
-      priority: 'high',
-      insuranceNote: 'Universally covered when statin + muscle symptoms documented.',
+      priority: f.hasMuscleSymptoms || f.hasJointSymptoms ? 'high' : 'moderate',
+      insuranceNote: 'Universally covered with statin medication code.',
     });
   }
 
