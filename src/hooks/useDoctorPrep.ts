@@ -97,8 +97,10 @@ export function useGenerateDoctorPrep() {
   const generate = async () => {
     if (!userId) throw new Error('Not authenticated');
     if (activeGeneration) return activeGeneration;
-    // Rate limit: minimum 30 seconds between generations
-    if (Date.now() - lastGenerationTime < 30000) throw new Error('Please wait before regenerating');
+    // (Removed: 30s client-side cooldown. Same fix as useWellnessPlan —
+    // the module-level lastGenerationTime persisted across navigations
+    // and blocked re-gens for 30s after the previous completed, requiring
+    // a refresh. Server-side regen cap is the real protection.)
 
     generatingFlag = true;
     lastGenerationTime = Date.now();

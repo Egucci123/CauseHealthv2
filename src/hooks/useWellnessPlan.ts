@@ -203,10 +203,12 @@ export function useGenerateWellnessPlan() {
   const generate = async () => {
     if (!userId) throw new Error('Not authenticated');
     if (activeGeneration) return activeGeneration;
-    const cooldownMs = 30000 - (Date.now() - lastGenerationTime);
-    if (cooldownMs > 0) {
-      throw new Error(`Please wait ${Math.ceil(cooldownMs / 1000)}s before regenerating.`);
-    }
+    // (Removed: 30s client-side cooldown. Was causing 'click does nothing
+    // until refresh' bug — module-level lastGenerationTime persisted across
+    // navigations so a recent gen blocked the next click for 30s after the
+    // previous completed. Refresh cleared the timer. The 2-per-dataset
+    // server-side cap is the actual protection; the cooldown was redundant
+    // and broke the UX.)
 
     generatingFlag = true;
     lastGenerationTime = Date.now();
