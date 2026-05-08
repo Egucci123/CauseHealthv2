@@ -294,7 +294,7 @@ export function exportPatientVisitGuidePDF(doc: DoctorPrepDocument, userName: st
   if (Array.isArray(doc.possible_conditions) && doc.possible_conditions.length > 0) {
     sectionHeader('Possible conditions to investigate');
     para(
-      'Patterns in the labs / symptoms that fit conditions not yet on the chart. These are differentials, not diagnoses. Each one lists the confirmatory workup to ask about.',
+      'Patterns in the labs / symptoms that fit conditions not yet on the chart. NOT A DIAGNOSIS — only the patient\'s physician can diagnose. CauseHealth provides pattern-matching against the data, not clinical judgment. Each entry lists tests that would help evaluate the pattern.',
       { color: [80, 80, 80], italic: true, size: 9, gap: 4 },
     );
     doc.possible_conditions.forEach((c, i) => {
@@ -307,7 +307,7 @@ export function exportPatientVisitGuidePDF(doc: DoctorPrepDocument, userName: st
       // PDF (exportDoctorPrepPDF). Patient copy stays plain-language.
       if (c.evidence) {
         pdf.setFontSize(8.5); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(212, 165, 116);
-        pdf.text('Why this is on the differential:', margin + 3, y); y += 4;
+        pdf.text('Why we flagged this pattern:', margin + 3, y); y += 4;
         pdf.setFont('helvetica', 'normal'); pdf.setTextColor(40, 40, 40);
         const evLines = pdf.splitTextToSize(stripUnsupportedChars(c.evidence), contentW - 6);
         pdf.text(evLines, margin + 3, y); y += evLines.length * 3.8 + 2;

@@ -74,7 +74,7 @@ export const PossibleConditionsCard = ({ conditions }: { conditions: SuspectedCo
               {c.evidence && (
                 <div className="mb-4">
                   <p className="text-precision text-[0.6rem] text-clinical-stone uppercase tracking-widest mb-1">
-                    Why this is on the differential
+                    Why we flagged this pattern
                   </p>
                   <p className="text-body text-clinical-charcoal text-sm leading-relaxed">{c.evidence}</p>
                 </div>
