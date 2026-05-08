@@ -460,7 +460,7 @@ HARD RULES — FOLLOW EXACTLY:
    The 6 categories:
      1. sleep_stress       — sleep onset, mid-night waking, cortisol, anxiety
      2. gut_healing        — UC/IBD/IBS gut barrier, microbiome
-     3. liver_metabolic    — ALT/AST elevation, lipids, blood sugar / insulin resistance, hepatoprotection (NEW: milk thistle, NAC, CoQ10 for statin)
+     3. liver_metabolic    — ALT/AST elevation, lipids, blood sugar / insulin resistance, hepatoprotection (milk thistle, NAC, TUDCA). CoQ10 is NOT liver — it's mitochondrial/cardio.
      4. inflammation_cardio — omega-3 for TG/ApoB, hs-CRP-driven inflammation, joint
      5. nutrient_repletion — confirmed deficiencies (vitamin D 24, ferritin <30, B12 <300)
      6. condition_therapy  — diagnosis-specific evidence-based (PCOS inositol, Hashimoto's selenium IF TPO+, UC L-glutamine)
@@ -486,7 +486,7 @@ HARD RULES — FOLLOW EXACTLY:
    Each rule below:
 
    ── Medication-driven (sourced_from: medication_depletion) ──
-     1. STATIN → CoQ10 (Ubiquinol) 100-200mg/day · category liver_metabolic
+     1. STATIN → CoQ10 (Ubiquinol) 100-200mg/day · category inflammation_cardio (CoQ10 is mitochondrial/cardio, NOT a liver supplement; routes to "Medication Depletions" section at render time via sourced_from)
      2. ALT >60 OR hepatotoxic med (statin/methotrexate/isoniazid/valproate/acetaminophen >3g) → Milk Thistle (Silymarin) 200-400mg/day · category liver_metabolic
      3. Long-term METFORMIN (>5yr) → B12 Methylcobalamin 500-1000mcg sublingual (prefer test-first if recent B12/MMA available) · category nutrient_repletion
      4. Long-term PPI (>2yr) → Magnesium Glycinate 200-400mg evening · category sleep_stress
