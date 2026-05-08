@@ -23,7 +23,7 @@ export const PaywallGate = ({ feature, description, children }: Props) => {
 const PaywallCard = ({ feature, description }: { feature: string; description?: string }) => {
   const [showRedeem, setShowRedeem] = useState(false);
   return (
-    <div className="bg-clinical-white rounded-[14px] shadow-card border-t-[3px] border-[#D4A574] p-10 text-center max-w-xl mx-auto">
+    <div className="bg-clinical-white rounded-[14px] shadow-card border-t-[3px] border-[#D4A574] p-6 sm:p-10 text-center max-w-xl mx-auto">
       <div className="w-14 h-14 bg-[#D4A574]/15 rounded-full flex items-center justify-center mx-auto mb-5">
         <span className="material-symbols-outlined text-[#D4A574] text-2xl">lock</span>
       </div>
@@ -117,17 +117,19 @@ export const RedeemCodeForm = ({ compact = false }: { compact?: boolean }) => {
 
   return (
     <div className={`flex flex-col gap-2 ${compact ? '' : 'max-w-md'}`}>
-      <div className="flex gap-2">
+      {/* Stack vertically on mobile (input + button each full-width) so a long
+          code doesn't get crushed by the Redeem button. Side-by-side on sm+. */}
+      <div className="flex flex-col sm:flex-row gap-2">
         <input
           type="text"
           value={code}
           onChange={e => setCode(e.target.value.toUpperCase())}
           placeholder="ENTER CODE"
           style={{ borderRadius: '4px' }}
-          className="flex-1 bg-clinical-cream border border-outline-variant/20 px-3 py-2.5 text-clinical-charcoal text-precision text-sm tracking-widest font-bold focus:border-primary-container focus:ring-1 focus:ring-primary-container focus:outline-none"
+          className="flex-1 min-w-0 w-full sm:w-auto bg-clinical-cream border border-outline-variant/20 px-3 py-2.5 text-clinical-charcoal text-precision text-sm tracking-widest font-bold focus:border-primary-container focus:ring-1 focus:ring-primary-container focus:outline-none"
           onKeyDown={e => { if (e.key === 'Enter') handleRedeem(); }}
         />
-        <Button variant="secondary" size="md" loading={loading} onClick={handleRedeem} disabled={!code.trim()}>Redeem</Button>
+        <Button variant="secondary" size="md" loading={loading} onClick={handleRedeem} disabled={!code.trim()} className="w-full sm:w-auto">Redeem</Button>
       </div>
       {result && (
         <p className={`text-precision text-[0.65rem] font-bold tracking-wide ${result.ok ? 'text-[#2A9D8F]' : 'text-[#C94F4F]'}`}>
