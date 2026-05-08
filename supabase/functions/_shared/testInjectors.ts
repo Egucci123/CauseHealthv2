@@ -236,19 +236,14 @@ export function buildUniversalTestInjections(ctx: InjectionContext): InjectedTes
     });
   }
 
-  // ── Mood / brain fog pattern + autoimmune → cortisol + thyroid hunt ────
-  // Afternoon fatigue + sleep issues + weight gain pattern (HPA dysregulation)
-  if (f.hasFatigue && f.hasSleepIssues && f.hasWeightIssues && !f.onSteroid) {
-    tests.push({
-      name: 'AM Cortisol + DHEA-S',
-      whyShort: 'Fatigue + sleep + weight pattern → HPA check',
-      whyLong: '(a) Chronic fatigue + sleep disruption + weight loss resistance = HPA-axis dysregulation pattern. AM cortisol + DHEA-S baseline the stress-hormone axis.',
-      icd10: 'E27.40',
-      icd10Description: 'Unspecified adrenocortical insufficiency',
-      priority: 'moderate',
-      insuranceNote: 'Covered with chronic fatigue documentation.',
-    });
-  }
+  // ── AM Cortisol — REMOVED ─────────────────────────────────────────────
+  // Universal stigmata-only gate across all 3 generation surfaces (analyze-
+  // labs, wellness plan, doctor prep). PCPs reject AM cortisol on plain
+  // fatigue/sleep/weight; it only earns the order with classic Cushing's
+  // (striae + central obesity + moon face + HTN) or Addison's (salt
+  // cravings + hyperpigmentation + orthostatic hypotension + low Na)
+  // stigmata. The deterministic injector that fired on fatigue+sleep+weight
+  // is gone; the AI prompts are the gatekeepers.
 
   // ── Sleep + restless legs → ferritin >75 target check ──────────────────
   if (/\brestless legs|rls\b/.test(ctx.symptomsLower)) {
