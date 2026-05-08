@@ -145,7 +145,8 @@ export interface WellnessPlanData {
 // Module-level generation state — survives component unmount/remount
 let activeGeneration: Promise<WellnessPlanData> | null = null;
 let generatingFlag = false;
-let lastGenerationTime = 0;
+// (removed: lastGenerationTime — was used for client-side cooldown that's
+//  now replaced by server-side regen cap)
 
 export function useWellnessPlan() {
   const userId = useAuthStore(s => s.user?.id);
@@ -215,7 +216,6 @@ export function useGenerateWellnessPlan() {
     // 2-per-dataset cap and caused 'click does nothing until refresh'.)
 
     generatingFlag = true;
-    lastGenerationTime = Date.now();
     setGenerating(true);
 
     // Grab a fresh JWT — edge function authenticates the user via Bearer token.

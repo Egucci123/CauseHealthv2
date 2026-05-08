@@ -59,7 +59,7 @@ export interface DoctorPrepDocument {
 // Module-level generation state — survives component unmount/remount
 let activeGeneration: Promise<DoctorPrepDocument> | null = null;
 let generatingFlag = false;
-let lastGenerationTime = 0;
+// (removed: lastGenerationTime — cooldown now server-side via regen cap)
 
 export function useLatestDoctorPrep() {
   const userId = useAuthStore(s => s.user?.id);
@@ -104,7 +104,6 @@ export function useGenerateDoctorPrep() {
     // (Removed: 30s cooldown — redundant with server-side regen cap.)
 
     generatingFlag = true;
-    lastGenerationTime = Date.now();
     setGenerating(true);
 
     // Grab the user's JWT for the Authorization header. Without this, the
