@@ -441,12 +441,15 @@ serve(async (req) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({
-        // 14K — known-good ceiling for wellness plan generation. Previous
-        // bump to 24K was unblocking on dense panels but introduced
-        // generation failures (Haiku-side request handling), so reverting
-        // until we can validate higher caps with synthetic tests. Salvage
-        // path still handles truncation if it ever hits.
-        model: 'claude-haiku-4-5-20251001', max_tokens: 14000,
+        // 20K — bumped from 14K because the always-track-all-baselines rule
+        // expanded retest_timeline from ~10 entries to ~16-22, plus all the
+        // open-ended sections (predicted_changes_ai, multi_marker_patterns,
+        // suspected_conditions, etc.) — output was hitting the 14K ceiling
+        // and salvage was kicking in, then the completeness gate rejected
+        // half-written plans. 20K leaves headroom; the completeness gate
+        // still catches anything that genuinely fails. Held under Haiku 4.5's
+        // 64K limit with comfortable margin.
+        model: 'claude-haiku-4-5-20251001', max_tokens: 20000,
         system: [{ type: 'text', cache_control: { type: 'ephemeral' }, text: `You are CauseHealth AI. Return ONLY valid JSON.
 
 GLOBAL VOICE RULES (CRITICAL — apply to EVERY string in the JSON):

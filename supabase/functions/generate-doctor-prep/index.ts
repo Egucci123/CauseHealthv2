@@ -110,14 +110,13 @@ serve(async (req) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({
-        // 10K — measured bump from 6K. Evan's 46-marker panel was hitting
-        // the 6K cap, salvage path couldn't recover, function failed silently
-        // and the UI bounced back to the empty state. 10K accommodates ~70-marker
-        // comprehensive prep (tests_to_request + possible_conditions +
-        // clinical_summary + medications) with truncation headroom. Held below
-        // the 12K we tried earlier (which paired with other bumps caused
-        // generation failures we couldn't isolate).
-        model: 'claude-haiku-4-5-20251001', max_tokens: 10000,
+        // 14K — bumped from 10K because the always-track-all-baselines rule
+        // expanded tests_to_request to ~16-22 entries, each with full ICD-10 +
+        // insurance_note + clinical_justification. Plus possible_conditions +
+        // discussion_points + tell_doctor + questions_to_ask. Output was
+        // truncating mid-array on dense patients, completeness gate rejecting,
+        // and the UI bouncing back to empty state. 14K leaves headroom.
+        model: 'claude-haiku-4-5-20251001', max_tokens: 14000,
         system: [{ type: 'text', cache_control: { type: 'ephemeral' }, text: `You are CauseHealth AI. Return ONLY valid JSON.
 
 GLOBAL VOICE RULES (CRITICAL — apply to EVERY string in the JSON):
