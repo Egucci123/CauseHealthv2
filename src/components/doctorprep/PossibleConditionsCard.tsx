@@ -34,7 +34,6 @@ export const PossibleConditionsCard = ({ conditions }: { conditions: SuspectedCo
       countLabel={sorted.length === 1 ? 'pattern' : 'patterns'}
       explanation="Patterns in the patient's labs and symptoms that fit conditions not on their problem list. Each entry lists tests that would help evaluate the pattern. Not a diagnosis — only the patient's physician can diagnose. CauseHealth provides pattern-matching against the data, not clinical judgment."
       accentColor="#C94F4F"
-      defaultOpen
     >
       {/* Not-a-diagnosis disclaimer — same language as the consumer-facing
           wellness plan, kept here for the doctor-prep view too. Reinforces

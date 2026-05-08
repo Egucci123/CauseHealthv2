@@ -43,7 +43,6 @@ export const ClinicalSummary = ({ doc }: { doc: DoctorPrepDocument }) => {
           count={doc.executive_summary.length}
           countLabel="key findings"
           explanation="The most important findings from your bloodwork, in plain English. These are the headlines you should make sure your doctor reads."
-          defaultOpen
           accentColor="#1B4332"
         >
           <ul className="space-y-2">

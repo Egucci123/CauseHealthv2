@@ -823,7 +823,6 @@ export const WellnessPlanPage = () => {
               countLabel="markers"
               explanation="What changed between your prior labs and this draw. Direction is measured against each marker's optimal range — 'improved' means closer to optimal, 'worsened' means further. This is the story of whether the plan worked."
               accentColor="#1B423A"
-              defaultOpen
             >
               <ProgressSummary summary={plan.progress_summary} />
             </FolderSection>
@@ -902,7 +901,9 @@ export const WellnessPlanPage = () => {
                       countLabel={items.length === 1 ? 'test' : 'tests'}
                       explanation={meta.explanation}
                       accentColor={meta.accent}
-                      defaultOpen={k === 'pcp'}
+                      // All folders closed by default — user expands what they want.
+                      // Open-by-default was making the page feel noisy during regen
+                      // (previous PCP folder showed before new plan loaded).
                     >
                       <div className="space-y-2">
                         {items.map((r: any, i: number) => (
@@ -946,7 +947,6 @@ export const WellnessPlanPage = () => {
               countLabel={plan.interaction_warnings.length === 1 ? 'finding' : 'findings'}
               explanation="Every supplement we recommend is checked against your medications. Items shown here either were removed from your stack or kept with a warning. Always confirm with your pharmacist before starting anything new."
               accentColor="#C94F4F"
-              defaultOpen
             >
               <InteractionWarnings warnings={plan.interaction_warnings} />
             </FolderSection>
@@ -967,9 +967,8 @@ export const WellnessPlanPage = () => {
                 title="Possible conditions to investigate"
                 count={suspected.length}
                 countLabel={suspected.length === 1 ? 'pattern' : 'patterns'}
-                explanation="Patterns in your bloodwork and symptoms that fit conditions you haven't been diagnosed with. Not a diagnosis — a differential. Each one comes with the confirmatory tests to ask your doctor for."
+                explanation="Patterns in your bloodwork and symptoms that fit conditions you haven't been diagnosed with. Not a diagnosis — a starting point for discussion. Each one comes with tests that would help your doctor evaluate the pattern."
                 accentColor="#C94F4F"
-                defaultOpen
               >
                 <PossibleConditions conditions={suspected} />
               </FolderSection>
