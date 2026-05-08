@@ -16,6 +16,77 @@
 // is what makes the architecture universal: add a condition with
 // requiredSupplements: ['inositol'] and the engine fires inositol for
 // that user automatically. No edge-function code change needed.
+//
+// ─── CATEGORIZATION RULES (READ BEFORE ADDING A SUPPLEMENT) ────────────
+//
+// These are STRICT pharmacology-driven rules. Read all 6 before picking.
+// If you can't decide between two, the supplement probably belongs in
+// the one that matches its PRIMARY mechanism, not its secondary effect.
+//
+//   nutrient_repletion   — A vitamin or mineral the user is measurably
+//                          deficient in OR a known dietary gap. (B12,
+//                          B-complex, Vitamin D3, Iron, Zinc, Folate,
+//                          Calcium+D for bone). Replacing what's
+//                          missing.
+//
+//   liver_metabolic      — Direct hepatoprotection (Milk Thistle, NAC,
+//                          TUDCA) OR liver-pathway metabolic intervention
+//                          (Berberine — AMPK pathway). NOT for things
+//                          that merely *touch* the liver. CoQ10 is NOT
+//                          here — the liver makes CoQ10, doesn't need it.
+//
+//   inflammation_cardio  — Anti-inflammatory, lipid-modifying, CV-protective,
+//                          or mitochondrial-energy supplements
+//                          (Omega-3, Curcumin, Bergamot, CoQ10, Creatine).
+//                          Mitochondrial / muscle-energy belongs here
+//                          because muscle-pump and cardiac muscle share
+//                          the mechanism.
+//
+//   gut_healing          — GI mucosal repair, probiotics, IBD-specific
+//                          (L-Glutamine, S. boulardii, Butyrate, slippery
+//                          elm). Direct gut-barrier or microbiome action.
+//
+//   sleep_stress         — Calming, sleep onset, cortisol/HPA, GABAergic
+//                          (Magnesium Glycinate — evening, L-Theanine,
+//                          Glycine, Ashwagandha, Phosphatidylserine).
+//                          Mag goes here because the *primary* user-facing
+//                          benefit is sleep, even when the trigger is a
+//                          medication depletion (PPI/diuretic).
+//
+//   condition_therapy    — Disease-specific evidence-based adjunct with
+//                          strong RCT/meta-analysis support for a
+//                          confirmed dx (Selenium for Hashimoto's,
+//                          Inositol for PCOS, Vitamin K2 for osteoporosis).
+//                          NOT general optimization — that's
+//                          inflammation_cardio.
+//
+// ─── DON'T MIX THESE UP ────────────────────────────────────────────────
+//
+//   ✗ CoQ10 in liver_metabolic           → inflammation_cardio
+//   ✗ Creatine in condition_therapy      → inflammation_cardio
+//   ✗ Magnesium in nutrient_repletion    → sleep_stress (unless lab-confirmed deficiency)
+//   ✗ Vitamin D in liver_metabolic       → nutrient_repletion
+//   ✗ B12 in inflammation_cardio         → nutrient_repletion
+//   ✗ Berberine in nutrient_repletion    → liver_metabolic (or condition_therapy if T2D/PCOS)
+//
+// ─── TWO-AXIS ROUTING ──────────────────────────────────────────────────
+//
+// Every supplement has TWO routing fields:
+//
+//   `category`     — pharmacological grouping (above 6 categories)
+//   `sourced_from` — WHY this user is getting it for the FIRST time:
+//                    'lab_finding' | 'medication_depletion' |
+//                    'disease_mechanism' | 'optimization'
+//
+// The UI renders by `category` BUT routes any `sourced_from === 'medication_depletion'`
+// supplement into a separate "Medication Depletions" section at display
+// time, regardless of category. So CoQ10 (category: inflammation_cardio,
+// sourced_from: medication_depletion) shows under "Medication Depletions"
+// for a statin user, but under "Inflammation & Cardio" for a non-statin
+// user who gets it for general mitochondrial support.
+//
+// This gives users a clear "this is here because of your meds" section
+// without polluting the categorical groups.
 
 export interface SupplementDef {
   key: string;
@@ -143,6 +214,64 @@ const REGISTRY: SupplementDef[] = [
 ];
 
 const BY_KEY = new Map<string, SupplementDef>(REGISTRY.map(s => [s.key, s]));
+
+// ─── RUNTIME CATEGORIZATION VALIDATOR ──────────────────────────────────
+// Pharmacology-driven rules. Each rule is a regex against the supplement's
+// nutrient name (case-insensitive). If matched, the entry MUST have the
+// expected category. Mismatches log a warning at cold start so they're
+// visible in Supabase logs and caught before they ship to a user.
+//
+// Add a new rule when you add a supplement to the registry — this is the
+// safety net that prevents future CoQ10-as-liver mistakes.
+const CATEGORY_RULES: Array<{ pattern: RegExp; expected: SupplementDef['entry']['category']; reason: string }> = [
+  // Mitochondrial / muscle / heart energy
+  { pattern: /\b(coq[\s-]?10|ubiquinol|ubiquinone|coenzyme\s*q)\b/i, expected: 'inflammation_cardio', reason: 'CoQ10 is mitochondrial/cardiac, not hepatic. The liver MAKES CoQ10.' },
+  { pattern: /\bcreatine\b/i, expected: 'inflammation_cardio', reason: 'Creatine is general optimization (strength/cognition/CV), not condition-specific therapy.' },
+  // Hepatoprotection (true liver supplements)
+  { pattern: /\b(milk\s*thistle|silymarin|silybin|tudca|nac\b|n[\s-]?acetyl[\s-]?cysteine)/i, expected: 'liver_metabolic', reason: 'Direct hepatoprotection.' },
+  // Nutrient/vitamin repletion
+  { pattern: /\b(vitamin\s*d3?|cholecalciferol|25[\s-]?oh)\b/i, expected: 'nutrient_repletion', reason: 'Vitamin replacement. Even when triggered by steroid depletion, the user-facing purpose is repletion.' },
+  { pattern: /\b(b[\s-]?12|cobalamin|methylcobalamin|adenosylcobalamin)\b/i, expected: 'nutrient_repletion', reason: 'Vitamin replacement.' },
+  { pattern: /\bb[\s-]?complex\b/i, expected: 'nutrient_repletion', reason: 'Vitamin replacement.' },
+  { pattern: /\bzinc\b/i, expected: 'nutrient_repletion', reason: 'Mineral replacement.' },
+  { pattern: /\b(iron|ferrous|ferritin\s*support)\b/i, expected: 'nutrient_repletion', reason: 'Mineral replacement.' },
+  { pattern: /\bfolate|folic acid\b/i, expected: 'nutrient_repletion', reason: 'Vitamin replacement.' },
+  // Magnesium has dual mechanism but evening dose + GABA = sleep_stress primary
+  { pattern: /^magnesium\s+(glycinate|threonate)\b/i, expected: 'sleep_stress', reason: 'Glycinate/threonate are dosed for GABA / sleep onset; primary user benefit is sleep.' },
+  // Gut healing
+  { pattern: /\b(l[\s-]?glutamine|s\.?\s*boulardii|saccharomyces|butyrate|tributyrin|slippery\s*elm|deglycyrrhizinated|dgl|aloe|colostrum)\b/i, expected: 'gut_healing', reason: 'Direct gut-barrier or microbiome action.' },
+  // Sleep / stress / GABAergic
+  { pattern: /\b(l[\s-]?theanine|ashwagandha|glycine|phosphatidylserine|melatonin|gaba|valerian|chamomile|passionflower)\b/i, expected: 'sleep_stress', reason: 'Calming / sleep / cortisol mechanism.' },
+  // Anti-inflammatory / lipid / CV / mitochondrial
+  { pattern: /\b(omega[\s-]?3|fish\s*oil|epa|dha|krill|algae\s*oil|curcumin|turmeric|bergamot|red\s*yeast\s*rice|berberine\s*phytosome|niacin|policosanol|phytosterol|garlic\s*extract|resveratrol|quercetin)\b/i, expected: 'inflammation_cardio', reason: 'Anti-inflammatory / lipid-modifying / CV / mitochondrial.' },
+  // Disease-specific therapy
+  { pattern: /\b(selenium|selenomethionine)\b/i, expected: 'condition_therapy', reason: 'Hashimoto\'s-specific (TPO Ab reduction).' },
+  { pattern: /\binositol|ovasitol\b/i, expected: 'condition_therapy', reason: 'PCOS-specific.' },
+  { pattern: /\bvitamin\s*k2|menaquinone|mk-?7|mk-?4\b/i, expected: 'condition_therapy', reason: 'Osteoporosis / arterial calcification (paired with D3).' },
+  { pattern: /\b(calcium\s*[+\s]\s*vitamin\s*d|calcium\s*[+\s]\s*d3)\b/i, expected: 'nutrient_repletion', reason: 'Mineral + vitamin replacement (steroid-induced bone loss).' },
+];
+
+// Validator runs once at module load. Logs warnings — never throws — so
+// a borderline categorization doesn't break a user's plan generation. The
+// log line is grep-friendly: 'SUPPLEMENT_REGISTRY_VIOLATION' is unique.
+function validateRegistry() {
+  for (const def of REGISTRY) {
+    const name = def.entry.nutrient;
+    for (const rule of CATEGORY_RULES) {
+      if (rule.pattern.test(name)) {
+        if (def.entry.category !== rule.expected) {
+          console.warn(
+            `[SUPPLEMENT_REGISTRY_VIOLATION] ${def.key} ('${name}') is category='${def.entry.category}' but rule says '${rule.expected}'. Reason: ${rule.reason}`
+          );
+        }
+        // First matching rule wins — don't double-report.
+        break;
+      }
+    }
+  }
+}
+// Run once. Cheap (~18 entries × ~17 regex tests = trivial).
+validateRegistry();
 
 export function getSupplement(key: string): SupplementDef | undefined {
   return BY_KEY.get(key);
