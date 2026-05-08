@@ -493,11 +493,18 @@ const TakeTab = ({ plan }: { plan: any }) => {
   }
 
   // Group by category if entries have one. Fall back to flat ranked list for legacy plans.
-  // RENDER-LEVEL ROUTING: any supplement with sourced_from === 'medication_depletion'
-  // is grouped under the medication_depletion pseudo-category, regardless of its
-  // underlying category field. Keeps the data model simple (CoQ10 still IS pharmacologically
-  // liver-metabolic) while giving the UI a clean "your meds caused this" section.
+  // RENDER-LEVEL ROUTING:
+  //   - Liver-protective supplements (category: liver_metabolic) ALWAYS render under
+  //     "Liver & Metabolic" regardless of why they were recommended. Milk Thistle
+  //     helps the liver whether the trigger was a statin, NAFLD, or anything else —
+  //     the user wants to see it as a liver supplement.
+  //   - Otherwise, supplements with sourced_from === 'medication_depletion' route
+  //     to "Medication Depletions" — these are pure replacement-for-what-the-drug-
+  //     took-away supplements (CoQ10 for statin, B12 for metformin, Mg for PPI,
+  //     Ca+D for steroids).
+  //   - Everything else uses its pharmacological category.
   const effectiveCategory = (s: any): string => {
+    if (s?.category === 'liver_metabolic') return 'liver_metabolic';
     if (s?.sourced_from === 'medication_depletion') return 'medication_depletion';
     return s?.category;
   };

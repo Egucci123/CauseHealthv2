@@ -1897,6 +1897,12 @@ CALIBRATION (applies to ALL arrays): Healthy patient with clean labs → 0-2 ent
     if (Array.isArray(plan.supplement_stack)) {
       const priorityRank = (p: string) => p === 'critical' ? 0 : p === 'high' ? 1 : p === 'moderate' ? 2 : 3;
       const effectiveCat = (supp: any): string | null => {
+        // Mirror the renderer's routing exactly:
+        // - liver_metabolic supplements ALWAYS stay in the liver bucket
+        //   (they help the liver regardless of trigger source)
+        // - else medication_depletion-sourced → its own bucket
+        // - else use the pharmacological category
+        if (supp?.category === 'liver_metabolic') return 'liver_metabolic';
         if (supp?.sourced_from === 'medication_depletion') return 'medication_depletion';
         const c = supp?.category;
         return typeof c === 'string' && c.length > 0 ? c : null;
