@@ -127,6 +127,9 @@ export function useGenerateDoctorPrep() {
       activeGeneration = null;
       generatingFlag = false;
       setGenerating(false);
+      // Belt-and-suspenders: invalidate so any subscriber refetches even
+      // if the setQueryData above missed for any reason.
+      qc.invalidateQueries({ queryKey: ['doctor-prep', userId] });
     });
 
     return activeGeneration;

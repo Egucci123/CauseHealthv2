@@ -657,10 +657,15 @@ export const WellnessPlanPage = () => {
       )
       .subscribe();
 
-    // 3s polling backstop, capped at 90s after mount.
+    // 3s polling backstop. Cap at 240s — matches the wellness-plan
+    // generation timeout (treatment-mode patients can take 90-180s, with
+    // tail latency reaching the 240s ceiling). Earlier 90s cap was
+    // shorter than the generation itself, so plans that finished after
+    // the cap wouldn't surface without a manual refresh if realtime
+    // also missed.
     const startedAt = Date.now();
     const interval = setInterval(() => {
-      if (Date.now() - startedAt > 90_000) { clearInterval(interval); return; }
+      if (Date.now() - startedAt > 240_000) { clearInterval(interval); return; }
       qc.invalidateQueries({ queryKey: ['wellness-plan', user.id] });
     }, 3000);
 

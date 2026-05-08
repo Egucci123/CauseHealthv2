@@ -54,9 +54,12 @@ export const DoctorPrep = () => {
         () => { qc.invalidateQueries({ queryKey: ['doctor-prep', user.id] }); }
       )
       .subscribe();
+    // 3s polling, cap at 240s matching the generate-doctor-prep timeout.
+    // Prior 90s cap was shorter than generation itself; plans finishing
+    // after the cap wouldn't surface without manual refresh.
     const startedAt = Date.now();
     const interval = setInterval(() => {
-      if (Date.now() - startedAt > 90_000) { clearInterval(interval); return; }
+      if (Date.now() - startedAt > 240_000) { clearInterval(interval); return; }
       qc.invalidateQueries({ queryKey: ['doctor-prep', user.id] });
     }, 3000);
     return () => { supabase.removeChannel(channel); clearInterval(interval); };

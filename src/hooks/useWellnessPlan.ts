@@ -252,7 +252,13 @@ export function useGenerateWellnessPlan() {
       activeGeneration = null;
       generatingFlag = false;
       setGenerating(false);
-      qc.invalidateQueries({ queryKey: ['activePlan'] });
+      // Invalidate BOTH query keys so any subscriber refetches. setQueryData
+      // above already pushed the data into the cache, but invalidate is a
+      // belt-and-suspenders guarantee that pages re-render — covers cases
+      // where a component reading via a slightly different selector or stale
+      // query state would otherwise miss the update.
+      qc.invalidateQueries({ queryKey: ['wellness-plan', userId] });
+      qc.invalidateQueries({ queryKey: ['activePlan', userId] });
     });
 
     return activeGeneration;
