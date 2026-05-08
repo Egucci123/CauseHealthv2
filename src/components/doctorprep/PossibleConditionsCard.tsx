@@ -32,10 +32,20 @@ export const PossibleConditionsCard = ({ conditions }: { conditions: SuspectedCo
       title="Possible conditions to investigate"
       count={sorted.length}
       countLabel={sorted.length === 1 ? 'pattern' : 'patterns'}
-      explanation="Differential diagnosis: patterns in the patient's labs and symptoms that fit conditions not on their problem list. Each entry lists the confirmatory workup. Distinct from the baseline retest list above."
+      explanation="Patterns in the patient's labs and symptoms that fit conditions not on their problem list. Each entry lists tests that would help evaluate the pattern. Not a diagnosis — only the patient's physician can diagnose. CauseHealth provides pattern-matching against the data, not clinical judgment."
       accentColor="#C94F4F"
       defaultOpen
     >
+      {/* Not-a-diagnosis disclaimer — same language as the consumer-facing
+          wellness plan, kept here for the doctor-prep view too. Reinforces
+          the 'we don't diagnose' promise made in our Terms + Privacy +
+          Disclaimer + AcceptTerms surfaces. */}
+      <div className="mb-4 bg-clinical-cream/60 border-l-4 border-[#C94F4F] rounded-r-lg p-3">
+        <p className="text-precision text-[0.6rem] font-bold text-[#9A3D3D] tracking-widest uppercase mb-1">Not a diagnosis</p>
+        <p className="text-body text-clinical-stone text-xs leading-relaxed">
+          These are pattern-matches against the patient's data — informational only. Only the patient's physician can diagnose a condition. Bring this list as a starting point for discussion, not a conclusion.
+        </p>
+      </div>
       <div className="space-y-4">
         {sorted.map((c, i) => {
           const conf = (c.confidence ?? 'low').toLowerCase();

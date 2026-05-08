@@ -273,7 +273,7 @@ export const TestsToRequest = ({ tests, advanced, possibleConditions }: TestsToR
           title="Possible Conditions Tests"
           count={condTests.length}
           countLabel="tests"
-          explanation="Confirmatory workup for the differential diagnoses listed in 'Possible conditions to investigate' below. These are the tests your doctor needs to rule each pattern in or out — they go BEYOND the standard baseline because each one targets a specific suspected condition. Anything already covered by your PCP baseline above isn't repeated here."
+          explanation="Tests that would help your doctor evaluate the patterns listed in 'Possible conditions to investigate' below. CauseHealth doesn't diagnose — these are simply tests that match each pattern's standard workup. They go beyond the baseline because each one targets a specific pattern. Anything already covered by your PCP baseline above isn't repeated here. Only your doctor can decide which tests to order and what the results mean."
           accentColor="#C94F4F"
           defaultOpen
         >
