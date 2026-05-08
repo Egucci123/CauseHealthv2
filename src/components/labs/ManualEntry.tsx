@@ -87,8 +87,8 @@ export const ManualEntry = ({ drawId, onComplete }: ManualEntryProps) => {
         ))}
       </div>
 
-      <div className="bg-clinical-white rounded-[10px] border border-outline-variant/10 overflow-hidden">
-        <table className="w-full">
+      <div className="bg-clinical-white rounded-[10px] border border-outline-variant/10 overflow-x-auto">
+        <table className="w-full min-w-[360px]">
           <thead><tr className="text-precision text-[0.68rem] text-clinical-stone border-b border-outline-variant/10 bg-clinical-cream">
             <th className="text-left px-5 py-3 font-medium">MARKER</th><th className="text-left px-3 py-3 font-medium">VALUE</th><th className="text-left px-3 py-3 font-medium">UNIT</th>
           </tr></thead>

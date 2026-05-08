@@ -24,7 +24,7 @@ export const AppShell = ({ children, pageTitle, pageSubtitle, showDisclaimer = f
       {showDisclaimer && <DisclaimerBanner />}
       <TopBar title={pageTitle} subtitle={pageSubtitle} />
       <div
-        className="p-6 md:p-8 max-w-6xl mx-auto space-y-8 md:pb-8"
+        className="p-4 sm:p-6 md:p-8 max-w-6xl mx-auto space-y-8 md:pb-8"
         style={{ paddingBottom: 'calc(7rem + env(safe-area-inset-bottom))' }}
       >
         {children}

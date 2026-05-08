@@ -8,12 +8,16 @@ import { NotificationPreferences } from '../../components/settings/NotificationP
 import { SubscriptionManagement } from '../../components/settings/SubscriptionManagement';
 import { DataManagement } from '../../components/settings/DataManagement';
 import { useSubscription } from '../../lib/subscription';
+import { TabNav } from '../../components/ui/TabNav';
 
 type Tab = 'profile' | 'health' | 'notifications' | 'subscription' | 'data';
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'profile', label: 'Profile' }, { id: 'health', label: 'Health Profile' },
-  { id: 'notifications', label: 'Notifications' },
-  { id: 'subscription', label: 'Subscription' }, { id: 'data', label: 'Your Data' },
+// Short mobile labels — full labels are too wide for 5 tabs on a 360px viewport.
+const TABS: { id: Tab; label: string; shortLabel: string }[] = [
+  { id: 'profile', label: 'Profile', shortLabel: 'Profile' },
+  { id: 'health', label: 'Health Profile', shortLabel: 'Health' },
+  { id: 'notifications', label: 'Notifications', shortLabel: 'Notify' },
+  { id: 'subscription', label: 'Subscription', shortLabel: 'Plan' },
+  { id: 'data', label: 'Your Data', shortLabel: 'Data' },
 ];
 
 export const Settings = () => {
@@ -46,25 +50,18 @@ export const Settings = () => {
           </div>
         </div>
 
-        {/* Tab nav — segmented control */}
-        <div className="flex gap-1 bg-clinical-cream rounded-[10px] p-1 overflow-x-auto">
-          {TABS.map(tab => {
-            const active = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 min-w-[100px] py-2.5 px-3 rounded-[8px] transition-all relative ${
-                  active ? 'bg-clinical-white shadow-card' : 'hover:bg-clinical-white/50'
-                }`}
-              >
-                <span className={`text-precision text-[0.68rem] font-bold tracking-wider whitespace-nowrap ${active ? 'text-clinical-charcoal' : 'text-clinical-stone'}`}>
-                  {tab.label}
-                </span>
-                {tab.id === 'subscription' && status === 'past_due' && <span className="absolute top-1 right-1 w-2 h-2 bg-[#C94F4F] rounded-full" />}
-              </button>
-            );
-          })}
+        {/* Tab nav — uses shared TabNav for mobile fit + scroll-hint affordance */}
+        <div className="relative">
+          <TabNav
+            tabs={TABS}
+            active={activeTab}
+            onChange={(id) => setActiveTab(id as Tab)}
+            variant="compact"
+          />
+          {/* Past-due red dot on Subscription — overlaid since TabNav doesn't expose per-tab badges */}
+          {status === 'past_due' && (
+            <span className="pointer-events-none absolute top-1.5 right-[calc(var(--past-due-offset,30%)+8px)] w-2 h-2 bg-[#C94F4F] rounded-full" />
+          )}
         </div>
 
         {activeTab === 'profile' && <ProfileSettings />}

@@ -635,9 +635,9 @@ export const LabDetail = () => {
       {/* Tab nav — uses shared TabNav for consistent affordance + mobile fit. */}
       <TabNav
         tabs={[
-          { id: 'all', label: `All (${values.length})` },
-          { id: 'urgent', label: `Out of Range (${urgentCount})` },
-          { id: 'monitor', label: `Watch (${monitorCount})` },
+          { id: 'all', label: `All (${values.length})`, shortLabel: `All (${values.length})` },
+          { id: 'urgent', label: `Out of Range (${urgentCount})`, shortLabel: `Out (${urgentCount})` },
+          { id: 'monitor', label: `Watch (${monitorCount})`, shortLabel: `Watch (${monitorCount})` },
         ]}
         active={activeTab}
         onChange={(id) => setActiveTab(id as any)}

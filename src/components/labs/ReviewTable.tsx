@@ -66,8 +66,8 @@ export const ReviewTable = ({ values: initialValues, drawDate, labName, onConfir
         ))}
       </div>
 
-      <div className="bg-clinical-white rounded-[10px] overflow-hidden border border-outline-variant/10">
-        <table className="w-full">
+      <div className="bg-clinical-white rounded-[10px] overflow-x-auto border border-outline-variant/10">
+        <table className="w-full min-w-[400px]">
           <thead>
             <tr className="text-precision text-[0.68rem] text-clinical-stone border-b border-outline-variant/10 bg-clinical-cream">
               <th className="text-left px-5 py-3 font-medium">MARKER</th>
