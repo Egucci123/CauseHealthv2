@@ -567,9 +567,10 @@ const TakeTab = ({ plan }: { plan: any }) => {
                         rel="noopener noreferrer"
                         title="Find on Amazon"
                         aria-label={`Find ${s.nutrient} on Amazon`}
-                        className="inline-flex items-center justify-center w-7 h-7 rounded-md bg-clinical-cream hover:bg-[#D4A574]/20 text-clinical-charcoal hover:text-[#1B423A] transition-colors"
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-clinical-cream hover:bg-[#D4A574]/20 text-clinical-charcoal hover:text-[#1B423A] transition-colors"
                       >
                         <span className="material-symbols-outlined text-[16px]">shopping_cart</span>
+                        <span className="text-precision text-[0.65rem] font-bold tracking-wider uppercase">Add to Amazon</span>
                       </a>
                     </div>
                   </div>
