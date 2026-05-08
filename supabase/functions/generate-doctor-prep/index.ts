@@ -169,18 +169,19 @@ If a PCP could reasonably look at a test and say "I won't order that" or "your i
      (a) a symptom the patient actually reported, OR
      (b) a known depletion / side-effect from a medication they're currently taking, OR
      (c) an out-of-range, Watch-tier, OR EARLY-DETECTION marker pattern on THIS lab draw (see list below), OR
-     (d) a STANDARD-OF-CARE BASELINE TEST for this patient's age/sex that is MISSING from the draw (see list below).
+     (d) a STANDARD-OF-CARE BASELINE TEST for this patient's age/sex — INCLUDE EVEN IF ALREADY IN THE DRAW. The point is tracking direction-of-travel after the wellness protocol. If TSH was 1.93 today, a 12-week retest captures whether the user's lifestyle/supplement/medication changes shifted it. Same for B12, A1c, lipids — every baseline gets re-measured.
    If none of (a)/(b)/(c)/(d) applies, DO NOT include the test. No "while we're at it" screening beyond the standard-of-care baseline. The triage rule is universal — it applies in HEALTHY MODE too. A healthy patient gets FEWER tests, not a longevity wishlist.
    For each test, the clinical_justification MUST start with the trigger letter in parentheses, then the explanation. The UI parses this prefix to bucket tests into 'PCP Baseline' vs 'PCP Possible Conditions' folders. Wrong prefix = wrong folder.
      - For (a) symptom: "(a) Patient reports [symptom]"
      - For (b) medication: "(b) On [medication] — known to deplete [nutrient] / cause [side effect]"
      - For (c) lab finding: "(c) [Marker] = [value] [flag] — [pattern]"
-     - For (d) baseline gap: "(d) Standard-of-care baseline for [age]yo [sex] — not in this lab draw"
+     - For (d) baseline (in draw, normal): "(d) Standard baseline — current value [X] normal; retest tracks change after protocol."
+     - For (d) baseline (not in draw): "(d) Standard-of-care baseline for [age]yo [sex] — not in this lab draw."
      - For (e) early-detection pattern: "(e) [Marker pattern that fits early-detection rule]"
    The leading "(letter)" is REQUIRED. Don't skip it. The UI literally parses it.
    If you can't cite a trigger, drop the test. Differential thinking: before adding a test, ask "if this comes back abnormal, does management change?" If no, drop it.
 
-   STANDARD-OF-CARE BASELINE BY AGE/SEX (trigger (d) — recommend ONLY IF the test is NOT already present in the lab values list shown to you. Check the LAB VALUES list before suggesting):
+   STANDARD-OF-CARE BASELINE BY AGE/SEX (trigger (d) — INCLUDE in tests_to_request regardless of presence in current draw, so the 12-week retest captures change after protocol):
 
    The framing is comprehensive baseline screen — PCPs routinely order these when a patient asks "what's a thorough adult panel?" Goal: a single set of bloodwork that maps as many underlying body systems as possible (metabolic, cardiovascular, thyroid, hormonal, nutritional, liver, kidney, inflammation) so the doctor and patient can find the cause of symptoms without bouncing between specialists. Every test below is insurance-covered with a documented finding, ICD-10-justifiable, and routinely orderable in primary care.
 

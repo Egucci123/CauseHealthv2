@@ -588,12 +588,17 @@ HARD RULES — FOLLOW EXACTLY:
      (a) a symptom the patient actually reported (the test investigates the cause)
      (b) a known depletion / side-effect from a medication they're currently taking (the test confirms or refutes depletion)
      (c) an out-of-range OR Watch-tier marker on THIS lab draw (the test re-measures it after the protocol)
-     (d) a STANDARD-OF-CARE BASELINE TEST for the patient's age/sex that is MISSING from the draw (the doctor should have ordered it)
+     (d) a STANDARD-OF-CARE BASELINE TEST for the patient's age/sex — INCLUDE EVEN IF ALREADY IN THE DRAW. The retest is for tracking direction-of-travel after the protocol, not just for filling missing slots. If TSH was 1.93 today and the patient loses weight + sleeps better, you want to see if it shifts. Same for B12, A1c, lipids — every baseline gets re-measured.
      (e) an early-detection marker pattern matching this patient (e.g. Hashimoto's antibodies if TSH 2.5-4.5 + fatigue/hair loss; full iron panel if ferritin <50; PCOS panel if cycle issues; etc.)
 
    If none of (a)-(e) applies, DO NOT include the test. No "while we're at it" longevity tests. No "good to confirm" tests with no specific trigger.
 
-   STANDARD-OF-CARE BASELINE BY AGE/SEX (trigger (d) — recommend ONLY IF the test is NOT already in the lab values list):
+   For trigger (d) framing in the why field:
+     - If marker IS in the current draw and was normal: "(d) Standard baseline — current value [X] is normal; retest tracks change after protocol."
+     - If marker IS in the current draw and was abnormal/Watch: use trigger (c) instead, framed as "tracking response."
+     - If marker NOT in draw: "(d) Standard baseline missing from current draw — doctor should have ordered."
+
+   STANDARD-OF-CARE BASELINE BY AGE/SEX (trigger (d) — INCLUDE in retest regardless of presence in current draw):
 
    The framing is comprehensive baseline screen — what a PCP orders when a patient asks "what's a thorough adult panel?" Goal: cover as many underlying body systems as possible (metabolic, cardiovascular, thyroid, hormonal, nutritional, liver, kidney, inflammation) so we surface the cause of symptoms without referrals to multiple specialists. Every test below is insurance-covered with a documented finding, ICD-10-justifiable, and routinely orderable in primary care.
 
@@ -767,9 +772,11 @@ ONE TEST PER ENTRY — DO NOT COMBINE OR DUPLICATE:
   - Good: ONE entry per test. If ApoB is its own retest target, it's a separate entry from Lipid Panel.
   - Bad: "Liver Panel (ALT, AST, ALP, GGT, Bilirubin)" combined when ALT/AST are already in CMP
   - Good: CMP entry covers ALT/AST/ALP/Bilirubin. GGT as separate entry if liver workup needed.
-  - REQUIRED tests every comprehensive baseline MUST include — NON-NEGOTIABLE. These are not "consider including," they are "must appear in retest_timeline as separate entries unless already present in the lab values list." If you skip any of these without checking the lab values list, you have failed the patient and the doctor walks them out of the office with an incomplete panel.
+  - REQUIRED tests every retest_timeline MUST include — NON-NEGOTIABLE. The retest_timeline is what gets re-measured at the 12-week mark to TRACK CHANGES after the protocol. Even if a test is "in range" today, retesting it captures whether the user's lifestyle/supplement/medication changes moved the number. Skipping a test because it's "already in the draw" defeats the purpose — the prior draw is the baseline, the retest is the comparison point.
 
-    ALL ADULTS (18+) — checklist. Walk through this list and add EACH ONE that's missing from the current draw as its OWN retest_timeline entry:
+    INCLUDE every test below as a SEPARATE retest_timeline entry. Do this regardless of whether the value is currently normal, borderline, or abnormal — the retest is for tracking direction-of-travel, not just confirming abnormalities.
+
+    ALL ADULTS (18+) — checklist. Walk through this list and add EVERY ONE as its OWN retest_timeline entry:
       [ ] CMP (Comprehensive Metabolic Panel)
       [ ] CBC with Differential
       [ ] Lipid Panel (TC, LDL, HDL, TG, VLDL)
@@ -801,7 +808,7 @@ ONE TEST PER ENTRY — DO NOT COMBINE OR DUPLICATE:
 
     DO NOT skip these because "the doctor will obviously order it." The user's job is to walk in with the complete list. The doctor's job is to order from it. Skipping equals failing the user.
 
-    Cap retest_timeline at 18-22 entries. The required baseline fills ~14-16 slots. Save 4-6 slots for symptom-driven, lab-pattern-driven, condition-confirmatory tests. NO padding with duplicates or combined panels.
+    Cap retest_timeline at 22-28 entries. The required baseline fills ~14-18 slots (now that baselines are included even when in current draw, for tracking purposes). Reserve the rest for symptom-driven, lab-pattern-driven, and condition-confirmatory tests. NO padding with duplicates or combined panels.
 
 REASONING MODE — open-ended, first-principles, like a sharp internist with time:
 Deterministic engines fire as a backstop for high-prevalence cases. YOUR job is the long tail they don't catch. Reason from the data picture, not from a checklist. Cover every body system implicitly — endocrine, cardio, GI, hepatic, renal, heme, autoimmune, MSK, repro, neuro, respiratory, infectious, oncology rule-outs, nutritional. Don't constrain yourself.
