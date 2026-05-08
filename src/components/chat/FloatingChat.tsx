@@ -90,12 +90,27 @@ const FloatingCoachButton = ({
     catch { return false; }
   });
 
-  const handleClick = () => {
-    onOpen();
-    if (showTooltip) {
+  // Auto-dismiss the first-visit tooltip after 6 seconds. It was sticking
+  // around indefinitely on every page and obscuring content near the
+  // bottom-right of mobile viewports. Users got the message after one
+  // glance — it doesn't need to camp.
+  useEffect(() => {
+    if (!showTooltip) return;
+    const t = setTimeout(() => {
       try { localStorage.setItem(COACH_TOOLTIP_FLAG, 'true'); } catch {}
       setShowTooltip(false);
-    }
+    }, 6000);
+    return () => clearTimeout(t);
+  }, [showTooltip]);
+
+  const dismissTooltip = () => {
+    try { localStorage.setItem(COACH_TOOLTIP_FLAG, 'true'); } catch {}
+    setShowTooltip(false);
+  };
+
+  const handleClick = () => {
+    onOpen();
+    if (showTooltip) dismissTooltip();
   };
 
   return (
@@ -113,11 +128,19 @@ const FloatingCoachButton = ({
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 10, scale: 0.95 }}
                 transition={{ duration: 0.3, delay: 0.5 }}
-                className="bg-[#131313] text-white rounded-[10px] px-4 py-2.5 shadow-lg max-w-[240px] relative"
+                className="bg-[#131313] text-white rounded-[10px] pl-4 pr-9 py-2.5 shadow-lg max-w-[240px] relative"
               >
                 <p className="text-body text-xs leading-snug">
                   👋 <span className="font-semibold">Ask me anything</span> about your labs, plan, or supplements.
                 </p>
+                {/* Close button — dismiss without opening the chat */}
+                <button
+                  onClick={(e) => { e.stopPropagation(); dismissTooltip(); }}
+                  aria-label="Dismiss Coach tooltip"
+                  className="absolute top-1.5 right-1.5 w-6 h-6 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[14px] text-white/70">close</span>
+                </button>
                 {/* Arrow pointing to button */}
                 <div
                   className="absolute -bottom-1.5 right-6 w-3 h-3 bg-[#131313] transform rotate-45"

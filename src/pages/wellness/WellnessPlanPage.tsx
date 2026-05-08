@@ -738,6 +738,26 @@ export const WellnessPlanPage = () => {
           </div>
         </div>
       )}
+      {/* Generic generation error — Anthropic timeouts, parse failures,
+          network drops. Without this top-level banner, mid-flight failures
+          silently reverted to empty state with no feedback. */}
+      {genError && !isCapHit && (
+        <div className="mb-4 bg-[#C94F4F]/10 border border-[#C94F4F]/40 rounded-[10px] p-4 flex items-start gap-3">
+          <span className="material-symbols-outlined text-[#C94F4F] text-[22px] flex-shrink-0 mt-0.5">error</span>
+          <div className="flex-1">
+            <p className="text-authority text-clinical-charcoal text-sm font-bold mb-1">Generation failed</p>
+            <p className="text-body text-clinical-stone text-sm leading-snug mb-2 break-words">
+              {genError.length > 200 ? genError.slice(0, 200) + '…' : genError} Click Build again to retry — this doesn't count against your regen limit.
+            </p>
+            <button
+              onClick={() => setGenError(null)}
+              className="text-precision text-[0.65rem] font-bold tracking-widest uppercase text-[#9A3D3D] hover:text-clinical-charcoal transition-colors"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
       {/* Plan undefined = loading. Plan null = no plan generated yet. */}
       {plan === undefined ? <WellnessSkeleton />
         : generating ? <GeneratingState />
