@@ -133,7 +133,7 @@ const REGISTRY: SupplementDef[] = [
   {
     key: 'creatine',
     alreadyTakingPatterns: [/\bcreatine\b/i],
-    entry: { emoji: '💪', nutrient: 'Creatine Monohydrate', form: 'Powder', dose: '5g', timing: 'Any time daily', why_short: 'Universal — strength, cognition, bone density', why: 'Creatine is one of the most studied supplements. Daily 5g supports muscle strength, cognitive function, and bone density. No loading required.', practical_note: 'Mix in any drink. Take consistently — a daily habit matters more than timing.', category: 'condition_therapy', alternatives: [{ name: 'Creatine HCl', form: 'Capsule', note: 'Pricier; some prefer for bloating' }], priority: 'moderate', sourced_from: 'optimization', evidence_note: '500+ RCTs across decades support 3-5g daily for healthy adults.' },
+    entry: { emoji: '💪', nutrient: 'Creatine Monohydrate', form: 'Powder', dose: '5g', timing: 'Any time daily', why_short: 'Universal — strength, cognition, bone density', why: 'Creatine is one of the most studied supplements. Daily 5g supports muscle strength, cognitive function, and bone density. No loading required.', practical_note: 'Mix in any drink. Take consistently — a daily habit matters more than timing.', category: 'inflammation_cardio', alternatives: [{ name: 'Creatine HCl', form: 'Capsule', note: 'Pricier; some prefer for bloating' }], priority: 'moderate', sourced_from: 'optimization', evidence_note: '500+ RCTs across decades support 3-5g daily for healthy adults.' },
   },
   {
     key: 'omega_3',
