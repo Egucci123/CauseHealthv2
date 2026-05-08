@@ -131,13 +131,17 @@ export const LabDetail = () => {
   // Hold "Analyzing…" UI from click until we observe a fresh complete state
   // in the cache. Without the dataUpdatedAt > retriedAt check, the lock
   // releases instantly because the cache still shows the OLD complete state.
+  // Hard ceiling reduced from 60s → 30s — if the analysis hasn't landed by
+  // then, the silent-failure path is more likely than mid-flight latency,
+  // and forcing a 60s wait before another click was leaving users stuck
+  // when the server-side analysis errored out without surfacing.
   const queryState = qc.getQueryState(['lab-detail', drawId]);
   const dataUpdatedAt = queryState?.dataUpdatedAt ?? 0;
   const status = data?.draw?.processing_status;
   const retryLocked = (() => {
     if (!retriedAt) return false;
     const elapsed = now - retriedAt;
-    if (elapsed >= 60_000) return false;                                // hard 60s ceiling
+    if (elapsed >= 30_000) return false;                                // hard 30s ceiling
     if (
       dataUpdatedAt > retriedAt &&
       status === 'complete' &&
