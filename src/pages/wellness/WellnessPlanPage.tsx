@@ -475,8 +475,16 @@ const CATEGORY_META: Record<string, { label: string; sub: string; icon: string; 
   inflammation_cardio: { label: 'Inflammation & Cardio', sub: 'Lower inflammation, support heart + lipids', icon: 'favorite', color: '#C94F4F' },
   nutrient_repletion: { label: 'Nutrient Repletion', sub: 'Fixing measurable deficiencies', icon: 'science', color: '#1B423A' },
   condition_therapy: { label: 'Condition-Specific', sub: 'Disease-mechanism therapy with strong evidence', icon: 'medication', color: '#D4A574' },
+  // Render-only pseudo-category. Any supplement with sourced_from === 'medication_depletion'
+  // is routed here at display time, regardless of its underlying category. Keeps the
+  // generator's category logic clean (CoQ10 still IS liver-supportive at the pharmacology
+  // level) while giving the user a clear "this is here because of your meds" section.
+  medication_depletion: { label: 'Medication Depletions', sub: 'Replacing nutrients your prescriptions deplete', icon: 'pill', color: '#B8915F' },
 };
-const CATEGORY_ORDER_SUPPS = ['nutrient_repletion', 'liver_metabolic', 'gut_healing', 'inflammation_cardio', 'condition_therapy', 'sleep_stress'];
+// Order: med depletions first (highest urgency for this patient), then deficiencies, then
+// the rest. Putting medication_depletion at top because the user will recognize it as
+// "the supplement that's because of my drug" and the "why" is immediately legible.
+const CATEGORY_ORDER_SUPPS = ['medication_depletion', 'nutrient_repletion', 'liver_metabolic', 'gut_healing', 'inflammation_cardio', 'condition_therapy', 'sleep_stress'];
 
 const TakeTab = ({ plan }: { plan: any }) => {
   const supps = [...(plan.supplement_stack ?? [])];
@@ -485,10 +493,18 @@ const TakeTab = ({ plan }: { plan: any }) => {
   }
 
   // Group by category if entries have one. Fall back to flat ranked list for legacy plans.
+  // RENDER-LEVEL ROUTING: any supplement with sourced_from === 'medication_depletion'
+  // is grouped under the medication_depletion pseudo-category, regardless of its
+  // underlying category field. Keeps the data model simple (CoQ10 still IS pharmacologically
+  // liver-metabolic) while giving the UI a clean "your meds caused this" section.
+  const effectiveCategory = (s: any): string => {
+    if (s?.sourced_from === 'medication_depletion') return 'medication_depletion';
+    return s?.category;
+  };
   const hasCategories = supps.some((s: any) => !!s.category);
   const groups: { key: string; items: any[] }[] = hasCategories
     ? CATEGORY_ORDER_SUPPS
-        .map(key => ({ key, items: supps.filter((s: any) => s.category === key) }))
+        .map(key => ({ key, items: supps.filter((s: any) => effectiveCategory(s) === key) }))
         .filter(g => g.items.length > 0)
         .concat(
           supps.some((s: any) => !s.category)
