@@ -1886,18 +1886,26 @@ CALIBRATION (applies to ALL arrays): Healthy patient with clean labs → 0-2 ent
       } catch (e) { console.warn('[wellness-plan] category normalization failed:', e); }
     }
 
-    // Final dedup: ONE supplement per category. The UI groups by category, so
-    // duplicates within a category overwhelm the user (statin patient ended
-    // up with 7 supplements; user explicitly asked for 1 per category, the
-    // single best one). Sort each category's candidates by priority, keep
-    // the top one, drop the rest. Rank field stripped — UI doesn't display it.
+    // Final dedup: ONE supplement per EFFECTIVE category. Effective category
+    // matches what the UI renders by — if sourced_from === 'medication_depletion'
+    // we treat the supplement as its own 'medication_depletion' bucket
+    // (which is the renderer's pseudo-category). Otherwise we use the
+    // pharmacological category. This prevents CoQ10 (med-depletion, mapped
+    // category inflammation_cardio) from competing with Omega-3 (lab-finding,
+    // inflammation_cardio) in dedup — both survive because they're in
+    // different effective buckets.
     if (Array.isArray(plan.supplement_stack)) {
       const priorityRank = (p: string) => p === 'critical' ? 0 : p === 'high' ? 1 : p === 'moderate' ? 2 : 3;
+      const effectiveCat = (supp: any): string | null => {
+        if (supp?.sourced_from === 'medication_depletion') return 'medication_depletion';
+        const c = supp?.category;
+        return typeof c === 'string' && c.length > 0 ? c : null;
+      };
       const byCategory = new Map<string, any[]>();
       const uncategorized: any[] = [];
       for (const supp of plan.supplement_stack) {
-        const cat = supp?.category;
-        if (typeof cat === 'string' && cat.length > 0) {
+        const cat = effectiveCat(supp);
+        if (cat) {
           if (!byCategory.has(cat)) byCategory.set(cat, []);
           byCategory.get(cat)!.push(supp);
         } else {
