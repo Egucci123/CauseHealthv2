@@ -418,13 +418,12 @@ serve(async (req) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({
-        // 24K accommodates 100+ marker patients with full plan: supplement_stack,
-        // today_actions, meals, workouts, lifestyle_interventions across 4 domains,
-        // action_plan (3 phases), retest_timeline, suspected_conditions,
-        // multi_marker_patterns, predicted_changes, symptoms_addressed, etc.
-        // Salvage path catches truncation but bumping max prevents needing it.
-        // Billed on actual output, not max_tokens.
-        model: 'claude-haiku-4-5-20251001', max_tokens: 24000,
+        // 14K — known-good ceiling for wellness plan generation. Previous
+        // bump to 24K was unblocking on dense panels but introduced
+        // generation failures (Haiku-side request handling), so reverting
+        // until we can validate higher caps with synthetic tests. Salvage
+        // path still handles truncation if it ever hits.
+        model: 'claude-haiku-4-5-20251001', max_tokens: 14000,
         system: [{ type: 'text', cache_control: { type: 'ephemeral' }, text: `You are CauseHealth AI. Return ONLY valid JSON.
 
 GLOBAL VOICE RULES (CRITICAL — apply to EVERY string in the JSON):

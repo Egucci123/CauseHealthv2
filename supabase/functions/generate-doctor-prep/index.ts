@@ -89,11 +89,10 @@ serve(async (req) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({
-        // 12K — fits comprehensive prep for 100+ marker patients with full
-        // tests_to_request, possible_conditions, clinical_summary, medications.
-        // Doctor prep had truncation-salvage logic indicating 6K was hitting
-        // the cap on dense cases. Billed on actual output.
-        model: 'claude-haiku-4-5-20251001', max_tokens: 12000,
+        // 6K — known-good ceiling for doctor prep generation. Salvage path
+        // already handles truncation on dense panels. Reverting from 12K bump
+        // until we validate higher caps with synthetic tests.
+        model: 'claude-haiku-4-5-20251001', max_tokens: 6000,
         system: [{ type: 'text', cache_control: { type: 'ephemeral' }, text: `You are CauseHealth AI. Return ONLY valid JSON.
 
 GLOBAL VOICE RULES (CRITICAL — apply to EVERY string in the JSON):

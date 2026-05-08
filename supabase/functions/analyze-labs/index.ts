@@ -123,11 +123,9 @@ serve(async (req) => {
         headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
         signal: apiController.signal,
         body: JSON.stringify({
-          // 20K accommodates 100+ marker analyses (full per-marker explanations
-          // + retest_timeline + suspected_conditions). Billed on actual output,
-          // not max_tokens, so this is a safety cap not a cost increase for
-          // typical 40-60 marker panels.
-          model: 'claude-haiku-4-5-20251001', max_tokens: 20000,
+          // 10K — known-good ceiling for analyze-labs. Reverting from 20K bump
+          // until we validate higher caps with synthetic tests.
+          model: 'claude-haiku-4-5-20251001', max_tokens: 10000,
           system: [{ type: 'text', cache_control: { type: 'ephemeral' }, text: `You are CauseHealth AI. Return ONLY valid JSON.
 
 GLOBAL VOICE RULES (CRITICAL — every string in JSON):
