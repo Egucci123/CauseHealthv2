@@ -47,7 +47,7 @@ export const Step0_Primer = ({ onContinue }: Props) => {
           <div className="bg-[#D4A574]/10 border border-[#D4A574]/30 rounded-[12px] p-5">
             <p className="text-precision text-[0.65rem] font-bold tracking-widest uppercase text-[#B8915F] mb-2">Why every detail matters</p>
             <p className="text-body text-clinical-charcoal text-sm leading-relaxed">
-              Your plan is built from your answers. Skip a question and the AI guesses. Fill it all out and you get the meals at the chains you actually eat at, tests your insurance is likely to cover, and supplements that fit your medications.
+              Your plan is built from your answers. Skip a question and the AI guesses. Fill it all out and you get a food playbook tuned to your labs, tests your insurance is likely to cover, and supplements that fit your medications.
             </p>
             <p className="text-body text-clinical-charcoal text-sm leading-relaxed mt-3">
               <strong className="font-semibold">There are no wrong answers.</strong> If something doesn't apply, there's an "I have none" option.
