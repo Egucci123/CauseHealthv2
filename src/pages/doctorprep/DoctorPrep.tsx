@@ -218,7 +218,7 @@ export const DoctorPrep = () => {
       {doc === undefined ? (
         <div className="space-y-4 animate-pulse"><div className="h-32 bg-[#E8E3DB] rounded-[10px]" /><div className="h-64 bg-[#E8E3DB] rounded-[10px]" /></div>
       ) : generating ? (
-        <div className="bg-clinical-white rounded-[10px] shadow-card border-t-[3px] border-primary-container p-12 text-center">
+        <div className="bg-clinical-white rounded-[10px] shadow-card border-t-[3px] border-primary-container p-6 sm:p-12 text-center">
           <div className="w-14 h-14 bg-primary-container/10 rounded-full flex items-center justify-center mx-auto mb-5"><span className="material-symbols-outlined text-primary-container text-2xl animate-pulse">description</span></div>
           <p className="text-authority text-2xl text-clinical-charcoal font-bold mb-2">Preparing your clinical document...</p>
           <p className="text-body text-clinical-stone max-w-xs mx-auto">Writing clinical summary, pulling ICD-10 codes, building test request list. About 45–90 seconds.</p>
@@ -313,7 +313,7 @@ class DoctorPrepErrorBoundary extends Component<{ children: ReactNode }, { hasEr
     if (this.state.hasError) {
       return (
         <AppShell pageTitle="Clinical Prep" showDisclaimer>
-          <div className="bg-[#C94F4F]/10 border border-[#C94F4F]/30 rounded-[10px] p-8 text-center">
+          <div className="bg-[#C94F4F]/10 border border-[#C94F4F]/30 rounded-[10px] p-6 sm:p-8 text-center">
             <span className="material-symbols-outlined text-[#C94F4F] text-4xl mb-3 block">error</span>
             <p className="text-body text-clinical-charcoal font-semibold mb-2">Something went wrong loading this document.</p>
             <p className="text-body text-clinical-stone text-sm mb-4">{this.state.error}</p>

@@ -137,12 +137,12 @@ interface SectionHeaderProps {
 }
 
 export const SectionHeader = ({ title, description }: SectionHeaderProps) => (
-  <div className="border-b border-[#414844]/10 pb-6">
-    <h2 className="text-authority text-4xl text-clinical-charcoal font-bold">
+  <div className="border-b border-[#414844]/10 pb-5 sm:pb-6">
+    <h2 className="text-authority text-2xl sm:text-4xl text-clinical-charcoal font-bold leading-tight">
       {title}
     </h2>
     {description && (
-      <p className="text-body text-clinical-stone mt-2 text-lg">{description}</p>
+      <p className="text-body text-clinical-stone mt-2 text-sm sm:text-lg leading-relaxed">{description}</p>
     )}
   </div>
 );

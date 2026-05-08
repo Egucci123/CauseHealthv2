@@ -63,7 +63,7 @@ const TestCard = ({ test, advanced = false }: { test: TestToRequest; advanced?: 
   const badgeText = advanced ? 'EARLY DETECTION' : cfg.text;
   const trigger = getTrigger(test);
   return (
-    <div className={`bg-clinical-white rounded-[10px] shadow-card ${border} p-6`}>
+    <div className={`bg-clinical-white rounded-[10px] shadow-card ${border} p-4 sm:p-6`}>
       <div className="flex justify-between items-start mb-4 gap-2 flex-wrap">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-2">
@@ -74,7 +74,7 @@ const TestCard = ({ test, advanced = false }: { test: TestToRequest; advanced?: 
               </span>
             )}
           </div>
-          <h4 className="text-authority text-xl text-clinical-charcoal font-semibold break-words">{test.test_name}</h4>
+          <h4 className="text-authority text-base sm:text-xl text-clinical-charcoal font-semibold break-words leading-snug">{test.test_name}</h4>
         </div>
       </div>
       <div className="mb-4">

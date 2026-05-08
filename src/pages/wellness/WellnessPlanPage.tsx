@@ -58,7 +58,7 @@ const WellnessSkeleton = () => (
 );
 
 const GeneratingState = () => (
-  <div className="bg-clinical-white rounded-[10px] shadow-card border-t-[3px] border-primary-container p-12 text-center">
+  <div className="bg-clinical-white rounded-[10px] shadow-card border-t-[3px] border-primary-container p-6 sm:p-12 text-center">
     <div className="w-16 h-16 bg-primary-container/10 rounded-full flex items-center justify-center mx-auto mb-6">
       <span className="material-symbols-outlined text-primary-container text-3xl animate-pulse">favorite</span>
     </div>
@@ -71,7 +71,7 @@ const GeneratingState = () => (
 );
 
 const EmptyState = ({ onGenerate, loading }: { onGenerate: () => void; loading: boolean }) => (
-  <div className="bg-clinical-white rounded-[10px] shadow-card border-t-[3px] border-primary-container p-12 text-center">
+  <div className="bg-clinical-white rounded-[10px] shadow-card border-t-[3px] border-primary-container p-6 sm:p-12 text-center">
     <span className="material-symbols-outlined text-clinical-stone text-5xl mb-4 block">favorite</span>
     <p className="text-authority text-2xl text-clinical-charcoal font-bold mb-3">Build your plan</p>
     <p className="text-body text-clinical-stone mb-6 max-w-sm mx-auto leading-relaxed">3 things to do today. A weekly food list. A workout schedule. Your supplements. All from your labs.</p>

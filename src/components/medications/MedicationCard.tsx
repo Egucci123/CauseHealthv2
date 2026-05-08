@@ -34,7 +34,7 @@ const DepletionRow = ({ dep, index }: { dep: DepletionEntry; index: number }) =>
               <div className="bg-primary-container/5 border-l-4 border-primary-container p-4 rounded-r-lg">
                 <p className="text-precision text-[0.6rem] text-primary-container uppercase tracking-widest font-bold mb-2">Recommended Intervention</p>
                 <p className="text-body text-clinical-charcoal text-sm font-semibold mb-3">{dep.intervention}</p>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-2">
                   <div><p className="text-precision text-[0.7rem] text-clinical-stone uppercase tracking-wider mb-0.5">Dose</p><p className="text-body text-clinical-charcoal text-xs">{dep.dose}</p></div>
                   <div><p className="text-precision text-[0.7rem] text-clinical-stone uppercase tracking-wider mb-0.5">Form</p><p className="text-body text-clinical-charcoal text-xs font-medium">{dep.form}</p></div>
                   <div><p className="text-precision text-[0.7rem] text-clinical-stone uppercase tracking-wider mb-0.5">Timing</p><p className="text-body text-clinical-charcoal text-xs">{dep.timing}</p></div>

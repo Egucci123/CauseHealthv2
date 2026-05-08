@@ -85,7 +85,7 @@ export const LabMarkerCard = ({ value, analysis, onAddToPrep }: LabMarkerCardPro
 
   return (
     <div className={`bg-clinical-white rounded-[10px] shadow-card ${topBorder} overflow-hidden`}>
-      <div className="p-8">
+      <div className="p-5 sm:p-8">
         <div className="flex justify-between items-start mb-6 gap-3">
           <div className="flex items-start gap-3 flex-1 min-w-0">
             {analysis?.emoji && <span className="text-3xl flex-shrink-0 leading-none">{analysis.emoji}</span>}
@@ -132,9 +132,9 @@ export const LabMarkerCard = ({ value, analysis, onAddToPrep }: LabMarkerCardPro
         )}
 
         <div className="flex items-end justify-between gap-4 mb-6">
-          <div>
-            <span className="text-precision text-5xl text-clinical-charcoal font-medium">{value.value}</span>
-            <span className="text-body text-clinical-stone text-xl ml-2">{value.unit}</span>
+          <div className="min-w-0">
+            <span className="text-precision text-4xl sm:text-5xl text-clinical-charcoal font-medium break-words">{value.value}</span>
+            <span className="text-body text-clinical-stone text-base sm:text-xl ml-2">{value.unit}</span>
           </div>
           {history.length >= 2 && (
             <div className="flex flex-col items-end gap-1 flex-shrink-0">

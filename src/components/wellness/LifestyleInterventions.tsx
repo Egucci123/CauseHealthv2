@@ -21,12 +21,12 @@ export const LifestyleInterventions = ({ interventions }: { interventions: { die
 
   return (
     <div className="bg-clinical-white rounded-[10px] shadow-card border-t-[3px] border-primary-container overflow-hidden">
-      <div className="p-8">
+      <div className="p-5 sm:p-8">
         <SectionLabel icon="self_improvement" className="mb-6">Lifestyle Interventions</SectionLabel>
-        <div className="flex border-b border-outline-variant/10 mb-6 -mx-8 px-8">
+        <div className="flex border-b border-outline-variant/10 mb-6 -mx-5 sm:-mx-8 px-5 sm:px-8 overflow-x-auto scrollbar-none" style={{ scrollbarWidth: 'none' }}>
           {TABS.map(tab => (
             <button key={tab.id} onClick={() => { setActiveTab(tab.id as any); setExpanded(null); }}
-              className={`flex items-center gap-2 px-4 py-3 text-precision text-[0.68rem] font-bold tracking-wider uppercase border-b-2 transition-all ${activeTab === tab.id ? 'border-primary-container text-primary-container' : 'border-transparent text-clinical-stone hover:text-clinical-charcoal'}`}>
+              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-3 text-precision text-[0.62rem] sm:text-[0.68rem] font-bold tracking-wide sm:tracking-wider uppercase border-b-2 transition-all whitespace-nowrap flex-shrink-0 ${activeTab === tab.id ? 'border-primary-container text-primary-container' : 'border-transparent text-clinical-stone hover:text-clinical-charcoal'}`}>
               <span className="material-symbols-outlined text-[14px]">{tab.icon}</span>{tab.label}
             </button>
           ))}

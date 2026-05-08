@@ -325,7 +325,7 @@ export const LabDetail = () => {
     <AppShell pageTitle="Lab Results" showDisclaimer>
       <div className="space-y-4">
         {[1, 2, 3, 4].map(i => (
-          <div key={i} className="bg-clinical-white rounded-[10px] p-8 animate-pulse border-t-[3px] border-[#E8E3DB]">
+          <div key={i} className="bg-clinical-white rounded-[10px] p-6 sm:p-8 animate-pulse border-t-[3px] border-[#E8E3DB]">
             <div className="h-5 bg-[#E8E3DB] rounded-sm w-1/3 mb-4" /><div className="h-12 bg-[#E8E3DB] rounded-sm w-1/4 mb-6" /><div className="h-2 bg-[#E8E3DB] rounded-sm w-full" />
           </div>
         ))}
@@ -335,7 +335,7 @@ export const LabDetail = () => {
 
   if (isError || (!isLoading && !data)) return (
     <AppShell pageTitle="Lab Results" showDisclaimer>
-      <div className="bg-clinical-white rounded-[10px] shadow-card border-t-[3px] border-[#C94F4F] p-12 text-center">
+      <div className="bg-clinical-white rounded-[10px] shadow-card border-t-[3px] border-[#C94F4F] p-6 sm:p-12 text-center">
         <span className="material-symbols-outlined text-[#C94F4F] text-5xl mb-4 block">error</span>
         <p className="text-authority text-2xl text-clinical-charcoal font-bold mb-2">Lab report not found</p>
         <p className="text-body text-clinical-stone mb-6">This lab report may have been deleted or doesn't exist.</p>
@@ -465,12 +465,12 @@ export const LabDetail = () => {
       {criticalFindings.length > 0 && <CriticalBanner findings={criticalFindings} />}
 
       {/* Dark hero card — same DNA as Wellness Plan */}
-      <div className="bg-[#131313] rounded-[14px] p-6 shadow-card">
-        <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
+      <div className="bg-[#131313] rounded-[14px] p-4 sm:p-6 shadow-card">
+        <div className="flex items-center justify-between mb-3 gap-x-4 gap-y-2 flex-wrap">
           <button onClick={() => navigate('/labs/history')} className="text-precision text-[0.6rem] text-on-surface-variant tracking-widest uppercase hover:text-[#D4A574] transition-colors flex items-center gap-1">
             <span className="material-symbols-outlined text-[14px]">folder</span>All Uploads
           </button>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-x-4 gap-y-2 flex-wrap">
             {(() => {
               const isRunning =
                 !drawIsStale && (
@@ -478,7 +478,7 @@ export const LabDetail = () => {
                   retryAnalysis.isPending ||
                   draw.processing_status === 'processing'
                 );
-              const label = isRunning ? 'Running…' : drawIsStale ? 'Stuck — Retry' : 'Re-run Analysis';
+              const label = isRunning ? 'Running…' : drawIsStale ? 'Stuck — Retry' : 'Re-run';
               return (
                 <button
                   onClick={() => retryAnalysis.mutate()}
@@ -486,7 +486,7 @@ export const LabDetail = () => {
                   className={`text-precision text-[0.6rem] tracking-widest uppercase hover:text-[#D4A574] transition-colors flex items-center gap-1 disabled:opacity-70 ${drawIsStale ? 'text-[#E8922A]' : 'text-on-surface-variant'}`}
                 >
                   <span className={`material-symbols-outlined text-[14px] ${isRunning ? 'animate-spin' : ''}`}>refresh</span>
-                  {label}
+                  <span>{label}</span><span className="hidden sm:inline">{isRunning || drawIsStale ? '' : ' Analysis'}</span>
                 </button>
               );
             })()}
@@ -495,10 +495,12 @@ export const LabDetail = () => {
               className="text-precision text-[0.6rem] text-on-surface-variant tracking-widest uppercase hover:text-[#D4A574] transition-colors flex items-center gap-1"
               title="Add a missing lab report (e.g. CRP from a different file) to this draw"
             >
-              <span className="material-symbols-outlined text-[14px]">add_circle</span>Add to this draw
+              <span className="material-symbols-outlined text-[14px]">add_circle</span>
+              <span className="sm:hidden">Add</span><span className="hidden sm:inline">Add to this draw</span>
             </button>
             <button onClick={() => navigate('/labs/upload')} className="text-precision text-[0.6rem] text-on-surface-variant tracking-widest uppercase hover:text-[#D4A574] transition-colors flex items-center gap-1">
-              <span className="material-symbols-outlined text-[14px]">upload_file</span>Upload New
+              <span className="material-symbols-outlined text-[14px]">upload_file</span>
+              <span className="sm:hidden">New</span><span className="hidden sm:inline">Upload New</span>
             </button>
           </div>
         </div>

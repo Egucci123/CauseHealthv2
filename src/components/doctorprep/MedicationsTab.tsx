@@ -27,7 +27,7 @@ export const MedicationsTab = () => {
       )}
 
       {!isLoading && (!medications || medications.length === 0) && (
-        <div className="bg-clinical-white rounded-[10px] border border-outline-variant/15 p-8 text-center">
+        <div className="bg-clinical-white rounded-[10px] border border-outline-variant/15 p-6 sm:p-8 text-center">
           <span className="material-symbols-outlined text-clinical-stone text-[32px] mb-2 block">medication</span>
           <p className="text-body text-clinical-charcoal text-sm font-medium mb-1">No medications added yet</p>
           <p className="text-body text-clinical-stone text-xs">Add yours in Settings → Health Profile → Medications.</p>
