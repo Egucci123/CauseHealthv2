@@ -45,32 +45,54 @@ export const LabDetail = () => {
     return () => clearInterval(t);
   }, [retriedAt]);
 
+  const [analysisCapHit, setAnalysisCapHit] = useState<string | null>(null);
   const retryAnalysis = useMutation({
     mutationFn: async () => {
       if (!drawId || !user) throw new Error('Missing context');
+      setAnalysisCapHit(null);
       setRetriedAt(Date.now());
       await supabase.from('lab_draws').update({ processing_status: 'processing', analysis_result: null }).eq('id', drawId);
-      // Get fresh JWT and fire the function. We DON'T await the full response —
-      // the function takes ~30s and blocking the UI on it is bad UX. Realtime
-      // + 2s poll on the page will detect completion and refresh automatically.
+      // Get fresh JWT and fire the function. We DO a short response check
+      // first to catch a 429 cap-reached rejection, then fall back to
+      // fire-and-forget for the long-running success path. The body is
+      // already buffered server-side by then; reading status+body is fast.
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
-      fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-labs`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ drawId, userId: user.id }),
-        keepalive: true,
-      }).catch(console.warn);
+      try {
+        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-labs`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ drawId, userId: user.id }),
+        });
+        // 429 = cap reached. Surface it immediately so the user knows.
+        // Anything else 4xx = log + leave UI to recover via polling.
+        // 2xx (or in-flight long response) = success path, fall through.
+        if (res.status === 429) {
+          let detail = '';
+          try { const j = await res.json(); detail = j?.error ?? ''; } catch {}
+          setAnalysisCapHit(detail || 'Analysis limit reached for these labs.');
+          // Roll back the processing_status so the UI doesn't show a stuck spinner.
+          await supabase.from('lab_draws').update({ processing_status: 'complete' }).eq('id', drawId);
+          throw new Error(detail || 'REGEN_LIMIT_REACHED');
+        }
+      } catch (e: any) {
+        // Network error or 429 throw above — let the mutation move to error state.
+        if (e?.message?.includes('REGEN_LIMIT_REACHED') || e?.message?.includes('limit')) throw e;
+        // Otherwise, treat as fire-and-forget success — analysis may still be running.
+        console.warn('[LabDetail] retry fetch warning (non-cap):', e?.message ?? e);
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['lab-detail', drawId] });
       qc.invalidateQueries({ queryKey: ['labDraws'] });
     },
   });
+  // Cap-reached detection (mirrors WellnessPlan + DoctorPrep banner pattern).
+  const isAnalysisCapHit = !!analysisCapHit && /used all|REGEN_LIMIT|analyses for this|Upload genuinely new labs/i.test(analysisCapHit);
 
   // Log LabDetail mount + drawId so I can trace 'wrong page on come-back' bugs
   useEffect(() => {
@@ -411,6 +433,27 @@ export const LabDetail = () => {
 
   return (
     <AppShell pageTitle="Lab Results" showDisclaimer>
+      {/* Cap-reached banner — top-level so it survives state changes. Same
+          pattern as Wellness Plan + Doctor Prep. Surfaces the 429 cap
+          rejection immediately when user clicks Re-run Analysis past the
+          2-per-dataset limit. */}
+      {isAnalysisCapHit && (
+        <div className="mb-4 bg-[#E8922A]/15 border border-[#E8922A]/40 rounded-[10px] p-4 flex items-start gap-3">
+          <span className="material-symbols-outlined text-[#E8922A] text-[22px] flex-shrink-0 mt-0.5">block</span>
+          <div className="flex-1">
+            <p className="text-authority text-clinical-charcoal text-sm font-bold mb-1">Re-run limit reached</p>
+            <p className="text-body text-clinical-stone text-sm leading-snug mb-2">
+              You've used all 2 lab analyses for this dataset. Upload a new lab draw with genuinely different values to start fresh, or stick with the current analysis.
+            </p>
+            <button
+              onClick={() => setAnalysisCapHit(null)}
+              className="text-precision text-[0.65rem] font-bold tracking-widest uppercase text-[#9A6020] hover:text-clinical-charcoal transition-colors"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
       {/* Critical / Emergency banner — ALWAYS visible to ALL tiers (safety, no paywall) */}
       {criticalFindings.length > 0 && <CriticalBanner findings={criticalFindings} />}
 
