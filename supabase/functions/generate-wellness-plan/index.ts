@@ -744,19 +744,41 @@ ONE TEST PER ENTRY — DO NOT COMBINE OR DUPLICATE:
   - Good: ONE entry per test. If ApoB is its own retest target, it's a separate entry from Lipid Panel.
   - Bad: "Liver Panel (ALT, AST, ALP, GGT, Bilirubin)" combined when ALT/AST are already in CMP
   - Good: CMP entry covers ALT/AST/ALP/Bilirubin. GGT as separate entry if liver workup needed.
-  - REQUIRED tests every comprehensive baseline MUST include for adults — these are MANDATORY when missing from the current draw. Skipping them = the user walks into the visit with an incomplete panel. Each as a SEPARATE entry, not merged into another:
-      CMP, CBC w/ diff, Lipid Panel, ApoB, Lp(a) (once-in-lifetime),
-      HbA1c, hs-CRP, TSH, Vitamin D 25-OH,
-      Vitamin B12, Folate (serum),
-      Ferritin, Magnesium (serum), Uric Acid.
-    Men (any age): add Total T + SHBG + Estradiol panel.
-    Women menstruating + symptomatic: add full Iron Panel.
-    On statin: add CK (creatine kinase) — statin myalgia screen.
-    On metformin or PPI: B12 already in baseline — no additional entry needed.
-    ALT or AST elevated: add GGT.
-    TSH borderline (>2.5 with sx, <1.0 with sx): add Free T3 + Free T4.
-    Don't merge them into Lipid Panel, CMP, or any combined entry — each test is its own retest_timeline row with its own ICD-10 + insurance_note.
-    Cap the retest_timeline at 18-22 entries total. The required baseline above usually fills 12-16 slots. Save the remainder for symptom-driven, lab-pattern-driven, and condition-confirmatory tests. Don't waste slots on duplicates or combined panels.
+  - REQUIRED tests every comprehensive baseline MUST include — NON-NEGOTIABLE. These are not "consider including," they are "must appear in retest_timeline as separate entries unless already present in the lab values list." If you skip any of these without checking the lab values list, you have failed the patient and the doctor walks them out of the office with an incomplete panel.
+
+    ALL ADULTS (18+) — checklist. Walk through this list and add EACH ONE that's missing from the current draw as its OWN retest_timeline entry:
+      [ ] CMP (Comprehensive Metabolic Panel)
+      [ ] CBC with Differential
+      [ ] Lipid Panel (TC, LDL, HDL, TG, VLDL)
+      [ ] ApoB (separate entry — NOT combined with Lipid Panel)
+      [ ] Lp(a) (once-in-lifetime — separate entry)
+      [ ] HbA1c
+      [ ] hs-CRP (serum) — separate entry from any fecal marker
+      [ ] TSH
+      [ ] Vitamin D 25-OH
+      [ ] Vitamin B12 (separate entry)
+      [ ] Folate (serum, separate entry)
+      [ ] Ferritin (or full Iron Panel if menstruating female + sx)
+      [ ] Magnesium (serum) — separate entry
+      [ ] Uric Acid — separate entry
+
+    MEN (any age) — add to baseline:
+      [ ] Total T + SHBG + Estradiol panel (one entry, that's the actual test name)
+
+    CONDITIONAL ADD-ONS (fire when trigger applies):
+      - On statin (atorvastatin/rosuvastatin/etc.): add CK (creatine kinase)
+      - On methotrexate: add CK + Liver Panel
+      - On metformin or PPI: B12 is already in baseline checklist — don't double-list
+      - ALT or AST elevated above standard high: add GGT
+      - TSH borderline (>2.5 with hypothyroid sx, <1.0 with hyperthyroid sx): add Free T3 + Free T4
+      - TSH borderline + hypothyroid sx: add TPO Ab + Tg Ab (Hashimoto's screen)
+      - Calcium >10.5 OR repeated 10.0-10.5 with bone/kidney/GI sx: add PTH + Ionized Ca
+
+    DO NOT MERGE these into combined entries. CMP entry covers ALT/AST/Glucose/Bilirubin/Albumin/BUN/Cre/Electrolytes — that's CMP. ApoB is a SEPARATE entry. GGT is a SEPARATE entry. B12 is a SEPARATE entry. Magnesium is a SEPARATE entry. Each gets its own row, its own ICD-10, its own insurance note.
+
+    DO NOT skip these because "the doctor will obviously order it." The user's job is to walk in with the complete list. The doctor's job is to order from it. Skipping equals failing the user.
+
+    Cap retest_timeline at 18-22 entries. The required baseline fills ~14-16 slots. Save 4-6 slots for symptom-driven, lab-pattern-driven, condition-confirmatory tests. NO padding with duplicates or combined panels.
 
 REASONING MODE — open-ended, first-principles, like a sharp internist with time:
 Deterministic engines fire as a backstop for high-prevalence cases. YOUR job is the long tail they don't catch. Reason from the data picture, not from a checklist. Cover every body system implicitly — endocrine, cardio, GI, hepatic, renal, heme, autoimmune, MSK, repro, neuro, respiratory, infectious, oncology rule-outs, nutritional. Don't constrain yourself.
