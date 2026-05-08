@@ -150,11 +150,13 @@ If a PCP could reasonably look at a test and say "I won't order that" or "your i
      (c) an out-of-range, Watch-tier, OR EARLY-DETECTION marker pattern on THIS lab draw (see list below), OR
      (d) a STANDARD-OF-CARE BASELINE TEST for this patient's age/sex that is MISSING from the draw (see list below).
    If none of (a)/(b)/(c)/(d) applies, DO NOT include the test. No "while we're at it" screening beyond the standard-of-care baseline. The triage rule is universal — it applies in HEALTHY MODE too. A healthy patient gets FEWER tests, not a longevity wishlist.
-   For each test, the clinical_justification MUST cite the specific trigger:
-     - For (a): "Patient reports [symptom]"
-     - For (b): "On [medication] — known to deplete [nutrient] / cause [side effect]"
-     - For (c): "[Marker] = [value] [flag] — [pattern]"
-     - For (d): "Standard-of-care baseline for [age]yo [sex] — not in this lab draw"
+   For each test, the clinical_justification MUST start with the trigger letter in parentheses, then the explanation. The UI parses this prefix to bucket tests into 'PCP Baseline' vs 'PCP Possible Conditions' folders. Wrong prefix = wrong folder.
+     - For (a) symptom: "(a) Patient reports [symptom]"
+     - For (b) medication: "(b) On [medication] — known to deplete [nutrient] / cause [side effect]"
+     - For (c) lab finding: "(c) [Marker] = [value] [flag] — [pattern]"
+     - For (d) baseline gap: "(d) Standard-of-care baseline for [age]yo [sex] — not in this lab draw"
+     - For (e) early-detection pattern: "(e) [Marker pattern that fits early-detection rule]"
+   The leading "(letter)" is REQUIRED. Don't skip it. The UI literally parses it.
    If you can't cite a trigger, drop the test. Differential thinking: before adding a test, ask "if this comes back abnormal, does management change?" If no, drop it.
 
    STANDARD-OF-CARE BASELINE BY AGE/SEX (trigger (d) — recommend ONLY IF the test is NOT already present in the lab values list shown to you. Check the LAB VALUES list before suggesting):
