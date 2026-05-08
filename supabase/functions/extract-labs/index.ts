@@ -88,10 +88,15 @@ serve(async (req) => {
         response = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST', signal: ac.signal,
           headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-          // 16K tokens is enough for a comprehensive lab panel (60+ markers
-          // with units, ranges, flags). 8K was getting truncated mid-JSON
-          // on dense panels, which the parser then rejected as malformed.
-          body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 16000, messages }),
+          // 32K tokens — fits a 100+ marker comprehensive panel with full
+          // metadata (units, ranges, flags, categories) per row plus
+          // padding for the JSON envelope. Haiku 4.5 supports up to 64K
+          // output, so 32K leaves plenty of headroom. We never WANT to
+          // hit this ceiling; it's a safety net so dense panels (Quest
+          // Diagnostics ~80 markers, LabCorp annual physical ~70+,
+          // micronutrient panels with 60+ vitamins/minerals/aminos) don't
+          // get truncated mid-JSON and rejected by the parser.
+          body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 32000, messages }),
         });
       } finally {
         clearTimeout(t);
