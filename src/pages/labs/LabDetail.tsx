@@ -67,6 +67,9 @@ export const LabDetail = () => {
             'Authorization': `Bearer ${token}`,
           },
           body: JSON.stringify({ drawId, userId: user.id }),
+          // Survive mobile-Safari backgrounding mid-analysis. Realtime + 2s
+          // poll on the page picks up completion when the user returns.
+          keepalive: true,
         });
         // 429 = cap reached. Surface it immediately so the user knows.
         // Anything else 4xx = log + leave UI to recover via polling.
@@ -271,9 +274,13 @@ export const LabDetail = () => {
             'Authorization': `Bearer ${token}`,
           },
           body: JSON.stringify({ drawId, userId: user.id }),
-          // Note: NOT keepalive — we WANT this to be a normal long-lived request
-          // since the user is on this page watching for the result. Realtime
-          // subscription will flip the UI when the row updates.
+          // keepalive lets the request survive mobile-Safari backgrounding /
+          // screen-lock. The prior comment ('NOT keepalive') was based on a
+          // misread of what keepalive does — it doesn't shorten the request,
+          // it lets the request continue even if the document/tab unloads.
+          // For a user staying on the page that's a no-op; for a phone-locking
+          // user it prevents 'analysis failed' false errors.
+          keepalive: true,
         });
         logEvent('labdetail_auto_trigger_returned', { drawId });
       } catch (e: any) {
