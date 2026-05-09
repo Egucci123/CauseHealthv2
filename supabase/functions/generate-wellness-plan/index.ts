@@ -20,6 +20,7 @@ import { detectLabPatterns } from '../_shared/labPatternRegistry.ts';
 import { runSuspectedConditionsBackstop } from '../_shared/suspectedConditionsBackstop.ts';
 import { detectCriticalFindings } from '../_shared/criticalFindingsBackstop.ts';
 import { detectEmergencyAlerts, detectSuicideRisk, applyAllergyFilters } from '../_shared/safetyNet.ts';
+import { buildPrepInstructions } from '../_shared/preAnalytical.ts';
 import { screenInteractions } from '../_shared/drugInteractionEngine.ts';
 import { computeProgressDeltas, renderPriorDrawForPrompt, type ProgressSummary } from '../_shared/longitudinalDelta.ts';
 import { attachWhys } from '../_shared/testRationale.ts';
@@ -2231,6 +2232,23 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
       const removed = applyAllergyFilters(plan.supplement_stack ?? [], allergiesLower, isPregnant, onAnticoagulant);
       if (removed.length > 0) {
         console.log(`[wellness-plan] allergy/pregnancy filter removed ${removed.length} supplement(s):`, removed);
+      }
+
+      // (d) PHASE 3 — Pre-analytical prep instructions for the upcoming
+      // retest. Universal — every patient gets the relevant subset based
+      // on which tests are in their retest_timeline + which meds/supps
+      // they're on. Surfaces as a "How to prep for your next blood draw"
+      // card in the UI.
+      plan.prep_instructions = buildPrepInstructions({
+        retestTimeline: plan.retest_timeline ?? [],
+        meds: (Array.isArray(meds) ? meds : []).map((m: any) => String(m?.name ?? '').toLowerCase()),
+        supps: (Array.isArray(supps) ? supps : []).map((s: any) => String(s?.name ?? '').toLowerCase()),
+        sex: String(profile?.sex ?? ''),
+        conditionsLower: String((Array.isArray(conditions) ? conditions : [])
+          .map((c: any) => c?.name ?? '').join(' ')).toLowerCase(),
+      });
+      if (plan.prep_instructions.length > 0) {
+        console.log(`[wellness-plan] prep_instructions: ${plan.prep_instructions.length} pre-analytical guidance items`);
       }
     }
 
