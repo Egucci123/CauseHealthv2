@@ -59,7 +59,7 @@ export const LabDetail = () => {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
       try {
-        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-labs`, {
+        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${typeof window !== 'undefined' && window.localStorage?.getItem('analyze_labs_v2') === '0' ? 'analyze-labs' : 'analyze-labs-v2'}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -266,7 +266,7 @@ export const LabDetail = () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         const token = session?.access_token ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
-        await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-labs`, {
+        await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${typeof window !== 'undefined' && window.localStorage?.getItem('analyze_labs_v2') === '0' ? 'analyze-labs' : 'analyze-labs-v2'}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

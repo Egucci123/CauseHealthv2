@@ -7,6 +7,8 @@ import { detectEmergencyAlerts, detectSuicideRisk } from '../safetyNet.ts';
 import type { LabValue, SymptomEntry } from '../buildPlan.ts';
 
 export interface EmergencyAlertFact {
+  /** Stable cross-surface key, e.g., 'alert_potassium_critical_high'. */
+  key: string;
   marker: string;
   value: number;
   unit: string;
@@ -16,6 +18,8 @@ export interface EmergencyAlertFact {
 }
 
 export interface CrisisAlertFact {
+  /** Stable key for the crisis alert (always same shape). */
+  key: 'crisis_suicide_risk';
   type: 'suicide_risk';
   message: string;
   matchedPhrase?: string;
@@ -38,9 +42,21 @@ export function buildAlerts(input: Input): {
     unit: l.unit,
   }));
 
-  const emergencyAlerts = detectEmergencyAlerts(labRows) as EmergencyAlertFact[];
+  const rawAlerts = detectEmergencyAlerts(labRows);
+  // Stamp each alert with a stable cross-surface key. Universal — every
+  // (marker, threshold) pair gets a deterministic key.
+  const emergencyAlerts: EmergencyAlertFact[] = rawAlerts.map(a => ({
+    ...a,
+    key: 'alert_' + String(a.marker ?? 'unknown').toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '') + '_' + String(a.threshold ?? 'critical'),
+  }));
+
   const symptomsForCrisis = input.symptomsList.map(s => s.name);
-  const crisisAlert = detectSuicideRisk(symptomsForCrisis, input.freeText) as CrisisAlertFact | null;
+  const rawCrisis = detectSuicideRisk(symptomsForCrisis, input.freeText);
+  const crisisAlert: CrisisAlertFact | null = rawCrisis
+    ? { ...rawCrisis, key: 'crisis_suicide_risk' }
+    : null;
 
   return { emergencyAlerts, crisisAlert };
 }

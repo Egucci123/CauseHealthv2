@@ -19,6 +19,9 @@
 import type { LabOutlierFact } from '../buildPlan.ts';
 
 export interface GoalTarget {
+  /** Stable cross-surface key — e.g., 'goal_alt', 'goal_tg', 'goal_a1c'.
+   * Same goal → same key on lab analysis, wellness, doctor prep. */
+  key: string;
   emoji: string;
   marker: string;          // display label — friendly name, not the raw lab marker
   today: number;
@@ -173,9 +176,18 @@ export function buildGoalTargets(input: Input): GoalTarget[] {
       if (!rule.match.test(outlier.marker)) continue;
       const out = rule.goalFor(outlier.value, { age: input.age, sex: input.sex });
       if (!out) continue;
+      // Stable key for cross-surface routing. Slug from the friendly
+      // label so the goal card on lab analysis, wellness, and doctor
+      // prep all reference the same identifier.
+      const friendly = friendlyLabel(outlier.marker);
+      const goalKey = 'goal_' + friendly.toLowerCase()
+        .replace(/[()]/g, '')
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '');
       targets.push({
+        key: goalKey,
         emoji: rule.emoji,
-        marker: friendlyLabel(outlier.marker),
+        marker: friendly,
         today: outlier.value,
         goal: out.goal,
         unit: outlier.unit,

@@ -632,7 +632,11 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
       try {
         const { data: { session } } = await supabase.auth.getSession();
         const token = session?.access_token ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
-        fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-labs`, {
+        // V2 default for cross-surface coherence. Opt out:
+        // localStorage.setItem('analyze_labs_v2', '0').
+        const _useV1Analysis = typeof window !== 'undefined' && window.localStorage?.getItem('analyze_labs_v2') === '0';
+        const _analysisFn = _useV1Analysis ? 'analyze-labs' : 'analyze-labs-v2';
+        fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${_analysisFn}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

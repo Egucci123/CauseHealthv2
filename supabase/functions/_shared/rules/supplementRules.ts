@@ -17,6 +17,11 @@ import type { DepletionFact } from './depletionRules.ts';
 import type { LabOutlierFact } from '../buildPlan.ts';
 
 export interface SupplementCandidate {
+  /** Stable cross-surface key. Same supplement → same key on lab analysis,
+   * wellness plan, doctor prep. Examples: 'coq10_ubiquinol',
+   * 'vit_d3_4000', 'omega3_high_dose', 'methylfolate_5mthf',
+   * 'mg_glycinate', 'milk_thistle_silymarin', 'l_glutamine'. */
+  key: string;
   emoji: string;
   nutrient: string;
   form: string;
@@ -62,14 +67,53 @@ function belowOptimalThreshold(marker: string): number {
   return 0;
 }
 
+/** Universal supplement-key registry. Maps known nutrient strings to a
+ * stable cross-surface key. Same supplement → same key on lab analysis,
+ * wellness plan, doctor prep. Slug fallback for anything not pre-listed. */
+const SUPPLEMENT_KEY_MAP: Array<[RegExp, string]> = [
+  [/coq10|ubiquinol|ubiquinone/i, 'coq10_ubiquinol'],
+  [/methylcobalamin|^b[\s-]?12 |cobalamin/i, 'methylcobalamin_b12'],
+  [/methylfolate|5-?mthf|folinic/i, 'methylfolate_5mthf'],
+  [/magnesium glycinate/i, 'mg_glycinate'],
+  [/magnesium l-?threonate/i, 'mg_l_threonate'],
+  [/vitamin d3|^vit d/i, 'vit_d3_4000'],
+  [/omega-?3|epa.?dha|fish oil/i, 'omega3'],
+  [/algae omega/i, 'omega3_algae'],
+  [/iron bisglycinate|iron \(gentle/i, 'iron_bisglycinate'],
+  [/heme iron/i, 'iron_heme'],
+  [/curcumin|meriva|bcm-?95/i, 'curcumin_bioavailable'],
+  [/milk thistle|silymarin/i, 'milk_thistle_silymarin'],
+  [/l-?glutamine|glutamine/i, 'l_glutamine'],
+  [/zinc carnosine/i, 'zinc_carnosine'],
+  [/slippery elm/i, 'slippery_elm'],
+  [/berberine/i, 'berberine'],
+  [/inositol/i, 'inositol'],
+  [/chromium/i, 'chromium'],
+];
+function keyForNutrient(nutrient: string): string {
+  for (const [pat, key] of SUPPLEMENT_KEY_MAP) {
+    if (pat.test(nutrient)) return key;
+  }
+  // Slug fallback. Universal — any future nutrient gets a stable key.
+  return String(nutrient).toLowerCase()
+    .replace(/\([^)]*\)/g, '')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 40) || 'unknown_supplement';
+}
+
 export function buildSupplementCandidates(input: Input): SupplementCandidate[] {
   const out: SupplementCandidate[] = [];
   const seen = new Set<string>();
-  const push = (c: SupplementCandidate) => {
-    const k = c.nutrient.toLowerCase();
-    if (seen.has(k)) return;
-    seen.add(k);
-    out.push(c);
+  const push = (c: Omit<SupplementCandidate, 'key'> & { key?: string }) => {
+    // Auto-derive the key from the nutrient name unless explicitly set.
+    // This means existing push() call sites don't need to set `key`
+    // manually — the registry map below handles known supplements and
+    // a slug fallback covers any new ones.
+    const key = c.key ?? keyForNutrient(c.nutrient);
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push({ ...c, key } as SupplementCandidate);
   };
 
   // ── 1. Med-driven depletions ────────────────────────────────────────

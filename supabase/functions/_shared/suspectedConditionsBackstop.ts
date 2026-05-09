@@ -24,6 +24,11 @@ import { hasCondition } from './conditionAliases.ts';
 import { isOnMed } from './medicationAliases.ts';
 
 export interface SuspectedConditionEntry {
+  /** Stable cross-surface key — e.g., 'nafld', 'osa', 'hemoconcentration'.
+   * Lab analysis, wellness plan, doctor prep all route by this key.
+   * Set automatically by runSuspectedConditionsBackstop from the rule.key.
+   * Optional on AI-emitted entries (legacy v1); v2 always populates it. */
+  key?: string;
   name: string;
   category: 'endocrine' | 'cardiovascular' | 'hematology' | 'gi' | 'kidney' | 'autoimmune' | 'reproductive' | 'neuro' | 'musculoskeletal' | 'metabolic' | 'respiratory' | 'mental_health' | 'infectious' | 'oncology' | 'nutritional' | 'other';
   confidence: 'high' | 'moderate' | 'low';
@@ -926,7 +931,13 @@ export function runSuspectedConditionsBackstop(input: {
       labValues: input.labValues,
       aiSuspectedNamesLower: aiNames,
     });
-    if (entry) out.push(entry);
+    if (entry) {
+      // Stamp the rule's key onto the entry so downstream surfaces can
+      // route by 'nafld' / 'osa' / etc. — independent of the human-
+      // readable name (which the AI may rephrase). Universal across
+      // every patient, every detector.
+      out.push({ ...entry, key: rule.key });
+    }
   }
   return out;
 }

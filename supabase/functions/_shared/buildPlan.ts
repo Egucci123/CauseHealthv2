@@ -26,6 +26,7 @@ import { computeAllRiskCalculators, type RiskCalculatorBundle } from './rules/ri
 import { detectSuboptimalValues, type OptimalFlag } from './optimalRanges.ts';
 import { GUIDELINE_CITATIONS } from './canonical.ts';
 import { buildSymptomsAddressed, type SymptomAddressed } from './rules/symptomRules.ts';
+import { buildCanonicalProse, type CanonicalProseBundle } from './rules/proseRules.ts';
 
 // ──────────────────────────────────────────────────────────────────────
 // LAB VALUE — canonical normalized lab row (every rule consumes this).
@@ -50,6 +51,9 @@ export interface LabValue {
 export interface PatientInput {
   age: number | null;
   sex: 'male' | 'female' | string | null;
+  heightCm: number | null;
+  weightKg: number | null;
+  bmi: number | null;            // computed from height + weight; null if either missing
 
   // Free-text lower-cased blobs — used by alias-based matchers.
   conditionsList: string[];
@@ -88,6 +92,10 @@ export interface ClinicalFacts {
   patient: {
     age: number | null;
     sex: 'male' | 'female' | null;
+    heightCm: number | null;
+    weightKg: number | null;
+    bmi: number | null;
+    bmiCategory: 'underweight' | 'normal' | 'overweight' | 'obese_1' | 'obese_2' | 'obese_3' | null;
     conditions: string[];
     meds: string[];
     symptoms: SymptomEntry[];
@@ -122,6 +130,12 @@ export interface ClinicalFacts {
   // Metadata
   citations: { test: string; url: string; org: string }[];
   isOptimizationMode: boolean;
+
+  // Canonical prose strings — same wording on every surface (lab analysis,
+  // wellness plan, doctor prep). The AI prose layer adds CONTEXT around
+  // these strings; never replaces them. Single source of cross-surface
+  // wording truth.
+  canonicalProse: CanonicalProseBundle;
 }
 
 export interface LabOutlierFact {
@@ -157,6 +171,7 @@ export function buildPlan(input: PatientInput): ClinicalFacts {
   const conditions = buildConditionList({
     age: input.age,
     sex: sexNormalized,
+    bmi: input.bmi,
     labs: input.labs,
     conditionsLower: input.conditionsLower,
     symptomsLower: input.symptomsLower,
@@ -242,6 +257,8 @@ export function buildPlan(input: PatientInput): ClinicalFacts {
   const factsForSymptoms: ClinicalFacts = {
     patient: {
       age: input.age, sex: sexNormalized,
+      heightCm: input.heightCm, weightKg: input.weightKg,
+      bmi: input.bmi, bmiCategory: bmiCategoryFor(input.bmi),
       conditions: input.conditionsList, meds: input.medsList,
       symptoms: input.symptomsList, supplementsTaking: input.supplementsList,
     },
@@ -251,6 +268,7 @@ export function buildPlan(input: PatientInput): ClinicalFacts {
     suboptimalFlags, goalTargets,
     symptomsAddressed: [], // placeholder — real value computed next
     citations: [], isOptimizationMode,
+    canonicalProse: { conditions: [], outliers: [], supplements: [], goals: [], alerts: [] }, // populated in final return
   };
   const symptomsAddressed = buildSymptomsAddressed(factsForSymptoms);
 
@@ -258,6 +276,10 @@ export function buildPlan(input: PatientInput): ClinicalFacts {
     patient: {
       age: input.age,
       sex: sexNormalized,
+      heightCm: input.heightCm,
+      weightKg: input.weightKg,
+      bmi: input.bmi,
+      bmiCategory: bmiCategoryFor(input.bmi),
       conditions: input.conditionsList,
       meds: input.medsList,
       symptoms: input.symptomsList,
@@ -277,6 +299,25 @@ export function buildPlan(input: PatientInput): ClinicalFacts {
     symptomsAddressed,
     citations,
     isOptimizationMode,
+    // Canonical prose computed last so it has access to every other field.
+    canonicalProse: buildCanonicalProse({
+      // Re-use the same in-construction object; canonicalProse only reads
+      // patient + labs.outliers + conditions + supplementCandidates +
+      // goalTargets + emergencyAlerts, all of which are already final.
+      patient: {
+        age: input.age, sex: sexNormalized,
+        heightCm: input.heightCm, weightKg: input.weightKg,
+        bmi: input.bmi, bmiCategory: bmiCategoryFor(input.bmi),
+        conditions: input.conditionsList, meds: input.medsList,
+        symptoms: input.symptomsList, supplementsTaking: input.supplementsList,
+      },
+      labs: { raw: input.labs, outliers },
+      tests, conditions, depletions, supplementCandidates,
+      riskCalculators, emergencyAlerts, crisisAlert, prepInstructions,
+      suboptimalFlags, goalTargets, symptomsAddressed,
+      citations, isOptimizationMode,
+      canonicalProse: { conditions: [], outliers: [], supplements: [], goals: [], alerts: [] },
+    }),
   };
 }
 
@@ -340,4 +381,15 @@ function isOptimization(outliers: LabOutlierFact[], conditions: SuspectedConditi
   const highCondCount = conditions.filter(c => c.confidence === 'high').length;
   const seriousOutlierCount = outliers.filter(o => o.severityRank >= 50).length;
   return !(hasCritical || highCondCount >= 3 || seriousOutlierCount >= 4);
+}
+
+// WHO / CDC adult BMI categories. Universal across all adult patients.
+function bmiCategoryFor(bmi: number | null): ClinicalFacts['patient']['bmiCategory'] {
+  if (bmi == null || !Number.isFinite(bmi)) return null;
+  if (bmi < 18.5) return 'underweight';
+  if (bmi < 25.0) return 'normal';
+  if (bmi < 30.0) return 'overweight';
+  if (bmi < 35.0) return 'obese_1';
+  if (bmi < 40.0) return 'obese_2';
+  return 'obese_3';
 }

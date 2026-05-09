@@ -121,6 +121,9 @@ export interface NarrativeOutput {
 
 export function buildNarrativeUserMessage(facts: ClinicalFacts): string {
   // Compact FACTS payload — only what the AI needs to write narrative.
+  // patient.bmi + patient.bmiCategory let the AI surface body-comp context
+  // when relevant (e.g., a metabolic-syndrome plan should reference BMI in
+  // the summary if it's elevated). When null, AI omits the framing.
   const payload = {
     patient: facts.patient,
     lab_outliers: facts.labs.outliers.map(o => ({

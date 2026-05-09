@@ -55,7 +55,7 @@ export const LabHistory = () => {
       setRetryingAt(prev => ({ ...prev, [drawId]: Date.now() }));
       await supabase.from('lab_draws').update({ processing_status: 'processing' }).eq('id', drawId);
       // Raw fetch detached from React lifecycle — survives navigation
-      fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-labs`, {
+      fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${typeof window !== 'undefined' && window.localStorage?.getItem('analyze_labs_v2') === '0' ? 'analyze-labs' : 'analyze-labs-v2'}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
         body: JSON.stringify({ drawId, userId }),

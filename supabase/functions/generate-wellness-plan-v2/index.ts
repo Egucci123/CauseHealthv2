@@ -29,6 +29,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { buildPlan, type PatientInput, type ClinicalFacts, type LabValue } from '../_shared/buildPlan.ts';
+import { loadOrComputeFacts } from '../_shared/factsCache.ts';
 import {
   NARRATIVE_SYSTEM_PROMPT,
   NARRATIVE_TOOL_SCHEMA,
@@ -104,9 +105,16 @@ serve(async (req) => {
       labValues,
     });
 
-    // 3. Run deterministic plan builder (~50ms)
-    const facts = buildPlan(input);
-    console.log(`[v2] facts built: ${facts.tests.length} tests, ${facts.conditions.length} conditions, ${facts.supplementCandidates.length} supps, ${facts.emergencyAlerts.length} alerts`);
+    // 3. Run deterministic plan builder via the shared cache. Lab analysis
+    // and doctor prep both use the same cache helper — same patient input
+    // → same facts on every surface. Cache hit returns instantly; cache
+    // miss computes + saves. Universal coherence guarantee.
+    const { facts, hash: factsHash, fromCache } = await loadOrComputeFacts({
+      userId,
+      drawId,
+      input,
+    });
+    console.log(`[v2] facts ${fromCache ? 'cache HIT' : 'cache MISS — computed'} (hash=${factsHash.slice(0, 8)}): ${facts.tests.length} tests, ${facts.conditions.length} conditions, ${facts.supplementCandidates.length} supps, ${facts.emergencyAlerts.length} alerts`);
 
     // 4. Three parallel AI calls
     const [narrativeRes, stackRes, actionRes] = await Promise.allSettled([
@@ -134,7 +142,7 @@ serve(async (req) => {
     console.log(`[v2] AI calls finished in ${Date.now() - startTime}ms (narrative=${narrativeRes.status}, stack=${stackRes.status}, action=${actionRes.status})`);
 
     // 5. Merge into final plan (same shape as v1 for frontend compatibility)
-    const plan = mergeIntoFinalPlan({ facts, narrative, stack, action, profile });
+    const plan = mergeIntoFinalPlan({ facts, narrative, stack, action, profile, factsHash });
 
     // 6. Save
     const { error: insertErr } = await supabase
@@ -205,9 +213,20 @@ function normalizePatientInput(args: {
     ? Math.floor((Date.now() - new Date(profile.date_of_birth).getTime()) / 31_557_600_000)
     : null;
 
+  // Read height_cm + weight_kg directly. Compute BMI = kg / (m^2).
+  // Universal adult formula. null if either missing or non-positive.
+  const heightCm = typeof profile?.height_cm === 'number' && profile.height_cm > 0 ? profile.height_cm : null;
+  const weightKg = typeof profile?.weight_kg === 'number' && profile.weight_kg > 0 ? profile.weight_kg : null;
+  const bmi = (heightCm && weightKg)
+    ? +(weightKg / Math.pow(heightCm / 100, 2)).toFixed(1)
+    : null;
+
   return {
     age,
     sex: profile?.sex ?? null,
+    heightCm,
+    weightKg,
+    bmi,
     conditionsList,
     conditionsLower: conditionsList.join(' ').toLowerCase(),
     medsList,
@@ -333,12 +352,26 @@ function validateHeadline(headline: string, facts: ClinicalFacts): string {
 }
 
 function deterministicHeadline(facts: ClinicalFacts): string {
-  // Build from top outlier or top condition. Always a complete sentence.
+  // Always ≤60 chars to fit the phone hero card without ellipsis truncation.
+  // Lead with the top outlier (short, clinical) — fall back to a short
+  // condition name if no outliers, never the full registry name.
   const top = facts.labs.outliers[0];
+  if (top) {
+    const candidate = `${top.marker} ${top.value} ${top.unit} needs attention.`.trim();
+    if (candidate.length <= 60) return candidate;
+    // Marker name might be long ("Comprehensive Metabolic Panel") — try a shorter form
+    return `${top.marker.split(/[(,/]/)[0].trim()} needs attention.`.slice(0, 60);
+  }
   const cond = facts.conditions[0];
-  if (top && cond) return `Your ${cond.name.split('(')[0].trim()} pattern needs attention.`.slice(0, 80);
-  if (top) return `Your ${top.marker} ${top.value} ${top.unit} needs attention.`.slice(0, 80);
-  if (cond) return `Your ${cond.name.split('(')[0].trim()} pattern is the priority.`.slice(0, 80);
+  if (cond) {
+    // Aggressively shorten the condition name — strip parens, slashes,
+    // long suffixes. Most condition names have a usable short prefix.
+    const shortName = cond.name.split(/[(/]/)[0].trim().split(/\bwith\b/i)[0].trim();
+    const candidate = `${shortName} pattern needs attention.`.trim();
+    if (candidate.length <= 60) return candidate;
+    // Last-resort hard truncate
+    return `${shortName.slice(0, 30)} needs attention.`.slice(0, 60);
+  }
   return 'Your wellness plan is ready.';
 }
 
@@ -350,10 +383,20 @@ function deterministicHeadline(facts: ClinicalFacts): string {
 function fixPhase1Verbs(actions: string[]): string[] {
   return actions.map(a => {
     const trimmed = String(a ?? '');
-    // Match: emoji + space + Continue/Maintain/Keep + space + rest
+    // Match: emoji + space + Continue/Maintain/Keep + space + rest.
+    // CRITICAL: when the next word IS the verb we want ("drinking",
+    // "taking"), consume the gerund so we don't get "Drink drinking"
+    // typos. Match `(Continue) drinking` → "Drink", not "Drink drinking".
     return trimmed
-      .replace(/^(\W*\s*)(Continue|Continuing|Maintain|Maintaining|Keep|Keeping)\s+(?=drink|water|hydrat)/i, '$1Drink ')
-      .replace(/^(\W*\s*)(Continue|Continuing|Maintain|Maintaining|Keep|Keeping)\s+(?=tak|using|with the supplement|with omega|with vitamin|with magnesium|with coq|with iron|with b12|with folate|with milk thistle|with l-glutamine)/i, '$1Take ')
+      // "Continue drinking water..." → "Drink water..."
+      .replace(/^(\W*\s*)(Continue|Continuing|Maintain|Maintaining|Keep|Keeping)\s+(drinking|hydrating)\s+/i, '$1Drink ')
+      // "Continue water/hydration ..." (no -ing verb) → "Drink water/hydration ..."
+      .replace(/^(\W*\s*)(Continue|Continuing|Maintain|Maintaining|Keep|Keeping)\s+(?=water|hydrat)/i, '$1Drink ')
+      // "Continue taking X..." → "Take X..."
+      .replace(/^(\W*\s*)(Continue|Continuing|Maintain|Maintaining|Keep|Keeping)\s+(taking|using)\s+/i, '$1Take ')
+      // "Continue with X..." → "Take X..."
+      .replace(/^(\W*\s*)(Continue|Continuing|Maintain|Maintaining|Keep|Keeping)\s+with\s+(?=the supplement|omega|vitamin|magnesium|coq|iron|b12|folate|milk thistle|l-glutamine)/i, '$1Take ')
+      // Generic fallback: Continue/Maintain/Keep → Start
       .replace(/^(\W*\s*)(Continue|Continuing|Maintain|Maintaining|Keep|Keeping)\s+/i, '$1Start ');
   });
 }
@@ -371,21 +414,30 @@ function fixPhase1Verbs(actions: string[]): string[] {
  */
 function ensurePhase1CriticalSupplements(
   phase1Actions: string[],
-  candidates: Array<{ nutrient: string; dose: string; timing: string; priority: string; sourcedFrom: string; emoji: string }>,
+  candidates: Array<{ nutrient: string; dose: string; timing: string; priority: string; sourced_from?: string; sourcedFrom?: string; emoji: string }>,
 ): string[] {
   const out = [...phase1Actions];
   const phase1Lower = out.join(' ').toLowerCase();
+
+  // Helper: read sourced_from (snake_case in merged plan) or sourcedFrom
+  // (camelCase in raw facts.supplementCandidates). Tolerate both shapes
+  // so the enforcer works regardless of where the candidates list came from.
+  const sourceOf = (c: { sourced_from?: string; sourcedFrom?: string }) =>
+    String(c.sourced_from ?? c.sourcedFrom ?? '');
 
   // Order: critical depletions first (CoQ10 for statin), then other criticals,
   // then high-priority lab findings, then high-priority depletions.
   const mustInclude = candidates
     .filter(c => (c.priority === 'critical' || c.priority === 'high'))
-    .filter(c => c.sourcedFrom === 'medication_depletion' || c.sourcedFrom === 'lab_finding')
+    .filter(c => {
+      const s = sourceOf(c);
+      return s === 'medication_depletion' || s === 'lab_finding';
+    })
     .sort((a, b) => {
       // critical first, then high; depletion-driven before lab-driven within tier
       const pri = (p: string) => (p === 'critical' ? 0 : p === 'high' ? 1 : 2);
       const src = (s: string) => (s === 'medication_depletion' ? 0 : 1);
-      return pri(a.priority) - pri(b.priority) || src(a.sourcedFrom) - src(b.sourcedFrom);
+      return pri(a.priority) - pri(b.priority) || src(sourceOf(a)) - src(sourceOf(b));
     });
 
   for (const c of mustInclude) {
@@ -399,7 +451,7 @@ function ensurePhase1CriticalSupplements(
     // Inject a deterministic Start action. Universal phrasing.
     const action = `${c.emoji} Start ${c.nutrient} ${c.dose} ${c.timing.toLowerCase()} — ${c.priority === 'critical' ? 'highest-priority Day-1 supplement' : 'priority Day-1 supplement'}.`;
     out.push(action);
-    console.log(`[v2] Phase 1 enforcer: injected missing supplement "${c.nutrient}" (${c.priority} ${c.sourcedFrom})`);
+    console.log(`[v2] Phase 1 enforcer: injected missing supplement "${c.nutrient}" (${c.priority} ${sourceOf(c)})`);
   }
 
   return out;
@@ -414,8 +466,9 @@ function mergeIntoFinalPlan(args: {
   stack: StackOutput;
   action: ActionPlanOutput;
   profile: any;
+  factsHash: string;
 }): any {
-  const { facts, narrative, stack, action, profile } = args;
+  const { facts, narrative, stack, action, profile, factsHash } = args;
 
   // Merge supplement_stack: deterministic candidate + AI rationale
   const stackByNutrient = new Map<string, StackOutput['supplement_notes'][number]>();
@@ -521,8 +574,14 @@ function mergeIntoFinalPlan(args: {
     summary: narrative.summary,
     generated_at: new Date().toISOString(),
 
-    // Action layer (defensive defaults — every array shape stays an array)
-    today_actions: Array.isArray(action.today_actions) ? action.today_actions : [],
+    // Action layer (defensive defaults — every array shape stays an array).
+    // today_actions: when AI Call C returned empty (sometimes happens when
+    // schema is restrictive), fall back to the deterministic actionFallback
+    // so the Today tab always renders 3 cards. Never let an empty list
+    // reach the frontend.
+    today_actions: (Array.isArray(action.today_actions) && action.today_actions.length > 0)
+      ? action.today_actions
+      : actionFallback(facts).today_actions,
     supplement_stack: Array.isArray(filteredStack) ? filteredStack.map(s => ({
       ...s,
       alternatives: Array.isArray(s.alternatives) ? s.alternatives : [],
@@ -599,6 +658,10 @@ function mergeIntoFinalPlan(args: {
 
     // v2 flag (so the dashboard / debugger can see this came from v2)
     plan_version: 'v2',
+    // Cross-surface coherence: this hash identifies the exact ClinicalFacts
+    // row in clinical_facts_cache. Lab analysis and doctor prep generated
+    // off the same hash are guaranteed to show identical clinical reasoning.
+    facts_hash: factsHash,
   };
 }
 

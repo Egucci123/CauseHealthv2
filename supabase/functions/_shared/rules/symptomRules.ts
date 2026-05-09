@@ -43,6 +43,7 @@ interface Ctx {
   conditions: SuspectedConditionFact[];
   symptomLower: string;
   meds: string[];
+  bmi: number | null;
 }
 
 // Ordered most-specific first — first matching category wins.
@@ -172,6 +173,12 @@ const SYMPTOM_CATEGORIES: Category[] = [
     patterns: [/weight (gain|resist)|can'?t lose|difficulty losing weight|slow metab|metabolism/i],
     driverFinder: (ctx) => {
       const drivers: string[] = [];
+      // BMI cited first when available — it's the most direct lever and
+      // contextualizes every other driver below.
+      if (ctx.bmi != null) {
+        if (ctx.bmi >= 30) drivers.push(`BMI ${ctx.bmi} (obese — central adiposity drives the resistance pattern)`);
+        else if (ctx.bmi >= 25) drivers.push(`BMI ${ctx.bmi} (overweight)`);
+      }
       const tg = ctx.outliers.find(o => /triglyc/i.test(o.marker));
       if (tg && tg.value >= 150) drivers.push(`TG ${tg.value}`);
       const a1c = ctx.outliers.find(o => /a1c|hba1c/i.test(o.marker));
@@ -303,6 +310,7 @@ export function buildSymptomsAddressed(facts: ClinicalFacts): SymptomAddressed[]
     depletions: facts.depletions,
     conditions: facts.conditions,
     meds: facts.patient.meds,
+    bmi: facts.patient.bmi,
   };
 
   return facts.patient.symptoms.map((s) => {

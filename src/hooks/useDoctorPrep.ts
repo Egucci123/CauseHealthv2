@@ -116,7 +116,13 @@ export function useGenerateDoctorPrep() {
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-    activeGeneration = fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-doctor-prep`, {
+    // V2 default for cross-surface coherence (reads clinical_facts_cache,
+    // shares the same FACTS as wellness plan + lab analysis).
+    // Opt out with localStorage.setItem('doctor_prep_v2', '0').
+    const _useV1 = typeof window !== 'undefined' && window.localStorage?.getItem('doctor_prep_v2') === '0';
+    const _fnName = _useV1 ? 'generate-doctor-prep' : 'generate-doctor-prep-v2';
+
+    activeGeneration = fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${_fnName}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
