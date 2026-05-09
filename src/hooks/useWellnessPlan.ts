@@ -218,6 +218,13 @@ export function useGenerateWellnessPlan() {
     generatingFlag = true;
     setGenerating(true);
 
+    // Capture start time so on fetch failure we can recover by checking the
+    // DB for a plan that landed AFTER we kicked off the request. iOS Safari
+    // backgrounds / screen locks regularly kill the fetch even with
+    // keepalive:true; the edge function keeps running and writes the plan
+    // anyway, but the client doesn't know unless we look.
+    const startedAt = new Date().toISOString();
+
     // Grab a fresh JWT — edge function authenticates the user via Bearer token.
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -254,7 +261,30 @@ export function useGenerateWellnessPlan() {
       }
       qc.setQueryData(['wellness-plan', userId], data as WellnessPlanData);
       return data as WellnessPlanData;
-    }).catch((err: any) => {
+    }).catch(async (err: any) => {
+      // RECOVERY: iOS Safari backgrounding / screen lock kills the fetch
+      // even with keepalive. The edge function may still have completed
+      // server-side. Before surfacing the error, check the DB for a plan
+      // that was saved AFTER we kicked off this request — if so, the
+      // generation succeeded and we just lost the response. Use that plan.
+      try {
+        const { data: recovered } = await supabase
+          .from('wellness_plans')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('generation_status', 'complete')
+          .gte('created_at', startedAt)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (recovered?.plan_data) {
+          console.log('[wellness-plan] recovered plan from DB after fetch dropped', { startedAt, recoveredAt: recovered.created_at });
+          qc.setQueryData(['wellness-plan', userId], recovered.plan_data as WellnessPlanData);
+          return recovered.plan_data as WellnessPlanData;
+        }
+      } catch (recoverErr) {
+        console.warn('[wellness-plan] recovery query failed:', recoverErr);
+      }
       if (err?.name === 'AbortError') {
         throw new Error('Generation took too long (240s). The AI is overloaded — wait a minute and try again.');
       }

@@ -106,9 +106,13 @@ export function useGenerateDoctorPrep() {
     generatingFlag = true;
     setGenerating(true);
 
-    // Grab the user's JWT for the Authorization header. Without this, the
-    // edge function returns 401 and the button does nothing — same auth
-    // pattern as generate-wellness-plan and analyze-labs.
+    // Capture start time for the recovery path. iOS Safari kills fetches
+    // when the tab backgrounds / screen locks, but the edge function keeps
+    // running and saves to DB. On fetch failure, we look for a doc that
+    // landed AFTER startedAt and consume that as a successful response.
+    const startedAt = new Date().toISOString();
+
+    // Grab the user's JWT for the Authorization header.
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
 
@@ -120,14 +124,32 @@ export function useGenerateDoctorPrep() {
         'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify({ userId }),
-      // Survive mobile-Safari backgrounding mid-generation. Same pattern
-      // as wellness plan + analyze-labs.
       keepalive: true,
     }).then(async (res) => {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error ?? 'Generation failed');
       qc.setQueryData(['doctor-prep', userId], data as DoctorPrepDocument);
       return data as DoctorPrepDocument;
+    }).catch(async (err: any) => {
+      // Recovery: check DB for a doc saved after startedAt.
+      try {
+        const { data: recovered } = await supabase
+          .from('doctor_prep_documents')
+          .select('document_data, created_at')
+          .eq('user_id', userId)
+          .gte('created_at', startedAt)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (recovered?.document_data) {
+          console.log('[doctor-prep] recovered doc from DB after fetch dropped', { startedAt, recoveredAt: recovered.created_at });
+          qc.setQueryData(['doctor-prep', userId], recovered.document_data as DoctorPrepDocument);
+          return recovered.document_data as DoctorPrepDocument;
+        }
+      } catch (recoverErr) {
+        console.warn('[doctor-prep] recovery query failed:', recoverErr);
+      }
+      throw err;
     }).finally(() => {
       activeGeneration = null;
       generatingFlag = false;
