@@ -1,4 +1,24 @@
 // supabase/functions/generate-wellness-plan/index.ts
+//
+// ⚠️  DEPRECATED — v1. Locked in as fallback only (May 2026).
+// ===========================================================
+// All new wellness plans go through generate-wellness-plan-v2/index.ts,
+// which uses _shared/buildPlan.ts (deterministic engine) + 3 parallel
+// AI prose calls with strict tool-use schemas.
+//
+// DO NOT add new features or fix bugs here. Edit the v2 surface instead:
+//   • Test/condition/supplement logic → _shared/rules/*.ts
+//   • Voice / narrative → _shared/prompts/*.ts
+//   • Server guardrails → generate-wellness-plan-v2/index.ts
+//
+// Frontend opt-out (returns to v1):
+//   localStorage.setItem('wellness_v2', '0')
+//
+// This file stays deployed for emergency rollback only. After 30 days
+// of clean v2 production traffic, this whole file can be deleted.
+//
+// Cutover date: 2026-05-09
+//
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { GOAL_LABELS, formatGoals, goalBranchFor } from '../_shared/goals.ts';

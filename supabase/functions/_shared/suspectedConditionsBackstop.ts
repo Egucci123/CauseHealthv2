@@ -373,24 +373,37 @@ const RULES: BackstopRule[] = [
     alreadyRaisedIf: [/nafld/i, /fatty liver/i, /hepatic steatosis/i, /\bnash\b/i],
     skipIfDx: ['nafld'],
     detect: (ctx) => {
-      const alt = mark(ctx.labValues, [/^alt$/i, /^sgpt/i]);
-      const ast = mark(ctx.labValues, [/^ast$/i, /^sgot/i]);
-      const ggt = mark(ctx.labValues, [/^ggt\b/i]);
-      const tg = mark(ctx.labValues, [/^triglyc/i]);
-      const a1c = mark(ctx.labValues, [/^hemoglobin a1c/i, /^a1c\b/i]);
+      const alt = mark(ctx.labValues, [/\balt\b/i, /\bsgpt\b/i, /alanine[\s-]?aminotransferase/i]);
+      const ast = mark(ctx.labValues, [/\bast\b/i, /\bsgot\b/i, /aspartate[\s-]?aminotransferase/i]);
+      const ggt = mark(ctx.labValues, [/\bggt\b/i, /gamma[\s-]?glutamyl/i]);
+      const tg = mark(ctx.labValues, [/triglyc/i]);
+      const a1c = mark(ctx.labValues, [/hemoglobin a1c/i, /\ba1c\b/i, /\bhba1c\b/i]);
       const altHigh = alt && alt.value > 35;
+      const altDoubled = alt && alt.value >= 70;       // ≥2× ULN of ~35
+      const astHigh = ast && ast.value > 35;
+      const ggtHigh = ggt && ggt.value > 50;
       const tgHigh = tg && tg.value > 150;
-      const irPattern = (a1c && a1c.value >= 5.7) || tgHigh;
+      const tgVeryHigh = tg && tg.value >= 250;        // strong IR signal
+      const irPattern = (a1c && a1c.value >= 5.4) || tgHigh;
       if (altHigh && irPattern) {
         const ev: string[] = [`ALT ${alt!.value}`];
         if (ast && ast.value > 35) ev.push(`AST ${ast.value}`);
         if (ggt && ggt.value > 30) ev.push(`GGT ${ggt.value}`);
         if (tgHigh) ev.push(`TG ${tg!.value}`);
-        if (a1c && a1c.value >= 5.7) ev.push(`A1c ${a1c.value}%`);
+        if (a1c && a1c.value >= 5.4) ev.push(`A1c ${a1c.value}%`);
+        // Confidence escalation rules — universal across patients:
+        //   HIGH if ALT >2× ULN + metabolic signal (TG high or A1c watch+)
+        //   HIGH if ALT high + AST high + GGT high (3-marker hepatic stress)
+        //   HIGH if ALT high + TG ≥250 (strong IR + hepatic combo)
+        //   MODERATE otherwise
+        const isHigh =
+          (altDoubled && irPattern) ||
+          (altHigh && astHigh && ggtHigh) ||
+          (altHigh && tgVeryHigh);
         return {
           name: 'NAFLD (Non-alcoholic Fatty Liver Disease)',
           category: 'gi',
-          confidence: 'moderate',
+          confidence: isHigh ? 'high' : 'moderate',
           evidence: `Liver enzymes elevated alongside insulin-resistance markers: ${ev.join(', ')}.`,
           confirmatory_tests: ['Liver Ultrasound', 'GGT', 'Fasting Insulin + HOMA-IR', 'FibroScan if available'],
           icd10: 'K76.0',
@@ -505,26 +518,187 @@ const RULES: BackstopRule[] = [
     alreadyRaisedIf: [/sleep apnea/i, /\bosa\b/i],
     skipIfDx: ['sleep_apnea'],
     detect: (ctx) => {
-      const rbc = mark(ctx.labValues, [/^red blood cell/i, /^rbc\b/i]);
-      const hct = mark(ctx.labValues, [/^hematocrit/i, /^hct\b/i]);
-      const a1c = mark(ctx.labValues, [/^hemoglobin a1c/i, /^a1c\b/i]);
-      const polyPattern = (rbc && rbc.flag.includes('high')) || (hct && hct.value > 48);
-      const sleepSx = symptom(ctx.symptomsLower, [/snor/i, /waking (during|in the|at) night/i, /unrefreshing sleep/i, /daytime sleep/i]);
-      const weightSx = symptom(ctx.symptomsLower, [/weight gain/i, /obese/i]);
-      const irPattern = a1c && a1c.value >= 5.6;
-      if (polyPattern && (sleepSx || weightSx || irPattern)) {
+      const rbc = mark(ctx.labValues, [/red blood cell/i, /\brbc\b/i]);
+      const hct = mark(ctx.labValues, [/hematocrit/i, /\bhct\b/i]);
+      // Exclude Hemoglobin A1c — that's a different marker entirely.
+      const hgb = mark(ctx.labValues, [/\bhgb\b/i, /^hemoglobin\b(?!\s*a1c)/i]);
+      const a1c = mark(ctx.labValues, [/hemoglobin a1c/i, /\ba1c\b/i, /\bhba1c\b/i]);
+
+      // Polycythemia signature broadened: high RBC/Hct/Hgb flag
+      // OR Hct >= 50 (any sex) OR Hgb >= 17 (male thresholds; conservative).
+      const polyPattern =
+        (rbc && (rbc.flag.includes('high') || rbc.value >= 5.8)) ||
+        (hct && (hct.flag.includes('high') || hct.value >= 50)) ||
+        (hgb && (hgb.flag.includes('high') || hgb.value >= 17));
+
+      // Symptom matching broadened — common phrasings across users.
+      const sleepSx = symptom(ctx.symptomsLower, [
+        /\bsnor/i,
+        /wak\w* (during|at|in) (the )?night/i,
+        /night\s*wak/i,
+        /restless sleep/i,
+        /unrefreshing sleep/i,
+        /daytime (sleep|drowsi|tired)/i,
+        /\bgasp/i,
+        /witnessed apnea/i,
+        /loud breathing/i,
+        /morning headache/i,
+      ]);
+      const weightSx = symptom(ctx.symptomsLower, [
+        /weight (gain|resist)/i,
+        /can'?t lose weight/i,
+        /difficulty losing weight/i,
+        /\bobes/i,
+      ]);
+      const fatigueSx = symptom(ctx.symptomsLower, [/\bfatigue\b/i, /\btired\b/i, /\bexhaust/i]);
+      const irPattern = a1c && a1c.value >= 5.4;
+
+      // Fire MODERATE if polycythemia + any one supporting signal.
+      // Fire MODERATE on polycythemia alone IF Hct ≥ 51 (lab-flagged).
+      const supportingHits = [sleepSx, weightSx, irPattern, fatigueSx].filter(Boolean).length;
+      const strongPoly = (hct && hct.value >= 51) || (hgb && hgb.value >= 17.5);
+      if (polyPattern && (supportingHits >= 1 || strongPoly)) {
+        const evParts: string[] = [];
+        if (rbc) evParts.push(`RBC ${rbc.value}`);
+        if (hct) evParts.push(`Hct ${hct.value}%`);
+        if (hgb) evParts.push(`Hgb ${hgb.value}`);
+        if (sleepSx) evParts.push('sleep symptoms');
+        if (weightSx) evParts.push('weight resistance');
+        if (irPattern) evParts.push(`A1c ${a1c!.value}%`);
+        if (fatigueSx) evParts.push('fatigue');
         return {
-          name: 'Obstructive Sleep Apnea (OSA)',
+          name: 'Obstructive Sleep Apnea (rule-out)',
           category: 'respiratory',
           confidence: 'moderate',
-          evidence: `Polycythemia + ${sleepSx ? 'sleep symptoms, ' : ''}${weightSx ? 'weight, ' : ''}${irPattern ? `A1c ${a1c!.value}%` : ''} — classic OSA signature.`,
-          confirmatory_tests: ['STOP-BANG questionnaire', 'Home sleep study (HSAT) or in-lab polysomnography'],
+          evidence: `${evParts.join(', ')} — pattern fits nocturnal hypoxemia driving secondary erythrocytosis.`,
+          confirmatory_tests: ['STOP-BANG questionnaire', 'Home sleep study (HSAT)', 'Overnight pulse oximetry'],
           icd10: 'G47.30',
-          what_to_ask_doctor: "My blood-cell pattern + sleep symptoms fit obstructive sleep apnea — can we order a home sleep study?",
+          what_to_ask_doctor: "My RBC and hematocrit are elevated and I have sleep / fatigue / weight signals — can we order a home sleep study to rule out obstructive sleep apnea?",
           source: 'deterministic',
         };
       }
       return null;
+    },
+  },
+
+  // ── Insulin resistance with plaque-forming dyslipidemia ───────────────
+  // Universal pattern: triglycerides ≥150 PLUS one or more of (HDL low,
+  // glucose watch-tier, A1c watch-tier, TG/HDL ≥3, weight resistance).
+  // Catches metabolic-syndrome PRECURSOR using standard lipid panel
+  // markers — no advanced lipoprotein testing needed. Fills the gap
+  // between `prediabetes` (A1c-only) and `atherogenic_dyslipidemia`
+  // (LDL-P-only) so any user with the IR pattern gets the right card.
+  {
+    key: 'insulin_resistance_dyslipidemia',
+    alreadyRaisedIf: [/insulin resistance/i, /metabolic syndrome/i, /pre[\s-]?diabetes/i, /dyslipid/i],
+    skipIfDx: ['t2d', 'metabolic_syndrome'],
+    detect: (ctx) => {
+      const tg = mark(ctx.labValues, [/triglyc/i]);
+      const hdl = mark(ctx.labValues, [/\bhdl\b/i, /hdl[\s-]*c\b/i, /high[\s-]*density/i]);
+      const ldl = mark(ctx.labValues, [/\bldl\b/i, /ldl[\s-]*c\b/i, /low[\s-]*density/i]);
+      const glu = mark(ctx.labValues, [/\bglucose\b/i, /fasting glucose/i]);
+      const a1c = mark(ctx.labValues, [/hemoglobin a1c/i, /\ba1c\b/i, /\bhba1c\b/i]);
+
+      // Anchor: TG ≥ 150
+      if (!tg || tg.value < 150) return null;
+
+      const isMale = (ctx.sex ?? '').toLowerCase() === 'male';
+      const hdlLow = hdl && (isMale ? hdl.value < 40 : hdl.value < 50);
+      const gluWatch = glu && glu.value >= 95 && glu.value <= 125;
+      const a1cWatch = a1c && a1c.value >= 5.4 && a1c.value <= 6.4;
+      const tgHdlHigh = (tg && hdl && hdl.value > 0) ? (tg.value / hdl.value) >= 3 : false;
+      const weightSx = symptom(ctx.symptomsLower, [/weight (gain|resist)/i, /can'?t lose weight/i, /difficulty losing weight/i]);
+
+      const hits = [hdlLow, gluWatch, a1cWatch, tgHdlHigh, weightSx].filter(Boolean).length;
+      if (hits < 1) return null;
+
+      const ev: string[] = [`TG ${tg.value}`];
+      if (ldl && ldl.value >= 130) ev.push(`LDL ${ldl.value}`);
+      if (hdlLow) ev.push(`HDL ${hdl!.value}`);
+      if (gluWatch) ev.push(`fasting glucose ${glu!.value}`);
+      if (a1cWatch) ev.push(`A1c ${a1c!.value}%`);
+      if (tgHdlHigh) ev.push(`TG/HDL ratio ${(tg.value / hdl!.value).toFixed(1)}`);
+      if (weightSx) ev.push('weight resistance');
+
+      const confidence = hits >= 2 ? 'high' : 'moderate';
+      return {
+        name: 'Insulin resistance with plaque-forming dyslipidemia (metabolic syndrome precursor)',
+        category: 'metabolic',
+        confidence,
+        evidence: `${ev.join(', ')} — fits hyperinsulinemia driving small-dense-LDL pattern before A1c crosses diabetic range.`,
+        confirmatory_tests: ['Fasting Insulin + HOMA-IR', 'ApoB', 'Lp(a) once-in-lifetime', 'hs-CRP', 'Coronary Artery Calcium (CAC) score'],
+        icd10: 'E88.81',
+        what_to_ask_doctor: "My triglycerides and other markers fit early insulin resistance — can we add fasting insulin and ApoB to confirm and guide treatment?",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Subclinical hypothyroidism (separate from full Hashimoto's rule) ──
+  // Catches TSH 2.5-4.5 patients with thyroid-pattern symptoms whose
+  // Hashimoto's rule didn't fire (no antibody result, no overt TSH).
+  {
+    key: 'subclinical_hypothyroidism',
+    alreadyRaisedIf: [/subclinical hypothyroid/i, /hashimoto/i, /hypothyroid/i],
+    skipIfDx: ['hashimotos', 'hypothyroidism'],
+    detect: (ctx) => {
+      const tsh = mark(ctx.labValues, [/\btsh\b/i, /thyroid[\s-]*stimulating[\s-]*hormone/i]);
+      if (!tsh) return null;
+      const tshBorderline = tsh.value >= 2.5 && tsh.value < 4.5;
+      const thyroidSx = symptom(ctx.symptomsLower, [
+        /\bfatigue\b/i, /\btired\b/i, /\bexhaust/i,
+        /weight (gain|resist)/i, /can'?t lose weight/i,
+        /hair (loss|thin|fall)/i,
+        /cold intoler/i, /\bcold (hand|feet|extremit)/i,
+        /constipation/i,
+        /brain fog/i, /poor memory/i,
+        /dry skin/i,
+        /low mood/i, /\bdepress/i,
+      ]);
+      if (!tshBorderline) return null;
+      // require at least one symptom — TSH 2.5 alone isn't enough
+      if (!thyroidSx) return null;
+      return {
+        name: 'Subclinical hypothyroidism (early Hashimoto pattern)',
+        category: 'endocrine',
+        confidence: 'moderate',
+        evidence: `TSH ${tsh.value} in the early-Hashimoto grey zone (≥2.5) with classic thyroid-pattern symptoms.`,
+        confirmatory_tests: ['Thyroid Panel (TSH + Free T4 + Free T3)', 'TPO antibodies', 'Thyroglobulin antibodies (Tg-Ab)', 'Reverse T3'],
+        icd10: 'E03.9',
+        what_to_ask_doctor: "My TSH is in the upper-normal range and I have fatigue / weight / hair / cold symptoms — can we check Free T4, Free T3, and thyroid antibodies?",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Generalized cardiometabolic risk amplifier ────────────────────────
+  // Fires on hs-CRP elevated + ANY metabolic abnormality. Tells the
+  // patient inflammation is amplifying their CV risk independent of the
+  // primary driver. ICD-10 R74.0 maps cleanly.
+  {
+    key: 'inflammation_cv_amplifier',
+    alreadyRaisedIf: [/inflammation/i, /elevated crp/i, /chronic inflammation/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const crp = mark(ctx.labValues, [/hs[\s-]?crp/i, /high[\s-]*sensitivity[\s-]*c[\s-]*reactive/i, /\bcrp\b/i]);
+      if (!crp || crp.value < 1.0) return null;
+      const tg = mark(ctx.labValues, [/triglyc/i]);
+      const ldl = mark(ctx.labValues, [/\bldl\b/i, /ldl[\s-]*c\b/i]);
+      const glu = mark(ctx.labValues, [/\bglucose\b/i, /fasting glucose/i]);
+      const a1c = mark(ctx.labValues, [/hemoglobin a1c/i, /\ba1c\b/i, /\bhba1c\b/i]);
+      const metabolicAbn = (tg && tg.value >= 150) || (ldl && ldl.value >= 130) ||
+        (glu && glu.value >= 95) || (a1c && a1c.value >= 5.4);
+      if (!metabolicAbn) return null;
+      return {
+        name: 'Chronic inflammation amplifying CV risk',
+        category: 'cardiovascular',
+        confidence: 'moderate',
+        evidence: `hs-CRP ${crp.value} mg/L + metabolic abnormality — inflammation independently raises 10-yr CV risk by 30-40%.`,
+        confirmatory_tests: ['hs-CRP repeat at 12 weeks', 'ApoB', 'Coronary Artery Calcium (CAC) score', 'Fasting Insulin'],
+        icd10: 'R74.0',
+        what_to_ask_doctor: "My hs-CRP plus my lipid / glucose pattern shows inflammation is amplifying my heart risk — should we factor that into our statin and lifestyle plan?",
+        source: 'deterministic',
+      };
     },
   },
 

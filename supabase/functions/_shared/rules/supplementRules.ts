@@ -43,6 +43,25 @@ interface Input {
   hasSulfaAllergy: boolean;
 }
 
+// Universal gating helpers — only recommend a depletion-repletion
+// supplement if the relevant lab marker confirms deficiency. If the lab
+// wasn't drawn yet, defer — the test is already on the order sheet, the
+// supplement starts after results return. Avoids the "every UC patient
+// on mesalamine gets methylfolate without ever testing folate" problem.
+function isMarkerLow(outliers: LabOutlierFact[], pat: RegExp): boolean {
+  return outliers.some(o => pat.test(o.marker) && (o.flag === 'low' || o.flag === 'critical_low' || (o.flag === 'watch' && o.value < belowOptimalThreshold(o.marker))));
+}
+function belowOptimalThreshold(marker: string): number {
+  // Thresholds below which a Watch-tier reading still implies repletion.
+  // Universal — applies to any patient.
+  if (/vitamin d|25.?hydroxy/i.test(marker)) return 30;          // <30 = repletion zone
+  if (/^b[\s-]?12|cobalamin/i.test(marker)) return 400;          // <400 = functional deficiency
+  if (/folate/i.test(marker)) return 5;                          // <5 ng/mL = repletion zone
+  if (/ferritin/i.test(marker)) return 50;                       // <50 = restless legs / fatigue zone
+  if (/magnesium/i.test(marker)) return 2.0;                     // RBC Mg
+  return 0;
+}
+
 export function buildSupplementCandidates(input: Input): SupplementCandidate[] {
   const out: SupplementCandidate[] = [];
   const seen = new Set<string>();
@@ -54,13 +73,20 @@ export function buildSupplementCandidates(input: Input): SupplementCandidate[] {
   };
 
   // ── 1. Med-driven depletions ────────────────────────────────────────
+  // GATING RULE (universal):
+  //   - CoQ10: always recommend on statin (no PCP-standard test for CoQ10
+  //     levels, statin-driven depletion is established science)
+  //   - All other depletion repletions: ONLY recommend if the relevant
+  //     lab is FLAGGED in outliers as low/critical_low/watch-below-optimal.
+  //     If the test wasn't drawn yet, the supplement defers — the test is
+  //     already on the order sheet from the deterministic test engine.
   for (const d of input.depletions) {
     if (d.nutrient === 'CoQ10') {
       push({
         emoji: '💊', nutrient: 'CoQ10 (Ubiquinol)', form: 'Softgel',
         dose: '100-200mg', timing: 'With breakfast (take with fat)',
         whyShort: 'Statins block your body from making CoQ10',
-        why: `${d.medsMatched.join(' / ')} depletes CoQ10 — repletion eases statin-related muscle and energy symptoms.`,
+        why: `${d.medsMatched.join(' / ')} depletes CoQ10 — repletion eases statin-related muscle and energy symptoms. (No standard test for CoQ10 levels — repletion is empirical.)`,
         category: 'nutrient_repletion', priority: 'high', sourcedFrom: 'medication_depletion',
         alternatives: [
           { name: 'Ubiquinone', form: 'Softgel', note: 'Cheaper but ~30% lower bioavailability than ubiquinol.' },
@@ -68,44 +94,44 @@ export function buildSupplementCandidates(input: Input): SupplementCandidate[] {
         ],
       });
     }
-    if (d.nutrient === 'Vitamin B12') {
+    if (d.nutrient === 'Vitamin B12' && isMarkerLow(input.outliers, /^b[\s-]?12|cobalamin/i)) {
       push({
         emoji: '💊', nutrient: 'Methylcobalamin (B12)', form: 'Sublingual lozenge',
         dose: '1000 mcg/day', timing: 'Morning, empty stomach',
-        whyShort: 'Repletes drug-driven B12 depletion',
-        why: `${d.medsMatched.join(' / ')} depletes B12 — methylcobalamin is the active form, no MTHFR conversion needed.`,
+        whyShort: 'Replete confirmed-low B12',
+        why: `Lab confirms low B12 + on ${d.medsMatched.join(' / ')} (drug-driven depletion). Methylcobalamin is the active form, no MTHFR conversion needed.`,
         category: 'nutrient_repletion', priority: 'high', sourcedFrom: 'medication_depletion',
         alternatives: [
           { name: 'Cyanocobalamin B12', form: 'Tablet', note: 'Cheaper, requires conversion to active form.' },
         ],
       });
     }
-    if (d.nutrient === 'Folate') {
+    if (d.nutrient === 'Folate' && isMarkerLow(input.outliers, /folate/i)) {
       push({
         emoji: '💊', nutrient: 'Methylfolate (5-MTHF)', form: 'Capsule',
         dose: '400-800 mcg/day', timing: 'Morning with food',
-        whyShort: 'Repletes drug-driven folate depletion',
-        why: `${d.medsMatched.join(' / ')} blocks folate — methylfolate is the bioavailable active form.`,
+        whyShort: 'Replete confirmed-low folate',
+        why: `Lab confirms low folate + on ${d.medsMatched.join(' / ')} (which blocks folate absorption). Methylfolate is the bioavailable active form.`,
         category: 'nutrient_repletion', priority: 'high', sourcedFrom: 'medication_depletion',
         alternatives: [
           { name: 'Folinic acid', form: 'Capsule', note: 'Alternative if methylfolate causes overstimulation.' },
         ],
       });
     }
-    if (d.nutrient === 'Magnesium') {
+    if (d.nutrient === 'Magnesium' && isMarkerLow(input.outliers, /magnesium/i)) {
       push({
         emoji: '💊', nutrient: 'Magnesium Glycinate', form: 'Capsule',
         dose: '300 mg', timing: 'Evening (7 PM), 2–3 hours before bed',
-        whyShort: 'Repletes drug-driven Mg depletion',
-        why: `${d.medsMatched.join(' / ')} depletes magnesium — glycinate form is gentle on the gut.`,
+        whyShort: 'Replete confirmed-low Mg',
+        why: `Lab confirms low magnesium + on ${d.medsMatched.join(' / ')}. Glycinate form is gentle on the gut.`,
         category: 'sleep_stress', priority: 'high', sourcedFrom: 'medication_depletion',
         alternatives: [
           { name: 'Magnesium L-Threonate', form: 'Capsule', note: 'Crosses blood-brain barrier — for cognitive symptoms.' },
         ],
       });
     }
-    if (d.nutrient === 'Vitamin D') {
-      push(vitaminDCandidate('medication_depletion', `${d.medsMatched.join(' / ')} suppresses vitamin D — repletion + monitoring needed.`));
+    if (d.nutrient === 'Vitamin D' && isMarkerLow(input.outliers, /vitamin d|25.?hydroxy/i)) {
+      push(vitaminDCandidate('medication_depletion', `Lab confirms low vitamin D + on ${d.medsMatched.join(' / ')}. Repletion + 12-week recheck.`));
     }
   }
 

@@ -25,6 +25,7 @@ import { buildPrepInstructions as buildPrepInstructionsRule, type PrepInstructio
 import { computeAllRiskCalculators, type RiskCalculatorBundle } from './rules/riskCalculators.ts';
 import { detectSuboptimalValues, type OptimalFlag } from './optimalRanges.ts';
 import { GUIDELINE_CITATIONS } from './canonical.ts';
+import { buildSymptomsAddressed, type SymptomAddressed } from './rules/symptomRules.ts';
 
 // ──────────────────────────────────────────────────────────────────────
 // LAB VALUE — canonical normalized lab row (every rule consumes this).
@@ -116,6 +117,7 @@ export interface ClinicalFacts {
 
   // UI helpers
   goalTargets: GoalTarget[];           // From here / To here
+  symptomsAddressed: SymptomAddressed[]; // deterministic — no AI involvement
 
   // Metadata
   citations: { test: string; url: string; org: string }[];
@@ -234,6 +236,24 @@ export function buildPlan(input: PatientInput): ClinicalFacts {
   // 12. Mode classification (treatment vs optimization)
   const isOptimizationMode = isOptimization(outliers, conditions);
 
+  // 13. Symptoms addressed — deterministic (NO AI). Built last so it can
+  // reference the full FACTS bundle (outliers, depletions, conditions,
+  // supplementCandidates).
+  const factsForSymptoms: ClinicalFacts = {
+    patient: {
+      age: input.age, sex: sexNormalized,
+      conditions: input.conditionsList, meds: input.medsList,
+      symptoms: input.symptomsList, supplementsTaking: input.supplementsList,
+    },
+    labs: { raw: input.labs, outliers },
+    tests, conditions, depletions, supplementCandidates,
+    riskCalculators, emergencyAlerts, crisisAlert, prepInstructions,
+    suboptimalFlags, goalTargets,
+    symptomsAddressed: [], // placeholder — real value computed next
+    citations: [], isOptimizationMode,
+  };
+  const symptomsAddressed = buildSymptomsAddressed(factsForSymptoms);
+
   return {
     patient: {
       age: input.age,
@@ -254,6 +274,7 @@ export function buildPlan(input: PatientInput): ClinicalFacts {
     prepInstructions,
     suboptimalFlags,
     goalTargets,
+    symptomsAddressed,
     citations,
     isOptimizationMode,
   };

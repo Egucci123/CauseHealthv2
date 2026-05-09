@@ -49,9 +49,10 @@ export function buildContextFlags(ctx: InjectionContext) {
   const m = ctx.medsLower;
   const sex = (ctx.sex ?? '').toLowerCase();
   const age = ctx.age ?? 99;
+  const ageKnown = ctx.age != null;
 
   return {
-    age, sex,
+    age, sex, ageKnown,
     isMenstruatingFemale: sex === 'female' && age >= 12 && age <= 55,
 
     // Conditions — delegated to canonical registry.
@@ -260,12 +261,14 @@ function applyUniversalRules(f: Flags, ctx: InjectionContext, add: AddFn): void 
   }
 
   // ── Adult male age 45+: PSA baseline ──────────────────────────────────
-  if (f.sex === 'male' && f.age >= 45) {
+  // Require KNOWN age — never fire on unknown age (formerly defaulted to
+  // 99 and triggered for every male). Only fire when DOB is set.
+  if (f.ageKnown && f.sex === 'male' && f.age >= 45) {
     add('psa_if_male_45', 'Adult male ≥45 — PSA baseline screens for prostate disease per AUA shared-decision guidelines', 'd');
   }
 
   // ── Adult female age 40+: mammogram reminder (imaging, not blood) ─────
-  if (f.sex === 'female' && f.age >= 40) {
+  if (f.ageKnown && f.sex === 'female' && f.age >= 40) {
     add('mammogram_if_due', 'Adult female ≥40 — annual mammogram per ACS / USPSTF', 'd');
   }
 
@@ -324,9 +327,24 @@ function applyUniversalRules(f: Flags, ctx: InjectionContext, add: AddFn): void 
     add('hgb_electrophoresis', 'MCV low — if iron panel normal, screens for thalassemia trait', 'c');
   }
 
-  // ── PTH + Ionized Ca on Vit D low + bone/joint sx ─────────────────────
-  if (f.vitaminDLow && (f.hasOsteo || /\b(bone pain|fracture|joint)/.test(ctx.symptomsLower))) {
-    add('pth', 'Vitamin D low + bone/joint symptoms — rules out secondary hyperparathyroidism', 'c');
+  // ── PTH + Ionized Ca — STRICT gating (universal) ──────────────────────
+  // Only fire when there's real reason to suspect secondary
+  // hyperparathyroidism, NOT just generic joint stiffness in a Vit-D-low
+  // patient (which is more often arthralgia from the underlying condition
+  // than HPT). Triggers:
+  //   1. Severely deficient Vit D (<20) — repletion alone may not normalize Ca/P
+  //   2. Diagnosed osteoporosis / osteopenia (bone disease workup)
+  //   3. Specific bone-pain or fracture history (not just stiffness)
+  // "Joint stiffness" alone — common in autoimmune disease, doesn't warrant HPT workup.
+  const vitDSeverelyLow = /\b(25.?hydroxy|vitamin d).*?:\s*(\d+\.?\d*)/i.test(ctx.labsLower)
+    && (() => {
+      const m = ctx.labsLower.match(/\b(?:25.?hydroxy|vitamin d).*?:\s*(\d+\.?\d*)/i);
+      return m ? Number(m[1]) < 20 : false;
+    })();
+  const hasBonePainOrFracture = /\b(bone pain|fracture|osteopenia|low bone density|stress fracture)\b/i.test(ctx.symptomsLower)
+    || /\b(bone pain|fracture|osteopenia)\b/i.test(ctx.conditionsLower);
+  if (f.hasOsteo || (f.vitaminDLow && (vitDSeverelyLow || hasBonePainOrFracture))) {
+    add('pth', 'Vit D severely low (<20) or diagnosed bone disease — rules out secondary hyperparathyroidism', 'c');
     add('ionized_calcium', 'Pairs with PTH for hyperparathyroidism workup', 'c');
   }
 

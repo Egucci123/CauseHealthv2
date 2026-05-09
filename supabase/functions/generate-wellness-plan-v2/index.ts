@@ -177,10 +177,15 @@ function normalizePatientInput(args: {
   const conditionsList = (conditions ?? []).map((c: any) => String(c?.name ?? '')).filter(Boolean);
   const medsList = (meds ?? []).map((m: any) => String(m?.name ?? '')).filter(Boolean);
   const supplementsList = (supplements ?? []).map((s: any) => String(s?.name ?? '')).filter(Boolean);
-  const symptomsList = (symptoms ?? []).map((s: any) => ({
-    name: String(s?.name ?? ''),
-    severity: typeof s?.severity === 'number' ? s.severity : 0,
-  }));
+  // DB column is `symptom` (per v1). Fall back to `name` for any future
+  // schema change and filter empties so the rules engine never iterates
+  // a blank-name entry.
+  const symptomsList = (symptoms ?? [])
+    .map((s: any) => ({
+      name: String(s?.symptom ?? s?.name ?? '').trim(),
+      severity: typeof s?.severity === 'number' ? s.severity : 0,
+    }))
+    .filter((s: { name: string }) => s.name.length > 0);
 
   const labs: LabValue[] = (labValues ?? []).map((l: any) => ({
     marker: String(l?.marker_name ?? ''),
@@ -195,8 +200,13 @@ function normalizePatientInput(args: {
   // Build human-readable lab summary string used by regex matchers
   const labsLower = labs.map(l => `${l.marker}: ${l.value} ${l.unit} [${l.flag}]`).join('\n').toLowerCase();
 
+  // Compute age from date_of_birth — `profile.age` is not a column.
+  const age = profile?.date_of_birth
+    ? Math.floor((Date.now() - new Date(profile.date_of_birth).getTime()) / 31_557_600_000)
+    : null;
+
   return {
-    age: profile?.age ?? null,
+    age,
     sex: profile?.sex ?? null,
     conditionsList,
     conditionsLower: conditionsList.join(' ').toLowerCase(),
@@ -237,7 +247,10 @@ async function callAnthropicTool<T>(args: {
       },
       body: JSON.stringify({
         model: MODEL,
-        max_tokens: 4000,
+        // 8000 covers the worst-case patient: 20 symptoms × 300 char cap +
+        // 8 conditions × 300 char cap + headline + summary. v1's 4000 cap
+        // was the reason symptoms_addressed silently truncated.
+        max_tokens: 8000,
         system: [
           { type: 'text', cache_control: { type: 'ephemeral' }, text: args.system },
         ],
@@ -265,6 +278,131 @@ function settledOrFallback<T>(res: PromiseSettledResult<T>, fallback: T): T {
   if (res.status === 'fulfilled') return res.value;
   console.error('[v2] AI call failed, using fallback:', res.reason);
   return fallback;
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// SERVER-SIDE GUARDRAILS — last line of defense against AI drift.
+// Universal across every patient.
+// ──────────────────────────────────────────────────────────────────────
+
+/**
+ * Headline validation. Catches AI sentences that ran out of room and
+ * ended mid-thought ("...are driving your.") or are otherwise incomplete.
+ * If invalid, build a deterministic fallback from the top lab outlier.
+ */
+function validateHeadline(headline: string, facts: ClinicalFacts): string {
+  const trimmed = String(headline ?? '').trim();
+  if (!trimmed) return deterministicHeadline(facts);
+
+  // Length check — the frontend truncates >70 chars with "..." which is
+  // visually broken. Reject anything over 60 chars to give a safety
+  // margin and force a deterministic fallback.
+  if (trimmed.length > 60) {
+    console.warn(`[v2] Headline rejected (${trimmed.length} chars > 60): "${trimmed}" — falling back`);
+    return deterministicHeadline(facts);
+  }
+
+  // Word count — frontend caps at 9 words.
+  const wordCount = trimmed.split(/\s+/).length;
+  if (wordCount > 9) {
+    console.warn(`[v2] Headline rejected (${wordCount} words > 9): "${trimmed}" — falling back`);
+    return deterministicHeadline(facts);
+  }
+
+  // Detect incomplete trailing patterns.
+  const incompletePatterns = [
+    /\b(and|or|the|your|driving|driven|causing|making|but|with|of|on|at|to|in|for|from|by|is|are|was|were|will|can|may|might|should|would)\.?\s*$/i,
+    /,\s*$/,
+    /:\s*$/,
+    /\b\w+ing\.?$/i, // "...driving." / "...working." — usually incomplete
+  ];
+  // Allow common complete-sentence-ing endings (rare but valid)
+  const looksComplete = /\b(matters|counts|fix|wins|begins|ends|works|recovers|improves|stabilizes|resolves|drops|lifts|clears|heals|repairs|rebalances)\.\s*$/i.test(trimmed);
+  const isIncomplete = !looksComplete && incompletePatterns.some(p => p.test(trimmed));
+
+  if (isIncomplete) {
+    console.warn(`[v2] Headline rejected (incomplete): "${trimmed}" — falling back`);
+    return deterministicHeadline(facts);
+  }
+
+  // Must end with terminal punctuation
+  if (!/[.!?]$/.test(trimmed)) {
+    return trimmed + '.';
+  }
+  return trimmed;
+}
+
+function deterministicHeadline(facts: ClinicalFacts): string {
+  // Build from top outlier or top condition. Always a complete sentence.
+  const top = facts.labs.outliers[0];
+  const cond = facts.conditions[0];
+  if (top && cond) return `Your ${cond.name.split('(')[0].trim()} pattern needs attention.`.slice(0, 80);
+  if (top) return `Your ${top.marker} ${top.value} ${top.unit} needs attention.`.slice(0, 80);
+  if (cond) return `Your ${cond.name.split('(')[0].trim()} pattern is the priority.`.slice(0, 80);
+  return 'Your wellness plan is ready.';
+}
+
+/**
+ * Phase-1 verb scrubber. Phase 1 is the START of the program — patient
+ * has not begun anything yet. Replace "Continue" / "Maintain" / "Keep"
+ * with appropriate start verbs. Universal — applies to any plan.
+ */
+function fixPhase1Verbs(actions: string[]): string[] {
+  return actions.map(a => {
+    const trimmed = String(a ?? '');
+    // Match: emoji + space + Continue/Maintain/Keep + space + rest
+    return trimmed
+      .replace(/^(\W*\s*)(Continue|Continuing|Maintain|Maintaining|Keep|Keeping)\s+(?=drink|water|hydrat)/i, '$1Drink ')
+      .replace(/^(\W*\s*)(Continue|Continuing|Maintain|Maintaining|Keep|Keeping)\s+(?=tak|using|with the supplement|with omega|with vitamin|with magnesium|with coq|with iron|with b12|with folate|with milk thistle|with l-glutamine)/i, '$1Take ')
+      .replace(/^(\W*\s*)(Continue|Continuing|Maintain|Maintaining|Keep|Keeping)\s+/i, '$1Start ');
+  });
+}
+
+/**
+ * Phase-1 critical-supplement enforcer. Every CRITICAL or HIGH-priority
+ * supplement that comes from a medication-depletion or lab-finding source
+ * MUST appear in a Phase 1 Start action. The AI sometimes drops one when
+ * it has 6+ supplements competing for ~8 slots — universally, the patient
+ * loses the highest-leverage Day-1 intervention.
+ *
+ * If a supplement is missing, prepend a deterministic Start action so the
+ * patient gets it on Day 1. Phase-2 "Continue all Phase 1 supplements"
+ * statements then become accurate.
+ */
+function ensurePhase1CriticalSupplements(
+  phase1Actions: string[],
+  candidates: Array<{ nutrient: string; dose: string; timing: string; priority: string; sourcedFrom: string; emoji: string }>,
+): string[] {
+  const out = [...phase1Actions];
+  const phase1Lower = out.join(' ').toLowerCase();
+
+  // Order: critical depletions first (CoQ10 for statin), then other criticals,
+  // then high-priority lab findings, then high-priority depletions.
+  const mustInclude = candidates
+    .filter(c => (c.priority === 'critical' || c.priority === 'high'))
+    .filter(c => c.sourcedFrom === 'medication_depletion' || c.sourcedFrom === 'lab_finding')
+    .sort((a, b) => {
+      // critical first, then high; depletion-driven before lab-driven within tier
+      const pri = (p: string) => (p === 'critical' ? 0 : p === 'high' ? 1 : 2);
+      const src = (s: string) => (s === 'medication_depletion' ? 0 : 1);
+      return pri(a.priority) - pri(b.priority) || src(a.sourcedFrom) - src(b.sourcedFrom);
+    });
+
+  for (const c of mustInclude) {
+    // Check if any Phase 1 action references this supplement (loose match
+    // on the first word of nutrient — "CoQ10" matches "CoQ10 (Ubiquinol)").
+    const firstWord = c.nutrient.toLowerCase().split(/\s|\(/)[0];
+    if (!firstWord) continue;
+    const alreadyIn = phase1Lower.includes(firstWord);
+    if (alreadyIn) continue;
+
+    // Inject a deterministic Start action. Universal phrasing.
+    const action = `${c.emoji} Start ${c.nutrient} ${c.dose} ${c.timing.toLowerCase()} — ${c.priority === 'critical' ? 'highest-priority Day-1 supplement' : 'priority Day-1 supplement'}.`;
+    out.push(action);
+    console.log(`[v2] Phase 1 enforcer: injected missing supplement "${c.nutrient}" (${c.priority} ${c.sourcedFrom})`);
+  }
+
+  return out;
 }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -317,14 +455,42 @@ function mergeIntoFinalPlan(args: {
   const proseByName = new Map<string, NarrativeOutput['condition_prose'][number]>();
   for (const p of narrative.condition_prose) proseByName.set(p.name.toLowerCase(), p);
 
+  // For each condition's confirmatory_tests, append "(✓ on your test sheet)"
+  // when the test is already in retest_timeline. Universal: alias-based
+  // match catches "Hemoglobin A1c" / "HbA1c" / "A1c" variants. Avoids
+  // confusing the user with apparent duplicate orders.
+  const orderedTestKeys = new Set<string>();
+  const orderedTestNames: string[] = [];
+  for (const t of facts.tests) {
+    orderedTestKeys.add(t.key);
+    orderedTestNames.push(t.name.toLowerCase());
+  }
+  const isAlreadyOrdered = (testStr: string): boolean => {
+    const lower = testStr.toLowerCase().trim();
+    if (!lower) return false;
+    if (orderedTestNames.some(n => n === lower || n.includes(lower) || lower.includes(n))) return true;
+    // Cross-check via registry alias match against ordered keys
+    for (const t of facts.tests) {
+      // crude word-boundary match on canonical name
+      const firstWord = t.name.toLowerCase().split(/[\s(]/)[0];
+      if (firstWord && lower.includes(firstWord) && firstWord.length >= 3) return true;
+    }
+    return false;
+  };
+
   const suspectedConditions = facts.conditions.map(c => {
     const prose = proseByName.get(c.name.toLowerCase());
+    const annotatedConfirmatory = (c.confirmatory_tests ?? []).map(t => {
+      const s = String(t ?? '').trim();
+      if (!s) return s;
+      return isAlreadyOrdered(s) ? `${s} (✓ already on your test sheet)` : s;
+    });
     return {
       name: c.name,
       category: c.category,
       confidence: c.confidence,
       evidence: prose?.evidence ?? c.evidence,
-      confirmatory_tests: c.confirmatory_tests,
+      confirmatory_tests: annotatedConfirmatory,
       icd10: c.icd10,
       what_to_ask_doctor: prose?.what_to_ask_doctor ?? c.what_to_ask_doctor,
     };
@@ -349,8 +515,9 @@ function mergeIntoFinalPlan(args: {
   const disclaimer = "CauseHealth is a wellness and health-information service, not a medical provider. We do not diagnose, treat, prescribe, or replace professional medical care. The patterns and tests in this plan are general informational suggestions based on your data — they are not a diagnosis. Always consult your physician or pharmacist before starting any supplement, lifestyle change, or new medication, and before stopping or modifying any prescribed treatment. If you are experiencing a medical emergency, call 911 or your local emergency number.";
 
   return {
-    // Hero / summary
-    headline: narrative.headline,
+    // Hero / summary — server-side validates headline, never lets a
+    // truncated / incomplete sentence reach the user.
+    headline: validateHeadline(narrative.headline, facts),
     summary: narrative.summary,
     generated_at: new Date().toISOString(),
 
@@ -377,7 +544,19 @@ function mergeIntoFinalPlan(args: {
     },
     action_plan: action.action_plan && typeof action.action_plan === 'object'
       ? {
-          phase_1: { ...action.action_plan.phase_1, actions: Array.isArray(action.action_plan.phase_1?.actions) ? action.action_plan.phase_1.actions : [] },
+          // Phase 1: (1) verbs scrubbed (Continue → Drink/Start);
+          // (2) critical/high depletion supplements enforced — the AI
+          // sometimes drops the most important supplement when it has
+          // 6+ candidates competing for slots. The enforcer guarantees
+          // every depletion/lab-driven critical+high supplement gets a
+          // Day-1 start action.
+          phase_1: {
+            ...action.action_plan.phase_1,
+            actions: ensurePhase1CriticalSupplements(
+              fixPhase1Verbs(Array.isArray(action.action_plan.phase_1?.actions) ? action.action_plan.phase_1.actions : []),
+              filteredStack,
+            ),
+          },
           phase_2: { ...action.action_plan.phase_2, actions: Array.isArray(action.action_plan.phase_2?.actions) ? action.action_plan.phase_2.actions : [] },
           phase_3: { ...action.action_plan.phase_3, actions: Array.isArray(action.action_plan.phase_3?.actions) ? action.action_plan.phase_3.actions : [] },
         }
@@ -386,7 +565,10 @@ function mergeIntoFinalPlan(args: {
     // Clinical layer
     retest_timeline: Array.isArray(retestTimeline) ? retestTimeline : [],
     suspected_conditions: Array.isArray(suspectedConditions) ? suspectedConditions : [],
-    symptoms_addressed: Array.isArray(narrative.symptoms_addressed) ? narrative.symptoms_addressed : [],
+    // Symptoms_addressed is now 100% deterministic (rules engine, no AI).
+    // Every patient symptom is guaranteed to appear with specific drivers,
+    // intervention, lifestyle hint, and timeline.
+    symptoms_addressed: facts.symptomsAddressed,
 
     // v1-compatibility fields (frontend reads these — keep as empty arrays
     // / null so render code that doesn't guard against undefined works)
@@ -429,10 +611,6 @@ function narrativeFallback(facts: ClinicalFacts): NarrativeOutput {
   return {
     headline: topOutlier ? `${topOutlier.marker} stands out — here is your plan.` : 'Your wellness plan is ready.',
     summary: `We pulled ${facts.tests.length} tests for your follow-up, ${facts.supplementCandidates.length} targeted supplements, and a 12-week structure. Bring the doctor-prep sheet to your PCP.`,
-    symptoms_addressed: facts.patient.symptoms.map(s => ({
-      symptom: s.name,
-      how_addressed: 'See the supplement stack and lifestyle interventions for the targeted strategies tied to this symptom.',
-    })),
     condition_prose: facts.conditions.map(c => ({
       name: c.name,
       evidence: c.evidence,

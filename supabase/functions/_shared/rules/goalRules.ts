@@ -20,12 +20,34 @@ import type { LabOutlierFact } from '../buildPlan.ts';
 
 export interface GoalTarget {
   emoji: string;
-  marker: string;
+  marker: string;          // display label — friendly name, not the raw lab marker
   today: number;
   goal: number;
   unit: string;
   deltaText: string;       // "−40%" or "to 44" — for UI rendering
   confidence: 'high' | 'medium' | 'low';
+}
+
+// Friendly display names for markers that have ugly raw names in the DB.
+// Universal: applies to every patient. Anywhere a goal-target card is
+// rendered, the user sees the friendly name, not the lab's raw label.
+const FRIENDLY_LABELS: Array<[RegExp, string]> = [
+  [/25.?hydroxy.?vitamin d|vitamin d.*25.?oh|^25.?hydroxy/i, 'Vitamin D'],
+  [/^alt\b|sgpt|alanine[\s-]?aminotransferase/i, 'ALT'],
+  [/^ast\b|sgot|aspartate[\s-]?aminotransferase/i, 'AST'],
+  [/^ggt\b|gamma[\s-]?glutamyl/i, 'GGT'],
+  [/hemoglobin a1c|^hba1c\b/i, 'Hemoglobin A1c'],
+  [/triglyc/i, 'Triglycerides'],
+  [/ferritin/i, 'Ferritin'],
+  [/^b[\s-]?12\b|cobalamin/i, 'Vitamin B12'],
+  [/hs[\s-]?crp|c[\s-]?reactive/i, 'hs-CRP'],
+];
+
+function friendlyLabel(rawMarker: string): string {
+  for (const [pat, label] of FRIENDLY_LABELS) {
+    if (pat.test(rawMarker)) return label;
+  }
+  return rawMarker;
 }
 
 interface Input {
@@ -153,7 +175,7 @@ export function buildGoalTargets(input: Input): GoalTarget[] {
       if (!out) continue;
       targets.push({
         emoji: rule.emoji,
-        marker: outlier.marker,
+        marker: friendlyLabel(outlier.marker),
         today: outlier.value,
         goal: out.goal,
         unit: outlier.unit,

@@ -23,28 +23,12 @@ export const NARRATIVE_TOOL_SCHEMA = {
       headline: {
         type: 'string',
         maxLength: 60,
-        description: 'Hero card headline. Plain English verdict, ≤9 words. NEVER alarmist.',
+        description: 'Hero card headline rendered on a phone. Plain English verdict, ≤8 words AND ≤60 characters. MUST be a COMPLETE sentence — the frontend truncates anything longer with "..." so a too-long sentence WILL get cut off mid-thought. If you can\'t fit a complete thought in 60 chars, write a SHORTER one. Examples that work: "Sleep debt is driving your labs." (8 words, 32 chars) / "Vitamin D + insulin resistance need work." (7 words, 42 chars) / "Liver and lipids need repair work." (7 words, 33 chars). Examples that FAIL: "Liver enzymes, triglycerides, and chronic dehydration need immediate attention." (78 chars — TOO LONG). NEVER alarmist.',
       },
       summary: {
         type: 'string',
         maxLength: 320,
         description: '3 short sentences max — what we see, what we will fix, how long it takes. Calm, equipped-advocate voice.',
-      },
-      symptoms_addressed: {
-        type: 'array',
-        maxItems: 20,
-        items: {
-          type: 'object',
-          properties: {
-            symptom: { type: 'string' },
-            how_addressed: {
-              type: 'string',
-              maxLength: 300,
-              description: '2-3 sentences plain English: cause + intervention from FACTS + realistic timeline.',
-            },
-          },
-          required: ['symptom', 'how_addressed'],
-        },
       },
       condition_prose: {
         type: 'array',
@@ -68,7 +52,7 @@ export const NARRATIVE_TOOL_SCHEMA = {
         },
       },
     },
-    required: ['headline', 'summary', 'symptoms_addressed', 'condition_prose'],
+    required: ['headline', 'summary', 'condition_prose'],
   },
 } as const;
 
@@ -83,27 +67,40 @@ VOICE — match the examples:
 • When citing a lab value, write it as "ALT 97" or "vitamin D 24" — value follows marker, no decoration.
 • Cite EVIDENCE specifically — "you reported sleep onset >30 min" beats "your symptoms suggest poor sleep".
 
+CLINICAL CLAIMS — STRICT (this is non-negotiable):
+You are FORBIDDEN from asserting any of these without explicit supporting evidence in FACTS:
+  • Disease activity ("active", "flaring", "uncontrolled", "poorly controlled")
+  • Treatment failure ("despite treatment", "not responding", "treatment is failing")
+  • Severity claims beyond what the lab flag literally says
+  • Causal claims linking a condition to a symptom unless a lab outlier supports it
+
+For each diagnosed condition in FACTS.patient.conditions, default to NEUTRAL framing:
+  ✗ "active inflammation from UC despite treatment"
+  ✓ "UC, currently treated with mesalamine + ustekinumab"
+  ✗ "uncontrolled diabetes"
+  ✓ "diabetes (current A1c X)"
+  ✗ "severe fatty liver"
+  ✓ "liver enzymes elevated (ALT 97)"
+
+Activity / control / flare claims are ONLY allowed when:
+  • An explicit inflammatory marker (hs-CRP, ESR, fecal calprotectin) is FLAGGED in FACTS.lab_outliers, OR
+  • A symptom in FACTS.patient.symptoms has severity ≥ 7, OR
+  • A risk calculator in FACTS.risk_calculators is in a "high" / "advanced" category.
+
+If none of those apply, describe the condition as treated / monitored, NOT as active.
+
 WHAT YOU WRITE:
 1. headline — ≤9 words, the one-line verdict for the hero card.
 2. summary — 3 sentences max. What's wrong, what we'll fix, how long.
-3. symptoms_addressed — for EVERY symptom in FACTS.patient.symptoms (not a subset), explain the cause (cite labs/conditions/meds from FACTS), the intervention (cite supplements from FACTS.supplementCandidates or behaviors), and a realistic timeline.
-4. condition_prose — for EVERY condition in FACTS.conditions, write evidence (specific labs/meds that fired the rule) + a curious one-sentence question to bring to the doctor.
+3. condition_prose — for EVERY condition in FACTS.conditions, write evidence (specific labs/meds that fired the rule) + a curious one-sentence question to bring to the doctor.
 
-EXAMPLE OUTPUT (Mitchell, 28, UC, on mesalamine + atorvastatin, ALT 97, TG 327, Vit D 24, sleep onset >30 min):
+(symptoms_addressed is computed deterministically by the rules engine — you do NOT write it.)
+
+EXAMPLE OUTPUT (Mitchell, 28, UC, on mesalamine + atorvastatin, ALT 97, TG 327, Vit D 24):
 
 {
   "headline": "Sleep debt and active UC are driving your labs.",
   "summary": "Three things are talking to each other: chronic sleep debt is amplifying inflammation and triglycerides, active ulcerative colitis is stressing your liver and absorption, and both together are nudging your red blood cells up. We fix sleep first, repair the gut and liver in parallel, and recheck in 12 weeks.",
-  "symptoms_addressed": [
-    {
-      "symptom": "Chronic fatigue",
-      "how_addressed": "Sleep onset >30 min plus vitamin D 24 are the biggest drivers — magnesium glycinate at 7 PM and vitamin D3 4000 IU with breakfast typically lift energy within 2-3 weeks. We retest vitamin D at 12 weeks to confirm the rise."
-    },
-    {
-      "symptom": "Difficulty falling asleep",
-      "how_addressed": "We start magnesium glycinate 300 mg at 7 PM (2-3 hours before bed) and a 6:30-8 AM walk for circadian reset. Most people see sleep latency drop inside 7 days."
-    }
-  ],
   "condition_prose": [
     {
       "name": "Non-alcoholic fatty liver disease (NAFLD) with statin-stress overlay",
@@ -119,7 +116,6 @@ Use the submit_narrative tool. Do not write text outside the tool call.`;
 export interface NarrativeOutput {
   headline: string;
   summary: string;
-  symptoms_addressed: { symptom: string; how_addressed: string }[];
   condition_prose: { name: string; evidence: string; what_to_ask_doctor: string }[];
 }
 
