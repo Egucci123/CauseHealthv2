@@ -1863,7 +1863,12 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
     // or actively being tracked — not a re-screen of the whole panel.
     plan.retest_timeline = finalizeRetestTimeline(plan.retest_timeline, classification.retestCap, labValues);
     console.log(`[wellness-plan] retest_timeline finalized to ${plan.retest_timeline.length} entries (cap=${classification.retestCap}, mode=${classification.mode})`);
-    if (!plan.generated_at) plan.generated_at = new Date().toISOString();
+    // ALWAYS overwrite — never trust the AI for the date. Haiku 4.5 routinely
+    // hallucinates the year (its training data treats 2025 as "the present" so
+    // a 2026 plan came back stamped 2025-05-09, which made the dashboard's
+    // "week N of 12" math compute as week 53 → triggered the "90 days complete
+    // — time to retest" card on a plan generated 5 minutes ago).
+    plan.generated_at = new Date().toISOString();
 
     // ── CATEGORY NORMALIZATION ──────────────────────────────────────────
     // Before the per-category dedup, normalize each supplement's category

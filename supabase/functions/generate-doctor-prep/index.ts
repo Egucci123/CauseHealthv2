@@ -825,8 +825,10 @@ reason_to_consider must cite the SPECIFIC patient finding that triggers this ent
     (doc as any).disclaimer = "This document is patient-prepared by CauseHealth, a wellness information service. It is not a medical record, not a diagnosis, and not medical advice. The suggested tests and possible conditions are general informational pattern-matches on the patient's lab data — clinical judgment, history, and exam are the physician's responsibility. CauseHealth is not a healthcare provider and does not replace professional medical care.";
     if (!doc.review_of_systems) doc.review_of_systems = {};
     if (!doc.lab_summary) doc.lab_summary = { draw_date: '', lab_name: '', urgent_findings: [], other_abnormal: [] };
-    if (!doc.generated_at) doc.generated_at = new Date().toISOString();
-    if (!doc.document_date) doc.document_date = new Date().toISOString().split('T')[0];
+    // ALWAYS overwrite — Haiku hallucinates the year (returns 2025 for a 2026
+    // plan because of training-data freshness). Server-set dates only.
+    doc.generated_at = new Date().toISOString();
+    doc.document_date = new Date().toISOString().split('T')[0];
 
     // ── COMPLETENESS GATE ─────────────────────────────────────────────
     // Reject half-written prep BEFORE inserting. Mirrors the wellness plan
