@@ -2024,6 +2024,11 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
       testQualityCaveatsAi: plan.test_quality_caveats_ai ?? [],
     });
 
+    // Disclaimer is constant — set server-side rather than asking the AI
+    // to regenerate the same sentence on every plan (token waste). Schema
+    // dropped it; UI still renders if present.
+    plan.disclaimer = 'Educational only. Talk to your doctor before changing anything.';
+
     // ── DETERMINISTIC ENFORCEMENT LAYER ───────────────────────────────────
     // Same 3-layer enforcement as analyze-labs:
     //   (1) Word caps on every user-facing string (sentence-boundary truncate)
