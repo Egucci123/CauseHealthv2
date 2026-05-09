@@ -813,6 +813,10 @@ reason_to_consider must cite the SPECIFIC patient finding that triggers this ent
           doc.risk_calculators = pd.risk_calculators;
           console.log(`[doctor-prep] Inherited risk_calculators from wellness plan: ${Object.keys(pd.risk_calculators).join(', ')}`);
         }
+        if (Array.isArray(pd?.suboptimal_flags) && pd.suboptimal_flags.length > 0) {
+          doc.suboptimal_flags = pd.suboptimal_flags;
+          console.log(`[doctor-prep] Inherited ${pd.suboptimal_flags.length} suboptimal flag(s) from wellness plan`);
+        }
       }
 
       // Differential cap by mode

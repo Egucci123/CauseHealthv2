@@ -22,6 +22,7 @@ import { detectCriticalFindings } from '../_shared/criticalFindingsBackstop.ts';
 import { detectEmergencyAlerts, detectSuicideRisk, applyAllergyFilters } from '../_shared/safetyNet.ts';
 import { buildPrepInstructions } from '../_shared/preAnalytical.ts';
 import { computeASCVDRisk, computeFIB4, computeHOMAIR, computeTGHDLRatio } from '../_shared/clinicalCalculators.ts';
+import { detectSuboptimalValues } from '../_shared/optimalRanges.ts';
 import { screenInteractions } from '../_shared/drugInteractionEngine.ts';
 import { computeProgressDeltas, renderPriorDrawForPrompt, type ProgressSummary } from '../_shared/longitudinalDelta.ts';
 import { attachWhys } from '../_shared/testRationale.ts';
@@ -2393,6 +2394,21 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
       const calcCount = Object.keys(plan.risk_calculators).length;
       if (calcCount > 0) {
         console.log(`[wellness-plan] risk_calculators: ${calcCount} computed (${Object.keys(plan.risk_calculators).join(', ')})`);
+      }
+
+      // (f) PHASE 7 — Suboptimal values (Watch tier). Universal: scan
+      // labs for values that are in the lab's "normal" range but outside
+      // the OPTIMAL range for the patient's age + sex. Surfaces as
+      // plan_data.suboptimal_flags for the UI to render as "Lab said
+      // normal — here's why we're flagging it."
+      if (ageNum !== null) {
+        plan.suboptimal_flags = detectSuboptimalValues(labValues ?? [], {
+          age: ageNum,
+          sex: sexLower,
+        });
+        if (plan.suboptimal_flags.length > 0) {
+          console.log(`[wellness-plan] suboptimal_flags: ${plan.suboptimal_flags.length} value(s) in lab-normal but outside optimal range`);
+        }
       }
     }
 
