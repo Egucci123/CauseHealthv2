@@ -476,6 +476,12 @@ ONE supplement per category. Six categories: sleep_stress, gut_healing, liver_me
 
 PRIORITY when category is over-subscribed: lab_finding > medication_depletion > disease_mechanism > empirical > optimization.
 
+EVIDENCE-STRENGTH RANKING within inflammation_cardio (when multiple candidates qualify, pick HIGHER evidence first — never CoQ10 over Omega-3 unless statin-driven):
+  1. Omega-3 EPA/DHA — strongest RCT evidence for triglycerides, joint inflammation, lipid particle size, mood. DEFAULT FIRST PICK for any combination of: lipid creep, joint/muscle aches, inflammation markers, mood/sleep, recovery complaints.
+  2. Curcumin — solid RCT evidence for joint-specific inflammation. Allowed as #2 if Omega-3 already taken or fish-allergic.
+  3. Bergamot — atherogenic dyslipidemia with small dense LDL.
+  4. CoQ10 (Ubiquinol) — RESTRICTED. ONLY allowed if: (a) patient is on a statin (medication_depletion), OR (b) confirmed HFrEF / cardiomyopathy / documented mitochondrial disorder. NEVER pick CoQ10 for generic "inflammation," "lipid creep," "joint pain," "energy," or "anti-aging" — those are Omega-3 or Curcumin territory. If you find yourself reaching for CoQ10 without (a) or (b), the answer is Omega-3.
+
 sourced_from values:
   lab_finding         — specific value out of range OR Watch-tier on THIS draw. Cite marker+value.
   disease_mechanism   — confirmed dx with strong RCT/meta evidence (UC→curcumin/L-glutamine/S.boulardii; Hashimoto's→selenium IF TPO+; T2D→berberine; PCOS→inositol; on TRT→DHEA only if labs warrant).
@@ -1909,6 +1915,37 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
           }
         }
       } catch (e) { console.warn('[wellness-plan] category normalization failed:', e); }
+    }
+
+    // ── COQ10 EVIDENCE-STRENGTH GUARD ──────────────────────────────────
+    // CoQ10's strongest evidence is for two scenarios only:
+    //   (a) statin users (statins block endogenous CoQ10 synthesis)
+    //   (b) documented HFrEF / cardiomyopathy / mitochondrial disorder
+    // For generic inflammation, lipid creep, joint pain, energy, or
+    // "anti-aging," Omega-3 is the higher-evidence pick. The AI sometimes
+    // still slots CoQ10 into the inflammation_cardio bucket because the
+    // category-bucket match passes — this guard drops it when neither (a)
+    // nor (b) holds, freeing the slot for Omega-3/Curcumin to win the
+    // category in the dedup pass below.
+    if (Array.isArray(plan.supplement_stack)) {
+      const medsLower = String(medsStr ?? '').toLowerCase();
+      const conditionsLower = (Array.isArray(conditions) ? conditions : [])
+        .map((c: any) => String(c?.name ?? c?.condition ?? c ?? '').toLowerCase())
+        .join(' | ');
+      const onStatin = /(atorvastatin|rosuvastatin|simvastatin|pravastatin|lovastatin|pitavastatin|fluvastatin|\bstatin\b|lipitor|crestor|zocor)/i.test(medsLower);
+      const hasMitoCardiacDx = /(hfref|heart failure|cardiomyopath|mitochondrial)/i.test(conditionsLower);
+      const beforeCoq = plan.supplement_stack.length;
+      plan.supplement_stack = plan.supplement_stack.filter((s: any) => {
+        const name = String(s?.nutrient ?? s?.name ?? '');
+        const isCoq = /\b(coq[\s-]?10|ubiquinol|ubiquinone|coenzyme\s*q)\b/i.test(name);
+        if (!isCoq) return true;
+        if (onStatin || hasMitoCardiacDx) return true;
+        console.log(`[wellness-plan] CoQ10 guard: dropped "${name}" — no statin / HFrEF / cardiomyopathy / mitochondrial dx`);
+        return false;
+      });
+      if (beforeCoq !== plan.supplement_stack.length) {
+        console.log(`[wellness-plan] CoQ10 guard: ${beforeCoq} → ${plan.supplement_stack.length}`);
+      }
     }
 
     // Final dedup: ONE supplement per EFFECTIVE category. Effective category
