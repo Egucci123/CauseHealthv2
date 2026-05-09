@@ -2412,7 +2412,54 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
       }
     }
 
-    // ── RETEST CLEANUP — strip drift artifacts before save ─────────────────
+    // ╔═════════════════════════════════════════════════════════════════════╗
+    // ║ PHASE 8 — POST-PROCESSOR PIPELINE (documented order)                ║
+    // ╠═════════════════════════════════════════════════════════════════════╣
+    // ║ The wellness plan output passes through 5 named stages in order:    ║
+    // ║                                                                     ║
+    // ║   STAGE 1 — SANITIZE                                                ║
+    // ║     decimal-fix, fake-test rename, suffix strip, whitespace clean,  ║
+    // ║     marker-name pollution removal (rare-disease scrub also lives    ║
+    // ║     here, ~line 810).                                               ║
+    // ║                                                                     ║
+    // ║   STAGE 2 — INJECT (deterministic baseline + condition + lab driven)║
+    // ║     pathway engine fires required tests/supps from the canonical    ║
+    // ║     conditions registry. Universal test injectors (testInjectors.ts)║
+    // ║     fire baseline + lab-driven additions. EVERY entry uses the      ║
+    // ║     canonical name from retestRegistry — no raw strings.            ║
+    // ║                                                                     ║
+    // ║   STAGE 3 — FILTER (this section + others scattered)                ║
+    // ║     - LOW-confidence suspected_conditions dropped                   ║
+    // ║     - Behavior-trial entries dropped from retest                    ║
+    // ║     - Non-test (action items, calculations) dropped                 ║
+    // ║     - OGTT gate (only if fasting glucose ≥110 OR A1c ≥5.7)          ║
+    // ║     - Panel-component redundancy (Creatinine if CMP present, etc.)  ║
+    // ║     - Changes-management filter on confirmatory_tests (Phase 6)     ║
+    // ║                                                                     ║
+    // ║   STAGE 4 — DEDUP                                                   ║
+    // ║     - Exact-name dedup (Fecal Calprotectin × 2 → 1)                 ║
+    // ║     - Test-family dedup (Total T + Free T panel vs subset → keep    ║
+    // ║       most comprehensive within family)                             ║
+    // ║     - Panel-bundle dedup (drop "X+Y+Z" when X,Y,Z standalone exist) ║
+    // ║     - Escalation-pair filter (Liver US before FibroScan, etc.)     ║
+    // ║     - Differential ranking by confidence + evidence (Phase 6)       ║
+    // ║                                                                     ║
+    // ║   STAGE 5 — NORMALIZE                                               ║
+    // ║     - Specialist remap (modality + condition-aware routing)         ║
+    // ║     - Word cap (sentence-boundary truncation, decimal-safe)         ║
+    // ║     - Alarm scrub (canonical.ts ALARM_REPLACEMENTS)                 ║
+    // ║     - Supplement-inference scrub (no nutrients-from-multivitamin)   ║
+    // ║                                                                     ║
+    // ║ Phase-2 SAFETY NET (emergency_alerts + crisis_alert + allergy       ║
+    // ║   filter) and Phase-7 SUBOPTIMAL FLAGS run AFTER stage 5 since      ║
+    // ║   they don't mutate retest/condition lists, only annotate plan.     ║
+    // ║                                                                     ║
+    // ║ Phase-5 RISK CALCULATORS run alongside the safety net since they    ║
+    // ║   read labs directly (not from retest_timeline) and produce a       ║
+    // ║   separate plan_data.risk_calculators field.                        ║
+    // ╚═════════════════════════════════════════════════════════════════════╝
+
+    // ── STAGE 1 SANITIZE — RETEST CLEANUP — strip drift artifacts ─────────
     // Three issues we keep seeing in real plans, all easy to fix server-side:
     //   (a) Marker names with " — CONDITIONAL" / "(CONDITIONAL)" / "(OPTIONAL)"
     //       suffixes the AI invents to qualify entries. The UI displays the
