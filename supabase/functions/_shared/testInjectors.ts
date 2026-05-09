@@ -119,6 +119,50 @@ export function buildUniversalTestInjections(ctx: InjectionContext): InjectedTes
   const f = buildContextFlags(ctx);
   const tests: InjectedTest[] = [];
 
+  // ── UNIVERSAL ADULT BASELINE (every patient ≥18) ───────────────────────
+  // The comprehensive panel every adult should be ARMED to ask for. These
+  // fire unconditionally for any adult so they can never get cut by AI
+  // discretion or flag-format mismatch. Dedup logic upstream handles
+  // overlaps if AI also generated them.
+  if (f.age >= 18) {
+    tests.push({
+      name: 'Comprehensive Metabolic Panel (CMP)',
+      whyShort: 'Liver, kidney, electrolyte, glucose baseline',
+      whyLong: '(d) Standard adult baseline — covers ALT, AST, ALP, Bilirubin, Albumin, Total Protein, Glucose, BUN, Creatinine, eGFR, Sodium, Potassium, Chloride, CO2, Calcium in one order.',
+      icd10: 'Z00.00',
+      icd10Description: 'General adult medical exam',
+      priority: 'high',
+      insuranceNote: 'Universally covered as part of routine adult exam or any chronic-condition follow-up.',
+    });
+    tests.push({
+      name: 'Vitamin B12 Workup (Serum B12 + MMA + Homocysteine)',
+      whyShort: 'Tissue-level B12 status, not just serum',
+      whyLong: '(d) Standard adult baseline — Serum B12 alone misses functional deficiency. MMA and Homocysteine are sensitive markers when serum is borderline; especially relevant for IBD, vegan/vegetarian, or long-term mesalamine/metformin/PPI patients.',
+      icd10: 'D51.9',
+      icd10Description: 'Vitamin B12 deficiency, unspecified (rule-out)',
+      priority: 'moderate',
+      insuranceNote: 'Modern PCPs order this with R53.83 (fatigue) or with any GI dx; if pushed back, request based on tissue-level status.',
+    });
+    tests.push({
+      name: 'Folate Workup (Serum Folate + RBC Folate)',
+      whyShort: 'Tissue folate status — RBC folate more sensitive',
+      whyLong: '(d) Standard adult baseline — RBC folate reflects tissue stores over 3 months; serum folate reflects only recent intake. Both together give a complete picture, especially with mesalamine, methotrexate, or other folate-affecting medications.',
+      icd10: 'E53.8',
+      icd10Description: 'Other specified vitamin B-group deficiencies (folate)',
+      priority: 'moderate',
+      insuranceNote: 'Universally covered with fatigue, mood, or hematologic symptoms; or with mesalamine/methotrexate.',
+    });
+    tests.push({
+      name: 'GGT (Gamma-Glutamyl Transferase)',
+      whyShort: 'Sensitive liver/biliary marker — anchor for ALT/AST',
+      whyLong: '(d) Standard adult baseline — GGT is the sensitive companion to ALT/AST. Distinguishes hepatocellular vs. biliary cause and tracks fatty-liver/oxidative stress even when ALT is normal.',
+      icd10: 'Z00.00',
+      icd10Description: 'General adult medical exam',
+      priority: 'moderate',
+      insuranceNote: 'Universally covered as part of routine liver workup; cheap and high-yield.',
+    });
+  }
+
   // ── Liver workup completion ────────────────────────────────────────────
   if (f.altElevated || f.astElevated) {
     tests.push({
@@ -290,18 +334,19 @@ export function buildUniversalTestInjections(ctx: InjectionContext): InjectedTes
   }
 
   // ── Universal male hormonal baseline ────────────────────────────────────
-  // Men any age with fatigue / hair loss / weight resistance / low libido /
-  // poor recovery cluster → Testosterone Panel (Total T + Free T + SHBG +
-  // Estradiol). Universal: fires for any adult male with the symptom pattern
-  // OR with Total T already in draw and <600 (low-normal). Total T alone
-  // is incomplete — SHBG is needed to compute Free / Bioavailable T.
+  // EVERY adult male gets the full hormonal panel — not just men with a
+  // symptom cluster. Modern internal medicine + endocrinology supports
+  // baseline hormonal evaluation for any adult male asking for thorough
+  // labs. The product mission is to ARM the patient with the comprehensive
+  // panel; gating by symptom risks under-screening. Skip only if patient
+  // is on TRT (different monitoring protocol).
   const isAdultMale = f.sex === 'male' && f.age >= 18;
   const lowLibido = /\b(libido|sex(ual)? drive|erect)/.test(ctx.symptomsLower);
   const malePattern = f.hasFatigue || f.hasHairLoss || f.hasWeightIssues || f.hasMoodIssues || lowLibido;
   // Borderline-low Total T: parse the value if present in labsLower.
   const totalTMatch = ctx.labsLower.match(/\btestosterone[^\n]*?(\d{2,4})/i);
   const totalTBorderline = totalTMatch ? Number(totalTMatch[1]) > 0 && Number(totalTMatch[1]) < 600 : false;
-  if (isAdultMale && (malePattern || totalTBorderline) && !f.onTRT) {
+  if (isAdultMale && !f.onTRT) {
     tests.push({
       name: 'Testosterone Panel (Total T + Free T + Bioavailable T + SHBG + Estradiol + LH + FSH)',
       whyShort: 'Comprehensive male hormonal baseline — full bioavailable picture',
