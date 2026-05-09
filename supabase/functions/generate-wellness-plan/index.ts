@@ -470,6 +470,8 @@ serve(async (req) => {
 - No dosages in why fields (they're in dose). No percentage-improvement claims. Cut padding/hedging/qualifiers.
 - COMPLETE GRAMMATICAL SENTENCES. Every clause has a subject + verb + object. Never produce phrase fragments like "early your body ignoring insulin" — write "early signs your body is ignoring insulin" or "your body is ignoring insulin."
 - NO REDUNDANT PHRASING — never "dysbiotic dysbiosis", "anemic anemia", "inflammatory inflammation". The noun already carries the meaning.
+- TONE — CALM CLINICAL TRANSLATOR, NEVER ALARMIST. Forbidden words/phrases in any user-facing field: "metabolic emergency", "this is alarming", "dangerous", "catastrophic", "rush to ER", "call your doctor today/now", "critically low/high" (unless the marker is in the lab's critical_low/critical_high range). For elevated-but-not-critical findings prefer: "elevated", "needs attention", "concerning", "discuss with your doctor". The reader is a worried patient — proportional language only.
+- SUPPLEMENT INFERENCE — STRICT. The Supplements field is the ONLY source of truth for what the patient takes. NEVER infer that a patient takes individual nutrients (Vitamin D, B12, Magnesium, Iron, Omega-3, Zinc, Calcium) from a Multivitamin entry. A multivitamin is ONE supplement, not a basket of individual nutrient supplements. Forbidden phrases when the nutrient is NOT explicitly listed: "your vitamin D supplementation", "you take B12", "despite supplementation", "your iron supplement", "increase your D3 dose". If a nutrient appears low and the patient takes only a multivitamin, write "vitamin D is low" — NOT "vitamin D is low despite supplementation."
 
 ═══ SUPPLEMENT STACK ═══
 ONE supplement per category. Six categories: sleep_stress, gut_healing, liver_metabolic (milk thistle/NAC/TUDCA — CoQ10 is NOT here), inflammation_cardio (omega-3, CoQ10, curcumin, bergamot), nutrient_repletion (D3, B12, B-complex, ferritin/iron, calcium+D), condition_therapy (PCOS inositol, Hashimoto's selenium IF TPO+, UC L-glutamine).
@@ -2021,6 +2023,210 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
       alreadyAtGoalAi: plan.already_at_goal_ai ?? [],
       testQualityCaveatsAi: plan.test_quality_caveats_ai ?? [],
     });
+
+    // ── DETERMINISTIC ENFORCEMENT LAYER ───────────────────────────────────
+    // Same 3-layer enforcement as analyze-labs:
+    //   (1) Word caps on every user-facing string (sentence-boundary truncate)
+    //   (2) Alarmist-tone scrub ("metabolic emergency" → "metabolic concern")
+    //   (3) Supplement-inference guard (don't talk about nutrient supplements
+    //       the user isn't actually taking — multivitamin ≠ individual D3)
+    // Soft prompt rules drift; these run on every output and make violations
+    // structurally impossible.
+    {
+      const actualSuppNames = (Array.isArray(supps) ? supps : [])
+        .map((s: any) => String(s?.name ?? '').toLowerCase())
+        .filter(Boolean);
+      const explicitlyTaking = (nutrient: RegExp): boolean =>
+        actualSuppNames.some((n) => nutrient.test(n) && !/multi[-\s]?vitamin/i.test(n));
+
+      const NUTRIENT_RULES: Array<{ test: RegExp; strip: RegExp[] }> = [
+        {
+          test: /\b(vitamin\s*d3?|vit\s*d3?|cholecalciferol)\b/i,
+          strip: [
+            /\b(your|the)\s+(vitamin\s*d3?|vit\s*d3?|d3?)\s+(supplement|supplementation|dose|intake)\b/gi,
+            /\bdespite\s+(your\s+)?(vitamin\s*d3?\s+|d3?\s+)?supplementation\b/gi,
+            /\byou\s+(take|are\s+taking|'re\s+taking)\s+(vitamin\s*d3?|vit\s*d3?|d3?)\b/gi,
+          ],
+        },
+        {
+          test: /\b(b[-\s]?12|cobalamin|methylcobalamin|cyanocobalamin)\b/i,
+          strip: [
+            /\b(your|the)\s+b[-\s]?12\s+(supplement|supplementation|dose)\b/gi,
+            /\byou\s+(take|are\s+taking)\s+b[-\s]?12\b/gi,
+          ],
+        },
+        {
+          test: /\b(magnesium|mag\s+glycinate|mag\s+citrate)\b/i,
+          strip: [
+            /\b(your|the)\s+magnesium\s+(supplement|supplementation|dose)\b/gi,
+            /\byou\s+(take|are\s+taking)\s+magnesium\b/gi,
+          ],
+        },
+        {
+          test: /\b(iron|ferrous|ferric)\b/i,
+          strip: [
+            /\b(your|the)\s+iron\s+(supplement|supplementation|dose)\b/gi,
+            /\byou\s+(take|are\s+taking)\s+iron\b/gi,
+            /\biron\s+overload\s+from\s+your\s+multi[-\s]?vitamin\b/gi,
+          ],
+        },
+        {
+          test: /\b(omega[-\s]?3|fish\s*oil|epa|dha)\b/i,
+          strip: [
+            /\b(your|the)\s+(omega[-\s]?3|fish\s*oil)\s+(supplement|supplementation)\b/gi,
+            /\byou\s+(take|are\s+taking)\s+(omega[-\s]?3|fish\s*oil)\b/gi,
+          ],
+        },
+        {
+          test: /\b(zinc)\b/i,
+          strip: [
+            /\b(your|the)\s+zinc\s+(supplement|supplementation|dose)\b/gi,
+            /\byou\s+(take|are\s+taking)\s+zinc\b/gi,
+          ],
+        },
+        {
+          test: /\b(calcium|ca\s+citrate)\b/i,
+          strip: [
+            /\b(your|the)\s+calcium\s+(supplement|supplementation|dose)\b/gi,
+            /\byou\s+(take|are\s+taking)\s+calcium\b/gi,
+          ],
+        },
+      ];
+
+      const scrubSupplementInference = (text: string): string => {
+        if (typeof text !== 'string') return text;
+        let out = text;
+        for (const rule of NUTRIENT_RULES) {
+          if (explicitlyTaking(rule.test)) continue;
+          for (const pat of rule.strip) out = out.replace(pat, '');
+        }
+        out = out.replace(/\s{2,}/g, ' ').replace(/\s+([.,;:])/g, '$1').trim();
+        return out;
+      };
+
+      const ALARM_REPLACEMENTS: Array<[RegExp, string]> = [
+        [/\bmetabolic emergency\b/gi, 'metabolic concern'],
+        [/\bmedical emergency\b/gi, 'matter for your doctor'],
+        [/\bcall your doctor (?:today|now|right away|immediately)\b/gi, 'discuss with your doctor'],
+        [/\bcall (?:your\s+)?(?:doctor|provider|md|physician)\s+(?:right )?now\b/gi, 'discuss with your doctor'],
+        [/\b(?:rush|go straight) to (?:the )?(?:er|emergency room)\b/gi, 'consult your doctor'],
+        [/\bthis is alarming\b/gi, 'this needs attention'],
+        [/\balarming(?:ly)?\b/gi, 'concerning'],
+        [/\bdangerously\b/gi, 'notably'],
+        [/\bdangerous\b/gi, 'elevated'],
+        [/\bcatastrophic(?:ally)?\b/gi, 'serious'],
+        [/\bcritically\s+low\b/gi, 'low'],
+        [/\bcritically\s+high\b/gi, 'high'],
+      ];
+
+      const softenAlarm = (text: string): string => {
+        if (typeof text !== 'string') return text;
+        let out = text;
+        for (const [pat, rep] of ALARM_REPLACEMENTS) out = out.replace(pat, rep);
+        return out;
+      };
+
+      const enforceWordCap = (text: string, cap: number): string => {
+        if (typeof text !== 'string') return text;
+        const words = text.trim().split(/\s+/).filter(Boolean);
+        if (words.length <= cap) return text;
+        const sentences = text.match(/[^.!?]+[.!?]+/g) ?? [text];
+        const acc: string[] = [];
+        let count = 0;
+        for (const s of sentences) {
+          const sw = s.trim().split(/\s+/).filter(Boolean).length;
+          if (count + sw > cap) break;
+          acc.push(s.trim());
+          count += sw;
+        }
+        if (acc.length === 0) return words.slice(0, cap).join(' ') + '…';
+        return acc.join(' ').trim();
+      };
+
+      const normalize = (text: any, cap: number): any => {
+        if (typeof text !== 'string') return text;
+        return enforceWordCap(softenAlarm(scrubSupplementInference(text)), cap);
+      };
+
+      // Top-level user-facing strings.
+      plan.headline = normalize(plan.headline, 12);   // hard prompt cap is 9; allow 3-word slack
+      plan.summary  = normalize(plan.summary, 50);    // prompt cap 45 + buffer
+
+      // today_actions
+      if (Array.isArray(plan.today_actions)) {
+        for (const a of plan.today_actions) {
+          if (a && typeof a === 'object') {
+            a.action = normalize(a.action, 18);
+            a.why    = normalize(a.why, 25);
+          }
+        }
+      }
+
+      // supplement_stack — caps per the prompt's word budget
+      if (Array.isArray(plan.supplement_stack)) {
+        for (const s of plan.supplement_stack) {
+          if (s && typeof s === 'object') {
+            s.why_short      = normalize(s.why_short, 12);
+            s.why            = normalize(s.why, 25);
+            s.practical_note = normalize(s.practical_note, 30);
+            s.evidence_note  = normalize(s.evidence_note, 25);
+          }
+        }
+      }
+
+      // retest_timeline.why
+      if (Array.isArray(plan.retest_timeline)) {
+        for (const r of plan.retest_timeline) {
+          if (r && typeof r === 'object') r.why = normalize(r.why, 30);
+        }
+      }
+
+      // symptoms_addressed.how_addressed (60w cap per prompt)
+      if (Array.isArray(plan.symptoms_addressed)) {
+        for (const s of plan.symptoms_addressed) {
+          if (s && typeof s === 'object') s.how_addressed = normalize(s.how_addressed, 65);
+        }
+      }
+
+      // eating_pattern.rationale
+      if (plan.eating_pattern && typeof plan.eating_pattern === 'object') {
+        plan.eating_pattern.rationale = normalize(plan.eating_pattern.rationale, 35);
+      }
+
+      // lifestyle_interventions.{diet,sleep,exercise,stress}[].rationale
+      if (plan.lifestyle_interventions && typeof plan.lifestyle_interventions === 'object') {
+        for (const bucket of Object.values(plan.lifestyle_interventions) as any[]) {
+          if (Array.isArray(bucket)) {
+            for (const item of bucket) {
+              if (item && typeof item === 'object') {
+                item.intervention = normalize(item.intervention, 20);
+                item.rationale    = normalize(item.rationale, 25);
+              }
+            }
+          }
+        }
+      }
+
+      // workouts
+      if (Array.isArray(plan.workouts)) {
+        for (const w of plan.workouts) {
+          if (w && typeof w === 'object') {
+            w.description = normalize(w.description, 25);
+            w.why         = normalize(w.why, 25);
+          }
+        }
+      }
+
+      // suspected_conditions
+      if (Array.isArray(plan.suspected_conditions)) {
+        for (const c of plan.suspected_conditions) {
+          if (c && typeof c === 'object') {
+            c.evidence              = normalize(c.evidence, 30);
+            c.what_to_ask_doctor    = normalize(c.what_to_ask_doctor, 25);
+          }
+        }
+      }
+    }
 
     // ── COMPLETENESS GATE ─────────────────────────────────────────────
     // Reject half-written plans BEFORE inserting. Salvage path can produce
