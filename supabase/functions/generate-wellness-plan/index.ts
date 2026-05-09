@@ -2461,17 +2461,26 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
       }
     }
 
-    // Same suffix-strip on suspected_conditions confirmatory_tests so they
-    // don't leak through that path either.
+    // Same suffix-strip + fake-test-name rename on suspected_conditions
+    // confirmatory_tests so the same scrubs that run on retest_timeline
+    // also run here. Without this, the retest list shows "Fecal Calprotectin"
+    // (correctly renamed) but the Possible Conditions card still shows
+    // "Fecal gut hs-CRP" (the AI-mashed fake name) — same test, two names.
     if (Array.isArray(plan.suspected_conditions)) {
       const SUFFIX_STRIP_2 = /\s*[—\-–:|]\s*(CONDITIONAL|OPTIONAL|MAYBE)\s*$/i;
+      const renameFakeTest = (s: string): string => s
+        .replace(/\bfecal\s*gut\s*hs[\s\-]?CRP\b/gi, 'Fecal Calprotectin')
+        .replace(/\bfecal\s*hs[\s\-]?CRP\b/gi, 'Fecal Calprotectin')
+        .replace(/\bgut\s*hs[\s\-]?CRP\b/gi, 'Fecal Calprotectin')
+        .replace(/\bdysbiotic\s+dysbiosis\b/gi, 'dysbiosis');
       for (const c of plan.suspected_conditions) {
         if (Array.isArray(c?.confirmatory_tests)) {
           c.confirmatory_tests = c.confirmatory_tests
             .map((t: any) => {
-              if (typeof t === 'string') return t.replace(SUFFIX_STRIP_2, '').trim();
+              if (typeof t === 'string') return renameFakeTest(t.replace(SUFFIX_STRIP_2, '').trim());
               if (t && typeof t === 'object' && typeof t.test === 'string') {
-                t.test = t.test.replace(SUFFIX_STRIP_2, '').trim();
+                t.test = renameFakeTest(t.test.replace(SUFFIX_STRIP_2, '').trim());
+                if (typeof t.why === 'string') t.why = renameFakeTest(t.why);
               }
               return t;
             })
@@ -2484,6 +2493,9 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
               return true;
             });
         }
+        // Also scrub fake test names from the condition's evidence + name fields.
+        if (typeof c?.evidence === 'string') c.evidence = renameFakeTest(c.evidence);
+        if (typeof c?.name === 'string') c.name = renameFakeTest(c.name);
       }
     }
 
