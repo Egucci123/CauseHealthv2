@@ -700,6 +700,21 @@ INTENSITY CALIBRATION:
   4. Confidence — high requires (a) multiple confirming markers AND (b) symptoms that fit AND (c) no simpler explanation. A single borderline marker in a young healthy patient is moderate at most.
   5. Tone — "rule-out", "consider", "screen for" — never "you have" or "you're at risk for". User is the patient, not the doctor.
 
+DIFFERENTIAL RANKING (Phase 6 — order matters):
+  Order suspected_conditions by Bayesian likelihood given the FULL patient picture (labs + meds + symptoms + demographics). Most-likely first. The doctor reads top-to-bottom and acts on the first one or two; bury the most likely behind speculative entries and you've wasted the patient's visit.
+  - HIGH-confidence high-likelihood entries → first
+  - MODERATE-confidence with strong evidence cluster → second
+  - MODERATE-confidence with weaker cluster → after that
+  - Server drops LOW-confidence entries — don't generate them at all.
+
+CHANGES-MANAGEMENT FILTER (Phase 6 — universal):
+  Every confirmatory_test must pass this filter: "if the result comes back POSITIVE vs NEGATIVE, does it CHANGE what the doctor or patient does?" If both outcomes lead to the same management, drop the test.
+  Examples PASS: ApoB → if high, intensify statin; if low, reassure → CHANGES management → KEEP.
+  Examples PASS: Lp(a) → if high, lifelong aspirin discussion; if normal, reassure → CHANGES management → KEEP.
+  Examples FAIL: DHEA-S in 28yo healthy male without androgen pattern → result doesn't change anything → DROP.
+  Examples FAIL: AM cortisol on plain fatigue → PCP refuses regardless of result → DROP.
+  The why field for each confirmatory_test should briefly state the management decision the test unlocks.
+
 Schema per entry: { name, category, confidence, evidence (1 sentence citing specific values+symptoms), confirmatory_tests, icd10, what_to_ask_doctor (literal sentence to say at visit) }.
 
 ═══ CONFIRMATORY_TESTS FORMAT ═══
@@ -1249,6 +1264,64 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
       });
       if (before !== plan.suspected_conditions.length) {
         console.log(`[wellness-plan] suspected_conditions filter: ${before} → ${plan.suspected_conditions.length}`);
+      }
+
+      // ── PHASE 6 — DIFFERENTIAL RANKING (universal) ───────────────────
+      // Sort suspected_conditions by Bayesian-likelihood proxy:
+      //   1. Confidence (high > moderate)
+      //   2. Source preference (deterministic > AI for backstop entries)
+      //   3. Evidence-string length (more cited markers = higher prior)
+      // Doctor reads top-to-bottom — most likely first means the visit's
+      // first 2 conditions are the actionable ones, not buried below
+      // speculative entries.
+      const confidenceRank = (c: any): number => {
+        const v = String(c?.confidence ?? '').toLowerCase().trim();
+        if (v === 'high') return 3;
+        if (v === 'moderate' || v === 'medium') return 2;
+        return 1;
+      };
+      const sourceRank = (c: any): number => {
+        return c?.source === 'deterministic' ? 1 : 0;
+      };
+      const evidenceLen = (c: any): number => String(c?.evidence ?? '').length;
+      plan.suspected_conditions.sort((a: any, b: any) => {
+        const conf = confidenceRank(b) - confidenceRank(a);
+        if (conf !== 0) return conf;
+        const src = sourceRank(b) - sourceRank(a);
+        if (src !== 0) return src;
+        return evidenceLen(b) - evidenceLen(a);
+      });
+
+      // ── PHASE 6 — CHANGES-MANAGEMENT FILTER (universal) ──────────────
+      // Drop confirmatory_tests where the result wouldn't change what the
+      // doctor or patient does. The patterns below match tests that real
+      // PCPs routinely refuse OR where positive/negative outcomes don't
+      // unlock different management.
+      const NO_CHANGE_MANAGEMENT_PATTERNS: RegExp[] = [
+        // AM Cortisol on plain fatigue — PCP refuses regardless of result
+        /\bam\s*cortisol\b(?!.*cushing|.*addison|.*stigma)/i,
+        // Generic "monitor over time" without a decision
+        /^monitor\s+(over\s+time|annually)$/i,
+        // Vague advice as "test"
+        /^(consider|discuss|review)\s+/i,
+      ];
+      for (const c of plan.suspected_conditions) {
+        if (!Array.isArray(c?.confirmatory_tests)) continue;
+        const beforeFilter = c.confirmatory_tests.length;
+        c.confirmatory_tests = c.confirmatory_tests.filter((t: any) => {
+          const name = typeof t === 'string' ? t : (t?.test ?? '');
+          if (typeof name !== 'string') return true;
+          for (const pat of NO_CHANGE_MANAGEMENT_PATTERNS) {
+            if (pat.test(name)) {
+              console.log(`[wellness-plan] changes-management filter: dropped "${name}" from "${c.name}"`);
+              return false;
+            }
+          }
+          return true;
+        });
+        if (beforeFilter !== c.confirmatory_tests.length) {
+          console.log(`[wellness-plan] confirmatory_tests filtered for ${c.name}: ${beforeFilter} → ${c.confirmatory_tests.length}`);
+        }
       }
     }
 
