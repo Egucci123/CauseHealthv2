@@ -33,14 +33,23 @@ serve(async (req) => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
     // ── CONCURRENCY GUARD ──────────────────────────────────────────────
-    // If two callers fire at once (retry + auto-trigger before client guard,
-    // or a retry while a previous call is still in flight), the second one
-    // would race the first on lab_draws/priority_alerts writes and crash with
-    // HTTP 500. Check current state first: if the draw is already 'complete'
-    // with an analysis, it's a duplicate call — return success idempotently.
+    // Two callers can fire at once (LabUpload's confirmAndAnalyze + LabDetail's
+    // auto-trigger on mount, or retry + in-flight earlier call). Without a
+    // proper lock both runs proceed past the "already complete" check (since
+    // status is still 'processing' while Run 1 is mid-Haiku-call), produce
+    // different outputs (Haiku is non-deterministic), and the second write
+    // overwrites the first ~10s later — the user sees the analysis swap in
+    // their face. It also burns through the 2-per-draw cap on a single upload.
+    //
+    // Two-stage guard:
+    //   1. Idempotent return if draw is already complete with analysis (recent).
+    //   2. Compare-and-swap claim on analysis_locked_until — only one worker
+    //      wins the claim. Lock auto-expires after 3 min (longer than any
+    //      legitimate Haiku call) so a crashed worker never permanently
+    //      blocks future runs.
     const { data: currentDraw } = await supabase
       .from('lab_draws')
-      .select('processing_status, analysis_result, updated_at, analysis_count')
+      .select('processing_status, analysis_result, updated_at, analysis_count, analysis_locked_until')
       .eq('id', drawId)
       .single();
     if (currentDraw?.processing_status === 'complete' && currentDraw?.analysis_result) {
@@ -50,6 +59,29 @@ serve(async (req) => {
       if (Date.now() - updatedAt < 60_000) {
         return new Response(JSON.stringify({ ...currentDraw.analysis_result, _idempotent: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
+    }
+
+    // CAS claim: only set the lock if it's currently NULL or expired in the
+    // past. PostgREST's `or` filter handles the disjunction; a successful
+    // update returns the row, a no-op returns null.
+    const lockHorizon = new Date(Date.now() + 180_000).toISOString();
+    const nowIso = new Date().toISOString();
+    const { data: claimedRow } = await supabase
+      .from('lab_draws')
+      .update({ analysis_locked_until: lockHorizon })
+      .eq('id', drawId)
+      .or(`analysis_locked_until.is.null,analysis_locked_until.lt.${nowIso}`)
+      .select('id')
+      .maybeSingle();
+    if (!claimedRow) {
+      // Another worker holds the lock. Return idempotent 200 so the
+      // caller doesn't surface an error — the in-flight worker's result
+      // will land via polling.
+      console.log('[analyze-labs] lock contended — another worker is generating; skipping duplicate');
+      return new Response(
+        JSON.stringify({ _in_progress: true, message: 'analysis already in progress' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
     }
 
     // ── Regen cap: 2 analyses per lab dataset (universal) ───────────────
@@ -202,7 +234,7 @@ Borderline upper-normal values do NOT trigger rare-disease screening. Default mi
     } catch (e: any) {
       clearTimeout(apiTimeout);
       if (e?.name === 'AbortError') {
-        await supabase.from('lab_draws').update({ processing_status: 'failed' }).eq('id', drawId);
+        await supabase.from('lab_draws').update({ processing_status: 'failed', analysis_locked_until: null }).eq('id', drawId);
         return new Response(JSON.stringify({ error: 'Analysis timed out — please retry from your lab detail page' }), { status: 504, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
       throw e;
@@ -210,7 +242,7 @@ Borderline upper-normal values do NOT trigger rare-disease screening. Default mi
     clearTimeout(apiTimeout);
 
     if (!response.ok) {
-      await supabase.from('lab_draws').update({ processing_status: 'failed' }).eq('id', drawId);
+      await supabase.from('lab_draws').update({ processing_status: 'failed', analysis_locked_until: null }).eq('id', drawId);
       return new Response(JSON.stringify({ error: 'Analysis failed' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
@@ -228,7 +260,7 @@ Borderline upper-normal values do NOT trigger rare-disease screening. Default mi
     // without consuming the analysis_count cap.
     if (stopReason === 'max_tokens') {
       console.error('[analyze-labs] REJECTED: stop_reason=max_tokens — output was truncated');
-      await supabase.from('lab_draws').update({ processing_status: 'failed' }).eq('id', drawId);
+      await supabase.from('lab_draws').update({ processing_status: 'failed', analysis_locked_until: null }).eq('id', drawId);
       return new Response(JSON.stringify({
         error: 'Lab analysis was cut off mid-output. This won\'t count against your retest cap — try again.',
         code: 'INCOMPLETE_GENERATION',
@@ -253,7 +285,7 @@ Borderline upper-normal values do NOT trigger rare-disease screening. Default mi
     let analysis;
     try { analysis = JSON.parse(cleaned); } catch (parseErr) {
       console.error(`[analyze-labs] Parse failed. stop_reason=${stopReason}, first 500 chars:`, cleaned.slice(0, 500));
-      await supabase.from('lab_draws').update({ processing_status: 'failed' }).eq('id', drawId);
+      await supabase.from('lab_draws').update({ processing_status: 'failed', analysis_locked_until: null }).eq('id', drawId);
       return new Response(JSON.stringify({ error: `Parse failed: ${String(parseErr)}` }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
@@ -561,7 +593,7 @@ Borderline upper-normal values do NOT trigger rare-disease screening. Default mi
       console.error('[analyze-labs] completeness gate REJECTED — missing:', aMissing);
       // Roll back processing_status to 'processing' so the UI keeps polling
       // OR shows a retry button — don't leave it as 'complete' with no result.
-      await supabase.from('lab_draws').update({ processing_status: 'failed' }).eq('id', drawId);
+      await supabase.from('lab_draws').update({ processing_status: 'failed', analysis_locked_until: null }).eq('id', drawId);
       return new Response(JSON.stringify({
         error: `Lab analysis produced incomplete output. Missing: ${aMissing.join(', ')}. This won't count against your retest cap — try again.`,
         code: 'INCOMPLETE_GENERATION',
@@ -575,6 +607,7 @@ Borderline upper-normal values do NOT trigger rare-disease screening. Default mi
         analysis_result: analysis,
         processing_status: 'complete',
         analysis_count: (currentAnalysisCount ?? 0) + 1,
+        analysis_locked_until: null, // release CAS lock on successful completion
       })
       .eq('id', drawId);
 
@@ -630,7 +663,7 @@ Borderline upper-normal values do NOT trigger rare-disease screening. Default mi
     try {
       if (drawId) {
         const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-        await sb.from('lab_draws').update({ processing_status: 'failed' }).eq('id', drawId);
+        await sb.from('lab_draws').update({ processing_status: 'failed', analysis_locked_until: null }).eq('id', drawId);
       }
     } catch (markErr) {
       console.error('[analyze-labs] could not mark draw failed', markErr);
