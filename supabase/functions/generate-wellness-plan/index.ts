@@ -1961,9 +1961,16 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
         medsLower,
       });
       for (const u of universalTests) {
-        // Skip if this test (or close variant) is already in the list
-        const nameRegex = new RegExp(u.name.split('(')[0].trim().split(/\s+/)[0], 'i');
-        if (plan.retest_timeline.some((t: any) => nameRegex.test(t?.marker ?? ''))) continue;
+        // Skip only on EXACT name match (case-insensitive). The previous
+        // first-word match was too aggressive — when the AI generated a
+        // narrow subset like "Total Testosterone, SHBG, Estradiol", the
+        // comprehensive injector "Testosterone Panel (Total T + Free T +
+        // Bioavailable T + SHBG + Estradiol + LH + FSH)" got skipped
+        // because both contained "Testosterone". Now: push always unless
+        // the exact marker name already exists; the test-family dedup
+        // below picks the more comprehensive entry per family.
+        const exactName = u.name.toLowerCase().trim();
+        if (plan.retest_timeline.some((t: any) => String(t?.marker ?? '').toLowerCase().trim() === exactName)) continue;
         // Push the FULL injected-test structure so doctor-prep can read this
         // verbatim and use it as its tests_to_request without going through
         // its own AI call. Wellness plan is the single source of truth for tests.
@@ -2547,6 +2554,66 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
         }
       }
       plan.retest_timeline = Array.from(seen.values());
+
+      // ── TEST-FAMILY DEDUP (universal) ─────────────────────────────────
+      // When two entries belong to the same test family (e.g. AI's "Total
+      // Testosterone, SHBG, Estradiol" and injector's "Testosterone Panel
+      // (Total T + Free T + Bioavailable T + SHBG + Estradiol + LH + FSH)"),
+      // keep the more comprehensive entry (longer marker name = more
+      // markers listed). Universal — works for any test family without
+      // condition-specific code.
+      const TEST_FAMILY_PATTERNS: Array<[string, RegExp]> = [
+        ['testosterone', /\b(testosterone|free\s*t\b|bioavailable\s*t|shbg|estradiol)\b/i],
+        ['b12_workup', /\b(vitamin\s*b[\s-]?12|cobalamin|methylmalonic|\bmma\b|homocysteine)\b/i],
+        ['folate_workup', /\bfolate\b/i],
+        ['thyroid_panel', /\b(thyroid\s*panel|free\s*t[34]|ft3|ft4)\b/i],
+        ['iron_panel', /\b(iron\s*panel|ferritin|tibc|transferrin)\b/i],
+        ['lipid_panel', /\blipid\s*panel\b/i],
+        ['hashimoto', /\bhashimoto|tpo\s*ab|tg\s*ab\b/i],
+      ];
+      const familyOf = (marker: string): string | null => {
+        for (const [family, pat] of TEST_FAMILY_PATTERNS) {
+          if (pat.test(marker)) return family;
+        }
+        return null;
+      };
+      const familyGroups = new Map<string, any[]>();
+      const ungroupedFamily: any[] = [];
+      for (const r of plan.retest_timeline) {
+        const m = String(r?.marker ?? '');
+        const fam = familyOf(m);
+        if (fam) {
+          if (!familyGroups.has(fam)) familyGroups.set(fam, []);
+          familyGroups.get(fam)!.push(r);
+        } else {
+          ungroupedFamily.push(r);
+        }
+      }
+      const familyWinners: any[] = [];
+      for (const [fam, group] of familyGroups) {
+        if (group.length === 1) {
+          familyWinners.push(group[0]);
+          continue;
+        }
+        // Pick the entry with the longest marker name (most markers listed
+        // in the panel). Ties broken by longer why field.
+        const winner = group.reduce((best: any, cur: any) => {
+          const bestLen = String(best?.marker ?? '').length;
+          const curLen = String(cur?.marker ?? '').length;
+          if (curLen > bestLen) return cur;
+          if (curLen === bestLen) {
+            return String(cur?.why ?? '').length > String(best?.why ?? '').length ? cur : best;
+          }
+          return best;
+        });
+        console.log(`[wellness-plan] family=${fam}: ${group.length} entries, kept "${winner.marker}"`);
+        familyWinners.push(winner);
+      }
+      const beforeFamilyDedup = plan.retest_timeline.length;
+      plan.retest_timeline = [...familyWinners, ...ungroupedFamily];
+      if (beforeFamilyDedup !== plan.retest_timeline.length) {
+        console.log(`[wellness-plan] test-family dedup: ${beforeFamilyDedup} → ${plan.retest_timeline.length}`);
+      }
 
       // Panel-bundle dedup: drop combined "X + Y + Z" entries when X, Y, or
       // Z exists as a standalone entry. PCPs prefer ordering distinct tests.
