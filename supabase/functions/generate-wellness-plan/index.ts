@@ -471,6 +471,9 @@ serve(async (req) => {
 - COMPLETE GRAMMATICAL SENTENCES. Every clause has a subject + verb + object. Never produce phrase fragments like "early your body ignoring insulin" — write "early signs your body is ignoring insulin" or "your body is ignoring insulin."
 - NO REDUNDANT PHRASING — never "dysbiotic dysbiosis", "anemic anemia", "inflammatory inflammation". The noun already carries the meaning.
 - TONE & MISSION — EQUIPPED ADVOCATE, NOT PASSIVE PATIENT. The product arms people to use their existing doctor and insurance correctly. Calm + actionable + proportional. Forbidden in any user-facing field: "metabolic emergency", "this is alarming", "dangerous", "catastrophic", "rush to ER", "call your doctor today/now", "critically low/high" (unless lab is in critical_low/critical_high range). Prefer: "elevated", "needs attention", "ask your doctor about", "discuss at your next visit". Embed doctor-asks inline naturally — DO NOT add a separate "ask your doctor" sentence to every field; it bloats output. ONE doctor-ask per finding is enough.
+- MARKER NAMES — verbatim, NO suffixes. Never append "(CONDITIONAL)", " — CONDITIONAL", "(OPTIONAL)", "(IF SYMPTOMATIC)", "[OPTIONAL]" or any qualifier to a marker name. The marker field is read by the UI verbatim and rendered to the patient — qualifiers leak straight to the screen. If a test is conditional, leave it out of retest_timeline entirely. The why field carries the rationale; the marker is just the test name.
+- BEHAVIOR TRIALS ARE NOT TESTS. Hydration trials, food diaries, symptom logs, sleep trackers belong in lifestyle_interventions or today_actions — never in retest_timeline (which is for lab/imaging orders the doctor signs off on) and never in confirmatory_tests.
+- SPECIALIST TAG — Liver Ultrasound / FibroScan / MRI / CT / PET → imaging. Home Sleep Apnea Test / sleep study / polysomnography → sleep_medicine. Echocardiogram / CAC score → cardiology. Colonoscopy / endoscopy → gi. Don't tag everything 'pcp' just because the PCP places the order — the tag groups tests by specialist on the doctor-prep page.
 - SUPPLEMENT INFERENCE — STRICT. The Supplements field is the ONLY source of truth for what the patient takes. NEVER infer that a patient takes individual nutrients (Vitamin D, B12, Magnesium, Iron, Omega-3, Zinc, Calcium) from a Multivitamin entry. A multivitamin is ONE supplement, not a basket of individual nutrient supplements. Forbidden phrases when the nutrient is NOT explicitly listed: "your vitamin D supplementation", "you take B12", "despite supplementation", "your iron supplement", "increase your D3 dose". If a nutrient appears low and the patient takes only a multivitamin, write "vitamin D is low" — NOT "vitamin D is low despite supplementation."
 
 ═══ SUPPLEMENT STACK ═══
@@ -2028,6 +2031,101 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
     // to regenerate the same sentence on every plan (token waste). Schema
     // dropped it; UI still renders if present.
     plan.disclaimer = 'Educational only. Talk to your doctor before changing anything.';
+
+    // ── RETEST CLEANUP — strip drift artifacts before save ─────────────────
+    // Three issues we keep seeing in real plans, all easy to fix server-side:
+    //   (a) Marker names with " — CONDITIONAL" / "(CONDITIONAL)" / "(OPTIONAL)"
+    //       suffixes the AI invents to qualify entries. The UI displays the
+    //       marker name verbatim so these suffixes leak straight to the user.
+    //   (b) Empty/whitespace `why` fields. Schema requires a trigger letter;
+    //       entries without one violate the triage rule. Drop them.
+    //   (c) Wrong specialist tag for imaging-class tests (Liver Ultrasound,
+    //       FibroScan, MRI, sleep study) — AI tags 'pcp' even though these
+    //       require an order from PCP. Map by marker pattern.
+    //   (d) "Hydration trial" / "Behavior trial" entries — that's a lifestyle
+    //       intervention, not a test order. Drop them from retest_timeline.
+    if (Array.isArray(plan.retest_timeline)) {
+      const SUFFIX_STRIP = /\s*[—\-–:|]\s*(CONDITIONAL|OPTIONAL|MAYBE|IF\s+TRIGGERED|IF\s+SYMPTOMATIC)\s*$/i;
+      const PARENS_STRIP = /\s*\(\s*(CONDITIONAL|OPTIONAL|MAYBE|IF\s+TRIGGERED|IF\s+SYMPTOMATIC)\s*\)\s*$/i;
+      const SQUARE_STRIP = /\s*\[\s*(CONDITIONAL|OPTIONAL|MAYBE)\s*\]\s*$/i;
+
+      const SPECIALIST_REMAP: Array<[RegExp, string]> = [
+        [/\b(liver\s*ultrasound|fibroscan|abdominal\s*ultrasound|elastography)\b/i, 'imaging'],
+        [/\b(home\s*sleep\s*apnea\s*test|hsat|sleep\s*study|polysomnography|stop[-\s]?bang)\b/i, 'sleep_medicine'],
+        [/\b(echocardiogram|echo|cac\s*score|coronary\s*calcium|carotid\s*ultrasound)\b/i, 'cardiology'],
+        [/\b(colonoscopy|endoscopy|sigmoidoscopy)\b/i, 'gi'],
+        [/\b(mri|ct\s*scan|pet\s*scan)\b/i, 'imaging'],
+      ];
+
+      const isBehaviorTrial = (m: string) =>
+        /\b(hydration\s*trial|behavior\s*trial|food\s*diary|symptom\s*log|sleep\s*tracker|blood\s*pressure\s*log)\b/i.test(m);
+
+      const beforeCount = plan.retest_timeline.length;
+      plan.retest_timeline = plan.retest_timeline
+        .filter((r: any) => r && typeof r === 'object')
+        .map((r: any) => {
+          // Strip suffix drift from marker name
+          if (typeof r.marker === 'string') {
+            r.marker = r.marker.replace(SUFFIX_STRIP, '').replace(PARENS_STRIP, '').replace(SQUARE_STRIP, '').trim();
+          }
+          // Remap specialist for imaging/specialist-class tests the AI mis-tagged as 'pcp'
+          if (typeof r.marker === 'string' && (!r.specialist || r.specialist === 'pcp')) {
+            for (const [pat, target] of SPECIALIST_REMAP) {
+              if (pat.test(r.marker)) {
+                if (r.specialist !== target) {
+                  console.log(`[wellness-plan] specialist remap: "${r.marker}" pcp → ${target}`);
+                  r.specialist = target;
+                }
+                break;
+              }
+            }
+          }
+          return r;
+        })
+        .filter((r: any) => {
+          // Drop entries with empty/whitespace why — schema rule violation
+          if (!r.why || typeof r.why !== 'string' || r.why.trim().length < 5) {
+            console.log(`[wellness-plan] dropped retest with empty why: "${r.marker}"`);
+            return false;
+          }
+          // Drop behavior trials masquerading as tests
+          if (typeof r.marker === 'string' && isBehaviorTrial(r.marker)) {
+            console.log(`[wellness-plan] dropped behavior trial from retest_timeline: "${r.marker}"`);
+            return false;
+          }
+          // Drop entries missing a marker
+          if (!r.marker || typeof r.marker !== 'string' || r.marker.trim().length === 0) return false;
+          return true;
+        });
+
+      if (beforeCount !== plan.retest_timeline.length) {
+        console.log(`[wellness-plan] retest_timeline cleaned ${beforeCount} → ${plan.retest_timeline.length}`);
+      }
+    }
+
+    // Same suffix-strip on suspected_conditions confirmatory_tests so they
+    // don't leak through that path either.
+    if (Array.isArray(plan.suspected_conditions)) {
+      const SUFFIX_STRIP_2 = /\s*[—\-–:|]\s*(CONDITIONAL|OPTIONAL|MAYBE)\s*$/i;
+      for (const c of plan.suspected_conditions) {
+        if (Array.isArray(c?.confirmatory_tests)) {
+          c.confirmatory_tests = c.confirmatory_tests
+            .map((t: any) => {
+              if (typeof t === 'string') return t.replace(SUFFIX_STRIP_2, '').trim();
+              if (t && typeof t === 'object' && typeof t.test === 'string') {
+                t.test = t.test.replace(SUFFIX_STRIP_2, '').trim();
+              }
+              return t;
+            })
+            .filter((t: any) => {
+              const name = typeof t === 'string' ? t : (t?.test ?? '');
+              return typeof name === 'string' && name.trim().length > 0
+                && !/\b(hydration\s*trial|behavior\s*trial)\b/i.test(name);
+            });
+        }
+      }
+    }
+
 
     // ── DETERMINISTIC ENFORCEMENT LAYER ───────────────────────────────────
     // Same 3-layer enforcement as analyze-labs:
