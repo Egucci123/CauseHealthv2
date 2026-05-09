@@ -2615,6 +2615,130 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
         console.log(`[wellness-plan] test-family dedup: ${beforeFamilyDedup} → ${plan.retest_timeline.length}`);
       }
 
+      // ── PANEL-COMPONENT REDUNDANCY FILTER (universal) ─────────────────
+      // When a comprehensive panel (CMP, CBC, Lipid Panel, Iron Panel, etc.)
+      // is in the retest list, drop standalone entries for components
+      // already inside that panel. Examples this catches:
+      //   - "Creatinine and eGFR" alongside CMP → drop (already in CMP)
+      //   - "Fasting Glucose" alongside CMP → drop (Glucose is in CMP)
+      //   - "ALT" alone alongside CMP → drop
+      //   - "Hemoglobin" alone alongside CBC → drop
+      //   - "Triglycerides" alone alongside Lipid Panel → drop
+      //   - "Ferritin" alone alongside Iron Panel → drop
+      //   - "TSH" alone alongside Thyroid Panel → drop
+      //
+      // Also drops non-test entries (calculations, action items).
+      const PANEL_DETECTORS: Array<{ panel: RegExp; components: RegExp[] }> = [
+        {
+          panel: /\bcomprehensive\s*metabolic\s*panel|\bcmp\b/i,
+          components: [
+            /^(alt\b|sgpt\b|aspartate|alanine|alkaline\s*phosphatase|alp\b|bilirubin|total\s*protein|albumin|fasting\s*glucose|^glucose\b|\bbun\b|blood\s*urea\s*nitrogen|creatinine|egfr|sodium|potassium|chloride|carbon\s*dioxide|\bco2\b|calcium|ast\b|sgot\b)$/i,
+            /^creatinine\s*(and|&|\+)\s*egfr$/i,
+            /^(serum|blood)\s*(creatinine|electrolytes|glucose|albumin|sodium|potassium)$/i,
+          ],
+        },
+        {
+          panel: /\bcomplete\s*blood\s*count|\bcbc\b/i,
+          components: [
+            /^(wbc|white\s*blood\s*cell|rbc|red\s*blood\s*cell|hemoglobin|hgb|hematocrit|hct|mcv|mch|mchc|rdw|platelets|neutrophils|lymphs|lymphocytes|monocytes|monos|eosinophils|eos|basophils|basos)$/i,
+          ],
+        },
+        {
+          panel: /\blipid\s*panel\b/i,
+          components: [
+            /^(total\s*cholesterol|cholesterol[,\s]*total|ldl|ldl\s*cholesterol|hdl|hdl\s*cholesterol|triglycerides?|vldl|vldl\s*cholesterol|non[\s-]?hdl)$/i,
+            /^triglyceride\s*[\/\\]\s*hdl\s*ratio$/i,
+          ],
+        },
+        {
+          panel: /\biron\s*panel\b/i,
+          components: [
+            /^(serum\s*iron|tibc|total\s*iron[\s-]?binding|ferritin|transferrin(\s*saturation|\s*sat)?|uibc)$/i,
+          ],
+        },
+        {
+          panel: /\bthyroid\s*panel\b|tsh.*free\s*t[34]/i,
+          components: [
+            /^(tsh|thyroid[\s-]?stimulating[\s-]?hormone|free\s*t3|free\s*t4|ft3|ft4)$/i,
+          ],
+        },
+        {
+          panel: /\bvitamin\s*b[\s-]?12\s*workup\b|b[\s-]?12.*mma|b[\s-]?12.*homocysteine/i,
+          components: [
+            /^(vitamin\s*b[\s-]?12|serum\s*b[\s-]?12|cobalamin|methylmalonic\s*acid|\bmma\b|homocysteine|vitamin\s*b[\s-]?12\s*and\s*homocysteine|b[\s-]?12\s*and\s*homocysteine)$/i,
+          ],
+        },
+        {
+          panel: /\bfolate\s*workup\b|serum\s*folate.*rbc\s*folate/i,
+          components: [
+            /^(serum\s*folate|rbc\s*folate|folate)$/i,
+          ],
+        },
+        {
+          panel: /\btestosterone\s*panel\b/i,
+          components: [
+            /^(total\s*testosterone|free\s*testosterone|bioavailable\s*testosterone|shbg|sex[\s-]?hormone[\s-]?binding|estradiol|lh|fsh|luteinizing|follicle[\s-]?stimulating|total\s*testosterone[,\s]*shbg[,\s]*estradiol)$/i,
+          ],
+        },
+      ];
+
+      // Detect which panels are already in the list.
+      const presentPanels: typeof PANEL_DETECTORS = [];
+      for (const det of PANEL_DETECTORS) {
+        if (plan.retest_timeline.some((r: any) => det.panel.test(String(r?.marker ?? '')))) {
+          presentPanels.push(det);
+        }
+      }
+      // Drop standalone entries whose marker matches a component of a present panel.
+      const beforeRedundancy = plan.retest_timeline.length;
+      plan.retest_timeline = plan.retest_timeline.filter((r: any) => {
+        const m = String(r?.marker ?? '').trim();
+        // Skip if this entry IS the panel itself
+        for (const det of presentPanels) {
+          if (det.panel.test(m)) return true;
+        }
+        // Drop if marker matches any component pattern of a present panel
+        for (const det of presentPanels) {
+          for (const compPat of det.components) {
+            if (compPat.test(m)) {
+              console.log(`[wellness-plan] panel-component redundancy: dropped "${m}" (already in panel)`);
+              return false;
+            }
+          }
+        }
+        return true;
+      });
+      if (beforeRedundancy !== plan.retest_timeline.length) {
+        console.log(`[wellness-plan] panel-component filter: ${beforeRedundancy} → ${plan.retest_timeline.length}`);
+      }
+
+      // ── DROP NON-TESTS (calculations, action items) ─────────────────────
+      // Universal: anything that's not an orderable lab/imaging test gets
+      // dropped from the test list. Includes ratios (calculated, not
+      // ordered), action items ("Confirm X with doctor"), and discussion
+      // items ("Discuss Y").
+      const NON_TEST_PATTERNS: RegExp[] = [
+        /\bratio\b(?!.*panel)/i,              // "Triglyceride/HDL Ratio" — calculation
+        /^confirm\b/i,                        // "Confirm mesalamine dosing..."
+        /^(discuss|ask|review)\b/i,           // "Discuss with doctor"
+        /^assess\b/i,                         // "Assess UC control"
+        /\b(at\s+gi\s+visit|at\s+pcp\s+visit|with\s+(your\s+)?doctor)\s*$/i,
+      ];
+      const beforeNonTest = plan.retest_timeline.length;
+      plan.retest_timeline = plan.retest_timeline.filter((r: any) => {
+        const m = String(r?.marker ?? '');
+        for (const pat of NON_TEST_PATTERNS) {
+          if (pat.test(m)) {
+            console.log(`[wellness-plan] non-test filter: dropped "${m}"`);
+            return false;
+          }
+        }
+        return true;
+      });
+      if (beforeNonTest !== plan.retest_timeline.length) {
+        console.log(`[wellness-plan] non-test filter: ${beforeNonTest} → ${plan.retest_timeline.length}`);
+      }
+
       // Panel-bundle dedup: drop combined "X + Y + Z" entries when X, Y, or
       // Z exists as a standalone entry. PCPs prefer ordering distinct tests.
       const standaloneNames = new Set<string>();
