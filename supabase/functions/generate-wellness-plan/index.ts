@@ -471,6 +471,7 @@ serve(async (req) => {
 - COMPLETE GRAMMATICAL SENTENCES. Every clause has a subject + verb + object. Never produce phrase fragments like "early your body ignoring insulin" — write "early signs your body is ignoring insulin" or "your body is ignoring insulin."
 - NO REDUNDANT PHRASING — never "dysbiotic dysbiosis", "anemic anemia", "inflammatory inflammation". The noun already carries the meaning.
 - Tone — calm + actionable + proportional. Server scrubbers strip alarmist phrasing and supplement-inference drift; you don't need to police it.
+- ACTION_PLAN ↔ SUPPLEMENT_STACK consistency — every supplement referenced in any action_plan step (phase_1/2/3) MUST be in supplement_stack. Server drops action steps mentioning supplements not in the stack. Don't say "Add curcumin 500mg" if curcumin isn't in stack — pick what's IN the stack.
 
 ═══ SUPPLEMENT STACK ═══
 ONE supplement per category. Six categories: sleep_stress, gut_healing, liver_metabolic (milk thistle/NAC/TUDCA — CoQ10 is NOT here), inflammation_cardio (omega-3, CoQ10, curcumin, bergamot), nutrient_repletion (D3, B12, B-complex, ferritin/iron, calcium+D), condition_therapy (PCOS inositol, Hashimoto's selenium IF TPO+, UC L-glutamine).
@@ -1697,6 +1698,106 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
     if (!Array.isArray(plan.retest_timeline)) plan.retest_timeline = [];
     if (!Array.isArray(plan.symptoms_addressed)) plan.symptoms_addressed = [];
 
+    // ── ACTION_PLAN ↔ SUPPLEMENT_STACK CONSISTENCY (universal) ──────────────
+    // The AI routinely references supplements in action_plan steps that
+    // aren't in supplement_stack (e.g. "Add curcumin 500mg" when curcumin
+    // didn't make the stack because Omega-3 won the inflammation_cardio
+    // slot). Reader sees "take this thing" with no card to act on.
+    //
+    // Universal fix: build a vocabulary of supplements actually in the
+    // stack. For each action_plan step, if it references a known supplement
+    // keyword that is NOT in the stack, drop the entire step. Applies to
+    // every patient, every supplement.
+    {
+      const stackKeywords = new Set<string>();
+      const SUPP_ALIAS_MAP: Record<string, string[]> = {
+        omega3: ['omega-3', 'omega 3', 'omega3', 'fish oil', 'epa', 'dha'],
+        vitd: ['vitamin d', 'vitamin d3', 'd3', 'cholecalciferol'],
+        magnesium: ['magnesium', 'mag glycinate', 'mag threonate', 'mg glycinate'],
+        b12: ['b12', 'b-12', 'cobalamin', 'methylcobalamin'],
+        coq10: ['coq10', 'co-q10', 'ubiquinol', 'ubiquinone'],
+        milkthistle: ['milk thistle', 'silymarin'],
+        nac: ['nac', 'n-acetylcysteine', 'n-acetyl cysteine', 'n acetyl cysteine'],
+        glutamine: ['l-glutamine', 'glutamine'],
+        curcumin: ['curcumin', 'turmeric'],
+        bergamot: ['bergamot'],
+        berberine: ['berberine'],
+        selenium: ['selenium'],
+        zinc: ['zinc'],
+        inositol: ['inositol'],
+        sboulardii: ['s. boulardii', 'saccharomyces boulardii', 'boulardii'],
+        ltheanine: ['l-theanine', 'theanine'],
+        bcomplex: ['b-complex', 'b complex'],
+        folate: ['folate', 'methylfolate', 'folic acid'],
+        iron: ['iron supplement', 'ferrous'],
+        calcium: ['calcium supplement', 'calcium-d', 'calcium+d'],
+        psyllium: ['psyllium'],
+        ashwagandha: ['ashwagandha'],
+        creatine: ['creatine'],
+        dhea: ['dhea'],
+        tudca: ['tudca'],
+        pqq: ['pqq'],
+      };
+      const matchKey = (text: string): string | null => {
+        const lc = text.toLowerCase();
+        for (const [key, aliases] of Object.entries(SUPP_ALIAS_MAP)) {
+          if (aliases.some(a => lc.includes(a))) return key;
+        }
+        return null;
+      };
+      // Build set of canonical keys actually present in supplement_stack.
+      if (Array.isArray(plan.supplement_stack)) {
+        for (const s of plan.supplement_stack) {
+          const name = String(s?.nutrient ?? s?.name ?? '');
+          const key = matchKey(name);
+          if (key) stackKeywords.add(key);
+        }
+      }
+      // Filter action_plan: drop actions mentioning a known supplement that
+      // isn't in the stack.
+      let droppedActions = 0;
+      const phases = ['phase_1', 'phase_2', 'phase_3'];
+      for (const ph of phases) {
+        const phaseObj = (plan.action_plan as any)?.[ph];
+        if (!phaseObj || !Array.isArray(phaseObj.actions)) continue;
+        const beforeLen = phaseObj.actions.length;
+        phaseObj.actions = phaseObj.actions.filter((a: any) => {
+          const text = typeof a === 'string' ? a : (a?.action ?? a?.text ?? '');
+          if (typeof text !== 'string') return true;
+          const refKey = matchKey(text);
+          if (refKey && !stackKeywords.has(refKey)) {
+            droppedActions++;
+            return false;
+          }
+          return true;
+        });
+        // Strip orphan supplement references from action sentences that
+        // mention multiple things (e.g. "...continue vitamin D, omega-3,
+        // magnesium, curcumin..."). Replace the orphan term.
+        phaseObj.actions = phaseObj.actions.map((a: any) => {
+          if (typeof a !== 'string') return a;
+          let cleaned = a;
+          for (const [key, aliases] of Object.entries(SUPP_ALIAS_MAP)) {
+            if (stackKeywords.has(key)) continue;
+            for (const alias of aliases) {
+              const re = new RegExp(`,\\s*${alias.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}\\b|\\b${alias.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}\\s*,`, 'gi');
+              cleaned = cleaned.replace(re, '');
+            }
+          }
+          // Tidy double commas / orphan punctuation introduced by strips.
+          cleaned = cleaned.replace(/,\s*,/g, ',').replace(/\s+,/g, ',').replace(/\(\s*,/g, '(').trim();
+          return cleaned;
+        });
+        if (beforeLen !== phaseObj.actions.length) {
+          console.log(`[wellness-plan] action_plan ${ph}: dropped ${beforeLen - phaseObj.actions.length} actions referencing supplements not in stack`);
+        }
+      }
+      if (droppedActions > 0) {
+        console.log(`[wellness-plan] action_plan total dropped: ${droppedActions} actions`);
+      }
+    }
+
+
     // ── TRIGGER LETTER FIXER ──────────────────────────────────────────────
     // The AI repeatedly tags "Confirmatory workup for [pattern]" entries with
     // (b) even though the prompt rule says (b) is medication-only and pattern
@@ -2042,9 +2143,12 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
     //   (d) "Hydration trial" / "Behavior trial" entries — that's a lifestyle
     //       intervention, not a test order. Drop them from retest_timeline.
     if (Array.isArray(plan.retest_timeline)) {
-      const SUFFIX_STRIP = /\s*[—\-–:|]\s*(CONDITIONAL|OPTIONAL|MAYBE|IF\s+TRIGGERED|IF\s+SYMPTOMATIC)\s*$/i;
-      const PARENS_STRIP = /\s*\(\s*(CONDITIONAL|OPTIONAL|MAYBE|IF\s+TRIGGERED|IF\s+SYMPTOMATIC)\s*\)\s*$/i;
-      const SQUARE_STRIP = /\s*\[\s*(CONDITIONAL|OPTIONAL|MAYBE)\s*\]\s*$/i;
+      // Match suffix at END (existing) AND mid-string when followed by
+      // explanatory clauses ("— CONDITIONAL; retest if X" / "— OPTIONAL: only
+      // if Y"). The AI keeps appending these despite the prompt rule.
+      const SUFFIX_STRIP = /\s*[—\-–:|]\s*(?:CONDITIONAL|OPTIONAL|MAYBE|IF\s+TRIGGERED|IF\s+SYMPTOMATIC)\b[^.]*$/i;
+      const PARENS_STRIP = /\s*\(\s*(?:CONDITIONAL|OPTIONAL|MAYBE|IF\s+TRIGGERED|IF\s+SYMPTOMATIC)[^)]*\)\s*$/i;
+      const SQUARE_STRIP = /\s*\[\s*(?:CONDITIONAL|OPTIONAL|MAYBE)[^\]]*\]\s*$/i;
 
       // ── UNIVERSAL SPECIALIST ROUTING ─────────────────────────────────────
       // Two layers:
@@ -2055,6 +2159,9 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
       //       has it diagnosed. Universal across UC/Crohn's/Hashimoto's/
       //       diabetes/HF/RA/CKD/etc.
       const SPECIALIST_REMAP: Array<[RegExp, string]> = [
+        // Fecal / stool tests — always GI regardless of patient diagnosis.
+        // Universal: any fecal test gets ordered by gastroenterology, not PCP.
+        [/\b(fecal\s*calprotectin|fecal\s*lactoferrin|fecal\s*occult\s*blood|\bfobt\b|fecal\s*immunochemical|\bfit\b\s*test|stool\s*(culture|test|panel|study)|gi[-\s]?map|comprehensive\s*stool)\b/i, 'gi'],
         // Imaging / procedures (always specialist regardless of condition)
         [/\b(liver\s*ultrasound|fibroscan|abdominal\s*ultrasound|elastography)\b/i, 'imaging'],
         [/\b(home\s*sleep\s*apnea\s*test|hsat|sleep\s*study|polysomnography|stop[-\s]?bang)\b/i, 'sleep_medicine'],
@@ -2207,6 +2314,24 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
           if (typeof r.marker === 'string') {
             r.marker = r.marker.replace(SUFFIX_STRIP, '').replace(PARENS_STRIP, '').replace(SQUARE_STRIP, '').trim();
             r.marker = stripPanelListing(r.marker);
+            // Universal fake-test-name rename: AI keeps inventing "Fecal gut
+            // hs-CRP" / "Fecal CRP" / "gut hs-CRP" by mashing up real test
+            // names. Replace with the real one (Fecal Calprotectin) so this
+            // entry merges with any real Fecal Calprotectin entry below.
+            r.marker = r.marker
+              .replace(/\bfecal\s*gut\s*hs[\s\-]?CRP\b/gi, 'Fecal Calprotectin')
+              .replace(/\bfecal\s*hs[\s\-]?CRP\b/gi, 'Fecal Calprotectin')
+              .replace(/\bgut\s*hs[\s\-]?CRP\b/gi, 'Fecal Calprotectin')
+              .replace(/\bdysbiotic\s+dysbiosis\b/gi, 'dysbiosis')
+              .trim();
+          }
+          // Also scrub fake test names from why field (the AI references
+          // them in rationale even after the marker name is corrected).
+          if (typeof r.why === 'string') {
+            r.why = r.why
+              .replace(/\bfecal\s*gut\s*hs[\s\-]?CRP\b/gi, 'Fecal Calprotectin')
+              .replace(/\bfecal\s*hs[\s\-]?CRP\b/gi, 'Fecal Calprotectin')
+              .replace(/\bgut\s*hs[\s\-]?CRP\b/gi, 'Fecal Calprotectin');
           }
           // Remap specialist — modality-class tests + condition-aware routing.
           if (typeof r.marker === 'string' && (!r.specialist || r.specialist === 'pcp')) {
@@ -2268,6 +2393,35 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
 
       if (beforeCount !== plan.retest_timeline.length) {
         console.log(`[wellness-plan] retest_timeline cleaned ${beforeCount} → ${plan.retest_timeline.length}`);
+      }
+
+      // Dedup by normalized marker name. After the fake-test rename above,
+      // the AI-generated "Fecal gut hs-CRP" entry collapses to "Fecal
+      // Calprotectin" — which usually already exists. Keep the entry with
+      // the better specialist tag (gi > pcp > anything else) and the
+      // longer why field as the survivor.
+      const seen = new Map<string, any>();
+      const beforeDedup = plan.retest_timeline.length;
+      for (const r of plan.retest_timeline) {
+        const key = String(r?.marker ?? '').toLowerCase().replace(/\s+/g, ' ').trim();
+        if (!key) continue;
+        const existing = seen.get(key);
+        if (!existing) {
+          seen.set(key, r);
+        } else {
+          // Pick the better entry: prefer non-pcp specialist, then longer why.
+          const score = (e: any) => {
+            const sp = String(e?.specialist ?? '').toLowerCase();
+            const specRank = sp === 'pcp' ? 0 : (sp ? 1 : -1);
+            const whyLen = String(e?.why ?? '').length;
+            return specRank * 1000 + whyLen;
+          };
+          if (score(r) > score(existing)) seen.set(key, r);
+        }
+      }
+      plan.retest_timeline = Array.from(seen.values());
+      if (beforeDedup !== plan.retest_timeline.length) {
+        console.log(`[wellness-plan] retest_timeline deduped ${beforeDedup} → ${plan.retest_timeline.length}`);
       }
     }
 
