@@ -1781,6 +1781,18 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
         }
         return null;
       };
+      // Return ALL supplement keys mentioned in the text. Used to detect
+      // actions that reference multiple supplements where only some are in
+      // the stack (e.g. "Start curcumin and continue omega-3" — curcumin
+      // not in stack should drop the whole action even though omega-3 is).
+      const matchAllKeys = (text: string): string[] => {
+        const lc = text.toLowerCase();
+        const found: string[] = [];
+        for (const [key, aliases] of Object.entries(SUPP_ALIAS_MAP)) {
+          if (aliases.some(a => lc.includes(a))) found.push(key);
+        }
+        return found;
+      };
       // Build set of canonical keys actually present in supplement_stack.
       if (Array.isArray(plan.supplement_stack)) {
         for (const s of plan.supplement_stack) {
@@ -1800,8 +1812,14 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
         phaseObj.actions = phaseObj.actions.filter((a: any) => {
           const text = typeof a === 'string' ? a : (a?.action ?? a?.text ?? '');
           if (typeof text !== 'string') return true;
-          const refKey = matchKey(text);
-          if (refKey && !stackKeywords.has(refKey)) {
+          // Scan ALL supplement keywords in the action. If any non-stack
+          // supplement is mentioned, drop the whole action — even if other
+          // mentioned supplements ARE in the stack. The lead supplement of
+          // the sentence is usually the one not in stack ("Start curcumin
+          // ... Continue omega-3"), so the action's primary subject is bad.
+          const allKeys = matchAllKeys(text);
+          const nonStackKey = allKeys.find(k => !stackKeywords.has(k));
+          if (nonStackKey) {
             droppedActions++;
             return false;
           }
@@ -2477,11 +2495,13 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
         console.log(`[wellness-plan] retest_timeline cleaned ${beforeCount} → ${plan.retest_timeline.length}`);
       }
 
-      // Dedup by normalized marker name. After the fake-test rename above,
-      // the AI-generated "Fecal gut hs-CRP" entry collapses to "Fecal
-      // Calprotectin" — which usually already exists. Keep the entry with
-      // the better specialist tag (gi > pcp > anything else) and the
-      // longer why field as the survivor.
+      // Dedup by normalized marker name + by component overlap.
+      // Two-pass approach:
+      //   (1) Exact-name dedup (e.g. two "Fecal Calprotectin" entries collapse).
+      //   (2) Panel-bundle dedup: when a panel entry contains a standalone
+      //       test as a component (e.g. "Lipid Panel + ApoB + Lp(a)" contains
+      //       "ApoB" which is also a separate entry), drop the bundled panel
+      //       and keep the standalone entries — cleaner for PCP ordering.
       const seen = new Map<string, any>();
       const beforeDedup = plan.retest_timeline.length;
       for (const r of plan.retest_timeline) {
@@ -2502,6 +2522,50 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
         }
       }
       plan.retest_timeline = Array.from(seen.values());
+
+      // Panel-bundle dedup: drop combined "X + Y + Z" entries when X, Y, or
+      // Z exists as a standalone entry. PCPs prefer ordering distinct tests.
+      const standaloneNames = new Set<string>();
+      const STANDALONE_PATTERNS: RegExp[] = [
+        /^apoB( |\(|$)/i, /^lp\(a\)/i, /^uric\s*acid/i, /^hs[-\s]?crp/i,
+        /^vitamin\s*d/i, /^vitamin\s*b12/i, /^ferritin/i, /^ggt/i,
+        /^fasting\s*glucose/i, /^hemoglobin\s*a1c/i, /^a1c/i, /^tsh\b/i,
+        /^fasting\s*insulin/i, /^homa[-\s]?ir/i,
+      ];
+      for (const r of plan.retest_timeline) {
+        const m = String(r?.marker ?? '').trim();
+        for (const pat of STANDALONE_PATTERNS) {
+          if (pat.test(m)) standaloneNames.add(m.toLowerCase());
+        }
+      }
+      const beforePanelDedup = plan.retest_timeline.length;
+      plan.retest_timeline = plan.retest_timeline.filter((r: any) => {
+        const m = String(r?.marker ?? '');
+        // Skip if this IS a standalone entry (already counted above).
+        if (STANDALONE_PATTERNS.some(p => p.test(m))) return true;
+        // Combined panel detection: marker contains "+" or comma-separated
+        // tests AND at least one of the components is also a standalone entry.
+        if (!/\+|,/.test(m)) return true;
+        const components = m.split(/[+,]/).map(c => c.trim().toLowerCase());
+        // If ANY component matches a standalone entry name, drop the bundle.
+        const overlap = components.some(c => {
+          for (const sn of standaloneNames) {
+            // Substring match handles "ApoB" ↔ "apob (apolipoprotein b)".
+            const cKey = c.replace(/\(.*?\)/g, '').trim();
+            const snKey = sn.replace(/\(.*?\)/g, '').trim();
+            if (cKey && snKey && (cKey.includes(snKey) || snKey.includes(cKey))) return true;
+          }
+          return false;
+        });
+        if (overlap) {
+          console.log(`[wellness-plan] panel-bundle dedup: dropped "${m}" (component overlaps standalone entry)`);
+          return false;
+        }
+        return true;
+      });
+      if (beforePanelDedup !== plan.retest_timeline.length) {
+        console.log(`[wellness-plan] panel-bundle dedup: ${beforePanelDedup} → ${plan.retest_timeline.length}`);
+      }
       if (beforeDedup !== plan.retest_timeline.length) {
         console.log(`[wellness-plan] retest_timeline deduped ${beforeDedup} → ${plan.retest_timeline.length}`);
       }
