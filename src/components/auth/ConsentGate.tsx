@@ -32,6 +32,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuthStore } from '../../store/authStore';
 import { getMissingConsents, isFullyConsented, type ConsentType } from '../../lib/consent';
+import { AgeGateScreen } from './AgeGateScreen';
 import { AcceptTermsScreen } from './AcceptTermsScreen';
 import { HealthDataConsentScreen } from './HealthDataConsentScreen';
 import { WashingtonHealthDataConsentScreen } from './WashingtonHealthDataConsentScreen';
@@ -50,6 +51,7 @@ interface Props {
 }
 
 const REQUIRED: ConsentType[] = [
+  'age_18_plus',
   'terms',
   'ai_processing',
   'health_data_authorization',
@@ -102,6 +104,12 @@ export const ConsentGate = ({ onConsented }: Props) => {
   };
 
   if (missing === null) return <Loading />;
+
+  // Step 1 — universal 18+ attestation. Catches Google sign-ins which bypass
+  // the inline Register checkbox.
+  if (missing.has('age_18_plus')) {
+    return <AgeGateScreen onAccepted={() => recordedAndRefresh('age_18_plus')} />;
+  }
 
   if (missing.has('terms')) {
     return <AcceptTermsScreen onAccepted={() => recordedAndRefresh('terms')} />;

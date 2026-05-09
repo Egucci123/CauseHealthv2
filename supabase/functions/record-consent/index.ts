@@ -27,6 +27,7 @@ const corsHeaders = {
 };
 
 const ALLOWED_TYPES = new Set([
+  'age_18_plus',
   'terms',
   'ai_processing',
   'health_data_authorization',

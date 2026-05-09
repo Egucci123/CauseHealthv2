@@ -64,7 +64,7 @@ export const AcceptTermsScreen = ({ onAccepted }: Props) => {
         {/* Header */}
         <div className="px-6 sm:px-8 py-5 border-b border-clinical-cream flex-shrink-0">
           <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-primary-container mb-1">
-            Step 1 of 3
+            Step 2 of 4
           </p>
           <h1 className="text-authority text-xl sm:text-2xl text-clinical-charcoal font-bold">
             Terms of Service, Privacy Policy &amp; Medical Disclaimer

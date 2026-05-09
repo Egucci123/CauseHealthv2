@@ -170,10 +170,10 @@ export const Register = () => {
         </div>
 
         <p className="text-precision text-[0.65rem] text-clinical-stone/70 tracking-wide leading-relaxed">
-          By creating an account you'll be asked to review and accept our{' '}
+          After signup you&apos;ll review and accept our{' '}
           <a href="/terms" className="text-primary-container hover:underline">Terms</a>,{' '}
           <a href="/privacy" className="text-primary-container hover:underline">Privacy Policy</a>,
-          and health-data authorization on the next screen.
+          and health-data authorizations across a few short screens before onboarding begins.
         </p>
 
         <Button

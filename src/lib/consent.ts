@@ -1,13 +1,15 @@
 // src/lib/consent.ts
 //
 // Consent recording + checking — universal helper used by the consent screens
-// and the gate. Four types required for full consent, all UNIVERSAL (shown
+// and the gate. Five gates required for full consent, all UNIVERSAL (shown
 // to every user regardless of geolocation, belt-and-suspenders coverage):
 //
-//   1. terms                       — ToS + Privacy bundle
-//   2. ai_processing               — Health-data AI processing (GDPR Art 9)
-//   3. health_data_authorization   — Generic health data collection auth
-//   4. mhmda_wa_authorization      — Washington MHMDA statutory-wording auth
+//   1. age_18_plus                 — 18+ attestation (catches Google signups
+//                                    that bypass the inline Register checkbox)
+//   2. terms                       — ToS + Privacy bundle
+//   3. ai_processing               — Health-data AI processing (GDPR Art 9)
+//   4. health_data_authorization   — Generic health data collection auth
+//   5. mhmda_wa_authorization      — Washington MHMDA statutory-wording auth
 //
 // MHMDA-WA is shown universally rather than IP-gated so a non-WA user
 // who is actually located in WA (VPN, traveling, lookup failure) still
@@ -21,12 +23,14 @@ import { supabase } from './supabase';
 export const CONSENT_POLICY_VERSION = '2.1';
 
 export type ConsentType =
+  | 'age_18_plus'
   | 'terms'
   | 'ai_processing'
   | 'health_data_authorization'
   | 'mhmda_wa_authorization';
 
 const REQUIRED_CONSENTS: ConsentType[] = [
+  'age_18_plus',
   'terms',
   'ai_processing',
   'health_data_authorization',
