@@ -19,6 +19,7 @@ import { buildAudit } from '../_shared/auditLog.ts';
 import { detectLabPatterns } from '../_shared/labPatternRegistry.ts';
 import { runSuspectedConditionsBackstop } from '../_shared/suspectedConditionsBackstop.ts';
 import { detectCriticalFindings } from '../_shared/criticalFindingsBackstop.ts';
+import { detectEmergencyAlerts, detectSuicideRisk, applyAllergyFilters } from '../_shared/safetyNet.ts';
 import { screenInteractions } from '../_shared/drugInteractionEngine.ts';
 import { computeProgressDeltas, renderPriorDrawForPrompt, type ProgressSummary } from '../_shared/longitudinalDelta.ts';
 import { attachWhys } from '../_shared/testRationale.ts';
@@ -2192,6 +2193,46 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
     // to regenerate the same sentence on every plan (token waste). Schema
     // dropped it; UI still renders if present.
     plan.disclaimer = 'Educational only. Talk to your doctor before changing anything.';
+
+    // ── PHASE 2 SAFETY NET ────────────────────────────────────────────────
+    // Universal safety screens, run on every plan regardless of patient.
+    // Outputs surface in plan_data so the UI can render emergency banners
+    // before the normal plan content.
+    {
+      // (a) Critical-value emergency alerts — life-threatening lab values
+      // get a dedicated `emergency_alerts` array distinct from priority_
+      // findings. UI must render this above everything else.
+      plan.emergency_alerts = detectEmergencyAlerts(labValues ?? []);
+      if (plan.emergency_alerts.length > 0) {
+        console.log(`[wellness-plan] emergency_alerts: ${plan.emergency_alerts.length} life-threatening value(s) detected`);
+      }
+
+      // (b) Suicide-risk screen — scan symptoms + free-text fields. If
+      // matched, surface 988 + Crisis Text Line as a blocking alert.
+      const symptomBlob = (Array.isArray(symptoms) ? symptoms : [])
+        .map((s: any) => `${s?.symptom ?? ''} ${s?.severity ?? ''}/10`)
+        .join(' ');
+      const freeText = [
+        String(profile?.specific_concern ?? ''),
+        String(profile?.tried_before ?? ''),
+        String(profile?.life_context ?? ''),
+      ];
+      const crisis = detectSuicideRisk(symptomBlob, freeText);
+      if (crisis) {
+        plan.crisis_alert = crisis;
+        console.log(`[wellness-plan] crisis_alert: suicide-risk pattern detected — surfacing 988 + Crisis Text Line`);
+      }
+
+      // (c) Allergy/pregnancy/anticoagulant filter on supplement_stack.
+      // Reads from profile if those fields exist; safe no-op when absent.
+      const allergiesLower = String((profile as any)?.allergies ?? '').toLowerCase();
+      const isPregnant = Boolean((profile as any)?.is_pregnant);
+      const onAnticoagulant = isOnMed((medsStr ?? '').toLowerCase(), 'anticoagulant');
+      const removed = applyAllergyFilters(plan.supplement_stack ?? [], allergiesLower, isPregnant, onAnticoagulant);
+      if (removed.length > 0) {
+        console.log(`[wellness-plan] allergy/pregnancy filter removed ${removed.length} supplement(s):`, removed);
+      }
+    }
 
     // ── RETEST CLEANUP — strip drift artifacts before save ─────────────────
     // Three issues we keep seeing in real plans, all easy to fix server-side:

@@ -818,6 +818,19 @@ Borderline upper-normal values do NOT trigger rare-disease screening. Default mi
       }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
+    // ── PHASE 2 SAFETY NET — emergency_alerts ─────────────────────────────
+    // Universal critical-value escalator. Detects life-threatening values
+    // (per ACEP critical-value standards) and emits a top-level array
+    // separate from priority_findings. UI must render this above all
+    // other content as URGENT.
+    {
+      const { detectEmergencyAlerts } = await import('../_shared/safetyNet.ts');
+      analysis.emergency_alerts = detectEmergencyAlerts(labValues ?? []);
+      if (analysis.emergency_alerts.length > 0) {
+        console.log(`[analyze-labs] emergency_alerts: ${analysis.emergency_alerts.length} life-threatening value(s) detected`);
+      }
+    }
+
     await supabase
       .from('lab_draws')
       .update({
