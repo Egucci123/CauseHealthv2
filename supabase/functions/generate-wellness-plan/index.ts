@@ -1993,15 +1993,14 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
       if (beforeFilter !== plan.retest_timeline.length) {
         console.log(`[wellness-plan] dropped ${beforeFilter - plan.retest_timeline.length} empty retest entries`);
       }
-      // Hard cap raised 20 → 24 so the comprehensive baseline (CMP, CBC,
-      // Lipid, ApoB, Lp(a), A1c, Fasting Insulin, HOMA-IR, hs-CRP, TSH,
-      // Free T3, Free T4, Vit D, B12, MMA, Homocysteine, Folate, Iron
-      // Panel, Magnesium, Uric Acid, GGT, Testosterone Panel, etc.)
-      // doesn't get cut. The product mission is to ARM patients with the
-      // full panel they should ask for, not minimize.
-      if (plan.retest_timeline.length > 24) {
-        console.log(`[wellness-plan] post-injector cap: ${plan.retest_timeline.length} -> 24`);
-        plan.retest_timeline = plan.retest_timeline.slice(0, 24);
+      // Hard cap raised to 28 to accommodate the comprehensive universal
+      // adult baseline (~14 always-on injectors) + AI-generated symptom/
+      // condition-specific tests + lab-driven conditional injectors. The
+      // mission is to ARM patients with the full panel; the cap is a
+      // ceiling not a target.
+      if (plan.retest_timeline.length > 28) {
+        console.log(`[wellness-plan] post-injector cap: ${plan.retest_timeline.length} -> 28`);
+        plan.retest_timeline = plan.retest_timeline.slice(0, 28);
       }
     } catch (e) { console.error('[wellness-plan] retest-injector error:', e); }
     // ── Test-quality flagger POST-flight (Layer D) ───────────────────────

@@ -120,11 +120,12 @@ export function buildUniversalTestInjections(ctx: InjectionContext): InjectedTes
   const tests: InjectedTest[] = [];
 
   // ── UNIVERSAL ADULT BASELINE (every patient ≥18) ───────────────────────
-  // The comprehensive panel every adult should be ARMED to ask for. These
-  // fire unconditionally for any adult so they can never get cut by AI
-  // discretion or flag-format mismatch. Dedup logic upstream handles
-  // overlaps if AI also generated them.
+  // The comprehensive panel every adult should be ARMED to ask for. Fires
+  // unconditionally so the baseline is never lost to AI discretion or
+  // flag-format mismatch. The retest_timeline dedup pass collapses any
+  // overlap with AI-generated entries.
   if (f.age >= 18) {
+    // ── Core metabolic / chemistry ──
     tests.push({
       name: 'Comprehensive Metabolic Panel (CMP)',
       whyShort: 'Liver, kidney, electrolyte, glucose baseline',
@@ -134,6 +135,52 @@ export function buildUniversalTestInjections(ctx: InjectionContext): InjectedTes
       priority: 'high',
       insuranceNote: 'Universally covered as part of routine adult exam or any chronic-condition follow-up.',
     });
+    tests.push({
+      name: 'Complete Blood Count (CBC) with Differential',
+      whyShort: 'Red cells, white cells, platelets baseline',
+      whyLong: '(d) Standard adult baseline — anemia, infection, marrow function, and inflammation patterns all show up here. Cheap, comprehensive, foundational.',
+      icd10: 'Z00.00',
+      icd10Description: 'General adult medical exam',
+      priority: 'high',
+      insuranceNote: 'Universally covered.',
+    });
+    tests.push({
+      name: 'Lipid Panel (Total Cholesterol, LDL, HDL, Triglycerides, VLDL, non-HDL)',
+      whyShort: 'Standard cardiovascular risk panel',
+      whyLong: '(d) Standard adult baseline — total cholesterol, LDL, HDL, triglycerides, VLDL, and calculated non-HDL. Tracks response to lifestyle and medication changes.',
+      icd10: 'Z13.220',
+      icd10Description: 'Encounter for screening for lipoid disorders',
+      priority: 'high',
+      insuranceNote: 'Universally covered as preventive screening.',
+    });
+    tests.push({
+      name: 'Hemoglobin A1c (HbA1c)',
+      whyShort: 'Three-month average blood sugar',
+      whyLong: '(d) Standard adult baseline — average blood glucose over the prior ~90 days. Catches early dysglycemia even when fasting glucose is normal.',
+      icd10: 'Z13.1',
+      icd10Description: 'Encounter for screening for diabetes mellitus',
+      priority: 'high',
+      insuranceNote: 'Universally covered as preventive screening.',
+    });
+    tests.push({
+      name: 'hs-CRP (high-sensitivity C-reactive protein)',
+      whyShort: 'Systemic inflammation baseline',
+      whyLong: '(d) Standard adult baseline — sensitive marker for systemic inflammation that drives cardiovascular and metabolic risk. Watch-tier ≥0.5 mg/L; >2 mg/L flags meaningful inflammatory burden.',
+      icd10: 'R79.89',
+      icd10Description: 'Other specified abnormal findings of blood chemistry',
+      priority: 'moderate',
+      insuranceNote: 'Universally covered with cardiovascular or chronic-inflammation indications.',
+    });
+    tests.push({
+      name: 'Vitamin D 25-Hydroxy (25-OH-D)',
+      whyShort: 'Vitamin D status baseline',
+      whyLong: '(d) Standard adult baseline — 25-OH-D is the storage form. <30 ng/mL = deficient; 30-40 = insufficient; 40-60 = optimal target.',
+      icd10: 'E55.9',
+      icd10Description: 'Vitamin D deficiency, unspecified (rule-out)',
+      priority: 'high',
+      insuranceNote: 'Universally covered.',
+    });
+    // ── B-vitamin workups ──
     tests.push({
       name: 'Vitamin B12 Workup (Serum B12 + MMA + Homocysteine)',
       whyShort: 'Tissue-level B12 status, not just serum',
@@ -152,6 +199,17 @@ export function buildUniversalTestInjections(ctx: InjectionContext): InjectedTes
       priority: 'moderate',
       insuranceNote: 'Universally covered with fatigue, mood, or hematologic symptoms; or with mesalamine/methotrexate.',
     });
+    // ── Iron status ──
+    tests.push({
+      name: 'Iron Panel (Serum Iron, TIBC, Ferritin, Transferrin Saturation, UIBC)',
+      whyShort: 'Iron stores + transport baseline',
+      whyLong: '(d) Standard adult baseline — ferritin <30 = deficiency; 30-50 = functional deficiency. Drives fatigue, hair loss, restless legs, exercise intolerance long before hemoglobin drops.',
+      icd10: 'D50.9',
+      icd10Description: 'Iron deficiency anemia, unspecified (rule-out)',
+      priority: 'high',
+      insuranceNote: 'Universally covered, especially with fatigue, hair loss, female-menstruating, or any GI dx.',
+    });
+    // ── Liver / kidney sensitive markers ──
     tests.push({
       name: 'GGT (Gamma-Glutamyl Transferase)',
       whyShort: 'Sensitive liver/biliary marker — anchor for ALT/AST',
@@ -161,20 +219,31 @@ export function buildUniversalTestInjections(ctx: InjectionContext): InjectedTes
       priority: 'moderate',
       insuranceNote: 'Universally covered as part of routine liver workup; cheap and high-yield.',
     });
-  }
-
-  // ── Liver workup completion ────────────────────────────────────────────
-  if (f.altElevated || f.astElevated) {
+    // ── Thyroid (full panel) ──
     tests.push({
-      name: 'GGT (Gamma-Glutamyl Transferase)',
-      whyShort: 'Pairs with ALT/AST to find liver cause',
-      whyLong: '(c) ALT or AST elevated — GGT distinguishes between alcohol-related, fatty liver, and drug-induced liver injury. Standard companion to LFT abnormality.',
-      icd10: 'R74.0',
-      icd10Description: 'Abnormal liver function tests',
+      name: 'Thyroid Panel (TSH + Free T4 + Free T3)',
+      whyShort: 'Full thyroid function baseline',
+      whyLong: '(d) Standard adult baseline — TSH alone misses central hypothyroidism and impaired T4→T3 conversion. Free T3 is the active hormone; Free T4 is the precursor. Together they catch dysfunction TSH alone misses, especially with fatigue, weight, mood, or hair-loss symptoms.',
+      icd10: 'Z00.00',
+      icd10Description: 'General adult medical exam',
       priority: 'high',
-      insuranceNote: 'Universally covered when LFTs are abnormal.',
+      insuranceNote: 'Universally covered with fatigue, weight, or thyroid-symptom indications. Modern PCPs order the full panel.',
+    });
+    // ── Magnesium (RBC preferred — more sensitive than serum) ──
+    tests.push({
+      name: 'Magnesium (RBC Magnesium preferred)',
+      whyShort: 'Intracellular Mg status — sleep, muscle, energy',
+      whyLong: '(d) Standard adult baseline — RBC Magnesium reflects intracellular stores; serum Mg only catches severe deficiency. Drives sleep, muscle relaxation, glucose handling, and cardiovascular rhythm.',
+      icd10: 'E83.42',
+      icd10Description: 'Hypomagnesemia (rule-out)',
+      priority: 'moderate',
+      insuranceNote: 'Universally covered with sleep complaints, muscle symptoms, malabsorption (IBD/PPI/diuretic), or fatigue.',
     });
   }
+
+  // (Removed duplicate GGT block — already injected unconditionally above
+  // for every adult ≥18. The previous conditional GGT-on-LFT-elevation
+  // block was redundant and caused two GGT entries to land before dedup.)
   if (f.altDoubled || (f.altElevated && f.tgHigh)) {
     tests.push({
       name: 'Liver Ultrasound (NAFLD assessment)',
@@ -360,16 +429,71 @@ export function buildUniversalTestInjections(ctx: InjectionContext): InjectedTes
     });
   }
 
-  // ── Magnesium RBC for malabsorption + sleep + IR ────────────────────────
-  if ((f.hasIBD || f.onPPI || f.onDiuretic) && (f.hasSleepIssues || f.hasMuscleSymptoms)) {
+  // (Magnesium RBC moved to unconditional adult baseline above. The
+  // conditional malabsorption + sleep/muscle trigger was redundant once
+  // Mg became part of the universal adult baseline.)
+
+  // ── Fasting Insulin + HOMA-IR — fires for any early-metabolic pattern.
+  // Universal across every patient.
+  const tgMatch = ctx.labsLower.match(/\btriglyceride[^\n]*?(\d{2,4})/i);
+  const hdlMatch = ctx.labsLower.match(/\bhdl[^\n]*?(\d{2,3})/i);
+  const a1cMatch = ctx.labsLower.match(/\b(?:a1c|hba1c)[^\n]*?(\d+\.?\d*)/i);
+  const glucoseMatch = ctx.labsLower.match(/\bglucose[^\n]*?(\d{2,3})/i);
+  const tgVal = tgMatch ? Number(tgMatch[1]) : null;
+  const hdlVal = hdlMatch ? Number(hdlMatch[1]) : null;
+  const a1cVal = a1cMatch ? Number(a1cMatch[1]) : null;
+  const glucoseVal = glucoseMatch ? Number(glucoseMatch[1]) : null;
+  const tgHdlRatio = (tgVal != null && hdlVal != null && hdlVal > 0) ? tgVal / hdlVal : null;
+  const earlyMetabolicPattern =
+    (tgVal != null && tgVal >= 150) ||
+    (a1cVal != null && a1cVal >= 5.4 && a1cVal <= 6.4) ||
+    (glucoseVal != null && glucoseVal >= 95 && glucoseVal <= 125) ||
+    (tgHdlRatio != null && tgHdlRatio >= 3) ||
+    f.hasWeightIssues;
+  if (earlyMetabolicPattern) {
     tests.push({
-      name: 'Magnesium (RBC Magnesium)',
-      whyShort: 'Malabsorption + sleep/muscle symptoms',
-      whyLong: '(b)/(a) Conditions/medications affecting magnesium absorption + sleep or muscle symptoms — RBC magnesium is more sensitive than serum.',
-      icd10: 'E83.42',
-      icd10Description: 'Hypomagnesemia',
-      priority: 'moderate',
-      insuranceNote: 'Covered with malabsorption or relevant medication.',
+      name: 'Fasting Insulin + HOMA-IR',
+      whyShort: 'Catches insulin resistance before A1c does',
+      whyLong: '(c) Early-metabolic pattern (elevated TG, watch-tier glucose, watch-tier A1c, TG/HDL ≥3, or weight resistance) — fasting insulin >10 mIU/mL or HOMA-IR >2.5 confirms compensatory hyperinsulinemia even when A1c is normal. Tracks response 4-6 weeks faster than A1c.',
+      icd10: 'E88.81',
+      icd10Description: 'Metabolic syndrome',
+      priority: 'high',
+      insuranceNote: 'Covered with documented metabolic risk factor (TG, glucose, weight); modern PCPs order routinely.',
+    });
+  }
+
+  // ── Hashimoto's antibodies — fires when TSH is in the early-Hashimoto's
+  // grey zone (≥2.5) AND patient has thyroid-pattern symptoms. Universal
+  // across every patient.
+  const tshMatch = ctx.labsLower.match(/\btsh[^\n]*?(\d+\.?\d*)/i);
+  const tshValue = tshMatch ? Number(tshMatch[1]) : null;
+  const hasThyroidPatternSx = f.hasFatigue || f.hasHairLoss || f.hasWeightIssues || f.hasMoodIssues || f.hasColdHeatIntolerance;
+  if (tshValue != null && tshValue >= 2.5 && tshValue <= 10 && hasThyroidPatternSx) {
+    tests.push({
+      name: "Hashimoto's Antibodies (TPO Ab + Tg Ab)",
+      whyShort: 'TSH borderline + symptom cluster — autoimmune workup',
+      whyLong: `(e) TSH ${tshValue} is in the early-Hashimoto's grey zone with fatigue / weight / hair / mood symptoms. TPO and Tg antibodies catch autoimmune thyroiditis years before TSH crosses 4.5.`,
+      icd10: 'E06.3',
+      icd10Description: 'Autoimmune thyroiditis (rule-out)',
+      priority: 'high',
+      insuranceNote: 'Universally covered with TSH ≥2.5 and any thyroid-pattern symptom.',
+    });
+  }
+
+  // ── PCOS Panel — fires for adult females with cycle/acne/hirsutism
+  // pattern. Universal: any patient with the trigger gets the panel.
+  const isFemaleAdult = f.sex === 'female' && f.age >= 18;
+  const pcosPattern = /\b(irregular cycle|amenorrhea|missed period|acne|hirsut|excess hair|infertility|polycystic)/i.test(ctx.symptomsLower)
+    || /\b(pcos|polycystic ovary)\b/i.test(ctx.conditionsLower);
+  if (isFemaleAdult && pcosPattern) {
+    tests.push({
+      name: 'PCOS Panel (Total T + Free T + DHEA-S + LH:FSH ratio + SHBG + Fasting Insulin)',
+      whyShort: 'Hormonal + metabolic workup for cycle/skin pattern',
+      whyLong: '(e)+(a) Female with cycle / acne / hirsutism / infertility cluster — PCOS panel catches androgen excess, LH:FSH dysregulation, and the insulin-resistance link that drives all three. Comprehensive baseline for any female PCOS workup.',
+      icd10: 'E28.2',
+      icd10Description: 'Polycystic ovarian syndrome',
+      priority: 'high',
+      insuranceNote: 'Universally covered with documented cycle/skin symptom or PCOS dx.',
     });
   }
 
