@@ -1,6 +1,7 @@
 // src/pages/onboarding/Onboarding.tsx
 import { useEffect, useState } from 'react';
 import { useOnboardingStore } from '../../store/onboardingStore';
+import { useAuthStore } from '../../store/authStore';
 import { Step0_Primer }     from '../../components/onboarding/steps/Step0_Primer';
 import { Step1_Welcome }    from '../../components/onboarding/steps/Step1_Welcome';
 import { Step2_Diagnoses }  from '../../components/onboarding/steps/Step2_Diagnoses';
@@ -10,24 +11,40 @@ import { Step5_Lifestyle }  from '../../components/onboarding/steps/Step5_Lifest
 import { Step6_Goals }      from '../../components/onboarding/steps/Step6_Goals';
 import { Step7_Complete }   from '../../components/onboarding/steps/Step7_Complete';
 
-const PRIMER_FLAG = 'onboarding_primer_dismissed_v1';
+// Per-user-id flag so a fresh signup ALWAYS sees the primer once, regardless
+// of what previous users on this browser did. Previously this was a single
+// device-level flag — meant a second account on the same browser silently
+// skipped the primer.
+const primerFlag = (userId: string) => `onboarding_primer_dismissed_v1_${userId}`;
 
 export const Onboarding = () => {
   const { currentStep, loadSavedProgress } = useOnboardingStore();
-  // Show the primer ONCE per device, before Step 1. Returning users mid-flow
-  // (or anyone who already saw it) skip straight to the numbered steps.
+  const userId = useAuthStore(s => s.user?.id);
+
   const [showPrimer, setShowPrimer] = useState(() => {
-    try { return localStorage.getItem(PRIMER_FLAG) !== 'true'; }
+    if (!userId) return false; // wait until we know who they are
+    try { return localStorage.getItem(primerFlag(userId)) !== 'true'; }
     catch { return false; }
   });
+
+  // Re-evaluate the primer flag when userId resolves (auth happens async on
+  // first paint). Without this, signed-in fresh users land on Step 1 because
+  // the initial useState ran before user was known.
+  useEffect(() => {
+    if (!userId) return;
+    try {
+      const dismissed = localStorage.getItem(primerFlag(userId)) === 'true';
+      setShowPrimer(!dismissed);
+    } catch {}
+  }, [userId]);
 
   useEffect(() => { loadSavedProgress(); }, [loadSavedProgress]);
 
   // If user is mid-flow (currentStep > 1 from a saved DB session), don't show
   // primer. They've already seen the numbered steps.
-  if (showPrimer && currentStep === 1) {
+  if (showPrimer && currentStep === 1 && userId) {
     return <Step0_Primer onContinue={() => {
-      try { localStorage.setItem(PRIMER_FLAG, 'true'); } catch {}
+      try { localStorage.setItem(primerFlag(userId), 'true'); } catch {}
       setShowPrimer(false);
     }} />;
   }
