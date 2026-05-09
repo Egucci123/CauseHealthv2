@@ -809,6 +809,10 @@ reason_to_consider must cite the SPECIFIC patient finding that triggers this ent
           doc.prep_instructions = pd.prep_instructions;
           console.log(`[doctor-prep] Inherited ${pd.prep_instructions.length} prep instruction(s) from wellness plan`);
         }
+        if (pd?.risk_calculators && typeof pd.risk_calculators === 'object') {
+          doc.risk_calculators = pd.risk_calculators;
+          console.log(`[doctor-prep] Inherited risk_calculators from wellness plan: ${Object.keys(pd.risk_calculators).join(', ')}`);
+        }
       }
 
       // Differential cap by mode

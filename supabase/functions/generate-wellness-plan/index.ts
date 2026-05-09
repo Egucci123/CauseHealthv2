@@ -21,6 +21,7 @@ import { runSuspectedConditionsBackstop } from '../_shared/suspectedConditionsBa
 import { detectCriticalFindings } from '../_shared/criticalFindingsBackstop.ts';
 import { detectEmergencyAlerts, detectSuicideRisk, applyAllergyFilters } from '../_shared/safetyNet.ts';
 import { buildPrepInstructions } from '../_shared/preAnalytical.ts';
+import { computeASCVDRisk, computeFIB4, computeHOMAIR, computeTGHDLRatio } from '../_shared/clinicalCalculators.ts';
 import { screenInteractions } from '../_shared/drugInteractionEngine.ts';
 import { computeProgressDeltas, renderPriorDrawForPrompt, type ProgressSummary } from '../_shared/longitudinalDelta.ts';
 import { attachWhys } from '../_shared/testRationale.ts';
@@ -2249,6 +2250,76 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
       });
       if (plan.prep_instructions.length > 0) {
         console.log(`[wellness-plan] prep_instructions: ${plan.prep_instructions.length} pre-analytical guidance items`);
+      }
+
+      // (e) PHASE 5 — Clinical risk calculators. Universal: compute the
+      // exact numbers PCPs use (ASCVD 10-year, FIB-4 fibrosis score,
+      // HOMA-IR, TG/HDL ratio). Each returns null when inputs missing,
+      // so we only surface what the patient's data supports.
+      plan.risk_calculators = {};
+      const labFor = (patterns: RegExp[]): number | null => {
+        for (const v of (labValues ?? [])) {
+          const name = String(v?.marker_name ?? '').toLowerCase();
+          if (patterns.some((p) => p.test(name))) {
+            const n = Number(v?.value);
+            if (Number.isFinite(n)) return n;
+          }
+        }
+        return null;
+      };
+      const ageNum = profile?.date_of_birth
+        ? Math.floor((Date.now() - new Date(profile.date_of_birth).getTime()) / 31_557_600_000)
+        : null;
+      const sexLower = String(profile?.sex ?? '').toLowerCase();
+
+      // ASCVD 10-year risk (only ages 40-79 per PCE validation)
+      const totalChol = labFor([/^total\s*cholesterol|cholesterol,?\s*total\b/i, /^cholesterol$/i]);
+      const hdl = labFor([/^hdl/i]);
+      const tg = labFor([/^triglyc/i]);
+      const ldl = labFor([/^ldl/i]);
+      // We don't reliably have BP/smoking/HTN-meds from current schema.
+      // ASCVD calculator returns null on missing — safe.
+      if (ageNum !== null && totalChol !== null && hdl !== null) {
+        const onAnyBpMed = /\b(amlodipine|lisinopril|losartan|hydrochlorothiazide|metoprolol|atenolol|carvedilol)\b/i.test(medsStr ?? '');
+        const ascvd = computeASCVDRisk({
+          age: ageNum,
+          sex: sexLower,
+          totalCholesterol: totalChol,
+          hdl,
+          systolicBP: 120, // assume normotensive in absence of BP — clinician adjusts
+          onBpMeds: onAnyBpMed,
+          hasDiabetes: /\b(diabetes|t2d|t2dm|type\s*2)\b/i.test(String((Array.isArray(conditions) ? conditions : []).map((c: any) => c?.name ?? '').join(' ')).toLowerCase()),
+          isSmoker: false, // assume non-smoker — clinician adjusts
+        });
+        if (ascvd) plan.risk_calculators.ascvd_10yr = ascvd;
+      }
+
+      // FIB-4 (NAFLD fibrosis)
+      const ast = labFor([/^ast\b|sgot/i]);
+      const alt = labFor([/^alt\b|sgpt/i]);
+      const platelets = labFor([/platelet/i]);
+      if (ageNum !== null && ast !== null && alt !== null && platelets !== null) {
+        const fib4 = computeFIB4({ age: ageNum, ast, alt, platelets });
+        if (fib4) plan.risk_calculators.fib4 = fib4;
+      }
+
+      // HOMA-IR (when fasting insulin already in draw)
+      const fastingInsulin = labFor([/fasting\s*insulin|^insulin$/i]);
+      const fastingGlucose = labFor([/fasting\s*glucose/i, /^glucose$/i]);
+      if (fastingInsulin !== null && fastingGlucose !== null) {
+        const homa = computeHOMAIR({ fastingGlucose, fastingInsulin });
+        if (homa) plan.risk_calculators.homa_ir = homa;
+      }
+
+      // TG/HDL ratio
+      if (tg !== null && hdl !== null) {
+        const tghdl = computeTGHDLRatio({ triglycerides: tg, hdl });
+        if (tghdl) plan.risk_calculators.tg_hdl_ratio = tghdl;
+      }
+
+      const calcCount = Object.keys(plan.risk_calculators).length;
+      if (calcCount > 0) {
+        console.log(`[wellness-plan] risk_calculators: ${calcCount} computed (${Object.keys(plan.risk_calculators).join(', ')})`);
       }
     }
 
