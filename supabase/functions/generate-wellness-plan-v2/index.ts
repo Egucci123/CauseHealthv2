@@ -558,6 +558,11 @@ function mergeIntoFinalPlan(args: {
       return isAlreadyOrdered(s) ? `${s} (✓ already on your test sheet)` : s;
     });
     return {
+      // Stable cross-surface key — lets drift detector compare wellness ↔
+      // analysis ↔ doctor prep on the same identifier. Without this, drift
+      // detector reads the AI-rephrased name and falsely flags drift.
+      key: c.key,
+      _key: c.key,
       name: c.name,
       category: c.category,
       confidence: c.confidence,
