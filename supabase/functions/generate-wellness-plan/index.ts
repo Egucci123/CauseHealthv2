@@ -2213,9 +2213,15 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
       //       has it diagnosed. Universal across UC/Crohn's/Hashimoto's/
       //       diabetes/HF/RA/CKD/etc.
       const SPECIALIST_REMAP: Array<[RegExp, string]> = [
+        // Functional-medicine tests — PCPs routinely refuse these. Universal:
+        // route to 'functional' specialist regardless of clinical reasoning.
+        // Selenium, iodine, DUTCH cortisol, organic acids, food sensitivity
+        // panels, hair tissue mineral analysis, 16S rRNA microbiome,
+        // GI-MAP — all functional-medicine territory, not PCP-orderable.
+        [/\b(selenium\s*(\(.*\))?\s*(serum|rbc)?|urinary\s*iodine|dutch\s*(cortisol)?|organic\s*acids?|hair\s*tissue\s*mineral|food\s*sensitivity|igg4\s*panel|16s\s*rrna|gi[-\s]?map|micronutrient\s*panel)\b/i, 'functional'],
         // Fecal / stool tests — always GI regardless of patient diagnosis.
         // Universal: any fecal test gets ordered by gastroenterology, not PCP.
-        [/\b(fecal\s*calprotectin|fecal\s*lactoferrin|fecal\s*occult\s*blood|\bfobt\b|fecal\s*immunochemical|\bfit\b\s*test|stool\s*(culture|test|panel|study)|gi[-\s]?map|comprehensive\s*stool)\b/i, 'gi'],
+        [/\b(fecal\s*calprotectin|fecal\s*lactoferrin|fecal\s*occult\s*blood|\bfobt\b|fecal\s*immunochemical|\bfit\b\s*test|stool\s*(culture|test|panel|study)|comprehensive\s*stool)\b/i, 'gi'],
         // Imaging / procedures (always specialist regardless of condition)
         [/\b(liver\s*ultrasound|fibroscan|abdominal\s*ultrasound|elastography)\b/i, 'imaging'],
         [/\b(home\s*sleep\s*apnea\s*test|hsat|sleep\s*study|polysomnography|stop[-\s]?bang)\b/i, 'sleep_medicine'],
