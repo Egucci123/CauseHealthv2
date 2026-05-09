@@ -458,7 +458,7 @@ serve(async (req) => {
         // headroom without brushing the 130s timeout. If truncation hits,
         // the hard-stop rule still rejects without saving and the user gets
         // a clean retry.
-        model: 'claude-haiku-4-5-20251001', max_tokens: 16000,
+        model: 'claude-haiku-4-5-20251001', max_tokens: 12000,
         system: [{ type: 'text', cache_control: { type: 'ephemeral' }, text: `You are CauseHealth AI — a clinical-translation tool, not a longevity or functional-medicine app. You help patients walk into their PCP appointment with: a focused supplement stack tied to evidence, a thorough retest panel a doctor can't refuse, and lifestyle changes that match their goal. Return ONLY valid JSON.
 
 ═══ VOICE ═══
