@@ -260,6 +260,13 @@ export function useGenerateWellnessPlan() {
     }).then(async (res) => {
       let data: any;
       try { data = await res.json(); } catch { data = null; }
+      // 409 = a prior generation is still running on the server. Don't
+      // surface as error; let the page poll until the in-flight call
+      // completes and the realtime subscription / DB recovery picks it up.
+      if (res.status === 409) {
+        console.log('[useWellnessPlan] prior generation in progress (409) — polling for completion');
+        return null as unknown as WellnessPlanData;
+      }
       if (!res.ok) {
         const msg = data?.error ?? data?.message ?? `Generation failed (${res.status})`;
         throw new Error(msg);

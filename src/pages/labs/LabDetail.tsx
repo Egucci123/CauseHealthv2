@@ -72,7 +72,9 @@ export const LabDetail = () => {
           keepalive: true,
         });
         // 429 = cap reached. Surface it immediately so the user knows.
-        // Anything else 4xx = log + leave UI to recover via polling.
+        // 409 = lock held (a previous run is still in flight). Treat as
+        // success — the in-flight call will write the result; polling
+        // picks it up. Don't roll back state, don't show error.
         // 2xx (or in-flight long response) = success path, fall through.
         if (res.status === 429) {
           let detail = '';
@@ -81,6 +83,12 @@ export const LabDetail = () => {
           // Roll back the processing_status so the UI doesn't show a stuck spinner.
           await supabase.from('lab_draws').update({ processing_status: 'complete' }).eq('id', drawId);
           throw new Error(detail || 'REGEN_LIMIT_REACHED');
+        }
+        if (res.status === 409) {
+          // Prior run still in flight. Don't fail — just keep polling.
+          // The earlier call will complete and write the result.
+          console.log('[LabDetail] retry: prior analysis still running (409) — polling for completion');
+          return;
         }
       } catch (e: any) {
         // Network error or 429 throw above — let the mutation move to error state.

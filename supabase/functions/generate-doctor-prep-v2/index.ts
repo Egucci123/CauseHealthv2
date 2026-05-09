@@ -14,6 +14,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { type PatientInput, type LabValue } from '../_shared/buildPlan.ts';
 import { loadOrComputeFacts } from '../_shared/factsCache.ts';
+import { acquireLock, releaseLock } from '../_shared/generationLock.ts';
 import {
   DOCTOR_PREP_SYSTEM_PROMPT,
   DOCTOR_PREP_TOOL_SCHEMA,
@@ -40,6 +41,19 @@ serve(async (req) => {
     if (!userId) return json({ error: 'userId required' }, 400);
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+
+    // ── 0. Acquire lock — prevents concurrent doctor-prep generations ──
+    const lock = await acquireLock(supabase, { userId, surface: 'doctor_prep', ttlMs: 90_000 });
+    if (!lock.acquired) {
+      console.log(`[doctor-prep-v2] lock held until ${lock.heldUntil} — refusing duplicate run`);
+      return json({
+        error: 'A doctor prep is already generating. Wait for it to finish.',
+        code: 'GENERATION_IN_PROGRESS',
+        held_until: lock.heldUntil,
+      }, 409);
+    }
+
+    try {
 
     // ── 1. Load patient data ───────────────────────────────────────────
     const [profileRes, medsRes, symptomsRes, conditionsRes, suppsRes, drawRes] = await Promise.all([
@@ -96,6 +110,9 @@ serve(async (req) => {
 
     console.log(`[doctor-prep-v2] complete in ${Date.now() - startTime}ms`);
     return json(doc);
+    } finally {
+      await releaseLock(supabase, { userId, surface: 'doctor_prep' });
+    }
   } catch (err) {
     console.error('[doctor-prep-v2] error:', err);
     return json({ error: String(err) }, 500);

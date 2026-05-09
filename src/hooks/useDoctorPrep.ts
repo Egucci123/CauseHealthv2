@@ -133,6 +133,12 @@ export function useGenerateDoctorPrep() {
       keepalive: true,
     }).then(async (res) => {
       const data = await res.json();
+      // 409 = prior generation still in flight. Don't fail; let the page
+      // poll the DB for the in-flight call's eventual write.
+      if (res.status === 409) {
+        console.log('[useDoctorPrep] prior generation in progress (409) — polling for completion');
+        return null as unknown as DoctorPrepDocument;
+      }
       if (!res.ok) throw new Error(data?.error ?? 'Generation failed');
       qc.setQueryData(['doctor-prep', userId], data as DoctorPrepDocument);
       return data as DoctorPrepDocument;

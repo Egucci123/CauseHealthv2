@@ -16,6 +16,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { type PatientInput, type LabValue } from '../_shared/buildPlan.ts';
 import { loadOrComputeFacts } from '../_shared/factsCache.ts';
+import { acquireLock, releaseLock } from '../_shared/generationLock.ts';
 import {
   LAB_ANALYSIS_SYSTEM_PROMPT,
   LAB_ANALYSIS_TOOL_SCHEMA,
@@ -67,6 +68,24 @@ serve(async (req) => {
       }, 429);
     }
 
+    // ── 2b. Acquire generation lock (mutex) ────────────────────────────
+    // Prevents two concurrent analyze-labs-v2 calls for the same draw —
+    // protects against the "user hits retry while prior call is in flight"
+    // race that double-runs the AI and double-increments the cap.
+    // Auto-expires after 90s in case the function dies mid-run.
+    const lock = await acquireLock(supabase, {
+      userId, surface: `lab_analysis:${drawId}`, ttlMs: 90_000,
+    });
+    if (!lock.acquired) {
+      console.log(`[analyze-labs-v2] lock held until ${lock.heldUntil} — refusing duplicate run`);
+      return json({
+        error: 'An analysis is already running for these labs. Wait for it to finish.',
+        code: 'GENERATION_IN_PROGRESS',
+        held_until: lock.heldUntil,
+      }, 409);
+    }
+
+    try {
     // ── 3. Load patient data ───────────────────────────────────────────
     const [{ data: labValues }, { data: profile }, { data: meds }, { data: symptoms }, { data: conditionsData }, { data: suppsData }] = await Promise.all([
       supabase.from('lab_values').select('*').eq('draw_id', drawId),
@@ -118,6 +137,11 @@ serve(async (req) => {
 
     console.log(`[analyze-labs-v2] complete in ${Date.now() - startTime}ms`);
     return json(result);
+    } finally {
+      // Always release the lock — even on errors. Prevents a stuck lock
+      // from blocking future retries.
+      await releaseLock(supabase, { userId, surface: `lab_analysis:${drawId}` });
+    }
   } catch (err) {
     console.error('[analyze-labs-v2] error:', err);
     return json({ error: String(err) }, 500);
