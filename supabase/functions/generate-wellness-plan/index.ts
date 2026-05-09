@@ -757,6 +757,17 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
         stop_reason: 'max_tokens',
       }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
+    // ── DETERMINISTIC TEXT-CLEAN (pre-parse) ──────────────────────────────
+    // AI keeps producing fragments / hallucinated test names that prompt
+    // rules don't fully suppress. Scrub the literals before JSON.parse.
+    rawText = rawText
+      .replace(/early your body ignoring insulin/gi, 'early signs your body is ignoring insulin')
+      .replace(/your body ignoring insulin/gi, 'your body is ignoring insulin')
+      .replace(/\bdysbiotic dysbiosis\b/gi, 'dysbiosis')
+      .replace(/\bfecal gut hs[- ]?CRP\b/gi, 'Fecal Calprotectin')
+      .replace(/\bfecal hs[- ]?CRP\b/gi, 'Fecal Calprotectin')
+      .replace(/\bgut hs[- ]?CRP\b/gi, 'Fecal Calprotectin');
+
     let plan: any;
     try {
       plan = JSON.parse(rawText);

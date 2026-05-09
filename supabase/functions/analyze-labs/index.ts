@@ -236,6 +236,20 @@ Borderline upper-normal values do NOT trigger rare-disease screening. Default mi
       }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
+    // ── DETERMINISTIC GRAMMAR FIX (pre-parse) ─────────────────────────────
+    // The AI keeps producing the fragment "early your body ignoring insulin"
+    // (and variants) even with prompt rules forbidding phrase fragments.
+    // Most likely it's compressing "early signs (of) your body ignoring
+    // insulin" by dropping the connector words. Rewrite the literal fragment
+    // before JSON.parse so the saved analysis reads correctly.
+    cleaned = cleaned
+      .replace(/early your body ignoring insulin/gi, 'early signs your body is ignoring insulin')
+      .replace(/your body ignoring insulin/gi, 'your body is ignoring insulin')
+      .replace(/\bdysbiotic dysbiosis\b/gi, 'dysbiosis')
+      .replace(/\bfecal gut hs[- ]?CRP\b/gi, 'Fecal Calprotectin')
+      .replace(/\bfecal hs[- ]?CRP\b/gi, 'Fecal Calprotectin')
+      .replace(/\bgut hs[- ]?CRP\b/gi, 'Fecal Calprotectin');
+
     let analysis;
     try { analysis = JSON.parse(cleaned); } catch (parseErr) {
       console.error(`[analyze-labs] Parse failed. stop_reason=${stopReason}, first 500 chars:`, cleaned.slice(0, 500));

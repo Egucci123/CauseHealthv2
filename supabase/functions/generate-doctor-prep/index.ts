@@ -278,6 +278,18 @@ reason_to_consider must cite the SPECIFIC patient finding that triggers this ent
       }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
+    // ── DETERMINISTIC TEXT-CLEAN (pre-parse) ──────────────────────────────
+    // Same scrubbers as analyze-labs + wellness-plan. Catches the fragment
+    // and hallucinated test-name patterns that prompt rules don't fully
+    // suppress.
+    rawText = rawText
+      .replace(/early your body ignoring insulin/gi, 'early signs your body is ignoring insulin')
+      .replace(/your body ignoring insulin/gi, 'your body is ignoring insulin')
+      .replace(/\bdysbiotic dysbiosis\b/gi, 'dysbiosis')
+      .replace(/\bfecal gut hs[- ]?CRP\b/gi, 'Fecal Calprotectin')
+      .replace(/\bfecal hs[- ]?CRP\b/gi, 'Fecal Calprotectin')
+      .replace(/\bgut hs[- ]?CRP\b/gi, 'Fecal Calprotectin');
+
     let doc;
     try { doc = JSON.parse(rawText); } catch {
       throw new Error('Failed to parse AI response as JSON');
