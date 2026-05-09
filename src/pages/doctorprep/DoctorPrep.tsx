@@ -1,5 +1,5 @@
 // src/pages/doctorprep/DoctorPrep.tsx
-import { useState, useEffect, Component, type ReactNode } from 'react';
+import { useState, useEffect, useRef, Component, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabase';
 import { AppShell } from '../../components/layout/AppShell';
@@ -94,6 +94,18 @@ export const DoctorPrep = () => {
       setGenError(err?.message ?? 'Generation failed. Please try again.');
     });
   };
+
+  // Clear stale error banner when a fresh prep lands. Without this, a prior
+  // failure's red banner stays on screen even after a successful retry —
+  // confusing UX where "Generation failed" sits over a fully-loaded prep.
+  const lastDocTsRef = useRef<string | null>(null);
+  useEffect(() => {
+    const currentTs = (doc as any)?.generated_at ?? null;
+    if (currentTs && currentTs !== lastDocTsRef.current) {
+      lastDocTsRef.current = currentTs;
+      setGenError(null);
+    }
+  }, [doc]);
   // Cap-reached detection: surface a prominent banner so the user always
   // sees why their click was rejected (instead of silent re-render).
   const isCapHit = !!genError && /used all|REGEN_LIMIT|generations for these lab|Upload genuinely new labs/i.test(genError);

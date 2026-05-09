@@ -1,6 +1,6 @@
 // src/pages/wellness/WellnessPlanPage.tsx
 // Visual-first redesign — Today / Eat / Move / Take primary tabs, full Plan behind a Details tab.
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
@@ -704,6 +704,22 @@ export const WellnessPlanPage = () => {
       setGenError(err?.message ?? 'Generation failed. Please try again.');
     });
   };
+
+  // Clear stale error banner when a fresh plan lands. Previously, if a
+  // generation timed out (130s) and the user retried successfully, the
+  // first failure's error banner stayed on screen until the user clicked
+  // Dismiss or refreshed — even though the new plan was rendered below it.
+  // Confusing UX: "Generation failed" red banner over a fully-loaded plan.
+  // Track the latest plan's generated_at; whenever it changes (i.e., a new
+  // plan rendered), wipe any prior error.
+  const lastPlanTsRef = useRef<string | null>(null);
+  useEffect(() => {
+    const currentTs = (plan as any)?.generated_at ?? null;
+    if (currentTs && currentTs !== lastPlanTsRef.current) {
+      lastPlanTsRef.current = currentTs;
+      setGenError(null);
+    }
+  }, [plan]);
 
   const handleExportPDF = () => {
     if (!plan) return;
