@@ -713,8 +713,13 @@ reason_to_consider must cite the SPECIFIC patient finding that triggers this ent
         medsLower,
       });
       for (const u of universalTests) {
-        const nameRegex = new RegExp(u.name.split('(')[0].trim().split(/\s+/)[0], 'i');
-        if (doc.tests_to_request.some((t: any) => nameRegex.test(t?.test_name ?? ''))) continue;
+        // EXACT canonical-name match (case-insensitive). Previous first-word
+        // match was too aggressive — when AI generated a narrow subset like
+        // "Total Testosterone, SHBG, Estradiol", the comprehensive injector
+        // got skipped. Exact match lets both land; downstream test-family
+        // dedup picks the comprehensive entry.
+        const exactName = u.name.toLowerCase().trim();
+        if (doc.tests_to_request.some((t: any) => String(t?.test_name ?? '').toLowerCase().trim() === exactName)) continue;
         doc.tests_to_request.push({
           emoji: '🧪',
           test_name: u.name,

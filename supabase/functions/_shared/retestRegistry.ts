@@ -602,6 +602,108 @@ const REGISTRY: RetestDef[] = [
     defaultPriority: 'moderate',
     aliases: [/\bekg\b/i, /\becg\b/i, /electrocardio/i],
   },
+
+  // ── Comprehensive male hormonal panel (Phase 1 addition) ──────────────
+  // Used by the universal male testosterone injector. Covers the full
+  // workup any modern PCP can order with the right ICD-10.
+  {
+    key: 'testosterone_panel_male',
+    canonical: 'Testosterone Panel (Total T + Free T + Bioavailable T + SHBG + Estradiol + LH + FSH)',
+    icd10: 'E29.1',
+    icd10Description: 'Testicular hypofunction / male hormonal evaluation',
+    insuranceNote: 'Covered with documented symptom (fatigue / low libido / weight resistance) or low-normal Total T. Modern PCPs order this routinely with R53.83 or N52.9.',
+    defaultPriority: 'moderate',
+    aliases: [
+      /testosterone\s*panel/i,
+      /total\s*t.*free\s*t.*bioavailable/i,
+      /\bbioavailable\s*t\b/i,
+      /total\s*testosterone[,\s]*shbg[,\s]*estradiol/i,
+    ],
+    surfaces: 'both',
+  },
+
+  // ── PCOS Panel (Phase 1 addition) ─────────────────────────────────────
+  // Universal female PCOS workup with cycle/acne/hirsutism cluster.
+  {
+    key: 'pcos_panel',
+    canonical: 'PCOS Panel (Total T + Free T + DHEA-S + LH:FSH ratio + SHBG + Fasting Insulin)',
+    icd10: 'E28.2',
+    icd10Description: 'Polycystic ovarian syndrome',
+    insuranceNote: 'Universally covered with documented cycle/skin symptom or PCOS dx.',
+    defaultPriority: 'high',
+    aliases: [
+      /pcos\s*panel/i,
+      /androgen.*lh.*fsh.*insulin/i,
+      /total\s*t.*free\s*t.*dhea/i,
+    ],
+    surfaces: 'both',
+  },
+
+  // ── Sleep Apnea Screening (Phase 1 addition) ──────────────────────────
+  // STOP-BANG questionnaire + sleep study referral. Universal injector
+  // fires for polycythemia + IR / sleep symptoms / weight resistance.
+  {
+    key: 'sleep_apnea_screening',
+    canonical: 'Sleep Apnea Screening (STOP-BANG questionnaire + sleep study referral if positive)',
+    icd10: 'G47.30',
+    icd10Description: 'Sleep apnea, unspecified',
+    insuranceNote: 'STOP-BANG is free in-office; sleep study covered with documented symptom pattern.',
+    defaultPriority: 'moderate',
+    specialist: 'sleep_medicine',
+    aliases: [
+      /sleep\s*apnea/i,
+      /\bhsat\b/i,
+      /\bpsg\b/i,
+      /polysomnography/i,
+      /stop[\s-]?bang/i,
+    ],
+    surfaces: 'both',
+  },
+
+  // ── Macrocytic anemia → B-vitamin escalation (Phase 1 addition) ───────
+  {
+    key: 'b_vitamin_workup_macrocytic',
+    canonical: 'B-Vitamin Workup (Serum B12 + RBC Folate + MMA + Homocysteine)',
+    icd10: 'D52.9',
+    icd10Description: 'Folate deficiency anemia, unspecified',
+    insuranceNote: 'Universally covered when MCV is elevated (macrocytic pattern).',
+    defaultPriority: 'high',
+    aliases: [
+      /b[\s-]?vitamin\s*workup/i,
+      /b12.*folate.*mma/i,
+      /macrocytic.*workup/i,
+    ],
+    surfaces: 'both',
+  },
+
+  // ── Microcytic anemia → Hemoglobin Electrophoresis (Phase 1 addition) ─
+  {
+    key: 'hgb_electrophoresis',
+    canonical: 'Hemoglobin Electrophoresis',
+    icd10: 'D56.9',
+    icd10Description: 'Thalassemia, unspecified',
+    insuranceNote: 'Covered when iron panel is normal in microcytic anemia.',
+    defaultPriority: 'moderate',
+    specialist: 'hematology',
+    aliases: [
+      /hemoglobin\s*electrophoresis/i,
+      /hb\s*electrophoresis/i,
+    ],
+  },
+
+  // ── Comprehensive CK injector (Phase 1 addition; covers statin baseline) ─
+  // Existing 'ck_if_muscle_symptoms' key is for symptomatic case; this
+  // covers any statin user (baseline) per AHA/ACC monitoring.
+  {
+    key: 'ck_statin_baseline',
+    canonical: 'Creatine Kinase (CK)',
+    icd10: 'M62.82',
+    icd10Description: 'Rhabdomyolysis (rule-out, statin monitoring)',
+    insuranceNote: 'Universally covered with statin medication code; routine baseline + 12-week.',
+    defaultPriority: 'moderate',
+    aliases: [/\bck\b/i, /creatine\s*kinase/i],
+    surfaces: 'both',
+  },
 ];
 
 const BY_KEY = new Map<string, RetestDef>(REGISTRY.map(r => [r.key, r]));
