@@ -714,20 +714,13 @@ Borderline upper-normal values do NOT trigger rare-disease screening. Default mi
 
       // (1) Word-cap enforcement — truncate at sentence boundary so output
       // stays grammatical. If no sentence boundary fits, hard-cap with ellipsis.
-      // Sentence boundary that doesn't break decimals: split on punctuation
-      // followed by whitespace + a capital letter or end of string.
+      // Sentence boundary that doesn't break decimals. Temp-protect decimals
+      // with a sentinel character before splitting, then restore.
       const splitSentences = (text: string): string[] => {
-        const out: string[] = [];
-        const re = /[^.!?]+(?:[.!?]+(?=\s+[A-Z])|[.!?]+$|$)/g;
-        let m: RegExpExecArray | null;
-        let lastIdx = 0;
-        while ((m = re.exec(text)) !== null) {
-          if (m.index < lastIdx) break;
-          out.push(m[0]);
-          lastIdx = re.lastIndex;
-          if (m[0].length === 0) break;
-        }
-        return out.length ? out : [text];
+        const SENTINEL = '';
+        const protected_ = text.replace(/(\d)\.(\d)/g, `$1${SENTINEL}$2`);
+        const parts = protected_.split(/(?<=[.!?])\s+(?=[A-Z])/);
+        return parts.map(p => p.replace(new RegExp(SENTINEL, 'g'), '.'));
       };
 
       // Fix orphan whitespace introduced after decimal points ("5. 1" → "5.1").

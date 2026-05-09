@@ -1232,10 +1232,18 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
           console.log(`[wellness-plan] dropped LOW-confidence suspected_condition: "${c?.name}"`);
           return false;
         }
+        // Drop entries with truncated/incomplete names ending in "vs." or
+        // "or" — the AI sometimes generates "Hemoconcentration vs." then
+        // gets cut by token budget mid-thought. Renders as a broken title.
+        const name = String(c?.name ?? '').trim();
+        if (/\b(vs\.?|or|and)\s*$/i.test(name)) {
+          console.log(`[wellness-plan] dropped truncated suspected_condition title: "${name}"`);
+          return false;
+        }
         return true;
       });
       if (before !== plan.suspected_conditions.length) {
-        console.log(`[wellness-plan] suspected_conditions LOW-conf filter: ${before} → ${plan.suspected_conditions.length}`);
+        console.log(`[wellness-plan] suspected_conditions filter: ${before} → ${plan.suspected_conditions.length}`);
       }
     }
 
@@ -2584,21 +2592,16 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
         return out;
       };
 
-      // Sentence boundary that doesn't break decimals: split on punctuation
-      // followed by whitespace + a capital letter or end of string. "ALT 5.5"
-      // and "Hct 51.4%" stay intact; "Foo. Bar." splits between sentences.
+      // Sentence boundary that doesn't break decimals. Previous regex tripped
+      // on patterns like "Hct 51.4 elevated" — the period+digit confused the
+      // tokenizer and the first half got dropped. New approach: temporarily
+      // replace decimal points with a sentinel so the splitter can't see them,
+      // split on real sentence boundaries, then restore decimals.
       const splitSentences = (text: string): string[] => {
-        const out: string[] = [];
-        const re = /[^.!?]+(?:[.!?]+(?=\s+[A-Z])|[.!?]+$|$)/g;
-        let m: RegExpExecArray | null;
-        let lastIdx = 0;
-        while ((m = re.exec(text)) !== null) {
-          if (m.index < lastIdx) break;
-          out.push(m[0]);
-          lastIdx = re.lastIndex;
-          if (m[0].length === 0) break;
-        }
-        return out.length ? out : [text];
+        const SENTINEL = '';
+        const protected_ = text.replace(/(\d)\.(\d)/g, `$1${SENTINEL}$2`);
+        const parts = protected_.split(/(?<=[.!?])\s+(?=[A-Z])/);
+        return parts.map(p => p.replace(new RegExp(SENTINEL, 'g'), '.'));
       };
 
       // Fix orphan whitespace introduced after decimal points (the AI sometimes

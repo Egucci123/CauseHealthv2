@@ -121,17 +121,57 @@ const RATIONALE: Record<string, string> = {
     'Direct measure of urine concentration. >1.025 strongly suggests dehydration. Free, fast, and confirms what the blood-side pattern is hinting at.',
 };
 
-/** Generic fallback when a test isn't in the rationale library. Picks one
- *  of the six universal themes that almost always applies to a confirmatory
- *  workup test. */
-const GENERIC_FALLBACK =
-  'Recommended by current clinical guidelines to confirm this diagnosis with the gold-standard test, quantify severity, and create a baseline so future labs can show whether interventions are working.';
+/** Pattern-based fallback when a test isn't in the rationale library.
+ *  Generates a test-specific rationale based on common test families so
+ *  multiple confirmatory_tests don't all show identical boilerplate. */
+function patternFallback(testName: string): string {
+  const t = testName.toLowerCase();
+  if (/\bfasting\s*insulin|homa[\s-]?ir|c[\s-]?peptide\b/.test(t))
+    return 'Quantifies insulin secretion at fasting state. Identifies hyperinsulinemia driving lipid + weight pattern even when glucose looks normal.';
+  if (/\bogtt|oral\s*glucose\s*tolerance/.test(t))
+    return 'Reveals postprandial glucose dysregulation that fasting glucose alone misses. 2-hour value >140 confirms impaired glucose tolerance.';
+  if (/\bcontinuous\s*glucose|cgm\b/.test(t))
+    return 'Real-time glucose pattern over 14 days; reveals post-meal spikes and overnight variability invisible to fasting labs.';
+  if (/\bggt\b|gamma[\s-]?glutamyl/.test(t))
+    return 'Distinguishes hepatic from biliary cause of ALT/AST elevation. Elevated GGT alongside ALT supports fatty liver or alcohol-related stress.';
+  if (/\bliver\s*ultrasound|fibroscan|elastography|cap\s*score/.test(t))
+    return 'Imaging confirms steatosis (fatty liver) and stages fibrosis non-invasively. Determines whether ALT elevation needs aggressive intervention.';
+  if (/\bana\b|antinuclear/.test(t))
+    return 'Screens for autoimmune overlap conditions. Negative result rules out the major autoimmune liver/connective-tissue causes; positive flags rheumatology referral.';
+  if (/\bfree\s*t[34]|thyroid\s*panel/.test(t))
+    return 'Free T3 and Free T4 measure thyroid hormone availability at the tissue level. Catches hypothyroidism patterns when TSH alone looks normal.';
+  if (/\biron\s*panel|ferritin|tibc|transferrin/.test(t))
+    return 'Confirms iron status. Ferritin <30 indicates deficiency; 30–50 functional deficiency. Pairs with hair loss / fatigue workup.';
+  if (/\bb12|methylmalonic|homocysteine/.test(t))
+    return 'MMA and homocysteine confirm tissue-level B12 deficiency when serum B12 is normal-but-low.';
+  if (/\bfolate/.test(t))
+    return 'Confirms folate status; mesalamine and other UC medications can deplete folate over time even with normal diet.';
+  if (/\bsleep\s*apnea|hsat|polysomnography|stop[\s-]?bang/.test(t))
+    return 'Confirms or rules out obstructive sleep apnea — common driver of elevated RBC/Hct, fatigue, and metabolic dysfunction.';
+  if (/\bapob\b|apolipoprotein/.test(t))
+    return 'Measures plaque-forming particle count directly. Better predictor of cardiovascular risk than LDL-C alone, especially with high triglycerides.';
+  if (/\blp\(?a\)?/.test(t))
+    return 'Genetic cardiovascular risk marker. Elevated Lp(a) is a once-in-lifetime test that flags risk a normal lipid panel misses.';
+  if (/\bcoronary\s*calcium|cac\s*score/.test(t))
+    return 'Imaging quantifies coronary artery plaque burden. Elevated score in a young patient warrants more aggressive statin/lifestyle intervention.';
+  if (/\burine\s*specific\s*gravity|osmolality/.test(t))
+    return '>1.025 specific gravity or elevated osmolality confirms dehydration as the cause of elevated RBC/Hct, sparing a hematology workup.';
+  if (/\bfecal\s*calprotectin|calprotectin/.test(t))
+    return 'Objective marker of intestinal inflammation. Quantifies UC activity independent of how the patient feels; guides medication adjustment.';
+  if (/\buric\s*acid/.test(t))
+    return 'Screens for hyperuricemia in metabolic syndrome / joint complaints. Elevated uric acid worsens cardiovascular and renal risk.';
+  if (/\bttg|celiac\s*serology|gliadin/.test(t))
+    return 'Screens for celiac disease while still eating gluten. Total IgA needed because IgA deficiency causes false negatives.';
+  // True fallback when no pattern matches — short, generic, but not the
+  // 30-word boilerplate that was leaking before.
+  return 'Confirmatory test that quantifies the pattern and tracks response.';
+}
 
 /** Convert a list of test names (legacy string[]) into {test, why} objects
  *  with a clinical rationale attached. Used by deterministic backstops. */
 export function attachWhys(tests: string[]): TestWithWhy[] {
   return tests.map((t) => ({
     test: t,
-    why: RATIONALE[t] ?? GENERIC_FALLBACK,
+    why: RATIONALE[t] ?? patternFallback(t),
   }));
 }
