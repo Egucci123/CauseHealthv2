@@ -2410,6 +2410,51 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
           console.log(`[wellness-plan] suboptimal_flags: ${plan.suboptimal_flags.length} value(s) in lab-normal but outside optimal range`);
         }
       }
+
+      // (g) PHASE 10 — Trust + transparency layer. Surface the guideline
+      // citations behind the plan's recommendations. Universal: pulls from
+      // canonical.GUIDELINE_CITATIONS based on which tests/calculators
+      // appear in this plan. Renders as "Why we recommended this" footer.
+      const { GUIDELINE_CITATIONS } = await import('../_shared/canonical.ts');
+      const citationsUsed: Array<{ topic: string; citation: string }> = [];
+      const citeIfPresent = (topic: string, key: string) => {
+        if (GUIDELINE_CITATIONS[key]) citationsUsed.push({ topic, citation: GUIDELINE_CITATIONS[key] });
+      };
+      const retestNamesLower = (plan.retest_timeline ?? []).map((r: any) => String(r?.marker ?? '').toLowerCase());
+      const inRetest = (re: RegExp) => retestNamesLower.some((n: string) => re.test(n));
+      if (inRetest(/apob/i)) citeIfPresent('ApoB', 'apob');
+      if (inRetest(/lp\(?a\)?|lipoprotein.?a/i)) citeIfPresent('Lp(a)', 'lpa');
+      if (plan.risk_calculators?.ascvd_10yr) citeIfPresent('ASCVD 10-year risk', 'ascvd');
+      if (plan.risk_calculators?.fib4) citeIfPresent('FIB-4 fibrosis score', 'fib4');
+      if (plan.risk_calculators?.homa_ir) citeIfPresent('HOMA-IR', 'homa_ir');
+      if (inRetest(/hba1c|a1c/i)) citeIfPresent('HbA1c diabetes screening', 'hba1c');
+      if (inRetest(/fasting insulin|homa/i)) citeIfPresent('Fasting Insulin / HOMA-IR', 'fasting_insulin');
+      if (inRetest(/thyroid panel|free t[34]/i)) citeIfPresent('Thyroid Panel', 'thyroid_panel');
+      if (inRetest(/tpo|tg ab|hashimoto/i)) citeIfPresent("Hashimoto's antibodies", 'hashimoto');
+      if (inRetest(/testosterone/i)) citeIfPresent('Testosterone Panel', 'testosterone');
+      if (inRetest(/pcos/i)) citeIfPresent('PCOS Panel', 'pcos');
+      if (inRetest(/vitamin d|25.?hydroxy/i)) citeIfPresent('Vitamin D 25-OH', 'vit_d');
+      if (inRetest(/b[\s-]?12|methylmalonic|cobalamin/i)) citeIfPresent('Vitamin B12 Workup', 'vit_b12');
+      if (inRetest(/methylmalonic|mma/i)) citeIfPresent('Methylmalonic Acid', 'mma');
+      if (inRetest(/iron panel|ferritin/i)) citeIfPresent('Iron Panel', 'iron_panel');
+      if (inRetest(/fecal calprotectin/i)) citeIfPresent('Fecal Calprotectin', 'fecal_calprotectin');
+      if (inRetest(/celiac/i)) citeIfPresent('Celiac Serology', 'celiac');
+      if (inRetest(/hs[-\s]?crp/i)) citeIfPresent('hs-CRP', 'hs_crp');
+      if (inRetest(/sleep apnea|stop[\s-]?bang/i)) citeIfPresent('STOP-BANG / Sleep Apnea Screening', 'stop_bang');
+      if (inRetest(/uric acid/i)) citeIfPresent('Uric Acid', 'uric_acid');
+      if (inRetest(/liver ultrasound|fibroscan/i)) citeIfPresent('Liver Ultrasound', 'liver_ultrasound');
+      if (inRetest(/ggt/i)) citeIfPresent('GGT', 'ggt');
+      // Dedup
+      const seen = new Set<string>();
+      plan.citations = citationsUsed.filter(c => {
+        const k = c.citation;
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      });
+      if (plan.citations.length > 0) {
+        console.log(`[wellness-plan] citations: ${plan.citations.length} guideline references`);
+      }
     }
 
     // ╔═════════════════════════════════════════════════════════════════════╗

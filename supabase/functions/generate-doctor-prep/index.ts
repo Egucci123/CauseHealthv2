@@ -817,6 +817,10 @@ reason_to_consider must cite the SPECIFIC patient finding that triggers this ent
           doc.suboptimal_flags = pd.suboptimal_flags;
           console.log(`[doctor-prep] Inherited ${pd.suboptimal_flags.length} suboptimal flag(s) from wellness plan`);
         }
+        if (Array.isArray(pd?.citations) && pd.citations.length > 0) {
+          doc.citations = pd.citations;
+          console.log(`[doctor-prep] Inherited ${pd.citations.length} citation(s) from wellness plan`);
+        }
       }
 
       // Differential cap by mode

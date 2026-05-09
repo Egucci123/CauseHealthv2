@@ -199,6 +199,47 @@ export const CRISIS_RESOURCES_TEXT =
 // PRE-ANALYTICAL GUIDANCE (Phase 3 will wire this up)
 // Test prep tips — surfaced in lab analysis + retest reminders.
 // ──────────────────────────────────────────────────────────────────────
+// ──────────────────────────────────────────────────────────────────────
+// PHASE 10 — TRUST + TRANSPARENCY LAYER
+// Citation library mapping common test/recommendation patterns to the
+// guideline they're sourced from. Surfaces in plan_data.citations as
+// a "Why we recommended this" footer.
+// ──────────────────────────────────────────────────────────────────────
+export const GUIDELINE_CITATIONS: Record<string, string> = {
+  // Cardiovascular
+  ascvd: 'AHA/ACC 2018 Guideline on Management of Blood Cholesterol',
+  apob: 'AHA/ACC 2018 + NLA 2024 — ApoB target <80 on statin therapy',
+  lpa: 'NLA 2019 Position Statement — once-in-lifetime Lp(a) screening',
+  cac: 'AHA/ACC 2019 Primary Prevention — CAC for borderline-intermediate ASCVD risk',
+  // Liver / NAFLD
+  fib4: 'AGA 2023 NAFLD Clinical Care Pathway',
+  ggt: 'EASL 2024 Clinical Practice Guidelines — Liver Fibrosis Assessment',
+  liver_ultrasound: 'AASLD 2023 Practice Guidance — NAFLD Imaging',
+  // Endocrine / Metabolic
+  hba1c: 'ADA 2024 Standards of Care — Diabetes Diagnosis',
+  homa_ir: 'Matthews 1985 / ADA-recognized insulin-resistance index',
+  fasting_insulin: 'AACE 2023 Clinical Practice Guidelines for Insulin Resistance',
+  thyroid_panel: 'AACE/ATA 2014 — Thyroid Function Tests',
+  hashimoto: 'ATA 2024 — Antibody Testing in Hypothyroid Workup',
+  testosterone: 'AUA 2023 + AACE — Male Hypogonadism Diagnostic Algorithm',
+  pcos: 'AE-PCOS 2023 + Endocrine Society 2013 — PCOS Diagnosis',
+  // Nutrition / Hematology
+  vit_d: 'Endocrine Society 2011 + Vitamin D Council — Optimal 40-60 ng/mL',
+  vit_b12: 'AACE 2014 + Pernicious Anemia Society — MMA + Homocysteine',
+  iron_panel: 'AACE 2023 / Function Health — Ferritin Optimal Ranges',
+  mma: 'AACE 2014 — Methylmalonic Acid for Tissue B12 Status',
+  // GI / IBD
+  fecal_calprotectin: 'AGA 2023 IBD Activity Guidelines',
+  celiac: 'ACG 2023 Guideline — Celiac Disease',
+  // Inflammation
+  hs_crp: 'AHA/CDC 2003 + Ridker — hs-CRP for CV Risk Stratification',
+  // Sleep
+  stop_bang: 'STOP-BANG questionnaire (Chung 2008) — OSA Screening',
+  // Bone
+  pth_calcium: 'KDOQI 2017 + Endocrine Society — Calcium-PTH Axis',
+  uric_acid: 'ACR 2020 Gout Guidelines',
+};
+
 export const PRE_ANALYTICAL_GUIDANCE = {
   fasting: 'Fast 12 hours before the draw (water OK). Required for triglycerides, fasting glucose, fasting insulin.',
   biotin: 'Stop biotin (B7) supplements at doses ≥5 mg for 72 hours before the draw. High-dose biotin distorts thyroid (TSH, Free T4) and troponin results.',
