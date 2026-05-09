@@ -302,13 +302,16 @@ function mergeIntoFinalPlan(args: {
     };
   });
 
-  // Apply allergy + pregnancy filter as belt-and-suspenders
-  const filteredStack = applyAllergyFilters(
+  // Apply allergy + pregnancy filter (MUTATES supplementStack in place;
+  // returns the list of REMOVED items — we discard that, the stack itself
+  // is the filtered list).
+  applyAllergyFilters(
     supplementStack,
-    /shellfish|fish/i.test(profile?.allergies ?? '') ? ['shellfish'] : [],
+    String(profile?.allergies ?? '').toLowerCase(),
     !!profile?.is_pregnant,
     /\b(warfarin|coumadin|eliquis|xarelto|apixaban|rivaroxaban)\b/i.test(facts.patient.meds.join(' ').toLowerCase()),
-  ) as typeof supplementStack;
+  );
+  const filteredStack = supplementStack;
 
   // Merge suspected_conditions: deterministic fact + AI evidence/what_to_ask
   const proseByName = new Map<string, NarrativeOutput['condition_prose'][number]>();
@@ -351,18 +354,51 @@ function mergeIntoFinalPlan(args: {
     summary: narrative.summary,
     generated_at: new Date().toISOString(),
 
-    // Action layer
-    today_actions: action.today_actions,
-    supplement_stack: filteredStack,
-    eating_pattern: stack.eating_pattern,
-    workouts: stack.workouts,
-    lifestyle_interventions: stack.lifestyle_interventions,
-    action_plan: action.action_plan,
+    // Action layer (defensive defaults — every array shape stays an array)
+    today_actions: Array.isArray(action.today_actions) ? action.today_actions : [],
+    supplement_stack: Array.isArray(filteredStack) ? filteredStack.map(s => ({
+      ...s,
+      alternatives: Array.isArray(s.alternatives) ? s.alternatives : [],
+    })) : [],
+    eating_pattern: stack.eating_pattern && typeof stack.eating_pattern === 'object'
+      ? {
+          name: String(stack.eating_pattern.name ?? 'Mediterranean'),
+          rationale: String(stack.eating_pattern.rationale ?? ''),
+          emphasize: Array.isArray(stack.eating_pattern.emphasize) ? stack.eating_pattern.emphasize : [],
+          limit: Array.isArray(stack.eating_pattern.limit) ? stack.eating_pattern.limit : [],
+        }
+      : { name: 'Mediterranean', rationale: '', emphasize: [], limit: [] },
+    workouts: Array.isArray(stack.workouts) ? stack.workouts : [],
+    lifestyle_interventions: {
+      diet: Array.isArray(stack.lifestyle_interventions?.diet) ? stack.lifestyle_interventions.diet : [],
+      sleep: Array.isArray(stack.lifestyle_interventions?.sleep) ? stack.lifestyle_interventions.sleep : [],
+      exercise: Array.isArray(stack.lifestyle_interventions?.exercise) ? stack.lifestyle_interventions.exercise : [],
+      stress: Array.isArray(stack.lifestyle_interventions?.stress) ? stack.lifestyle_interventions.stress : [],
+    },
+    action_plan: action.action_plan && typeof action.action_plan === 'object'
+      ? {
+          phase_1: { ...action.action_plan.phase_1, actions: Array.isArray(action.action_plan.phase_1?.actions) ? action.action_plan.phase_1.actions : [] },
+          phase_2: { ...action.action_plan.phase_2, actions: Array.isArray(action.action_plan.phase_2?.actions) ? action.action_plan.phase_2.actions : [] },
+          phase_3: { ...action.action_plan.phase_3, actions: Array.isArray(action.action_plan.phase_3?.actions) ? action.action_plan.phase_3.actions : [] },
+        }
+      : { phase_1: { name: '', focus: '', actions: [] }, phase_2: { name: '', focus: '', actions: [] }, phase_3: { name: '', focus: '', actions: [] } },
 
     // Clinical layer
-    retest_timeline: retestTimeline,
-    suspected_conditions: suspectedConditions,
-    symptoms_addressed: narrative.symptoms_addressed,
+    retest_timeline: Array.isArray(retestTimeline) ? retestTimeline : [],
+    suspected_conditions: Array.isArray(suspectedConditions) ? suspectedConditions : [],
+    symptoms_addressed: Array.isArray(narrative.symptoms_addressed) ? narrative.symptoms_addressed : [],
+
+    // v1-compatibility fields (frontend reads these — keep as empty arrays
+    // / null so render code that doesn't guard against undefined works)
+    interaction_warnings: [],
+    progress_summary: null,
+    plan_mode: facts.isOptimizationMode ? 'optimization' : 'treatment',
+    multi_marker_patterns: [],
+    medication_depletions: facts.depletions.map(d => ({
+      medication: d.medsMatched.join(' / '),
+      nutrient: d.nutrient,
+      mechanism: d.mechanism,
+    })),
 
     // Safety
     emergency_alerts: facts.emergencyAlerts,

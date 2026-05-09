@@ -19,6 +19,27 @@
 
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { logEvent } from '../lib/clientLog';
+import { queryClient } from '../lib/queryClient';
+
+// Nuke every layer of cache that could be feeding a corrupted blob back
+// into the app. Used by Try Again / Go Back / Go Home so a single bad
+// payload (e.g. a wellness plan with the wrong shape) cannot lock the
+// user into a perma-error loop. After this, the next render re-fetches
+// fresh data from the server.
+async function nukeCachesAndReload(href: string) {
+  try { queryClient.clear(); } catch {}
+  try {
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    }
+  } catch {}
+  try { window.localStorage?.removeItem('REACT_QUERY_OFFLINE_CACHE'); } catch {}
+  // Cache-bust so HTML/bundle refetch from network, not from disk cache
+  const url = new URL(href, window.location.origin);
+  url.searchParams.set('_v', String(Date.now()));
+  window.location.replace(url.toString());
+}
 
 interface Props {
   children: ReactNode;
@@ -50,27 +71,23 @@ export class RootErrorBoundary extends Component<Props, State> {
     if (import.meta.env.DEV) console.error('[RootErrorBoundary]', error, info);
   }
 
-  reset = () => this.setState({ hasError: false, error: null });
+  // Reload current page with caches cleared. The previous "reset" just
+  // re-rendered the same tree, which re-fetched the same cached payload
+  // and crashed again — leaving the user stuck. Now we clear React Query,
+  // service-worker caches, and force a network refetch.
+  reset = () => { void nukeCachesAndReload(window.location.pathname + window.location.search); };
 
   goBack = () => {
-    // history.back triggers a normal SPA back nav. If there's no prior
-    // history (deep-link landing), fall through to /dashboard.
+    // Cache-bust before going back so the destination page doesn't read
+    // the same corrupted cached payload that crashed this one.
     if (window.history.length > 1) {
-      window.history.back();
-      // history.back is async — clear the boundary so the next render
-      // attempt happens clean.
-      setTimeout(() => this.reset(), 50);
+      void nukeCachesAndReload(document.referrer || '/dashboard');
     } else {
-      window.location.href = '/dashboard';
+      void nukeCachesAndReload('/dashboard');
     }
   };
 
-  goHome = () => {
-    // Hard navigation — bypasses any potentially-corrupted React state.
-    // Authenticated users land on /dashboard; auth gate redirects to
-    // /login if no session. Either way the user lands on something real.
-    window.location.href = '/dashboard';
-  };
+  goHome = () => { void nukeCachesAndReload('/dashboard'); };
 
   render() {
     if (!this.state.hasError) return this.props.children;
