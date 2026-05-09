@@ -790,6 +790,27 @@ reason_to_consider must cite the SPECIFIC patient finding that triggers this ent
         doc.possible_conditions = [];
       }
 
+      // ── PHASE 4 — Inherit safety + prep fields from wellness plan ──────
+      // Emergency alerts, crisis alert, and pre-analytical prep instructions
+      // are global signals that belong on every patient-facing surface.
+      // If the wellness plan computed them, doctor prep inherits — same
+      // values, no recomputation drift.
+      if (latestPlan && planDrawMatches && planFresh) {
+        const pd = latestPlan.plan_data as any;
+        if (Array.isArray(pd?.emergency_alerts) && pd.emergency_alerts.length > 0) {
+          doc.emergency_alerts = pd.emergency_alerts;
+          console.log(`[doctor-prep] Inherited ${pd.emergency_alerts.length} emergency alert(s) from wellness plan`);
+        }
+        if (pd?.crisis_alert) {
+          doc.crisis_alert = pd.crisis_alert;
+          console.log(`[doctor-prep] Inherited crisis_alert from wellness plan`);
+        }
+        if (Array.isArray(pd?.prep_instructions) && pd.prep_instructions.length > 0) {
+          doc.prep_instructions = pd.prep_instructions;
+          console.log(`[doctor-prep] Inherited ${pd.prep_instructions.length} prep instruction(s) from wellness plan`);
+        }
+      }
+
       // Differential cap by mode
       const isOptMode = isHealthy;
       const testCap = isOptMode ? 10 : 20;
