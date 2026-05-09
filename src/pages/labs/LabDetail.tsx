@@ -374,6 +374,17 @@ export const LabDetail = () => {
     if (isHealthy(v.optimal_flag)) return 'healthy';
     // No usable optimal_flag → fall back to standard_flag
     if (['low', 'high', 'critical_low', 'critical_high'].includes(v.standard_flag ?? '')) return 'out';
+    // Final fallback: compute from raw value vs standard range. Catches rows
+    // inserted by paths that didn't run computeFlag (legacy data, direct API
+    // injections, edge cases). Without this the chip counts show 0/0/N for
+    // any draw missing both flags.
+    const val = typeof v.value === 'number' ? v.value : Number(v.value);
+    const lo = typeof v.standard_low === 'number' ? v.standard_low : null;
+    const hi = typeof v.standard_high === 'number' ? v.standard_high : null;
+    if (Number.isFinite(val)) {
+      if (hi != null && val > hi) return 'out';
+      if (lo != null && val < lo) return 'out';
+    }
     return 'healthy';
   };
 

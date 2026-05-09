@@ -2,9 +2,9 @@
 // Wraps any feature behind a paywall. If the user is paid (pro or comp), shows
 // the children unchanged. Otherwise shows a clean upgrade card with redeem-code escape.
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { useSubscription } from '../../lib/subscription';
 import { useAuthStore } from '../../store/authStore';
+import { useCreateCheckoutSession } from '../../hooks/useProfile';
 import { supabase } from '../../lib/supabase';
 import { Button } from '../ui/Button';
 
@@ -22,6 +22,11 @@ export const PaywallGate = ({ feature, description, children }: Props) => {
 
 const PaywallCard = ({ feature, description }: { feature: string; description?: string }) => {
   const [showRedeem, setShowRedeem] = useState(false);
+  // Direct checkout mutation — clicking Unlock fires Stripe immediately.
+  // Was previously a <Link to="/settings?tab=subscription"> which forced the
+  // user through a second click on the settings page to actually start
+  // checkout. Two clicks where one should work; killed conversions.
+  const checkout = useCreateCheckoutSession();
   return (
     <div className="bg-clinical-white rounded-[14px] shadow-card border-t-[3px] border-[#D4A574] p-6 sm:p-10 text-center max-w-xl mx-auto">
       <div className="w-14 h-14 bg-[#D4A574]/15 rounded-full flex items-center justify-center mx-auto mb-5">
@@ -35,9 +40,21 @@ const PaywallCard = ({ feature, description }: { feature: string; description?: 
       <p className="text-authority text-3xl text-clinical-charcoal font-bold mb-1">$19<span className="text-base text-clinical-stone font-normal"> one-time</span></p>
       <p className="text-precision text-[0.65rem] text-clinical-stone tracking-wide mb-6">Lifetime access · No subscription</p>
       <div className="flex flex-col gap-3 max-w-sm mx-auto">
-        <Link to="/settings?tab=subscription">
-          <Button variant="primary" size="lg" icon="auto_awesome" className="w-full">Unlock for $19</Button>
-        </Link>
+        <Button
+          variant="primary"
+          size="lg"
+          icon="auto_awesome"
+          loading={checkout.isPending}
+          onClick={() => checkout.mutate()}
+          className="w-full"
+        >
+          {checkout.isPending ? 'Redirecting to checkout…' : 'Unlock for $19'}
+        </Button>
+        {checkout.isError && (
+          <p className="text-body text-[#C94F4F] text-xs leading-snug">
+            {(checkout.error as Error)?.message ?? 'Could not start checkout. Please try again.'}
+          </p>
+        )}
 
         {/* "Have a code?" — much more visible than the prior 10px monospace
             link. Now a full-width secondary button with brand-gold border so

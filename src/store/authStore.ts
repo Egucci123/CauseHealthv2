@@ -109,7 +109,13 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
           set({ user: session.user, session });
         }
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          try { await get().fetchProfile(); } catch (e) { console.warn('Profile fetch failed:', e); }
+          // Fire-and-forget. Awaiting here was blocking the listener
+          // callback for 1-3s on signup (until the profile-creation DB
+          // trigger ran). That left PublicOnlyRoute stuck on AuthLoading
+          // and made the Register page feel like its submit button was
+          // hung. fetchProfile has its own retry now (see below) for the
+          // trigger race, so this can run in parallel safely.
+          get().fetchProfile().catch(e => console.warn('Profile fetch failed:', e));
         }
       } else if (event === 'SIGNED_OUT') {
         // Only clear if there's actually something to clear. SIGNED_OUT fires
@@ -229,14 +235,30 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     const user = get().user;
     if (!user) return;
 
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
+    // Retry up to 5 times with 400ms backoff to handle the post-signup race
+    // where auth.users is created but the profiles trigger hasn't fired yet.
+    // PGRST116 = "Results contain 0 rows" (no profile yet) — retry.
+    // Real errors (network, RLS, etc.) bail immediately.
+    let data: any = null;
+    let lastErr: any = null;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const res = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      if (res.data) { data = res.data; break; }
+      lastErr = res.error;
+      if (res.error?.code !== 'PGRST116') break; // not the race we're catching
+      await new Promise(r => setTimeout(r, 400));
+    }
 
+    if (!data) {
+      if (lastErr) console.error('Failed to fetch profile:', lastErr.message);
+      return;
+    }
+    const error = null; // legacy var keeps the shape below identical
     if (error) {
-      console.error('Failed to fetch profile:', error.message);
       return;
     }
 

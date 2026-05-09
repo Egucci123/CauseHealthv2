@@ -557,6 +557,25 @@ STANDARD-OF-CARE BASELINE (trigger d — include for every adult, regardless of 
 
 NEVER on (d) baseline (only fire via triggers a/b/c/e): AM Cortisol, 24h cortisol, DHEA-S, Zinc, Free T (without total T also firing), Homocysteine standalone, MMA standalone, Reverse T3, TPO Ab as baseline (only with TSH borderline + sx), NMR lipid, GI-MAP, comprehensive stool, food sensitivity panels, organic acids, hair tissue mineral, micronutrient panels.
 
+EXACT TEST NAMES — never invent or paraphrase. Use these names verbatim:
+  ✅ "Fecal Calprotectin"   — gut-inflammation marker for IBD activity (synonym FCAL)
+  ❌ "Fecal gut hs-CRP", "Fecal CRP", "fecal hs-CRP", "gut hs-CRP" — these are NOT real tests; do NOT invent names by mashing "fecal" + "hs-CRP"
+  ✅ "hs-CRP"              — serum C-reactive protein (cardiovascular/systemic inflammation; blood draw)
+  ✅ "Fecal Occult Blood (FOBT)" or "Fecal Immunochemical Test (FIT)"
+  ✅ "Celiac Serology (tTG-IgA + Total IgA)"
+  ❌ "16S rRNA Microbiome Sequencing", "Dysbiosis Index Score", "Comprehensive Stool Analysis", "GI-MAP" — these are functional-medicine tests, NOT routine PCP/GI orders. Don't include unless specialist:'functional' AND the patient hits a clear functional indication. PCPs and GI clinicians do not order them.
+hs-CRP and Fecal Calprotectin measure DIFFERENT things — never use one's name as a synonym for the other.
+
+TRIGGER LETTER RULES — pick the trigger from the patient's reality, not from how the test relates to a pattern:
+  (a) symptom — patient REPORTED the symptom in onboarding (fatigue, joint pain, etc.)
+  (b) medication — patient is ON the drug AND it depletes/affects this marker (statin→CK, mesalamine→folate)
+  (c) lab finding — marker is OUT OF RANGE or WATCH-tier on THIS draw (TG 178, Vit D 28)
+  (d) baseline — standard-of-care for this age/sex (CMP/CBC/Lipid/A1c/etc.)
+  (e) early-detection pattern — within-range cluster fits a hidden condition (TSH 2.5-4.5 + hypothyroid sx → Hashimoto's Ab; ferritin <50 + hair loss → Iron Panel)
+A "confirmatory workup for [Possible Condition X]" is trigger (e) — never (b). (b) is reserved for medication depletions, not pattern confirmations.
+
+PATTERN REFERENCES — only mention a Possible Condition pattern in a retest entry if THAT EXACT pattern also appears in suspected_conditions[]. Never reference an orphan pattern. If the pattern won't be in suspected_conditions, write the rationale standalone without a "see Possible Conditions" pointer.
+
 SYMPTOM → TEST MAPPING (trigger a — add the relevant tests if not in retest already):
   Fatigue: CBC, Ferritin, Iron Panel, B12 Workup, Vit D, TSH, A1c; men → Testosterone Panel (35+ or symptomatic)
   Joint pain: hs-CRP, Vit D, Uric Acid (RF/anti-CCP only if >6wk inflammatory)
@@ -577,10 +596,11 @@ SYMPTOM → TEST MAPPING (trigger a — add the relevant tests if not in retest 
 
 ROUTING (specialist field on each entry):
   pcp (default for ALL blood tests — Iron Panel, Folate, B12, Mg, Vit D, A1c, Lipid, ApoB, Lp(a), TSH, Testosterone Panel, hs-CRP serum, Hashimoto's Ab, Insulin/HOMA-IR — even with UC/IBD dx, PCPs draw blood)
-  gi      — fecal calprotectin/lactoferrin/occult blood, stool studies, celiac serology, H. pylori, endoscopy/colonoscopy referrals
+  gi      — Fecal Calprotectin, fecal lactoferrin, FOBT/FIT, stool studies, celiac serology, H. pylori, endoscopy/colonoscopy referrals
   imaging — Liver Ultrasound, FibroScan, CAC, sleep study (HSAT/PSG), DEXA, mammogram, EKG, abdominal/pelvic US
   functional — DUTCH cortisol, organic acids, comprehensive stool (rare; only when clearly justified)
   mental_health — PHQ-9, GAD-7
+ROUTING ENFORCEMENT — Fecal Calprotectin and any stool-based test ALWAYS goes to specialist:'gi'. Microbiome/dysbiosis sequencing (if it ever fires) ALWAYS goes to specialist:'functional', never 'pcp'. PCPs do not order any stool test that is not standard FOBT/FIT — that's GI's job.
 
 ONE TEST PER ENTRY — never combine ("Liver Panel" when CMP already covers ALT/AST is redundant; use CMP + GGT separately if needed). Never duplicate ("Lipid Panel" + "Lipid Panel + ApoB" is two of the same). Each test gets its own row with its own ICD-10 + insurance_note.
 

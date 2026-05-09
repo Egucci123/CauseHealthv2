@@ -20,7 +20,7 @@ export const LabUpload = () => {
   const qc = useQueryClient();
   const user = useAuthStore(s => s.user);
   const [searchParams, setSearchParams] = useSearchParams();
-  const { phase, progress, statusMessage, drawId, extraction, errorMessage, completedDrawId, paymentTier, reset, startUpload, confirmAndAnalyze, resumeFromDraw } = useLabUploadStore();
+  const { phase, progress, statusMessage, drawId, extraction, errorMessage, completedDrawId, paymentTier, reset, enterManual, startUpload, confirmAndAnalyze, resumeFromDraw } = useLabUploadStore();
 
   // Returning from a $5 upload-pack Stripe checkout. Optimistic +1 credit so
   // the user can immediately upload again without waiting on the webhook,
@@ -164,7 +164,7 @@ export const LabUpload = () => {
             <DropZone onFilesSelect={handleUpload} />
             <div className="text-center">
               <p className="text-body text-clinical-stone text-sm mb-2">Don't have a PDF? No problem.</p>
-              <button onClick={reset} className="text-precision text-[0.68rem] text-primary-container font-bold tracking-widest uppercase hover:underline">Enter Values Manually</button>
+              <button onClick={enterManual} className="text-precision text-[0.68rem] text-primary-container font-bold tracking-widest uppercase hover:underline">Enter Values Manually</button>
             </div>
           </div>
         )}

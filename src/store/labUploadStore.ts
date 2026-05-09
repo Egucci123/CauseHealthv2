@@ -36,6 +36,7 @@ interface LabUploadStore {
   paymentTier: PaymentTier | null;
 
   reset: () => void;
+  enterManual: () => void;
   startUpload: (files: File[], userId: string) => void;
   confirmAndAnalyze: (values: ExtractedValue[], overrides: { drawDate?: string; labName?: string }, userId: string) => void;
   updateExtraction: (values: ExtractedValue[]) => void;
@@ -58,6 +59,17 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
   paymentTier: null,
 
   reset: () => set({ phase: 'idle', progress: 0, statusMessage: '', drawId: null, extraction: null, errorMessage: null, completedDrawId: null, isRunning: false, paymentTier: null }),
+
+  // Switch directly into manual entry. Used by the "Enter Values Manually"
+  // link on the idle upload page. Previously that link called reset() which
+  // kept phase=idle, leaving the link dead. Now the link calls enterManual()
+  // and the form renders.
+  enterManual: () => set({
+    phase: 'manual',
+    progress: 0, statusMessage: '', drawId: null,
+    extraction: null, errorMessage: null, completedDrawId: null,
+    isRunning: false, paymentTier: null,
+  }),
 
   updateExtraction: (values) => set(s => ({ extraction: s.extraction ? { ...s.extraction, values } : null })),
 
