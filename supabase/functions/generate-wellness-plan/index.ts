@@ -2455,6 +2455,30 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
       if (plan.citations.length > 0) {
         console.log(`[wellness-plan] citations: ${plan.citations.length} guideline references`);
       }
+
+      // (h) PHASE 11 — Self-validate the plan against the 25-check launch
+      // checklist. Result lives in plan_data.launch_validation so weekly
+      // QA review is a simple SQL query:
+      //   SELECT * FROM wellness_plans
+      //   WHERE plan_data->'launch_validation'->>'passed' = 'false';
+      const { validatePlan } = await import('../_shared/launchValidation.ts');
+      const validation = validatePlan({
+        plan,
+        labs: labValues ?? [],
+        meds: (Array.isArray(meds) ? meds : []).map((m: any) => String(m?.name ?? '').toLowerCase()),
+        supps: (Array.isArray(supps) ? supps : []).map((s: any) => String(s?.name ?? '').toLowerCase()),
+        age: ageNum ?? undefined,
+        sex: sexLower,
+      });
+      plan.launch_validation = validation;
+      if (!validation.passed) {
+        console.warn(`[wellness-plan] launch_validation FAILED — ${validation.summary}`);
+        for (const c of validation.checks.filter(c => !c.passed && (c.severity === 'fatal' || c.severity === 'high'))) {
+          console.warn(`  [${c.severity}] ${c.id}: ${c.detail ?? c.description}`);
+        }
+      } else {
+        console.log(`[wellness-plan] launch_validation: ${validation.summary}`);
+      }
     }
 
     // ╔═════════════════════════════════════════════════════════════════════╗
