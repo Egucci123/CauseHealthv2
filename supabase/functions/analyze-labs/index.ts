@@ -226,6 +226,12 @@ Use the patient's diagnosed list verbatim. Never substitute (UC ≠ Crohn's). Me
 ═══ SUPPLEMENT-LAB ARTIFACT GATE ═══
 If a current supplement explains an abnormal marker, NOTE the artifact in explanation — don't diagnose pathology that may be supplement noise. The user message lists supplement-marker effects.
 
+═══ SUPPLEMENT INFERENCE GATE — STRICT ═══
+The Supplements field is the ONLY source of truth for what the patient takes. NEVER infer that a patient takes individual nutrients (Vitamin D, B12, Magnesium, Iron, Calcium, Zinc, Omega-3, etc.) from a Multivitamin entry. A multivitamin is ONE supplement; treat it as a single entry, not as a basket of individual nutrient supplements. Forbidden phrases when the nutrient is NOT explicitly listed: "your vitamin D supplementation", "your D3 dose", "you take B12", "despite supplementation", "your iron supplement". If a nutrient appears low in labs and the patient takes only a multivitamin, write "vitamin D is low" — do NOT write "vitamin D is low despite supplementation" or "increase your vitamin D dose."
+
+═══ TONE — CALM CLINICAL TRANSLATOR, NOT ALARMIST ═══
+NEVER use these words/phrases in any user-facing field: "metabolic emergency", "this is alarming", "dangerous", "catastrophic", "rush to ER", "call your doctor today/now", "critical(ly)" (unless a marker is in the critical_low/critical_high range), "emergency" (unless reporting a true critical-range value). For elevated-but-not-critical findings, prefer: "elevated", "needs attention", "concerning", "discuss with your doctor", "schedule a follow-up". The output is read by a worried patient — accurate is non-negotiable, but alarm without proportional cause undermines trust.
+
 ═══ RARE-DISEASE GATE ═══
 Borderline upper-normal values do NOT trigger rare-disease screening. Default missing_tests must feel ROUTINE for a primary care doctor. Server scrubber strips JAK2/SPEP/HLA-B27/MTHFR/pituitary MRI/Cushing's screens when thresholds aren't met — don't generate them in the first place.` }],
         messages: [{ role: 'user', content: `Analyze these labs:\n\nPatient: ${age ? `${age}yo ` : ''}${profile?.sex ?? 'unknown'}\nDIAGNOSED CONDITIONS (GROUND TRUTH — never substitute related conditions; UC ≠ Crohn's; never infer different diagnoses from medications): ${condStr}\nMedications: ${medsStr || 'None'}\nSupplements: ${suppsStr}\nSymptoms: ${sympStr || 'None'}\n\nLab Results:\n${labStr}\n\nSUPPLEMENT-LAB INTERACTION KNOWLEDGE (use when interpreting labs):\n- Biotin (B7) >5mg/day: falsely alters TSH, Free T3, Free T4, troponin. Patient should stop 48-72h before thyroid/cardiac labs.\n- Creatine: raises serum creatinine 0.1-0.3 mg/dL artificially. Do NOT diagnose kidney dysfunction without other markers (cystatin C). eGFR also falsely lowered.\n- Vitamin D3 supplementation: 25-OH vitamin D >50 reflects supplementation, not endogenous status.\n- Vitamin B12 / methylcobalamin: serum B12 dramatically elevated (often >2000) once supplementing. Use methylmalonic acid (MMA) for true status.\n- Iron supplements: raise serum iron, ferritin, iron saturation. Draw labs at trough.\n- Niacin (B3) high-dose: raises HDL 15-35%, lowers triglycerides 20-50%, lowers LDL, can elevate ALT and uric acid.\n- Omega-3 / fish oil 2-4g: lowers triglycerides 20-50%, lowers hs-CRP, mildly raises HDL.\n- Berberine: lowers fasting glucose, A1c, triglycerides, LDL.\n- Vitamin K2: lowers INR — interferes with warfarin monitoring.\n- DHEA: raises DHEA-S, testosterone, estradiol.\n- TRT/Testosterone: raises Hct/Hgb (polycythemia risk), suppresses LH/FSH, raises estradiol.\n- Whey/protein supplements: mildly raise BUN and creatinine.\n- Curcumin: lowers hs-CRP, mildly lowers ALT.\n- TMG / methylfolate / B12: lower homocysteine.\n- Saw palmetto: mildly lowers PSA — be aware in cancer screening.\n- Ashwagandha: lowers cortisol, may modulate thyroid.\n- Vitamin C high-dose: can falsely lower glucose readings on some assays.\n\nIf the patient takes any supplement that affects an abnormal lab marker, NOTE this in the explanation. DO NOT diagnose pathology that may be artifact (especially elevated creatinine on creatine, B12 on supplementation, thyroid markers on biotin).\n\nReturn JSON: { "score_headline": "one 12-word verdict in plain English", "priority_findings": [{ "emoji": "", "marker": "", "value": "", "flag": "urgent|monitor|optimal", "headline": "max 10 words plain English", "explanation": "1 sentence plain English, no jargon", "what_to_do": "1 short verb-led sentence" }], "patterns": [{ "emoji": "", "pattern_name": "plain English", "severity": "critical|high|medium", "markers_involved": [], "description": "1 sentence", "likely_cause": "1 sentence" }], "medication_connections": [{ "medication": "", "lab_finding": "", "connection": "" }], "supplement_connections": [{ "supplement": "", "lab_finding": "", "connection": "" }], "missing_tests": [{ "emoji": "🧪", "test_name": "", "why_needed": "1 sentence plain English", "icd10": "", "priority": "urgent|high|moderate" }], "immediate_actions": [{ "emoji": "", "action": "verb-led 1 sentence" }], "summary": "3 short sentences plain English" }` }],
@@ -579,6 +585,191 @@ Borderline upper-normal values do NOT trigger rare-disease screening. Default mi
 
     if (trendFindings.length) {
       analysis.priority_findings.push(...trendFindings);
+    }
+
+    // ── DETERMINISTIC ENFORCEMENT LAYER ───────────────────────────────────
+    // Three rules the prompt asks for but Haiku doesn't always honor:
+    //   (1) Word caps (summary ≤45w, headlines ≤10w, explanations ≤25w, etc.)
+    //   (2) No alarmist tone ("metabolic emergency", "call your doctor today")
+    //   (3) Don't infer individual nutrient supplements from a multivitamin
+    //       ("your vitamin D supplementation", "despite supplementation")
+    //
+    // Soft prompt rules drift on a fraction of generations. Server-side
+    // scrubbers run on every output and make these violations impossible.
+    {
+      // (3) Build the actual-supplements set so we can detect inference drift.
+      // A nutrient is "explicitly taken" only when it appears as its own
+      // discrete supplement — never by inheritance from a multivitamin.
+      const actualSuppNames = supps
+        .map((s: any) => String(s?.name ?? '').toLowerCase())
+        .filter(Boolean);
+      const explicitlyTaking = (nutrient: RegExp): boolean =>
+        actualSuppNames.some((n) => nutrient.test(n) && !/multi[-\s]?vitamin/i.test(n));
+
+      // Patterns the AI uses when inferring a nutrient supplement that the
+      // patient isn't actually taking. Each entry: [test for "is it taken?",
+      // patterns to strip if not taken].
+      const NUTRIENT_RULES: Array<{ test: RegExp; strip: RegExp[] }> = [
+        {
+          test: /\b(vitamin\s*d3?|vit\s*d3?|cholecalciferol)\b/i,
+          strip: [
+            /\b(your|the)\s+(vitamin\s*d3?|vit\s*d3?|d3?)\s+(supplement|supplementation|dose|intake)\b/gi,
+            /\bdespite\s+(your\s+)?(vitamin\s*d3?\s+|d3?\s+)?supplementation\b/gi,
+            /\byou\s+(take|are\s+taking|'re\s+taking)\s+(vitamin\s*d3?|vit\s*d3?|d3?)\b/gi,
+            /\bincrease\s+(your\s+)?(vitamin\s*d3?|vit\s*d3?|d3?)\s+(to|dose)\s+\d+[\s-]*\d*\s*(IU|iu|mcg|µg)\b/gi,
+          ],
+        },
+        {
+          test: /\b(b[-\s]?12|cobalamin|methylcobalamin|cyanocobalamin)\b/i,
+          strip: [
+            /\b(your|the)\s+b[-\s]?12\s+(supplement|supplementation|dose)\b/gi,
+            /\byou\s+(take|are\s+taking)\s+b[-\s]?12\b/gi,
+          ],
+        },
+        {
+          test: /\b(magnesium|mag\s+glycinate|mag\s+citrate)\b/i,
+          strip: [
+            /\b(your|the)\s+magnesium\s+(supplement|supplementation|dose)\b/gi,
+            /\byou\s+(take|are\s+taking)\s+magnesium\b/gi,
+          ],
+        },
+        {
+          test: /\b(iron|ferrous|ferric)\b/i,
+          strip: [
+            /\b(your|the)\s+iron\s+(supplement|supplementation|dose)\b/gi,
+            /\byou\s+(take|are\s+taking)\s+iron\b/gi,
+            /\biron\s+overload\s+from\s+your\s+multi[-\s]?vitamin\b/gi,
+          ],
+        },
+        {
+          test: /\b(omega[-\s]?3|fish\s*oil|epa|dha)\b/i,
+          strip: [
+            /\b(your|the)\s+(omega[-\s]?3|fish\s*oil)\s+(supplement|supplementation)\b/gi,
+            /\byou\s+(take|are\s+taking)\s+(omega[-\s]?3|fish\s*oil)\b/gi,
+          ],
+        },
+        {
+          test: /\b(zinc)\b/i,
+          strip: [
+            /\b(your|the)\s+zinc\s+(supplement|supplementation|dose)\b/gi,
+            /\byou\s+(take|are\s+taking)\s+zinc\b/gi,
+          ],
+        },
+        {
+          test: /\b(calcium|ca\s+citrate)\b/i,
+          strip: [
+            /\b(your|the)\s+calcium\s+(supplement|supplementation|dose)\b/gi,
+            /\byou\s+(take|are\s+taking)\s+calcium\b/gi,
+          ],
+        },
+      ];
+
+      const scrubSupplementInference = (text: string): string => {
+        if (typeof text !== 'string') return text;
+        let out = text;
+        for (const rule of NUTRIENT_RULES) {
+          if (explicitlyTaking(rule.test)) continue; // user actually takes it
+          for (const pat of rule.strip) out = out.replace(pat, '');
+        }
+        // Tidy up whitespace + orphan punctuation introduced by strips.
+        out = out.replace(/\s{2,}/g, ' ').replace(/\s+([.,;:])/g, '$1').trim();
+        return out;
+      };
+
+      // (2) Forbidden alarmist phrasing → calm clinical equivalents.
+      // Replacement preserves meaning while removing emotional escalation.
+      const ALARM_REPLACEMENTS: Array<[RegExp, string]> = [
+        [/\bmetabolic emergency\b/gi, 'metabolic concern'],
+        [/\bmedical emergency\b/gi, 'matter for your doctor'],
+        [/\bcall your doctor (?:today|now|right away|immediately)\b/gi, 'discuss with your doctor'],
+        [/\bcall (?:your\s+)?(?:doctor|provider|md|physician)\s+(?:right )?now\b/gi, 'discuss with your doctor'],
+        [/\b(?:rush|go straight) to (?:the )?(?:er|emergency room)\b/gi, 'consult your doctor'],
+        [/\bthis is alarming\b/gi, 'this needs attention'],
+        [/\balarming(?:ly)?\b/gi, 'concerning'],
+        [/\bdangerously\b/gi, 'notably'],
+        [/\bdangerous\b/gi, 'elevated'],
+        [/\bcatastrophic(?:ally)?\b/gi, 'serious'],
+        [/\bcritically\s+low\b/gi, 'low'],
+        [/\bcritically\s+high\b/gi, 'high'],
+      ];
+
+      const softenAlarm = (text: string): string => {
+        if (typeof text !== 'string') return text;
+        let out = text;
+        for (const [pat, rep] of ALARM_REPLACEMENTS) out = out.replace(pat, rep);
+        return out;
+      };
+
+      // (1) Word-cap enforcement — truncate at sentence boundary so output
+      // stays grammatical. If no sentence boundary fits, hard-cap with ellipsis.
+      const enforceWordCap = (text: string, cap: number): string => {
+        if (typeof text !== 'string') return text;
+        const words = text.trim().split(/\s+/).filter(Boolean);
+        if (words.length <= cap) return text;
+        const sentences = text.match(/[^.!?]+[.!?]+/g) ?? [text];
+        const acc: string[] = [];
+        let count = 0;
+        for (const s of sentences) {
+          const sw = s.trim().split(/\s+/).filter(Boolean).length;
+          if (count + sw > cap) break;
+          acc.push(s.trim());
+          count += sw;
+        }
+        if (acc.length === 0) {
+          // No full sentence fits — hard-cap mid-sentence with ellipsis.
+          return words.slice(0, cap).join(' ') + '…';
+        }
+        return acc.join(' ').trim();
+      };
+
+      const normalize = (text: string, cap: number): string =>
+        enforceWordCap(softenAlarm(scrubSupplementInference(text)), cap);
+
+      // Apply to all user-facing strings.
+      if (typeof analysis.summary === 'string') {
+        const before = analysis.summary;
+        analysis.summary = normalize(analysis.summary, 50); // 45 + 5 buffer
+        if (before !== analysis.summary) {
+          console.log('[analyze-labs] summary normalized', {
+            beforeLen: before.split(/\s+/).length,
+            afterLen: analysis.summary.split(/\s+/).length,
+          });
+        }
+      }
+      if (typeof analysis.score_headline === 'string') {
+        analysis.score_headline = normalize(analysis.score_headline, 14);
+      }
+      if (Array.isArray(analysis.priority_findings)) {
+        for (const f of analysis.priority_findings) {
+          if (f && typeof f === 'object') {
+            if (typeof f.headline === 'string') f.headline = normalize(f.headline, 12);
+            if (typeof f.explanation === 'string') f.explanation = normalize(f.explanation, 30);
+            if (typeof f.what_to_do === 'string') f.what_to_do = normalize(f.what_to_do, 18);
+          }
+        }
+      }
+      if (Array.isArray(analysis.patterns)) {
+        for (const p of analysis.patterns) {
+          if (p && typeof p === 'object') {
+            if (typeof p.description === 'string') p.description = normalize(p.description, 30);
+            if (typeof p.likely_cause === 'string') p.likely_cause = normalize(p.likely_cause, 25);
+          }
+        }
+      }
+      if (Array.isArray(analysis.immediate_actions)) {
+        for (const a of analysis.immediate_actions) {
+          if (a && typeof a === 'object' && typeof a.action === 'string') {
+            a.action = normalize(a.action, 18);
+          }
+        }
+      }
+      if (Array.isArray(analysis.missing_tests)) {
+        for (const t of analysis.missing_tests) {
+          if (t && typeof t === 'object' && typeof t.why_needed === 'string') {
+            t.why_needed = normalize(t.why_needed, 30);
+          }
+        }
+      }
     }
 
     // ── COMPLETENESS GATE ─────────────────────────────────────────────
