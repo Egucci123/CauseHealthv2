@@ -530,7 +530,7 @@ Trigger (d) framing in why:
   Not in draw: "(d) Standard baseline missing — doctor should have ordered."
 
 CADENCE:
-  TREATMENT mode (any out-of-range, chronic dx, or multi-system pattern): 12-week retest, 12-16 entries (HARD CAP 16). Pick the highest-leverage 16. Do not pad.
+  TREATMENT mode (any out-of-range, chronic dx, or multi-system pattern): 12-week retest, 12-18 entries. Universal injectors (ApoB, Lp(a), Testosterone Panel, Sleep Apnea Screening, Uric Acid, GGT, CK on statin, Magnesium RBC) auto-fill what you miss; pick the highest-leverage 12-15 yourself.
   OPTIMIZATION mode (clean labs, no chronic conditions, no symptoms): 6-month retest, 4-8 entries.
   retest_at field uses the cadence ('12 weeks' or '6 months').
 
@@ -1836,9 +1836,14 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
       if (beforeFilter !== plan.retest_timeline.length) {
         console.log(`[wellness-plan] dropped ${beforeFilter - plan.retest_timeline.length} empty retest entries`);
       }
-      if (plan.retest_timeline.length > 16) {
-        console.log(`[wellness-plan] post-injector cap: ${plan.retest_timeline.length} -> 16`);
-        plan.retest_timeline = plan.retest_timeline.slice(0, 16);
+      // Hard cap raised 16 → 20 so universal injectors (ApoB, Lp(a),
+      // Testosterone Panel, Sleep Apnea Screening, Uric Acid, GGT, etc.)
+      // don't get cut when the AI also generates a full retest list. These
+      // are high-value PCP-orderable tests; cutting them was hiding important
+      // recommendations from the user.
+      if (plan.retest_timeline.length > 20) {
+        console.log(`[wellness-plan] post-injector cap: ${plan.retest_timeline.length} -> 20`);
+        plan.retest_timeline = plan.retest_timeline.slice(0, 20);
       }
     } catch (e) { console.error('[wellness-plan] retest-injector error:', e); }
     // ── Test-quality flagger POST-flight (Layer D) ───────────────────────

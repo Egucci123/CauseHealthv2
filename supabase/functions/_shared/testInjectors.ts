@@ -252,6 +252,43 @@ export function buildUniversalTestInjections(ctx: InjectionContext): InjectedTes
     // this in why field of iron panel entry. No additional test needed.
   }
 
+  // ── ApoB — universal injector for any lipid abnormality ────────────────
+  // ApoB is the single best marker of atherogenic particle count. Standard
+  // PCP-orderable with a documented lipid finding. Universal: fires on any
+  // out-of-range lipid (TG high, LDL high, HDL low) OR statin user (where
+  // ApoB guides dose adequacy beyond LDL-C).
+  if (f.tgHigh || f.ldlHigh || f.hdlLow || f.onStatin) {
+    tests.push({
+      name: 'ApoB (Apolipoprotein B)',
+      whyShort: 'True atherogenic particle count — better than LDL-C',
+      whyLong: f.onStatin
+        ? '(b)+(c) On statin with lipid abnormality — ApoB measures particle number directly. Target <80 mg/dL on statin; if higher, statin dose may be inadequate.'
+        : '(c) Lipid abnormality present — ApoB quantifies plaque-forming particle count independent of cholesterol; better predictor of cardiovascular risk than LDL-C alone.',
+      icd10: 'E78.5',
+      icd10Description: 'Hyperlipidemia, unspecified',
+      priority: 'high',
+      insuranceNote: 'Universally covered with any lipid abnormality coded E78.x.',
+    });
+  }
+
+  // ── Lp(a) — once-in-lifetime baseline for every adult ──────────────────
+  // Lp(a) is genetic, doesn't change, and identifies the ~20% of adults with
+  // elevated cardiovascular risk that a normal lipid panel misses. Standard
+  // of care to test once. Universal: fires for any adult unless explicitly
+  // already in the draw (lab pattern check).
+  const lpaInDraw = /\blipoprotein.?a\b|\blp\(?a\)?\b/i.test(ctx.labsLower);
+  if (!lpaInDraw && f.age >= 18) {
+    tests.push({
+      name: 'Lp(a) (Lipoprotein-a) — once in lifetime',
+      whyShort: 'Genetic CV risk marker — test once, never again',
+      whyLong: '(d) Once-in-lifetime adult baseline — Lp(a) is genetically determined and identifies elevated cardiovascular risk that a standard lipid panel misses. Test once to know the value forever.',
+      icd10: 'Z13.6',
+      icd10Description: 'Encounter for screening for cardiovascular disorders',
+      priority: f.tgHigh || f.ldlHigh || f.onStatin ? 'high' : 'moderate',
+      insuranceNote: 'Once-per-lifetime screening; covered as preventive when coded with Z13.6 or family history.',
+    });
+  }
+
   // ── Universal male hormonal baseline ────────────────────────────────────
   // Men any age with fatigue / hair loss / weight resistance / low libido /
   // poor recovery cluster → Testosterone Panel (Total T + Free T + SHBG +
