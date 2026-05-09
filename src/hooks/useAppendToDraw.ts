@@ -196,14 +196,34 @@ export function useAppendToDraw(drawId: string | null) {
       console.log('[append] insert result:', { inserted: insertData?.length ?? 0, error: insertErr });
       if (insertErr) throw new Error(`Could not save values: ${insertErr.message}`);
 
+      // 6b. Invalidate the clinical_facts_cache for this user — the lab
+      // values just changed, so any cached facts are stale. Without this,
+      // wellness plan / lab analysis / doctor prep could read pre-append
+      // facts on the next request even though the labs differ.
+      try {
+        await supabase.from('clinical_facts_cache').delete().eq('user_id', userId);
+        console.log('[append] cleared clinical_facts_cache (lab values changed)');
+      } catch (e) {
+        console.warn('[append] facts cache clear failed (non-fatal):', e);
+      }
+
       // 7. Re-trigger analyze-labs on this draw so the analysis reflects the
-      // merged dataset. Use supabase.functions.invoke (not raw fetch) so the
-      // user's Bearer token is auto-attached — raw fetch with apikey alone
-      // returns 401 Unauthorized on this function. We await it so the modal
-      // shows "Re-analyzing…" until the new picture is ready.
+      // merged dataset. Defaults to v2 (matches the rest of the app) — opt
+      // out via localStorage.setItem('analyze_labs_v2', '0'). When new
+      // lab values are appended, the input_state_hash changes so v2's
+      // facts cache correctly recomputes; the lock mechanism prevents
+      // concurrent analysis calls. Reset analysis_count so the merged
+      // dataset gets a fresh attempt within the cap.
       setStatus('reanalyzing');
-      await supabase.from('lab_draws').update({ processing_status: 'processing' }).eq('id', drawId);
-      const { error: analyzeErr } = await supabase.functions.invoke('analyze-labs', {
+      const _useV1Append = typeof window !== 'undefined' && window.localStorage?.getItem('analyze_labs_v2') === '0';
+      const _appendAnalyzeFn = _useV1Append ? 'analyze-labs' : 'analyze-labs-v2';
+      await supabase.from('lab_draws').update({
+        processing_status: 'processing',
+        analysis_result: null,
+        analysis_count: 0,           // append = new dataset → fresh count
+        analysis_locked_until: null, // clear stale lock from prior run
+      }).eq('id', drawId);
+      const { error: analyzeErr } = await supabase.functions.invoke(_appendAnalyzeFn, {
         body: { drawId, userId },
       });
       if (analyzeErr) {
