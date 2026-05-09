@@ -531,8 +531,8 @@ Trigger (d) framing in why:
   Not in draw: "(d) Standard baseline missing — doctor should have ordered."
 
 CADENCE:
-  TREATMENT mode (any out-of-range, chronic dx, or multi-system pattern): 12-week retest, 12-18 entries. Universal injectors (ApoB, Lp(a), Testosterone Panel, Sleep Apnea Screening, Uric Acid, GGT, CK on statin, Magnesium RBC) auto-fill what you miss; pick the highest-leverage 12-15 yourself.
-  OPTIMIZATION mode (clean labs, no chronic conditions, no symptoms): 6-month retest, 4-8 entries.
+  TREATMENT mode (any out-of-range, chronic dx, or multi-system pattern): 12-week retest, 16-22 entries. Comprehensive baseline panel arms the patient with a thorough discussion list for their PCP. Universal injectors (ApoB, Lp(a), Testosterone Panel, Sleep Apnea Screening, Uric Acid, GGT, CK on statin, Magnesium RBC) auto-fill what you miss; aim for completeness over restraint.
+  OPTIMIZATION mode (clean labs, no chronic conditions, no symptoms): 6-month retest, 8-14 entries — comprehensive baseline still applies.
   retest_at field uses the cadence ('12 weeks' or '6 months').
 
 CONSOLIDATE INTO STANDARD PANELS — doctors order panels, not individual markers. Use these exact names:
@@ -549,17 +549,19 @@ CONSOLIDATE INTO STANDARD PANELS — doctors order panels, not individual marker
   Insulin Resistance Workup — Fasting Insulin, HOMA-IR
   Single tests (no panel): HbA1c, Vitamin D 25-OH, hs-CRP, ApoB, Lp(a), GGT, Uric Acid, PTH, Ionized Calcium, CK
 
-STANDARD-OF-CARE BASELINE (trigger d — include for every adult, regardless of presence in current draw):
-  CMP · CBC w/diff · Lipid Panel · ApoB · Lp(a) (once-in-lifetime) · HbA1c · hs-CRP · TSH · Vit D 25-OH · Vit B12 · Folate · Ferritin · Magnesium serum · Uric Acid
-  Men any age: add Testosterone Panel (Total T + SHBG + Estradiol)
-  Women menstruating + symptomatic: add full Iron Panel
-  Conditional add-ons:
+STANDARD-OF-CARE BASELINE (trigger d — comprehensive baseline EVERY adult should be ARMED to ask their PCP for. Include in retest_timeline regardless of current draw. The goal is to give the patient a thorough panel they can advocate for, NOT a minimum the PCP will order without resistance.):
+  Every adult: CMP · CBC w/diff · Lipid Panel · ApoB · Lp(a) (once-in-lifetime) · HbA1c · Fasting Insulin · HOMA-IR · hs-CRP · TSH · Free T3 · Free T4 · Vitamin D 25-OH · Vitamin B12 · MMA · Homocysteine · Folate (Serum + RBC) · Ferritin · full Iron Panel · Magnesium (RBC preferred) · Uric Acid · GGT
+  Men any age: add Testosterone Panel (Total T + Free T + Bioavailable T + SHBG + Estradiol + LH + FSH)
+  Women menstruating: add full Iron Panel; if cycle irregular/symptomatic → PCOS Panel (Total T + Free T + DHEA-S + LH:FSH + SHBG + Fasting Insulin)
+  Universal conditional add-ons:
     on statin → CK
-    ALT/AST elevated → GGT
-    TSH borderline (>2.5 with sx, <1.0 with sx) → Thyroid Panel + Hashimoto's Antibodies
-    fasting glucose 95+ or A1c 5.4-5.6 or TG/HDL >3 → Insulin Resistance Workup
+    ALT/AST elevated → already covered by GGT in baseline
+    TSH ≥ 2.5 with symptoms → Hashimoto's Antibodies (TPO Ab + Tg Ab)
+    fasting glucose ≥ 95 or A1c 5.4-5.6 or TG/HDL >3 → already covered by Fasting Insulin + HOMA-IR in baseline
   Age 45+: add CAC score (any ASCVD risk); PSA discussion (men)
   Age 50+: add DEXA (women); colorectal screening discussion
+
+The principle: arm the patient. Modern internal medicine + endocrinology supports the comprehensive panel above. PCPs can order all of it with the right ICD-10. If a PCP pushes back on a specific marker, the why field tells the patient how to frame the ask.
 
 NEVER on (d) baseline (only fire via triggers a/b/c/e): AM Cortisol, 24h cortisol, DHEA-S, Zinc, Free T (without total T also firing), Homocysteine standalone, MMA standalone, Reverse T3, TPO Ab as baseline (only with TSH borderline + sx), NMR lipid, GI-MAP, comprehensive stool, food sensitivity panels, organic acids, hair tissue mineral, micronutrient panels.
 
@@ -1991,14 +1993,15 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
       if (beforeFilter !== plan.retest_timeline.length) {
         console.log(`[wellness-plan] dropped ${beforeFilter - plan.retest_timeline.length} empty retest entries`);
       }
-      // Hard cap raised 16 → 20 so universal injectors (ApoB, Lp(a),
-      // Testosterone Panel, Sleep Apnea Screening, Uric Acid, GGT, etc.)
-      // don't get cut when the AI also generates a full retest list. These
-      // are high-value PCP-orderable tests; cutting them was hiding important
-      // recommendations from the user.
-      if (plan.retest_timeline.length > 20) {
-        console.log(`[wellness-plan] post-injector cap: ${plan.retest_timeline.length} -> 20`);
-        plan.retest_timeline = plan.retest_timeline.slice(0, 20);
+      // Hard cap raised 20 → 24 so the comprehensive baseline (CMP, CBC,
+      // Lipid, ApoB, Lp(a), A1c, Fasting Insulin, HOMA-IR, hs-CRP, TSH,
+      // Free T3, Free T4, Vit D, B12, MMA, Homocysteine, Folate, Iron
+      // Panel, Magnesium, Uric Acid, GGT, Testosterone Panel, etc.)
+      // doesn't get cut. The product mission is to ARM patients with the
+      // full panel they should ask for, not minimize.
+      if (plan.retest_timeline.length > 24) {
+        console.log(`[wellness-plan] post-injector cap: ${plan.retest_timeline.length} -> 24`);
+        plan.retest_timeline = plan.retest_timeline.slice(0, 24);
       }
     } catch (e) { console.error('[wellness-plan] retest-injector error:', e); }
     // ── Test-quality flagger POST-flight (Layer D) ───────────────────────
@@ -2350,30 +2353,22 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
       const ogttJustified = (fastingGlucose != null && fastingGlucose >= 110) || (a1c != null && a1c >= 5.7);
       const isOGTT = (m: string) => /\b(ogtt|oral\s*glucose\s*tolerance)\b/i.test(m);
 
-      // ── UNIVERSAL TSH-FIRST RULE FOR THYROID PANEL ─────────────────────
-      // Free T3 + Free T4 should only appear in the retest list when TSH is
-      // borderline (>2.5 with sx, <1.0 with sx) OR a thyroid dx is on the
-      // conditions list. Otherwise the patient is asking their PCP for a full
-      // thyroid panel that isn't clinically warranted — PCPs will trim it
-      // back to TSH-only. Pre-trim it ourselves for credibility.
-      const tsh = findVal([/^tsh$/i, /\bthyroid[\s-]?stimulating[\s-]?hormone\b/i]);
-      const hasThyroidDx = /\b(hashimoto|grave|hypothyroid|hyperthyroid|thyroiditis|thyroid\s*nodule)\b/i.test(conditionTexts);
-      const fullThyroidJustified = hasThyroidDx
-        || (tsh != null && (tsh > 2.5 || tsh < 1.0));
-      const isFullThyroidPanel = (m: string) => /\b(thyroid\s*panel|free\s*t[34]|ft3|ft4)\b/i.test(m) && /\bthyroid\s*panel|free\s*t/i.test(m);
-
-      // ── UNIVERSAL B12 ESCALATION RULE ──────────────────────────────────
-      // MMA + Homocysteine on top of serum B12 only justified when:
-      //   - serum B12 is borderline-low (<400)
-      //   - patient is on long-term metformin (>5y) or PPI (>2y)
-      // Otherwise serum B12 alone first. Saves the patient an over-ordered
-      // panel a real PCP would refuse.
-      const serumB12 = findVal([/\bvitamin\s*b[\s-]?12\b/i, /\bcobalamin\b/i, /\bb12,?\s*serum\b/i, /\bserum\s*b12\b/i]);
-      const medsLowerForB12 = (medsStr ?? '').toLowerCase();
-      const onLongTermMetformin = /metformin/i.test(medsLowerForB12) && /(5\s*y|long[-\s]?term|chronic)/i.test(medsLowerForB12);
-      const onLongTermPPI = /(omeprazole|pantoprazole|lansoprazole|rabeprazole|esomeprazole|ppi)/i.test(medsLowerForB12) && /(2\s*y|long[-\s]?term|chronic)/i.test(medsLowerForB12);
-      const b12EscalationJustified = (serumB12 != null && serumB12 < 400) || onLongTermMetformin || onLongTermPPI;
-      const isB12Workup = (m: string) => /\b(methylmalonic|\bmma\b|homocysteine)\b/i.test(m) && /b[\s-]?12|cobalamin/i.test(m);
+      // ── REMOVED: aggressive TSH/B12 downgrade gates ────────────────────
+      // The product mission is to ARM patients with the comprehensive panel
+      // they should ASK their PCP for — not to minimize the list to what
+      // a defensive PCP will reflexively order. Modern endocrinology
+      // supports Free T3 + Free T4 alongside TSH whenever symptoms are
+      // present (fatigue, weight, mood, hair loss). MMA + Homocysteine
+      // are sensitive markers for tissue B12 status, especially in IBD,
+      // mesalamine/PPI/metformin/vegan patients. Leave the full workups
+      // visible. The why field carries the rationale; the patient walks
+      // in informed.
+      // (Stub variables kept so downstream code that referenced these
+      // names doesn't break — set to permissive values.)
+      const fullThyroidJustified = true;
+      const isFullThyroidPanel = (_m: string) => false;
+      const b12EscalationJustified = true;
+      const isB12Workup = (_m: string) => false;
 
       const isBehaviorTrial = (m: string) =>
         /\b(hydration\s*trial|behavior\s*trial|food\s*diary|symptom\s*log|sleep\s*tracker|blood\s*pressure\s*log)\b/i.test(m);
@@ -2609,7 +2604,8 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
       const ESCALATION_PAIRS: Array<[RegExp, RegExp, string]> = [
         [/\bliver\s*ultrasound\b/i, /\b(fibroscan|transient\s*elastography)\b/i, 'Liver Ultrasound first; FibroScan is escalation only if US shows steatosis'],
         [/\bcoronary\s*calcium|\bcac\b/i, /\bcoronary\s*ct\s*angio|\bccta\b/i, 'CAC first; CCTA is escalation if CAC elevated'],
-        [/\btsh\b(?!.*free)/i, /\bfree\s*t[34]/i, 'TSH first; Free T3/T4 only if TSH abnormal'],
+        // TSH/Free T3-T4 pair removed — comprehensive thyroid panel is the
+        // patient's right to ask for, especially with symptom cluster.
       ];
       for (const [primary, escalation, reason] of ESCALATION_PAIRS) {
         const hasPrimary = plan.retest_timeline.some((r: any) => primary.test(String(r?.marker ?? '')));

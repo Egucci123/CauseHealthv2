@@ -303,15 +303,15 @@ export function buildUniversalTestInjections(ctx: InjectionContext): InjectedTes
   const totalTBorderline = totalTMatch ? Number(totalTMatch[1]) > 0 && Number(totalTMatch[1]) < 600 : false;
   if (isAdultMale && (malePattern || totalTBorderline) && !f.onTRT) {
     tests.push({
-      name: 'Testosterone Panel (Total T + Free T + SHBG + Estradiol)',
-      whyShort: 'Male hormonal baseline — full picture beyond Total T',
+      name: 'Testosterone Panel (Total T + Free T + Bioavailable T + SHBG + Estradiol + LH + FSH)',
+      whyShort: 'Comprehensive male hormonal baseline — full bioavailable picture',
       whyLong: totalTBorderline
-        ? `(c) Total T borderline-low — Free T, SHBG, and Estradiol complete the workup. Total T alone misses bioavailability and SHBG-driven elevations.`
-        : `(a)+(d) Adult male with fatigue / hair loss / weight / mood cluster — standard PCP-orderable hormonal baseline. Total T alone is incomplete; SHBG anchors Free / Bioavailable T calculation.`,
+        ? `(c) Total T borderline-low — Free T, Bioavailable T, SHBG, Estradiol, and LH/FSH complete the workup. Total T alone misses bioavailability + tells you nothing about pituitary-vs-testicular origin.`
+        : `(a)+(d) Adult male with fatigue / hair loss / weight / mood cluster — comprehensive hormonal baseline that PCPs can order with the right ICD-10. Free T + SHBG + Estradiol + LH/FSH together let you and your doctor see the full picture: total hormone, what's bioavailable, where the breakdown is (testicular vs pituitary), and conversion to estrogen.`,
       icd10: lowLibido ? 'N52.9' : (f.hasFatigue ? 'R53.83' : 'Z00.00'),
       icd10Description: lowLibido ? 'Male sexual dysfunction, unspecified' : (f.hasFatigue ? 'Other fatigue' : 'General adult medical exam'),
       priority: totalTBorderline ? 'high' : 'moderate',
-      insuranceNote: 'Covered with documented symptom (fatigue / low libido / weight) or low-normal Total T.',
+      insuranceNote: 'Covered with documented symptom (fatigue / low libido / weight resistance) or low-normal Total T. Modern PCPs order this routinely; if push-back, request the panel under "comprehensive male hormone evaluation" with the symptom-anchored ICD-10.',
     });
   }
 
