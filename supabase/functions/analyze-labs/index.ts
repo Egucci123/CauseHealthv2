@@ -134,6 +134,8 @@ serve(async (req) => {
 - Every priority_finding gets an emoji. Every actionable item leads with a verb.
 - No mechanisms. No percentages. No padding. Cut anything that doesn't pull weight.
 - Never hedge with "rare disorder / rare disease / rare condition" — be specific (dehydration, NAFLD, sleep apnea) or skip the sentence.
+- COMPLETE GRAMMATICAL SENTENCES. Every clause needs a subject + verb + object. Never drop a connector word and produce something like "early your body ignoring insulin" — write "early signs your body is ignoring insulin" or just "your body is ignoring insulin." If a sentence reads like a phrase fragment, rewrite it.
+- NO REDUNDANT PHRASING — never write "dysbiotic dysbiosis", "anemic anemia", "inflammatory inflammation"; the noun already carries the meaning.
 
 ═══ RANGE MODEL ═══
 - HEALTHY (in standard range, not on Watch list) → SKIP from priority_findings. Mention only as part of a pattern.

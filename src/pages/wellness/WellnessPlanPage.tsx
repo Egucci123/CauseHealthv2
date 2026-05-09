@@ -1077,7 +1077,12 @@ export const WellnessPlanPage = () => {
                   <div key={i} className="bg-clinical-cream/40 rounded-[10px] p-4 border-l-2 border-[#7B1FA2]">
                     <div className="flex items-start justify-between gap-3 mb-1.5">
                       <p className="text-body text-clinical-charcoal text-sm font-semibold leading-snug">{s.symptom}</p>
-                      {typeof s.severity === 'number' && (
+                      {/* Only show the severity badge when the user actually
+                          rated it. Onboarding's symptom-chip flow stores 5 as
+                          a no-op default, and rendering "5/10" makes it look
+                          like a real measurement. Show it for non-default
+                          severities only. */}
+                      {typeof s.severity === 'number' && s.severity !== 5 && (
                         <span className="text-precision text-[0.6rem] font-bold tracking-wider text-[#7B1FA2] bg-[#7B1FA2]/10 px-2 py-0.5 rounded flex-shrink-0">
                           {s.severity}/10
                         </span>
