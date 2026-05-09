@@ -77,10 +77,13 @@ export function runPathways(input: PathwayInput): PathwayResult {
     conditionsMatched.push(def.key);
 
     for (const testKey of def.pathwayHints?.requiredTests ?? []) {
+      // why field renders directly in the UI — was leaking the bare
+      // "Required for [Condition]" placeholder, which looks like an
+      // internal stub. Frame it as patient-friendly rationale instead.
       const inserted = pushRetestByKey(
         input.plan.retest_timeline,
         testKey,
-        `Required for ${def.label}`,
+        `(b/c) Standard ${def.label} monitoring panel — tracks disease activity and medication response.`,
         'c',
         input.retestCadence,
       );
