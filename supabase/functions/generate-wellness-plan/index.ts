@@ -1683,6 +1683,26 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
     if (!Array.isArray(plan.retest_timeline)) plan.retest_timeline = [];
     if (!Array.isArray(plan.symptoms_addressed)) plan.symptoms_addressed = [];
 
+    // ── TRIGGER LETTER FIXER ──────────────────────────────────────────────
+    // The AI repeatedly tags "Confirmatory workup for [pattern]" entries with
+    // (b) even though the prompt rule says (b) is medication-only and pattern
+    // confirmation is (e) early-detection. The doctor-prep folder routing
+    // depends on these letters, so wrong triggers send tests to the wrong
+    // PCP/specialist folder. Force-rewrite (b)→(e) when the rationale is
+    // "Confirmatory workup for [pattern]" — exactly the AI's drift case.
+    if (Array.isArray(plan.retest_timeline)) {
+      let fixed = 0;
+      for (const r of plan.retest_timeline) {
+        if (typeof r?.why !== 'string') continue;
+        const m = r.why.match(/^\(b\)\s*Confirmatory workup for/i);
+        if (m) {
+          r.why = '(e)' + r.why.slice(3);
+          fixed++;
+        }
+      }
+      if (fixed > 0) console.log(`[wellness-plan] trigger letter: rewrote ${fixed} (b)→(e) confirmatory entries`);
+    }
+
     // ── DETERMINISTIC RETEST INJECTOR ─────────────────────────────────────
     // Mirror of the doctor-prep test injector. Hard-coded backstops for
     // textbook standard-of-care tests the AI sometimes drops:

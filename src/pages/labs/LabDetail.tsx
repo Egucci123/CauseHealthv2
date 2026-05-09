@@ -356,7 +356,7 @@ export const LabDetail = () => {
   const { draw, values, analysis } = data;
 
   const grouped = CATEGORY_ORDER.reduce<Record<string, typeof values>>((acc, cat) => {
-    const catValues = values.filter((v: any) => v.marker_category === cat);
+    const catValues = values.filter((v: any) => (v.markerCategory ?? v.marker_category) === cat);
     if (catValues.length > 0) acc[cat] = catValues;
     return acc;
   }, {});
@@ -369,18 +369,23 @@ export const LabDetail = () => {
   const isWatch = (f: any) => ['watch', 'suboptimal_low', 'suboptimal_high'].includes(f ?? '');
   const isHealthy = (f: any) => ['healthy', 'optimal'].includes(f ?? '');
   const bucketOf = (v: any): 'out' | 'watch' | 'healthy' => {
-    if (isOutOfRange(v.optimal_flag)) return 'out';
-    if (isWatch(v.optimal_flag)) return 'watch';
-    if (isHealthy(v.optimal_flag)) return 'healthy';
+    // useLabValues camelCases snake_case columns from Postgres. Read both so
+    // raw API rows (snake_case) and hook-shaped rows (camelCase) both work.
+    // Without this both reads were undefined, every row fell through to
+    // 'healthy', and the chip counts showed 0/0/N regardless of true status.
+    const optFlag = v.optimalFlag ?? v.optimal_flag;
+    const stdFlag = v.standardFlag ?? v.standard_flag;
+    if (isOutOfRange(optFlag)) return 'out';
+    if (isWatch(optFlag)) return 'watch';
+    if (isHealthy(optFlag)) return 'healthy';
     // No usable optimal_flag → fall back to standard_flag
-    if (['low', 'high', 'critical_low', 'critical_high'].includes(v.standard_flag ?? '')) return 'out';
+    if (['low', 'high', 'critical_low', 'critical_high'].includes(stdFlag ?? '')) return 'out';
     // Final fallback: compute from raw value vs standard range. Catches rows
     // inserted by paths that didn't run computeFlag (legacy data, direct API
-    // injections, edge cases). Without this the chip counts show 0/0/N for
-    // any draw missing both flags.
+    // injections, edge cases).
     const val = typeof v.value === 'number' ? v.value : Number(v.value);
-    const lo = typeof v.standard_low === 'number' ? v.standard_low : null;
-    const hi = typeof v.standard_high === 'number' ? v.standard_high : null;
+    const lo = typeof (v.standardLow ?? v.standard_low) === 'number' ? (v.standardLow ?? v.standard_low) : null;
+    const hi = typeof (v.standardHigh ?? v.standard_high) === 'number' ? (v.standardHigh ?? v.standard_high) : null;
     if (Number.isFinite(val)) {
       if (hi != null && val > hi) return 'out';
       if (lo != null && val < lo) return 'out';
@@ -623,7 +628,7 @@ export const LabDetail = () => {
           Component self-hides if no markers have 2+ draws of history. */}
       {isPro && (urgentCount > 0 || monitorCount > 0) && (
         <TrajectoryStrip
-          values={values.filter((v: any) => isOutOfRange(v.optimal_flag) || isWatch(v.optimal_flag))}
+          values={values.filter((v: any) => isOutOfRange(v.optimalFlag ?? v.optimal_flag) || isWatch(v.optimalFlag ?? v.optimal_flag))}
         />
       )}
 
