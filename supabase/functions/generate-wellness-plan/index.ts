@@ -473,7 +473,10 @@ serve(async (req) => {
 - TONE & MISSION — EQUIPPED ADVOCATE, NOT PASSIVE PATIENT. The product arms people to use their existing doctor and insurance correctly. Calm + actionable + proportional. Forbidden in any user-facing field: "metabolic emergency", "this is alarming", "dangerous", "catastrophic", "rush to ER", "call your doctor today/now", "critically low/high" (unless lab is in critical_low/critical_high range). Prefer: "elevated", "needs attention", "ask your doctor about", "discuss at your next visit". Embed doctor-asks inline naturally — DO NOT add a separate "ask your doctor" sentence to every field; it bloats output. ONE doctor-ask per finding is enough.
 - MARKER NAMES — verbatim, NO suffixes. Never append "(CONDITIONAL)", " — CONDITIONAL", "(OPTIONAL)", "(IF SYMPTOMATIC)", "[OPTIONAL]" or any qualifier to a marker name. The marker field is read by the UI verbatim and rendered to the patient — qualifiers leak straight to the screen. If a test is conditional, leave it out of retest_timeline entirely. The why field carries the rationale; the marker is just the test name.
 - BEHAVIOR TRIALS ARE NOT TESTS. Hydration trials, food diaries, symptom logs, sleep trackers belong in lifestyle_interventions or today_actions — never in retest_timeline (which is for lab/imaging orders the doctor signs off on) and never in confirmatory_tests.
-- SPECIALIST TAG — Liver Ultrasound / FibroScan / MRI / CT / PET → imaging. Home Sleep Apnea Test / sleep study / polysomnography → sleep_medicine. Echocardiogram / CAC score → cardiology. Colonoscopy / endoscopy → gi. Don't tag everything 'pcp' just because the PCP places the order — the tag groups tests by specialist on the doctor-prep page.
+- SPECIALIST TAG — UNIVERSAL CONDITION-AWARE ROUTING. The 'specialist' field groups tests on the doctor-prep page; tag the specialist who manages the test, not whoever places the order. Two-tier routing:
+  (1) MODALITY (always specialist regardless of condition): Liver Ultrasound / FibroScan / MRI / CT / PET / DEXA → imaging. Home Sleep Apnea Test / polysomnography → sleep_medicine. Echo / CAC / cardiac MRI / stress test → cardiology. Colonoscopy / endoscopy → gi. JAK2 / peripheral smear / EPO → hematology. ANA panel / anti-CCP / HLA-B27 → rheumatology. Cystatin C / 24-hour urine → nephrology.
+  (2) CONDITION-AWARE (route to the specialist managing the diagnosed condition): UC/Crohn's/IBD → fecal occult blood / FIT / calprotectin / stool tests / GI-MAP all go to gi. Hashimoto's/Graves'/thyroiditis → TPO Ab / Tg Ab / thyroid ultrasound → endocrinology. T1DM/T2DM/PCOS → OGTT / C-peptide / GAD-65 / DHEA-S → endocrinology. CAD/HFrEF/HTN → BNP / NT-proBNP / troponin / ApoB → cardiology. RA/lupus/psoriatic → ANA / anti-CCP / RF → rheumatology. CKD → cystatin C / urine albumin → nephrology. Polycythemia/MDS → JAK2 / peripheral smear → hematology.
+- OGTT GATE — UNIVERSAL. Order Oral Glucose Tolerance Test ONLY when fasting glucose ≥110 OR A1c ≥5.7. For Watch-tier glucose (fasting 95-99) or A1c 5.4-5.6, use Fasting Insulin + HOMA-IR instead — that's the right test for compensated insulin resistance. Don't burn a 2-hour clinic visit on a Watch-tier finding.
 - SUPPLEMENT INFERENCE — STRICT. The Supplements field is the ONLY source of truth for what the patient takes. NEVER infer that a patient takes individual nutrients (Vitamin D, B12, Magnesium, Iron, Omega-3, Zinc, Calcium) from a Multivitamin entry. A multivitamin is ONE supplement, not a basket of individual nutrient supplements. Forbidden phrases when the nutrient is NOT explicitly listed: "your vitamin D supplementation", "you take B12", "despite supplementation", "your iron supplement", "increase your D3 dose". If a nutrient appears low and the patient takes only a multivitamin, write "vitamin D is low" — NOT "vitamin D is low despite supplementation."
 
 ═══ SUPPLEMENT STACK ═══
@@ -2049,13 +2052,142 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
       const PARENS_STRIP = /\s*\(\s*(CONDITIONAL|OPTIONAL|MAYBE|IF\s+TRIGGERED|IF\s+SYMPTOMATIC)\s*\)\s*$/i;
       const SQUARE_STRIP = /\s*\[\s*(CONDITIONAL|OPTIONAL|MAYBE)\s*\]\s*$/i;
 
+      // ── UNIVERSAL SPECIALIST ROUTING ─────────────────────────────────────
+      // Two layers:
+      //   (1) MODALITY routing — imaging/sleep/cardiology/GI procedures are
+      //       inherently specialist regardless of patient condition.
+      //   (2) CONDITION-AWARE routing — disease-specific tests should route
+      //       to the specialist who manages that disease when the patient
+      //       has it diagnosed. Universal across UC/Crohn's/Hashimoto's/
+      //       diabetes/HF/RA/CKD/etc.
       const SPECIALIST_REMAP: Array<[RegExp, string]> = [
+        // Imaging / procedures (always specialist regardless of condition)
         [/\b(liver\s*ultrasound|fibroscan|abdominal\s*ultrasound|elastography)\b/i, 'imaging'],
         [/\b(home\s*sleep\s*apnea\s*test|hsat|sleep\s*study|polysomnography|stop[-\s]?bang)\b/i, 'sleep_medicine'],
-        [/\b(echocardiogram|echo|cac\s*score|coronary\s*calcium|carotid\s*ultrasound)\b/i, 'cardiology'],
-        [/\b(colonoscopy|endoscopy|sigmoidoscopy)\b/i, 'gi'],
-        [/\b(mri|ct\s*scan|pet\s*scan)\b/i, 'imaging'],
+        [/\b(echocardiogram|\becho\b|cac\s*score|coronary\s*calcium|carotid\s*ultrasound|stress\s*test|cardiac\s*mri)\b/i, 'cardiology'],
+        [/\b(colonoscopy|endoscopy|sigmoidoscopy|capsule\s*endoscopy)\b/i, 'gi'],
+        [/\b(mri|ct\s*scan|pet\s*scan|dexa|bone\s*density)\b/i, 'imaging'],
+        // Modality-only tests that always route to a specialist:
+        [/\b(jak2|bcr[-\s]?abl|peripheral\s*smear|reticulocyte\s*count|epo\s*level)\b/i, 'hematology'],
+        [/\b(hla[-\s]?b27|complement\s*c[34]|ana\s*panel|anti[-\s]?ccp)\b/i, 'rheumatology'],
+        [/\b(cystatin\s*c|24[-\s]?hour\s*urine|urine\s*albumin|microalbumin)\b/i, 'nephrology'],
       ];
+
+      // Condition-aware: when the patient has a diagnosed condition, route
+      // tests that the specialist owns into that specialist's bucket.
+      // Universal — applies to every condition pattern listed.
+      type CondRoute = { conditionPattern: RegExp; testPatterns: RegExp[]; specialist: string };
+      const CONDITION_ROUTING: CondRoute[] = [
+        {
+          // IBD family — GI owns stool tests, occult-blood, calprotectin
+          conditionPattern: /(ulcerative\s*colitis|\buc\b|crohn|inflammatory\s*bowel|\bibd\b|microscopic\s*colitis)/i,
+          testPatterns: [
+            /\bfecal\s*occult\s*blood\b/i, /\bfobt\b/i, /\bfecal\s*immunochemical/i, /\bfit\b/i,
+            /\bfecal\s*calprotectin\b/i, /\bcalprotectin\b/i, /\bstool\s*(culture|test|panel|study)\b/i,
+            /\bgi[-\s]?map\b/i, /\bcomprehensive\s*stool\b/i, /\blactoferrin\b/i,
+          ],
+          specialist: 'gi',
+        },
+        {
+          // Other GI conditions
+          conditionPattern: /(celiac|\bibs\b|gerd|h\.?\s*pylori|gastritis|pancreatitis|cirrhosis|nafld|fatty\s*liver|hepatitis)/i,
+          testPatterns: [
+            /\bttg[-\s]?iga\b/i, /\btotal\s*iga\b/i, /\bgliadin\b/i, /\bh\.?\s*pylori\b/i,
+            /\bgi[-\s]?map\b/i, /\bcomprehensive\s*stool\b/i, /\bsiBO\s*breath\b/i, /\blactoferrin\b/i,
+          ],
+          specialist: 'gi',
+        },
+        {
+          // Thyroid / endocrine conditions
+          conditionPattern: /(hashimoto|grave|hypothyroid|hyperthyroid|thyroiditis|thyroid\s*nodule|thyroid\s*cancer)/i,
+          testPatterns: [
+            /\btpo\s*ab\b/i, /\btg\s*ab\b/i, /\bthyroid\s*antibodies\b/i, /\bthyroid\s*ultrasound\b/i,
+            /\btsi\b/i, /\btrab\b/i, /\bthyroglobulin\b/i,
+          ],
+          specialist: 'endocrinology',
+        },
+        {
+          // Diabetes & metabolic
+          conditionPattern: /(type\s*[12]\s*diabetes|\bt[12]dm\b|prediabetes|insulin\s*resistance|metabolic\s*syndrome)/i,
+          testPatterns: [
+            /\bogtt\b/i, /\boral\s*glucose\s*tolerance\b/i, /\bc[-\s]?peptide\b/i,
+            /\bgad[-\s]?65\b/i, /\bia[-\s]?2\s*ab\b/i, /\bislet\s*cell/i,
+          ],
+          specialist: 'endocrinology',
+        },
+        {
+          // PCOS / reproductive
+          conditionPattern: /(\bpcos\b|polycystic\s*ovary|endometriosis|amenorrhea|infertility)/i,
+          testPatterns: [
+            /\bdhea[-\s]?s\b/i, /\bandrostenedione\b/i, /\b17[-\s]?oh\s*progesterone\b/i,
+            /\blh:fsh\b/i, /\bamh\b/i, /\bestradiol\b/i, /\bprolactin\b/i,
+          ],
+          specialist: 'endocrinology',
+        },
+        {
+          // Cardiovascular
+          conditionPattern: /(coronary|\bcad\b|heart\s*failure|hfref|hfpef|atrial\s*fib|\bafib\b|hypertension|\bhtn\b|cardiomyopath|valve)/i,
+          testPatterns: [
+            /\bnt[-\s]?probnp\b/i, /\bbnp\b/i, /\btroponin\b/i, /\bapob\b/i, /\blp\(a\)\b/i,
+          ],
+          specialist: 'cardiology',
+        },
+        {
+          // Autoimmune / rheumatologic
+          conditionPattern: /(rheumatoid|\bra\b|lupus|\bsle\b|psoriatic|psoriasis|ankylosing|sjogren|scleroderma|vasculitis)/i,
+          testPatterns: [
+            /\banti[-\s]?ccp\b/i, /\brheumatoid\s*factor\b/i, /\b\brf\b/i, /\bana\b/i,
+            /\banti[-\s]?dsdna\b/i, /\bcomplement/i, /\bhla[-\s]?b27\b/i,
+          ],
+          specialist: 'rheumatology',
+        },
+        {
+          // Renal
+          conditionPattern: /(\bckd\b|chronic\s*kidney|kidney\s*disease|nephritis|nephrotic|glomerul)/i,
+          testPatterns: [
+            /\bcystatin\s*c\b/i, /\b24[-\s]?hour\s*urine\b/i, /\burine\s*albumin\b/i,
+            /\bmicroalbumin\b/i, /\bkidney\s*ultrasound\b/i,
+          ],
+          specialist: 'nephrology',
+        },
+        {
+          // Hematology
+          conditionPattern: /(polycythemia|thalassemia|sickle|leukemia|lymphoma|\bmds\b|myelodysplas|hemochromatos)/i,
+          testPatterns: [
+            /\bjak2\b/i, /\bbcr[-\s]?abl\b/i, /\bperipheral\s*smear\b/i, /\bepo\s*level\b/i,
+            /\bferritin\s*saturation\b/i, /\bhemoglobin\s*electrophoresis\b/i,
+          ],
+          specialist: 'hematology',
+        },
+      ];
+
+      // Determine which condition-routes apply to this patient.
+      const conditionTexts = (Array.isArray(conditions) ? conditions : [])
+        .map((c: any) => String(c?.name ?? c?.condition ?? c ?? ''))
+        .join(' | ')
+        .toLowerCase();
+      const activeConditionRoutes = CONDITION_ROUTING.filter((r) => r.conditionPattern.test(conditionTexts));
+
+      // OGTT (Oral Glucose Tolerance Test) is overkill unless the patient is
+      // truly prediabetic — fasting glucose ≥110 OR A1c ≥5.7. For Watch-tier
+      // glucose/A1c (the most common pattern), fasting insulin + HOMA-IR is
+      // the right test for compensated insulin resistance. Drop OGTT entries
+      // that don't meet the threshold. Universal — same gate applies whether
+      // the patient has UC, Hashimoto's, or no condition at all.
+      const findVal = (patterns: RegExp[]): number | null => {
+        for (const v of (labValues ?? [])) {
+          const name = String(v?.marker_name ?? '').toLowerCase();
+          if (patterns.some((p) => p.test(name))) {
+            const num = Number(v?.value);
+            if (Number.isFinite(num)) return num;
+          }
+        }
+        return null;
+      };
+      const fastingGlucose = findVal([/\bfasting\s*glucose\b/i, /^glucose$/i, /\bglucose\b.*fasting/i]);
+      const a1c = findVal([/\bhemoglobin\s*a1c\b/i, /\bhba1c\b/i, /\ba1c\b/i]);
+      const ogttJustified = (fastingGlucose != null && fastingGlucose >= 110) || (a1c != null && a1c >= 5.7);
+      const isOGTT = (m: string) => /\b(ogtt|oral\s*glucose\s*tolerance)\b/i.test(m);
 
       const isBehaviorTrial = (m: string) =>
         /\b(hydration\s*trial|behavior\s*trial|food\s*diary|symptom\s*log|sleep\s*tracker|blood\s*pressure\s*log)\b/i.test(m);
@@ -2068,15 +2200,31 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
           if (typeof r.marker === 'string') {
             r.marker = r.marker.replace(SUFFIX_STRIP, '').replace(PARENS_STRIP, '').replace(SQUARE_STRIP, '').trim();
           }
-          // Remap specialist for imaging/specialist-class tests the AI mis-tagged as 'pcp'
+          // Remap specialist — modality-class tests + condition-aware routing.
           if (typeof r.marker === 'string' && (!r.specialist || r.specialist === 'pcp')) {
+            // (1) Modality match — always overrides PCP regardless of condition.
+            let remapped = false;
             for (const [pat, target] of SPECIALIST_REMAP) {
               if (pat.test(r.marker)) {
                 if (r.specialist !== target) {
-                  console.log(`[wellness-plan] specialist remap: "${r.marker}" pcp → ${target}`);
+                  console.log(`[wellness-plan] specialist remap (modality): "${r.marker}" pcp → ${target}`);
                   r.specialist = target;
                 }
+                remapped = true;
                 break;
+              }
+            }
+            // (2) Condition-aware match — only fires when this patient has the
+            // matching diagnosis. Universal across every condition route.
+            if (!remapped) {
+              for (const route of activeConditionRoutes) {
+                if (route.testPatterns.some((p) => p.test(r.marker))) {
+                  if (r.specialist !== route.specialist) {
+                    console.log(`[wellness-plan] specialist remap (condition): "${r.marker}" pcp → ${route.specialist}`);
+                    r.specialist = route.specialist;
+                  }
+                  break;
+                }
               }
             }
           }
@@ -2091,6 +2239,12 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
           // Drop behavior trials masquerading as tests
           if (typeof r.marker === 'string' && isBehaviorTrial(r.marker)) {
             console.log(`[wellness-plan] dropped behavior trial from retest_timeline: "${r.marker}"`);
+            return false;
+          }
+          // Drop OGTT when not clinically justified (fasting glu <110 AND A1c <5.7).
+          // Universal — same gate regardless of patient condition.
+          if (typeof r.marker === 'string' && isOGTT(r.marker) && !ogttJustified) {
+            console.log(`[wellness-plan] dropped OGTT — fasting glucose ${fastingGlucose ?? '?'} / A1c ${a1c ?? '?'} doesn't justify (need glu≥110 or A1c≥5.7)`);
             return false;
           }
           // Drop entries missing a marker
