@@ -41,6 +41,25 @@ export interface InjectedTest {
   insuranceNote: string;
 }
 
+// Helper: was this marker drawn AND healthy? Universal across users.
+// Returns true if the labs string contains a line matching the marker
+// regex AND that line is flagged [healthy] / [normal] / [optimal].
+function markerDrawnAndHealthy(labsLower: string, markerPattern: RegExp): boolean {
+  const lines = labsLower.split('\n');
+  for (const line of lines) {
+    if (markerPattern.test(line) && /\[(healthy|normal|optimal)\]/.test(line)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// Helper: was this marker drawn AT ALL (any flag)?
+function markerDrawn(labsLower: string, markerPattern: RegExp): boolean {
+  const lines = labsLower.split('\n');
+  return lines.some(line => markerPattern.test(line));
+}
+
 // Helper: detects the conditions / symptoms / patterns we use repeatedly.
 export function buildContextFlags(ctx: InjectionContext) {
   const c = ctx.conditionsLower;
@@ -51,8 +70,42 @@ export function buildContextFlags(ctx: InjectionContext) {
   const age = ctx.age ?? 99;
   const ageKnown = ctx.age != null;
 
+  // Per-marker drawn / drawn-healthy flags. Used to gate universal
+  // baseline tests so we never recommend a test the patient already
+  // has — unless they're on a depleter that warrants tracking.
+  const drawnHealthy = (re: RegExp) => markerDrawnAndHealthy(l, re);
+  const drawn = (re: RegExp) => markerDrawn(l, re);
+
   return {
     age, sex, ageKnown,
+
+    // ── ALREADY-DRAWN HEALTHY MARKERS (universal: skip retest if covered) ──
+    // For any marker in the patient's lab upload that came back healthy,
+    // mark it so the baseline injector can skip re-ordering — UNLESS the
+    // patient is on a depleter that warrants tracking.
+    b12DrawnHealthy: drawnHealthy(/vitamin b.?12|^b12|cobalamin/i),
+    folateDrawnHealthy: drawnHealthy(/folate/i),
+    vitDDrawnHealthy: drawnHealthy(/25.?hydroxy.*vitamin d|vitamin d.*25/i),
+    cmpDrawn: drawn(/^bun:|^creatinine|^sodium|^potassium|^chloride|^calcium\b|^bilirubin|alanine.*amino|aspartate.*amino|alkaline phosphatase/i),
+    cbcDrawn: drawn(/^wbc|^rbc:|hemoglobin\b(?!\s*a1c)|hematocrit|^mcv|^mch:|^mchc|^rdw|^platelets/i),
+    lipidDrawn: drawn(/cholesterol|triglyceride|ldl|hdl|vldl/i),
+    a1cDrawn: drawn(/hemoglobin a1c|hba1c|^a1c/i),
+    hsCrpDrawn: drawn(/hs[\s-]?crp|c[\s-]?reactive/i),
+    hsCrpDrawnHealthy: drawnHealthy(/hs[\s-]?crp|c[\s-]?reactive/i),
+    ironPanelDrawn: drawn(/ferritin|tibc|transferrin|iron sat|^iron\b/i),
+    ironPanelDrawnHealthy: drawnHealthy(/ferritin/i) && drawnHealthy(/tibc/i),
+    ggtDrawn: drawn(/^ggt\b|gamma[\s-]?glutamyl/i),
+    thyroidFullDrawn: drawn(/free t4|t4 free|free t3|t3 free/i),
+    tshDrawnHealthy: drawnHealthy(/^tsh\b/i),
+    lpADrawn: drawn(/lp\(a\)|lipoprotein.?a/i),
+    rbcMgDrawn: drawn(/rbc.*magnesium|magnesium.*rbc/i),
+    apoBDrawn: drawn(/apob|apolipoprotein b/i),
+    fastingInsulinDrawn: drawn(/fasting insulin|^insulin\b/i),
+    ckDrawn: drawn(/^ck\b|creatine kinase/i),
+    uricAcidDrawn: drawn(/uric acid/i),
+    totalTestosteroneDrawnHealthy: drawnHealthy(/^testosterone|testosterone, serum|total testosterone/i),
+    freeTestosteroneDrawn: drawn(/free testosterone/i),
+    testosteroneFullDrawn: drawn(/free testosterone/i) && drawn(/shbg/i),
     isMenstruatingFemale: sex === 'female' && age >= 12 && age <= 55,
 
     // Conditions — delegated to canonical registry.
@@ -188,20 +241,62 @@ function applyUniversalRules(f: Flags, ctx: InjectionContext, add: AddFn): void 
   // unconditionally so the baseline is never lost to AI discretion or
   // flag-format mismatch. Downstream dedup collapses overlap with
   // AI-generated entries (same canonical name = same dedup key).
+  // ── UNIVERSAL ADULT BASELINE — gated on what's already drawn ──────────
+  // For each baseline test:
+  //   - If drawn AND healthy → SKIP unless an active depleter warrants tracking
+  //   - If drawn AND abnormal → KEEP (track response)
+  //   - If not drawn → KEEP (baseline gap)
+  // Universal across all users. Stops the "you ordered B12 but my B12 is fine" bug.
   if (f.age >= 18) {
-    add('cmp', 'Standard adult baseline — liver, kidney, electrolytes, glucose, calcium', 'd');
-    add('cbc', 'Standard adult baseline — red cells, white cells, platelets, inflammation patterns', 'd');
-    add('lipid_panel', 'Standard adult cardiovascular risk panel — TC, LDL, HDL, TG, VLDL, non-HDL', 'd');
-    add('hba1c', 'Three-month average blood sugar — catches dysglycemia before fasting glucose does', 'd');
-    add('hs_crp', 'Systemic inflammation baseline — CV + metabolic risk amplifier', 'd');
+    // Always-add (no gate — can't easily know if "CMP is healthy" because it has many components)
+    if (!f.cmpDrawn) add('cmp', 'Standard adult baseline — liver, kidney, electrolytes, glucose, calcium', 'd');
+    if (!f.cbcDrawn) add('cbc', 'Standard adult baseline — red cells, white cells, platelets, inflammation patterns', 'd');
+    if (!f.lipidDrawn) add('lipid_panel', 'Standard adult cardiovascular risk panel — TC, LDL, HDL, TG, VLDL, non-HDL', 'd');
+    if (!f.a1cDrawn) add('hba1c', 'Three-month average blood sugar — catches dysglycemia before fasting glucose does', 'd');
+
+    // hs-CRP: always include unless drawn-healthy (cheap baseline, low-noise add)
+    if (!f.hsCrpDrawnHealthy) add('hs_crp', 'Systemic inflammation baseline — CV + metabolic risk amplifier', 'd');
+
+    // Vit D: always include — even if drawn-healthy, it's a supplementation-tracking marker
     add('vit_d_25oh', 'Vitamin D status — drives mood, immunity, bone, autoimmunity', 'd');
-    add('vit_b12_workup', 'Tissue B12 status (Serum B12 + MMA + Homocysteine) — catches functional deficiency', 'd');
-    add('folate_workup', 'Tissue folate status (Serum + RBC) — covers mesalamine/methotrexate depletion', 'd');
-    add('iron_panel', 'Iron stores + transport — fatigue, hair loss, restless legs driver before Hgb drops', 'd');
-    add('ggt', 'Sensitive liver/biliary marker — anchor for ALT/AST', 'd');
-    add('thyroid_panel', 'Full thyroid function — TSH alone misses central hypothyroidism + impaired T4→T3 conversion', 'd');
-    add('rbc_magnesium', 'Intracellular Mg — sleep, muscle, glucose handling, cardiovascular rhythm', 'd');
-    add('lp_a', 'Once-in-lifetime genetic CV risk marker — flags risk a normal lipid panel misses', 'd');
+
+    // B12 workup: skip if B12 already drawn-healthy AND patient not on a B12 depleter
+    const hasB12Depleter = f.onMetformin || f.onPPI || f.onGLP1;
+    if (!f.b12DrawnHealthy || hasB12Depleter) {
+      add('vit_b12_workup', 'Tissue B12 status (Serum B12 + MMA + Homocysteine) — catches functional deficiency', 'd');
+    }
+
+    // Folate workup: skip if drawn-healthy AND not on a folate depleter
+    const hasFolateDepleter = f.onMesalamine || /\bmethotrexate\b|\bsulfasalazine\b/i.test(ctx.medsLower);
+    if (!f.folateDrawnHealthy || hasFolateDepleter) {
+      add('folate_workup', 'Tissue folate status (Serum + RBC) — covers mesalamine/methotrexate depletion', 'd');
+    }
+
+    // Iron panel: skip if Iron + TIBC + Ferritin all drawn-healthy
+    if (!f.ironPanelDrawnHealthy) {
+      add('iron_panel', 'Iron stores + transport — fatigue, hair loss, restless legs driver before Hgb drops', 'd');
+    }
+
+    // GGT: skip if drawn (any flag — assumes if drawn, the value is interpreted)
+    if (!f.ggtDrawn) {
+      add('ggt', 'Sensitive liver/biliary marker — anchor for ALT/AST', 'd');
+    }
+
+    // Thyroid Panel: skip if patient already has FT3 + FT4 drawn AND TSH healthy AND no thyroid symptoms
+    const hasThyroidSx = /\b(fatigue|tired|hair (loss|thin)|cold|weight gain|brain fog|constipation)/i.test(ctx.symptomsLower);
+    if (!f.thyroidFullDrawn || (!f.tshDrawnHealthy && hasThyroidSx)) {
+      add('thyroid_panel', 'Full thyroid function — TSH alone misses central hypothyroidism + impaired T4→T3 conversion', 'd');
+    }
+
+    // RBC Magnesium: skip if drawn (rarely drawn — usually "no")
+    if (!f.rbcMgDrawn) {
+      add('rbc_magnesium', 'Intracellular Mg — sleep, muscle, glucose handling, cardiovascular rhythm', 'd');
+    }
+
+    // Lp(a): once-in-lifetime — only add if not drawn
+    if (!f.lpADrawn) {
+      add('lp_a', 'Once-in-lifetime genetic CV risk marker — flags risk a normal lipid panel misses', 'd');
+    }
   }
 
   // ── IBD → Fecal Calprotectin (disease-activity monitoring) ────────────
@@ -282,8 +377,8 @@ function applyUniversalRules(f: Flags, ctx: InjectionContext, add: AddFn): void 
     add('inr_if_warfarin', 'On anticoagulant — INR monitoring frequency dictated by drug class', 'b');
   }
 
-  // ── ApoB on any lipid abnormality OR statin user ──────────────────────
-  if (f.tgHigh || f.ldlHigh || f.hdlLow || f.onStatin) {
+  // ── ApoB on any lipid abnormality OR statin user — skip if already drawn ──
+  if ((f.tgHigh || f.ldlHigh || f.hdlLow || f.onStatin) && !f.apoBDrawn) {
     add('apob',
       f.onStatin
         ? 'On statin — ApoB measures particle count directly. Target <80 on statin; if higher, dose may be inadequate.'
@@ -296,8 +391,8 @@ function applyUniversalRules(f: Flags, ctx: InjectionContext, add: AddFn): void 
     add('liver_ultrasound', 'ALT >2x normal or ALT elevated with high triglycerides — non-invasive imaging to rule out fatty liver', 'c');
   }
 
-  // ── CK on every statin user (AHA/ACC monitoring) ──────────────────────
-  if (f.onStatin) {
+  // ── CK on every statin user (AHA/ACC monitoring) — skip if drawn ──────
+  if (f.onStatin && !f.ckDrawn) {
     add('ck_statin_baseline',
       f.hasMuscleSymptoms || f.hasJointSymptoms
         ? 'On statin + muscle/joint symptoms — rules out statin-induced myopathy'
@@ -305,8 +400,8 @@ function applyUniversalRules(f: Flags, ctx: InjectionContext, add: AddFn): void 
       'b');
   }
 
-  // ── Uric Acid on metabolic syndrome pattern ───────────────────────────
-  if (f.tgHigh && (f.glucoseWatch || f.hdlLow)) {
+  // ── Uric Acid on metabolic syndrome pattern — skip if drawn ───────────
+  if (f.tgHigh && (f.glucoseWatch || f.hdlLow) && !f.uricAcidDrawn) {
     add('uric_acid', 'Metabolic syndrome pattern — gout risk + cardiovascular risk amplifier', 'c');
   }
 
@@ -354,7 +449,13 @@ function applyUniversalRules(f: Flags, ctx: InjectionContext, add: AddFn): void 
   // male asking for thorough labs.
   const isAdultMale = f.sex === 'male' && f.age >= 18;
   if (isAdultMale && !f.onTRT) {
-    add('testosterone_panel_male', 'Comprehensive male hormonal baseline — Total + Free + Bioavailable + SHBG + Estradiol + LH + FSH', 'd');
+    // Skip the comprehensive panel if Total testosterone is drawn-healthy
+    // AND no symptom suggesting low-T (fatigue / low libido / weight resist)
+    // — universal: don't over-test asymptomatic patients with normal Total T.
+    const hasLowTSx = /\b(low libido|sex drive|erect|fatigue|weight gain|weight resist)/i.test(ctx.symptomsLower);
+    if (!f.totalTestosteroneDrawnHealthy || hasLowTSx) {
+      add('testosterone_panel_male', 'Comprehensive male hormonal baseline — Total + Free + Bioavailable + SHBG + Estradiol + LH + FSH', 'd');
+    }
   }
 
   // ── PCOS Panel — adult female with cycle/skin pattern ─────────────────
@@ -381,7 +482,7 @@ function applyUniversalRules(f: Flags, ctx: InjectionContext, add: AddFn): void 
     (glucoseVal != null && glucoseVal >= 95 && glucoseVal <= 125) ||
     (tgHdlRatio != null && tgHdlRatio >= 3) ||
     f.hasWeightIssues;
-  if (earlyMetabolicPattern) {
+  if (earlyMetabolicPattern && !f.fastingInsulinDrawn) {
     add('fasting_insulin_homa_ir',
       'Early metabolic pattern (elevated TG, watch-tier glucose/A1c, TG/HDL ≥3, or weight resistance) — catches hyperinsulinemia A1c misses; tracks response 4-6 weeks faster than A1c',
       'c');
