@@ -2326,6 +2326,31 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
       const ogttJustified = (fastingGlucose != null && fastingGlucose >= 110) || (a1c != null && a1c >= 5.7);
       const isOGTT = (m: string) => /\b(ogtt|oral\s*glucose\s*tolerance)\b/i.test(m);
 
+      // ── UNIVERSAL TSH-FIRST RULE FOR THYROID PANEL ─────────────────────
+      // Free T3 + Free T4 should only appear in the retest list when TSH is
+      // borderline (>2.5 with sx, <1.0 with sx) OR a thyroid dx is on the
+      // conditions list. Otherwise the patient is asking their PCP for a full
+      // thyroid panel that isn't clinically warranted — PCPs will trim it
+      // back to TSH-only. Pre-trim it ourselves for credibility.
+      const tsh = findVal([/^tsh$/i, /\bthyroid[\s-]?stimulating[\s-]?hormone\b/i]);
+      const hasThyroidDx = /\b(hashimoto|grave|hypothyroid|hyperthyroid|thyroiditis|thyroid\s*nodule)\b/i.test(conditionTexts);
+      const fullThyroidJustified = hasThyroidDx
+        || (tsh != null && (tsh > 2.5 || tsh < 1.0));
+      const isFullThyroidPanel = (m: string) => /\b(thyroid\s*panel|free\s*t[34]|ft3|ft4)\b/i.test(m) && /\bthyroid\s*panel|free\s*t/i.test(m);
+
+      // ── UNIVERSAL B12 ESCALATION RULE ──────────────────────────────────
+      // MMA + Homocysteine on top of serum B12 only justified when:
+      //   - serum B12 is borderline-low (<400)
+      //   - patient is on long-term metformin (>5y) or PPI (>2y)
+      // Otherwise serum B12 alone first. Saves the patient an over-ordered
+      // panel a real PCP would refuse.
+      const serumB12 = findVal([/\bvitamin\s*b[\s-]?12\b/i, /\bcobalamin\b/i, /\bb12,?\s*serum\b/i, /\bserum\s*b12\b/i]);
+      const medsLowerForB12 = (medsStr ?? '').toLowerCase();
+      const onLongTermMetformin = /metformin/i.test(medsLowerForB12) && /(5\s*y|long[-\s]?term|chronic)/i.test(medsLowerForB12);
+      const onLongTermPPI = /(omeprazole|pantoprazole|lansoprazole|rabeprazole|esomeprazole|ppi)/i.test(medsLowerForB12) && /(2\s*y|long[-\s]?term|chronic)/i.test(medsLowerForB12);
+      const b12EscalationJustified = (serumB12 != null && serumB12 < 400) || onLongTermMetformin || onLongTermPPI;
+      const isB12Workup = (m: string) => /\b(methylmalonic|\bmma\b|homocysteine)\b/i.test(m) && /b[\s-]?12|cobalamin/i.test(m);
+
       const isBehaviorTrial = (m: string) =>
         /\b(hydration\s*trial|behavior\s*trial|food\s*diary|symptom\s*log|sleep\s*tracker|blood\s*pressure\s*log)\b/i.test(m);
 
@@ -2422,6 +2447,27 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
             console.log(`[wellness-plan] dropped OGTT — fasting glucose ${fastingGlucose ?? '?'} / A1c ${a1c ?? '?'} doesn't justify (need glu≥110 or A1c≥5.7)`);
             return false;
           }
+          // Downgrade full Thyroid Panel (TSH+FT3+FT4) to TSH-only when TSH
+          // is mid-normal AND no thyroid dx. Universal — saves the patient
+          // from asking their PCP for a panel that gets refused.
+          if (typeof r.marker === 'string' && isFullThyroidPanel(r.marker) && !fullThyroidJustified) {
+            console.log(`[wellness-plan] downgrading Thyroid Panel → TSH-only (TSH ${tsh ?? '?'} not borderline, no thyroid dx)`);
+            r.marker = 'TSH (Thyroid-Stimulating Hormone)';
+            if (typeof r.why === 'string' && /\bfree\s*t[34]\b/i.test(r.why)) {
+              r.why = r.why.replace(/\bfree\s*t[34][^.]*\./gi, '').trim();
+            }
+          }
+          // Downgrade B12 Workup (B12+MMA+Homocysteine) to serum B12 alone
+          // when serum B12 is normal AND patient isn't on long-term metformin
+          // or PPI. Universal — MMA + homocysteine adds cost the PCP will
+          // skip on a normal B12 without absorption-affecting medication.
+          if (typeof r.marker === 'string' && isB12Workup(r.marker) && !b12EscalationJustified) {
+            console.log(`[wellness-plan] downgrading B12 Workup → serum B12 (B12 ${serumB12 ?? '?'} not borderline, no metformin/PPI long-term)`);
+            r.marker = 'Vitamin B12 (Serum)';
+            if (typeof r.why === 'string') {
+              r.why = r.why.replace(/\b(MMA|methylmalonic\s*acid|homocysteine)[^.]*\./gi, '').trim();
+            }
+          }
           // Drop entries missing a marker
           if (!r.marker || typeof r.marker !== 'string' || r.marker.trim().length === 0) return false;
           return true;
@@ -2458,6 +2504,26 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
       plan.retest_timeline = Array.from(seen.values());
       if (beforeDedup !== plan.retest_timeline.length) {
         console.log(`[wellness-plan] retest_timeline deduped ${beforeDedup} → ${plan.retest_timeline.length}`);
+      }
+
+      // ── ESCALATION-ORDER PAIRS (universal) ────────────────────────────
+      // When two tests in the same retest list are an order-of-operations
+      // pair where the second only makes sense after the first, drop the
+      // second. PCPs order ultrasound first; FibroScan is escalation only
+      // if US shows steatosis.
+      const ESCALATION_PAIRS: Array<[RegExp, RegExp, string]> = [
+        [/\bliver\s*ultrasound\b/i, /\b(fibroscan|transient\s*elastography)\b/i, 'Liver Ultrasound first; FibroScan is escalation only if US shows steatosis'],
+        [/\bcoronary\s*calcium|\bcac\b/i, /\bcoronary\s*ct\s*angio|\bccta\b/i, 'CAC first; CCTA is escalation if CAC elevated'],
+        [/\btsh\b(?!.*free)/i, /\bfree\s*t[34]/i, 'TSH first; Free T3/T4 only if TSH abnormal'],
+      ];
+      for (const [primary, escalation, reason] of ESCALATION_PAIRS) {
+        const hasPrimary = plan.retest_timeline.some((r: any) => primary.test(String(r?.marker ?? '')));
+        const escIdx = plan.retest_timeline.findIndex((r: any) => escalation.test(String(r?.marker ?? '')));
+        if (hasPrimary && escIdx >= 0) {
+          const dropped = plan.retest_timeline[escIdx];
+          plan.retest_timeline.splice(escIdx, 1);
+          console.log(`[wellness-plan] escalation-pair: dropped "${dropped?.marker}" — ${reason}`);
+        }
       }
     }
 
