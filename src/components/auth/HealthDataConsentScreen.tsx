@@ -147,7 +147,7 @@ export const HealthDataConsentScreen = ({ onAccepted }: Props) => {
           {submitting
             ? 'Saving your authorizations…'
             : allChecked
-            ? 'Continue to onboarding'
+            ? 'Continue'
             : 'Check both boxes to continue'}
         </button>
 
