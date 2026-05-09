@@ -126,8 +126,12 @@ const RATIONALE: Record<string, string> = {
  *  multiple confirmatory_tests don't all show identical boilerplate. */
 function patternFallback(testName: string): string {
   const t = testName.toLowerCase();
-  if (/\bfasting\s*insulin|homa[\s-]?ir|c[\s-]?peptide\b/.test(t))
-    return 'Quantifies insulin secretion at fasting state. Identifies hyperinsulinemia driving lipid + weight pattern even when glucose looks normal.';
+  if (/\bhoma[\s-]?ir\b/.test(t))
+    return 'Calculated severity index from fasting glucose + insulin. >2.5 confirms insulin resistance; >3.5 indicates advanced. Tracks treatment response.';
+  if (/\bc[\s-]?peptide\b/.test(t))
+    return 'Distinguishes insulin you make from injected insulin. Useful when fasting insulin is borderline or therapy decisions need pancreatic function context.';
+  if (/\bfasting\s*insulin\b/.test(t))
+    return 'Quantifies basal insulin secretion. Elevated fasting insulin (>10 mIU/mL) confirms hyperinsulinemia driving lipid + weight pattern even when glucose is normal.';
   if (/\bogtt|oral\s*glucose\s*tolerance/.test(t))
     return 'Reveals postprandial glucose dysregulation that fasting glucose alone misses. 2-hour value >140 confirms impaired glucose tolerance.';
   if (/\bcontinuous\s*glucose|cgm\b/.test(t))

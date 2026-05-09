@@ -2399,16 +2399,41 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
           if (typeof r.marker === 'string') {
             r.marker = r.marker.replace(SUFFIX_STRIP, '').replace(PARENS_STRIP, '').replace(SQUARE_STRIP, '').trim();
             r.marker = stripPanelListing(r.marker);
-            // Universal fake-test-name rename: AI keeps inventing "Fecal gut
-            // hs-CRP" / "Fecal CRP" / "gut hs-CRP" by mashing up real test
-            // names. Replace with the real one (Fecal Calprotectin) so this
-            // entry merges with any real Fecal Calprotectin entry below.
+            // Universal fake-test-name rename
             r.marker = r.marker
               .replace(/\bfecal\s*gut\s*hs[\s\-]?CRP\b/gi, 'Fecal Calprotectin')
               .replace(/\bfecal\s*hs[\s\-]?CRP\b/gi, 'Fecal Calprotectin')
               .replace(/\bgut\s*hs[\s\-]?CRP\b/gi, 'Fecal Calprotectin')
               .replace(/\bdysbiotic\s+dysbiosis\b/gi, 'dysbiosis')
               .trim();
+            // Strip conditional clauses from marker name. AI sometimes puts
+            // "after X weeks", "if Y normalizes", "until Z resolves" inline
+            // in the marker — that belongs in the why field. Universal split:
+            // if marker contains a conditional phrase, cut everything from
+            // that phrase onward and prepend it to the why.
+            const conditionalSplitRe = /\s+(?:after\s+\d|if\s+(?:sleep|symptoms|hematocrit|values|labs|the|results|abnormal)|when\s+(?:sleep|symptoms|values)|until\s+|once\s+)/i;
+            const condMatch = r.marker.match(conditionalSplitRe);
+            if (condMatch && typeof condMatch.index === 'number') {
+              const stripped = r.marker.slice(0, condMatch.index).trim();
+              const conditionTail = r.marker.slice(condMatch.index).trim();
+              if (stripped.length > 0) {
+                console.log(`[wellness-plan] split conditional clause from marker: "${r.marker}" → "${stripped}"`);
+                r.marker = stripped.replace(/[—\-–:|;,]\s*$/, '').trim();
+                if (typeof r.why === 'string' && conditionTail.length > 0) {
+                  r.why = r.why ? `${r.why} ${conditionTail}`.trim() : conditionTail;
+                }
+              }
+            }
+            // Drop "Repeat" prefix when it's tagged onto a panel name. The AI
+            // writes "Repeat hematocrit after..." — should just be the test
+            // name; the "this is a follow-up" semantic is implicit in the
+            // retest_timeline placement.
+            r.marker = r.marker.replace(/^repeat\s+/i, '').trim();
+            // Strip duplicated trigger letters: "(c) (b/c) Standard..." →
+            // "(b/c) Standard..."
+            if (typeof r.why === 'string') {
+              r.why = r.why.replace(/^\(([abcde])\)\s+(\([abcde](?:\/[abcde])*\))/i, '$2').trim();
+            }
           }
           // Also scrub fake test names from why field (the AI references
           // them in rationale even after the marker name is corrected).
@@ -2729,6 +2754,13 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
         [/\bcatastrophic(?:ally)?\b/gi, 'serious'],
         [/\bcris(?:is|es)\b/gi, 'concern'],
         [/\bsevere\s+(sleep\s+deprivation|fatigue|hyperlipidemia)\b/gi, 'significant $1'],
+        // Watch-tier values (A1c 5.4-5.6, fasting glucose 95-99, ferritin
+        // <50, hs-CRP ≥0.5, vit D 30-40, ApoB ≥90) should never be called
+        // "optimal" or "normal" — they're flagged for a reason. Universal
+        // scrub: when AI describes a Watch-tier marker as "optimal", rewrite
+        // to the correct framing.
+        [/\b(a1c|hba1c|hemoglobin\s*a1c)\s+5\.[456]%?\s+is\s+(currently\s+)?(optimal|normal)\b/gi, '$1 5.5% is Watch-tier (upper end of normal — early metabolic stress)'],
+        [/\b(fasting\s+glucose)\s+(9[5-9])\s+(mg\/dL)?\s*is\s+(currently\s+)?(optimal|normal)\b/gi, '$1 $2 is Watch-tier (top of normal — early dysmetabolism)'],
         [/\bcritically\s+low\b/gi, 'low'],
         [/\bcritically\s+high\b/gi, 'high'],
       ];
