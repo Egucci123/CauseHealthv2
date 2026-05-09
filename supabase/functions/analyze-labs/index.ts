@@ -360,7 +360,9 @@ Borderline upper-normal values do NOT trigger rare-disease screening. Default mi
     // so we don't strip clinical terms there.
     const JARGON_REPLACEMENTS: [RegExp, string][] = [
       [/\bpolycythemia\b/gi, 'too many red blood cells'],
-      [/\berythrocytosis\b/gi, 'too many red blood cells'],
+      // erythrocytosis kept as-is — replacing it produces ungrammatical
+      // sentences ("mild erythrocytosis" → "mild too many red blood cells").
+      // The lay term goes in the explanation prose, not the noun phrase.
       [/\bhemolysis\b/gi, 'red blood cells breaking down'],
       [/\bhemolytic\b/gi, 'red-cell-breakdown'],
       [/\bglobulins?\b/gi, 'blood proteins'],
@@ -390,7 +392,10 @@ Borderline upper-normal values do NOT trigger rare-disease screening. Default mi
       [/\bsubclinical\b/gi, 'mild, early'],
       [/\bidiopathic\b/gi, 'no clear cause yet'],
       [/\bautoimmune\b/gi, 'immune system attacking your body'],
-      [/\binsulin resistance\b/gi, 'your body ignoring insulin'],
+      // 'insulin resistance' kept as-is — universally understood by patients
+      // and the noun-phrase replacement broke sentences ("early insulin
+      // resistance" → "early your body ignoring insulin", which is the
+      // exact fragment we keep having to scrub elsewhere).
       [/\bmetabolic syndrome\b/gi, 'a cluster of belly-fat, blood sugar, and cholesterol problems'],
       [/\bischemia\b/gi, 'low blood flow'],
       [/\binflammation marker\b/gi, 'sign of inflammation'],
@@ -695,6 +700,7 @@ Borderline upper-normal values do NOT trigger rare-disease screening. Default mi
         [/\bdangerously\b/gi, 'notably'],
         [/\bdangerous\b/gi, 'elevated'],
         [/\bcatastrophic(?:ally)?\b/gi, 'serious'],
+        [/\bcris(?:is|es)\b/gi, 'concern'],
         [/\bcritically\s+low\b/gi, 'low'],
         [/\bcritically\s+high\b/gi, 'high'],
       ];
@@ -708,11 +714,32 @@ Borderline upper-normal values do NOT trigger rare-disease screening. Default mi
 
       // (1) Word-cap enforcement — truncate at sentence boundary so output
       // stays grammatical. If no sentence boundary fits, hard-cap with ellipsis.
+      // Sentence boundary that doesn't break decimals: split on punctuation
+      // followed by whitespace + a capital letter or end of string.
+      const splitSentences = (text: string): string[] => {
+        const out: string[] = [];
+        const re = /[^.!?]+(?:[.!?]+(?=\s+[A-Z])|[.!?]+$|$)/g;
+        let m: RegExpExecArray | null;
+        let lastIdx = 0;
+        while ((m = re.exec(text)) !== null) {
+          if (m.index < lastIdx) break;
+          out.push(m[0]);
+          lastIdx = re.lastIndex;
+          if (m[0].length === 0) break;
+        }
+        return out.length ? out : [text];
+      };
+
+      // Fix orphan whitespace introduced after decimal points ("5. 1" → "5.1").
+      const fixDecimalSpaces = (text: string): string =>
+        typeof text === 'string' ? text.replace(/(\d)\.\s+(\d)/g, '$1.$2') : text;
+
       const enforceWordCap = (text: string, cap: number): string => {
         if (typeof text !== 'string') return text;
-        const words = text.trim().split(/\s+/).filter(Boolean);
-        if (words.length <= cap) return text;
-        const sentences = text.match(/[^.!?]+[.!?]+/g) ?? [text];
+        const cleaned = fixDecimalSpaces(text);
+        const words = cleaned.trim().split(/\s+/).filter(Boolean);
+        if (words.length <= cap) return cleaned;
+        const sentences = splitSentences(cleaned);
         const acc: string[] = [];
         let count = 0;
         for (const s of sentences) {
@@ -729,7 +756,7 @@ Borderline upper-normal values do NOT trigger rare-disease screening. Default mi
       };
 
       const normalize = (text: string, cap: number): string =>
-        enforceWordCap(softenAlarm(scrubSupplementInference(text)), cap);
+        enforceWordCap(softenAlarm(scrubSupplementInference(fixDecimalSpaces(text))), cap);
 
       // Apply to all user-facing strings.
       if (typeof analysis.summary === 'string') {

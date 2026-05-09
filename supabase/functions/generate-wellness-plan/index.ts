@@ -2181,13 +2181,27 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
       const isBehaviorTrial = (m: string) =>
         /\b(hydration\s*trial|behavior\s*trial|food\s*diary|symptom\s*log|sleep\s*tracker|blood\s*pressure\s*log)\b/i.test(m);
 
+      // Non-tests masquerading as tests — clinical decisions, dose adjustments,
+      // and "repeat X after Y" phrasing are NOT orderable lab tests.
+      const isNotATest = (m: string) =>
+        /\b(dose\s+(assessment|adjustment|review|reduction)|after\s+trial|after\s+\d+\s+(days|weeks)|reassess\b|consider\s+(reducing|increasing|switching))/i.test(m);
+
+      // Strip panel-content-listed-in-name pattern: "Comprehensive Metabolic
+      // Panel (CMP): ALT, AST, Bilirubin, Albumin, Glucose..." → keep only
+      // the panel name. The colon + comma-list looks bad in the UI.
+      const stripPanelListing = (m: string): string =>
+        typeof m === 'string'
+          ? m.replace(/^(.+?\(?\b(?:CMP|CBC|BMP|Lipid Panel|Iron Panel|Thyroid Panel|Hashimoto's Antibodies|B12 Workup|Folate Workup|Testosterone Panel|PCOS Panel)\)?)\s*[:—-]\s*[A-Z][^()]*$/i, '$1').trim()
+          : m;
+
       const beforeCount = plan.retest_timeline.length;
       plan.retest_timeline = plan.retest_timeline
         .filter((r: any) => r && typeof r === 'object')
         .map((r: any) => {
-          // Strip suffix drift from marker name
+          // Strip suffix drift + panel-content-listing from marker name
           if (typeof r.marker === 'string') {
             r.marker = r.marker.replace(SUFFIX_STRIP, '').replace(PARENS_STRIP, '').replace(SQUARE_STRIP, '').trim();
+            r.marker = stripPanelListing(r.marker);
           }
           // Remap specialist — modality-class tests + condition-aware routing.
           if (typeof r.marker === 'string' && (!r.specialist || r.specialist === 'pcp')) {
@@ -2230,6 +2244,12 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
             console.log(`[wellness-plan] dropped behavior trial from retest_timeline: "${r.marker}"`);
             return false;
           }
+          // Drop clinical decisions / dose reviews / "repeat X after trial"
+          // — these are not lab orders.
+          if (typeof r.marker === 'string' && isNotATest(r.marker)) {
+            console.log(`[wellness-plan] dropped non-test from retest_timeline: "${r.marker}"`);
+            return false;
+          }
           // Drop OGTT when not clinically justified (fasting glu <110 AND A1c <5.7).
           // Universal — same gate regardless of patient condition.
           if (typeof r.marker === 'string' && isOGTT(r.marker) && !ogttJustified) {
@@ -2262,8 +2282,11 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
             })
             .filter((t: any) => {
               const name = typeof t === 'string' ? t : (t?.test ?? '');
-              return typeof name === 'string' && name.trim().length > 0
-                && !/\b(hydration\s*trial|behavior\s*trial)\b/i.test(name);
+              if (typeof name !== 'string' || name.trim().length === 0) return false;
+              if (/\b(hydration\s*trial|behavior\s*trial|after\s+trial|repeat.*after\s+trial)\b/i.test(name)) return false;
+              if (/\bdose\s+(assessment|adjustment|review|reduction)\b/i.test(name)) return false;
+              if (/\bconsider\s+(reducing|increasing|switching)\b/i.test(name)) return false;
+              return true;
             });
         }
       }
@@ -2361,6 +2384,8 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
         [/\bdangerously\b/gi, 'notably'],
         [/\bdangerous\b/gi, 'elevated'],
         [/\bcatastrophic(?:ally)?\b/gi, 'serious'],
+        [/\bcris(?:is|es)\b/gi, 'concern'],
+        [/\bsevere\s+(sleep\s+deprivation|fatigue|hyperlipidemia)\b/gi, 'significant $1'],
         [/\bcritically\s+low\b/gi, 'low'],
         [/\bcritically\s+high\b/gi, 'high'],
       ];
@@ -2372,11 +2397,38 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
         return out;
       };
 
+      // Sentence boundary that doesn't break decimals: split on punctuation
+      // followed by whitespace + a capital letter or end of string. "ALT 5.5"
+      // and "Hct 51.4%" stay intact; "Foo. Bar." splits between sentences.
+      const splitSentences = (text: string): string[] => {
+        const out: string[] = [];
+        const re = /[^.!?]+(?:[.!?]+(?=\s+[A-Z])|[.!?]+$|$)/g;
+        let m: RegExpExecArray | null;
+        let lastIdx = 0;
+        while ((m = re.exec(text)) !== null) {
+          if (m.index < lastIdx) break;
+          out.push(m[0]);
+          lastIdx = re.lastIndex;
+          if (m[0].length === 0) break;
+        }
+        return out.length ? out : [text];
+      };
+
+      // Fix orphan whitespace introduced after decimal points (the AI sometimes
+      // writes "5. 1" instead of "5.1" — likely an artifact of an earlier
+      // word-tokenize pass). Run before word-cap so the truncator doesn't
+      // mistake "5. 1" for two sentences.
+      const fixDecimalSpaces = (text: string): string =>
+        typeof text === 'string'
+          ? text.replace(/(\d)\.\s+(\d)/g, '$1.$2')
+          : text;
+
       const enforceWordCap = (text: string, cap: number): string => {
         if (typeof text !== 'string') return text;
-        const words = text.trim().split(/\s+/).filter(Boolean);
-        if (words.length <= cap) return text;
-        const sentences = text.match(/[^.!?]+[.!?]+/g) ?? [text];
+        const cleaned = fixDecimalSpaces(text);
+        const words = cleaned.trim().split(/\s+/).filter(Boolean);
+        if (words.length <= cap) return cleaned;
+        const sentences = splitSentences(cleaned);
         const acc: string[] = [];
         let count = 0;
         for (const s of sentences) {
@@ -2391,7 +2443,7 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
 
       const normalize = (text: any, cap: number): any => {
         if (typeof text !== 'string') return text;
-        return enforceWordCap(softenAlarm(scrubSupplementInference(text)), cap);
+        return enforceWordCap(softenAlarm(scrubSupplementInference(fixDecimalSpaces(text))), cap);
       };
 
       // Top-level user-facing strings.

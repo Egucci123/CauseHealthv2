@@ -252,6 +252,32 @@ export function buildUniversalTestInjections(ctx: InjectionContext): InjectedTes
     // this in why field of iron panel entry. No additional test needed.
   }
 
+  // ── Universal male hormonal baseline ────────────────────────────────────
+  // Men any age with fatigue / hair loss / weight resistance / low libido /
+  // poor recovery cluster → Testosterone Panel (Total T + Free T + SHBG +
+  // Estradiol). Universal: fires for any adult male with the symptom pattern
+  // OR with Total T already in draw and <600 (low-normal). Total T alone
+  // is incomplete — SHBG is needed to compute Free / Bioavailable T.
+  const isAdultMale = f.sex === 'male' && f.age >= 18;
+  const lowLibido = /\b(libido|sex(ual)? drive|erect)/.test(ctx.symptomsLower);
+  const malePattern = f.hasFatigue || f.hasHairLoss || f.hasWeightIssues || f.hasMoodIssues || lowLibido;
+  // Borderline-low Total T: parse the value if present in labsLower.
+  const totalTMatch = ctx.labsLower.match(/\btestosterone[^\n]*?(\d{2,4})/i);
+  const totalTBorderline = totalTMatch ? Number(totalTMatch[1]) > 0 && Number(totalTMatch[1]) < 600 : false;
+  if (isAdultMale && (malePattern || totalTBorderline) && !f.onTRT) {
+    tests.push({
+      name: 'Testosterone Panel (Total T + Free T + SHBG + Estradiol)',
+      whyShort: 'Male hormonal baseline — full picture beyond Total T',
+      whyLong: totalTBorderline
+        ? `(c) Total T borderline-low — Free T, SHBG, and Estradiol complete the workup. Total T alone misses bioavailability and SHBG-driven elevations.`
+        : `(a)+(d) Adult male with fatigue / hair loss / weight / mood cluster — standard PCP-orderable hormonal baseline. Total T alone is incomplete; SHBG anchors Free / Bioavailable T calculation.`,
+      icd10: lowLibido ? 'N52.9' : (f.hasFatigue ? 'R53.83' : 'Z00.00'),
+      icd10Description: lowLibido ? 'Male sexual dysfunction, unspecified' : (f.hasFatigue ? 'Other fatigue' : 'General adult medical exam'),
+      priority: totalTBorderline ? 'high' : 'moderate',
+      insuranceNote: 'Covered with documented symptom (fatigue / low libido / weight) or low-normal Total T.',
+    });
+  }
+
   // ── Magnesium RBC for malabsorption + sleep + IR ────────────────────────
   if ((f.hasIBD || f.onPPI || f.onDiuretic) && (f.hasSleepIssues || f.hasMuscleSymptoms)) {
     tests.push({
