@@ -116,7 +116,15 @@ export function validatePlan(input: ValidatorInput): ValidationReport {
   }
 
   // ── QUALITY CHECKS — no fake names, no truncations, no alarmism ──
-  const allText = JSON.stringify(plan ?? {});
+  // Exclude emergency_alerts and crisis_alert from the scan: those fields
+  // are designed to contain urgent / "call your doctor today" language for
+  // genuinely critical lab values. Scanning them would produce false
+  // positives on intentional safety-net copy.
+  const planForQualityScan = { ...(plan ?? {}) };
+  delete (planForQualityScan as any).emergency_alerts;
+  delete (planForQualityScan as any).crisis_alert;
+  delete (planForQualityScan as any).launch_validation;
+  const allText = JSON.stringify(planForQualityScan);
 
   // 16. No fake test names
   let fakeNameLeak = '';

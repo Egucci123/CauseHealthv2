@@ -116,19 +116,42 @@ export function buildContextFlags(ctx: InjectionContext) {
   };
 }
 
+// Re-exported so callers can also produce InjectedTest with full
+// canonical metadata (used by doctor-prep's tests_to_request loop).
+export interface InjectionRequest {
+  key: string;
+  whyShort: string;
+  trigger: 'a' | 'b' | 'c' | 'd' | 'e';
+}
+
+/**
+ * NEW (Phase 11 fix): Returns the canonical-key list, NOT pre-built
+ * InjectedTest objects. The caller uses `pushRetestByKey` from the
+ * registry to insert with alias-based dedup (catches "Hemoglobin A1c"
+ * vs "HbA1c" vs "A1c" variants automatically). Eliminates the bug
+ * where exact-name dedup was failing on near-variants.
+ */
+export function buildUniversalTestInjectionRequests(ctx: InjectionContext): InjectionRequest[] {
+  const f = buildContextFlags(ctx);
+  const reqs: InjectionRequest[] = [];
+  const add = (key: string, whyShort: string, trigger: 'a' | 'b' | 'c' | 'd' | 'e') => {
+    reqs.push({ key, whyShort, trigger });
+  };
+  applyUniversalRules(f, ctx, add);
+  return reqs;
+}
+
 // ──────────────────────────────────────────────────────────────────────
-// Universal test pairing engine.
+// Universal test pairing engine — legacy InjectedTest[] return.
+// Kept for backward-compat with doctor-prep until that's also refactored.
 // Returns InjectedTest[] where every entry's `name` is the CANONICAL name
-// from retestRegistry. No raw-string construction. Adding a pairing:
-//   1. Confirm the canonical key exists in retestRegistry.ts (add if not).
-//   2. Add a build() call below with trigger condition + whyShort.
+// from retestRegistry.
 // ──────────────────────────────────────────────────────────────────────
 export function buildUniversalTestInjections(ctx: InjectionContext): InjectedTest[] {
   const f = buildContextFlags(ctx);
   const tests: InjectedTest[] = [];
 
-  /** Look up the canonical retest definition and produce an InjectedTest.
-   *  Returns null if the key isn't in the registry (shouldn't happen — fail loud). */
+  /** Look up the canonical retest definition and produce an InjectedTest. */
   function build(key: string, whyShort: string, trigger: 'a' | 'b' | 'c' | 'd' | 'e'): void {
     const def = getRetest(key);
     if (!def) {
@@ -145,31 +168,120 @@ export function buildUniversalTestInjections(ctx: InjectionContext): InjectedTes
       insuranceNote: def.insuranceNote,
     });
   }
+  applyUniversalRules(f, ctx, build);
+  return tests;
+}
 
+// ──────────────────────────────────────────────────────────────────────
+// SHARED RULE ENGINE — both `buildUniversalTestInjections` (legacy
+// InjectedTest[]) and `buildUniversalTestInjectionRequests` (canonical
+// keys for alias-based dedup) call this with their own `add` callback.
+// Edit rules HERE, never duplicate them between the two functions.
+// ──────────────────────────────────────────────────────────────────────
+type AddFn = (key: string, whyShort: string, trigger: 'a' | 'b' | 'c' | 'd' | 'e') => void;
+type Flags = ReturnType<typeof buildContextFlags>;
+
+function applyUniversalRules(f: Flags, ctx: InjectionContext, add: AddFn): void {
   // ── UNIVERSAL ADULT BASELINE (every adult ≥18) ─────────────────────────
   // Comprehensive panel every adult should be ARMED to ask for. Fires
   // unconditionally so the baseline is never lost to AI discretion or
   // flag-format mismatch. Downstream dedup collapses overlap with
   // AI-generated entries (same canonical name = same dedup key).
   if (f.age >= 18) {
-    build('cmp', 'Standard adult baseline — liver, kidney, electrolytes, glucose, calcium', 'd');
-    build('cbc', 'Standard adult baseline — red cells, white cells, platelets, inflammation patterns', 'd');
-    build('lipid_panel', 'Standard adult cardiovascular risk panel — TC, LDL, HDL, TG, VLDL, non-HDL', 'd');
-    build('hba1c', 'Three-month average blood sugar — catches dysglycemia before fasting glucose does', 'd');
-    build('hs_crp', 'Systemic inflammation baseline — CV + metabolic risk amplifier', 'd');
-    build('vit_d_25oh', 'Vitamin D status — drives mood, immunity, bone, autoimmunity', 'd');
-    build('vit_b12_workup', 'Tissue B12 status (Serum B12 + MMA + Homocysteine) — catches functional deficiency', 'd');
-    build('folate_workup', 'Tissue folate status (Serum + RBC) — covers mesalamine/methotrexate depletion', 'd');
-    build('iron_panel', 'Iron stores + transport — fatigue, hair loss, restless legs driver before Hgb drops', 'd');
-    build('ggt', 'Sensitive liver/biliary marker — anchor for ALT/AST', 'd');
-    build('thyroid_panel', 'Full thyroid function — TSH alone misses central hypothyroidism + impaired T4→T3 conversion', 'd');
-    build('rbc_magnesium', 'Intracellular Mg — sleep, muscle, glucose handling, cardiovascular rhythm', 'd');
-    build('lp_a', 'Once-in-lifetime genetic CV risk marker — flags risk a normal lipid panel misses', 'd');
+    add('cmp', 'Standard adult baseline — liver, kidney, electrolytes, glucose, calcium', 'd');
+    add('cbc', 'Standard adult baseline — red cells, white cells, platelets, inflammation patterns', 'd');
+    add('lipid_panel', 'Standard adult cardiovascular risk panel — TC, LDL, HDL, TG, VLDL, non-HDL', 'd');
+    add('hba1c', 'Three-month average blood sugar — catches dysglycemia before fasting glucose does', 'd');
+    add('hs_crp', 'Systemic inflammation baseline — CV + metabolic risk amplifier', 'd');
+    add('vit_d_25oh', 'Vitamin D status — drives mood, immunity, bone, autoimmunity', 'd');
+    add('vit_b12_workup', 'Tissue B12 status (Serum B12 + MMA + Homocysteine) — catches functional deficiency', 'd');
+    add('folate_workup', 'Tissue folate status (Serum + RBC) — covers mesalamine/methotrexate depletion', 'd');
+    add('iron_panel', 'Iron stores + transport — fatigue, hair loss, restless legs driver before Hgb drops', 'd');
+    add('ggt', 'Sensitive liver/biliary marker — anchor for ALT/AST', 'd');
+    add('thyroid_panel', 'Full thyroid function — TSH alone misses central hypothyroidism + impaired T4→T3 conversion', 'd');
+    add('rbc_magnesium', 'Intracellular Mg — sleep, muscle, glucose handling, cardiovascular rhythm', 'd');
+    add('lp_a', 'Once-in-lifetime genetic CV risk marker — flags risk a normal lipid panel misses', 'd');
+  }
+
+  // ── IBD → Fecal Calprotectin (disease-activity monitoring) ────────────
+  if (f.hasIBD) {
+    add('fecal_calprotectin', 'IBD disease-activity marker — quarterly monitoring catches flares before symptoms', 'e');
+  }
+
+  // ── Celiac serology if GI symptoms with no IBD diagnosis ──────────────
+  if (f.hasGISymptoms && !f.hasIBD) {
+    add('celiac_serology', 'Persistent GI symptoms without IBD dx — rules out celiac before workup escalates', 'a');
+  }
+
+  // ── Hashimoto's: thyroid antibodies confirm autoimmune basis ──────────
+  if (f.hasHashimotos) {
+    add('thyroid_antibodies', 'Diagnosed Hashimotos — TPO + Tg Ab quantify autoimmune burden, track treatment response', 'b');
+  }
+
+  // ── T2D: A1c (already in baseline), UACR for kidney, fasting insulin ──
+  if (f.hasT2D) {
+    add('uacr', 'Diagnosed T2D — UACR is the earliest sign of diabetic kidney disease (microalbuminuria)', 'b');
+  }
+
+  // ── HTN: UACR + extended kidney workup ─────────────────────────────────
+  if (f.hasHTN) {
+    add('uacr', 'Diagnosed hypertension — UACR catches early hypertensive nephropathy before creatinine rises', 'b');
+  }
+
+  // ── CKD: cystatin C, UACR, PTH ────────────────────────────────────────
+  if (f.hasCKD) {
+    add('cystatin_c_egfr', 'Diagnosed CKD — cystatin-C-based eGFR is more accurate than creatinine in muscle-low patients', 'b');
+    add('uacr', 'Diagnosed CKD — quarterly UACR tracks proteinuria progression', 'b');
+    add('pth', 'CKD bone-mineral disorder — PTH rises before calcium/phosphate change', 'b');
+  }
+
+  // ── Lupus / autoimmune cluster: ANA reflex, ESR, complement ───────────
+  if (f.hasLupus) {
+    add('ana_reflex', 'Diagnosed lupus — ANA reflex titer + dsDNA Ab track flare activity', 'b');
+    add('esr', 'Lupus / autoimmune monitoring — ESR pairs with hs-CRP for inflammatory burden', 'b');
+  }
+
+  // ── RA: anti-CCP + RF + ESR ───────────────────────────────────────────
+  if (f.hasRA) {
+    add('rf_anti_ccp', 'Diagnosed RA — anti-CCP + RF inform prognosis and biologic eligibility', 'b');
+    add('esr', 'RA monitoring — ESR + hs-CRP track joint-inflammation activity', 'b');
+  }
+
+  // ── Osteoporosis: 25-OH D + Ca + PTH + CTX-telopeptide ────────────────
+  if (f.hasOsteo) {
+    add('ctx_telopeptide', 'Diagnosed osteoporosis — CTX bone-resorption marker tracks treatment response faster than DEXA', 'b');
+    add('pth', 'Osteoporosis workup — secondary hyperparathyroidism is a missed reversible cause', 'b');
+    add('ionized_calcium', 'Pairs with PTH for parathyroid evaluation in bone-density loss', 'b');
+  }
+
+  // ── CAD: ApoB (already covered above), CAC, Lp(a) (in baseline) ───────
+  if (f.hasCAD) {
+    add('cac_score', 'Diagnosed CAD — CAC quantifies calcified plaque burden and informs statin intensity', 'b');
+  }
+
+  // ── Adult male age 45+: PSA baseline ──────────────────────────────────
+  if (f.sex === 'male' && f.age >= 45) {
+    add('psa_if_male_45', 'Adult male ≥45 — PSA baseline screens for prostate disease per AUA shared-decision guidelines', 'd');
+  }
+
+  // ── Adult female age 40+: mammogram reminder (imaging, not blood) ─────
+  if (f.sex === 'female' && f.age >= 40) {
+    add('mammogram_if_due', 'Adult female ≥40 — annual mammogram per ACS / USPSTF', 'd');
+  }
+
+  // ── Long-term oral steroid: DEXA + Vit D + bone markers ───────────────
+  if (f.onSteroid) {
+    add('dexa_if_long_term', 'On chronic oral steroid — DEXA every 1–2 yr per ACR glucocorticoid-induced osteoporosis guideline', 'b');
+  }
+
+  // ── Warfarin: INR (drug-required monitoring) ──────────────────────────
+  if (f.onAnticoagulant) {
+    add('inr_if_warfarin', 'On anticoagulant — INR monitoring frequency dictated by drug class', 'b');
   }
 
   // ── ApoB on any lipid abnormality OR statin user ──────────────────────
   if (f.tgHigh || f.ldlHigh || f.hdlLow || f.onStatin) {
-    build('apob',
+    add('apob',
       f.onStatin
         ? 'On statin — ApoB measures particle count directly. Target <80 on statin; if higher, dose may be inadequate.'
         : 'Lipid abnormality — ApoB quantifies plaque-forming particle count, better predictor than LDL-C alone.',
@@ -178,12 +290,12 @@ export function buildUniversalTestInjections(ctx: InjectionContext): InjectedTes
 
   // ── Liver Ultrasound when ALT >2x normal OR ALT + TG high ─────────────
   if (f.altDoubled || (f.altElevated && f.tgHigh)) {
-    build('liver_ultrasound', 'ALT >2x normal or ALT elevated with high triglycerides — non-invasive imaging to rule out fatty liver', 'c');
+    add('liver_ultrasound', 'ALT >2x normal or ALT elevated with high triglycerides — non-invasive imaging to rule out fatty liver', 'c');
   }
 
   // ── CK on every statin user (AHA/ACC monitoring) ──────────────────────
   if (f.onStatin) {
-    build('ck_statin_baseline',
+    add('ck_statin_baseline',
       f.hasMuscleSymptoms || f.hasJointSymptoms
         ? 'On statin + muscle/joint symptoms — rules out statin-induced myopathy'
         : 'On statin — routine baseline + 12-week follow-up per AHA/ACC monitoring',
@@ -192,30 +304,30 @@ export function buildUniversalTestInjections(ctx: InjectionContext): InjectedTes
 
   // ── Uric Acid on metabolic syndrome pattern ───────────────────────────
   if (f.tgHigh && (f.glucoseWatch || f.hdlLow)) {
-    build('uric_acid', 'Metabolic syndrome pattern — gout risk + cardiovascular risk amplifier', 'c');
+    add('uric_acid', 'Metabolic syndrome pattern — gout risk + cardiovascular risk amplifier', 'c');
   }
 
   // ── Sleep Apnea Screening on polycythemia + IR/sleep/weight ───────────
   const polycythemiaPattern = f.rbcElevated && f.hctElevated;
   const irPattern = f.tgHigh || f.glucoseWatch;
   if (polycythemiaPattern && (irPattern || f.hasSleepIssues || f.hasWeightIssues)) {
-    build('sleep_apnea_screening', 'Elevated RBC + Hct with insulin resistance / sleep / weight pattern — possible obstructive sleep apnea', 'e');
+    add('sleep_apnea_screening', 'Elevated RBC + Hct with insulin resistance / sleep / weight pattern — possible obstructive sleep apnea', 'e');
   }
 
   // ── Macrocytic anemia → B-vitamin escalation ──────────────────────────
   if (f.macrocytic) {
-    build('b_vitamin_workup_macrocytic', 'MCV elevated — macrocytic pattern points to B12 or folate deficiency', 'c');
+    add('b_vitamin_workup_macrocytic', 'MCV elevated — macrocytic pattern points to B12 or folate deficiency', 'c');
   }
 
   // ── Microcytic anemia → Hemoglobin Electrophoresis ────────────────────
   if (f.microcytic) {
-    build('hgb_electrophoresis', 'MCV low — if iron panel normal, screens for thalassemia trait', 'c');
+    add('hgb_electrophoresis', 'MCV low — if iron panel normal, screens for thalassemia trait', 'c');
   }
 
   // ── PTH + Ionized Ca on Vit D low + bone/joint sx ─────────────────────
   if (f.vitaminDLow && (f.hasOsteo || /\b(bone pain|fracture|joint)/.test(ctx.symptomsLower))) {
-    build('pth', 'Vitamin D low + bone/joint symptoms — rules out secondary hyperparathyroidism', 'c');
-    build('ionized_calcium', 'Pairs with PTH for hyperparathyroidism workup', 'c');
+    add('pth', 'Vitamin D low + bone/joint symptoms — rules out secondary hyperparathyroidism', 'c');
+    add('ionized_calcium', 'Pairs with PTH for hyperparathyroidism workup', 'c');
   }
 
   // ── Universal male hormonal baseline ──────────────────────────────────
@@ -224,7 +336,7 @@ export function buildUniversalTestInjections(ctx: InjectionContext): InjectedTes
   // male asking for thorough labs.
   const isAdultMale = f.sex === 'male' && f.age >= 18;
   if (isAdultMale && !f.onTRT) {
-    build('testosterone_panel_male', 'Comprehensive male hormonal baseline — Total + Free + Bioavailable + SHBG + Estradiol + LH + FSH', 'd');
+    add('testosterone_panel_male', 'Comprehensive male hormonal baseline — Total + Free + Bioavailable + SHBG + Estradiol + LH + FSH', 'd');
   }
 
   // ── PCOS Panel — adult female with cycle/skin pattern ─────────────────
@@ -232,7 +344,7 @@ export function buildUniversalTestInjections(ctx: InjectionContext): InjectedTes
   const pcosPattern = /\b(irregular cycle|amenorrhea|missed period|acne|hirsut|excess hair|infertility|polycystic)/i.test(ctx.symptomsLower)
     || /\b(pcos|polycystic ovary)\b/i.test(ctx.conditionsLower);
   if (isFemaleAdult && pcosPattern) {
-    build('pcos_panel', 'Cycle / acne / hirsutism / infertility cluster — PCOS workup catches androgen excess + insulin-resistance link', 'e');
+    add('pcos_panel', 'Cycle / acne / hirsutism / infertility cluster — PCOS workup catches androgen excess + insulin-resistance link', 'e');
   }
 
   // ── Fasting Insulin + HOMA-IR — early metabolic pattern ───────────────
@@ -252,7 +364,7 @@ export function buildUniversalTestInjections(ctx: InjectionContext): InjectedTes
     (tgHdlRatio != null && tgHdlRatio >= 3) ||
     f.hasWeightIssues;
   if (earlyMetabolicPattern) {
-    build('fasting_insulin_homa_ir',
+    add('fasting_insulin_homa_ir',
       'Early metabolic pattern (elevated TG, watch-tier glucose/A1c, TG/HDL ≥3, or weight resistance) — catches hyperinsulinemia A1c misses; tracks response 4-6 weeks faster than A1c',
       'c');
   }
@@ -262,10 +374,8 @@ export function buildUniversalTestInjections(ctx: InjectionContext): InjectedTes
   const tshValue = tshMatch ? Number(tshMatch[1]) : null;
   const hasThyroidPatternSx = f.hasFatigue || f.hasHairLoss || f.hasWeightIssues || f.hasMoodIssues || f.hasColdHeatIntolerance;
   if (tshValue != null && tshValue >= 2.5 && tshValue <= 10 && hasThyroidPatternSx) {
-    build('thyroid_antibodies',
+    add('thyroid_antibodies',
       `TSH ${tshValue} in early-Hashimoto's grey zone (≥2.5) with fatigue / weight / hair / mood symptoms — TPO + Tg Ab catch autoimmune thyroiditis years before TSH crosses 4.5`,
       'e');
   }
-
-  return tests;
 }

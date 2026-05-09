@@ -3,7 +3,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { GOAL_LABELS, formatGoals, goalBranchFor } from '../_shared/goals.ts';
 import { buildRareDiseaseBlocklist, extractRareDiseaseContext } from '../_shared/rareDiseaseGate.ts';
-import { buildUniversalTestInjections } from '../_shared/testInjectors.ts';
+import { buildUniversalTestInjectionRequests } from '../_shared/testInjectors.ts';
 import { hasCondition, detectConditions, conditionTestPanelsFor } from '../_shared/conditionAliases.ts';
 import { isOnMed } from '../_shared/medicationAliases.ts';
 import { classifyPatient } from '../_shared/patientClassifier.ts';
@@ -803,6 +803,16 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
       throw new Error('Plan JSON parse failed: ' + String(parseErr));
     }
 
+    // ── DETERMINISTIC TEST LIST (post May-2026 simplification) ───────────
+    // The AI is FORBIDDEN from driving the retest_timeline. Whatever it
+    // emitted gets discarded here. The list is rebuilt entirely from
+    // `_shared/testInjectors` rules below — pure function of
+    // (labs, conditions, meds, symptoms, sex, age). This eliminates the
+    // multi-source merge bugs (ALT-separate-from-CMP, fake test names,
+    // tests "going missing" to dedup mismatch) by construction:
+    // structurally impossible for the AI to inject test noise into the list.
+    plan.retest_timeline = [];
+
     // ── Rare-disease prose scrubber (mirrors analyze-labs / doctor-prep) ──
     // Strip any sentence naming JAK2 / SPEP / MTHFR / Cushing's / HLA-B27 /
     // hereditary hemochromatosis genetics / pituitary MRI / etc. when the
@@ -1367,7 +1377,11 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
           if (!testName) continue;
           // Skip non-lab items (interventions, questionnaires, etc.)
           if (/\btrial\b|\bdiary\b|\blog\b|\bquestionnaire\b|circumference|mallampati|spo2/i.test(testName)) continue;
-          // Resolve to canonical registry entry if possible
+          // Resolve to canonical registry entry. May 2026 simplification:
+          // STRICT — promote ONLY if the test resolves to a registry key.
+          // Names with no registry match are dropped (no longer leaked as
+          // raw AI strings into retest_timeline). If a confirmatory test
+          // matters, add it to retestRegistry.ts.
           let canonicalName = testName;
           let canonicalKey: string | undefined;
           for (const def of RETEST_REGISTRY) {
@@ -1377,15 +1391,13 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
               break;
             }
           }
-          // Dedup by registry key when one exists
-          if (canonicalKey && seenKeys.has(canonicalKey)) continue;
-          // Substring fallback dedup for tests not in registry
-          const lowerCanonical = canonicalName.toLowerCase();
-          let alreadyCovered = false;
-          for (const existing of existingMarkerLower) {
-            if (existing.includes(lowerCanonical) || lowerCanonical.includes(existing)) { alreadyCovered = true; break; }
+          if (!canonicalKey) {
+            console.log(`[wellness-plan] confirmatory_test "${testName}" not in registry — skipped (UI Possible Conditions still shows it)`);
+            continue;
           }
-          if (alreadyCovered) continue;
+          if (seenKeys.has(canonicalKey)) continue;
+          const lowerCanonical = canonicalName.toLowerCase();
+          if (existingMarkerLower.has(lowerCanonical)) continue;
 
           if (canonicalKey) seenKeys.add(canonicalKey);
           existingMarkerLower.add(lowerCanonical);
@@ -2029,7 +2041,12 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
       console.log(`[wellness-plan] pathway engine fired: conditions=[${pathwayResult.conditionsMatched.join(',')}] meds=[${pathwayResult.medClassesMatched.join(',')}] symptoms=[${pathwayResult.symptomsMatched.join(',')}] labPatterns=[${pathwayResult.labPatternsMatched.join(',')}]`);
 
       // ── UNIVERSAL TEST PAIRINGS (shared module — same rules in doctor-prep) ──
-      const universalTests = buildUniversalTestInjections({
+      // Phase 11 fix: switched from exact-name dedup to alias-based dedup
+      // via pushRetestByKey. Catches "HbA1c" / "Hemoglobin A1c" / "A1c"
+      // variants (and analogous variants for every test) that exact-name
+      // match was missing — the root cause of HbA1c / Magnesium /
+      // Testosterone Panel disappearing from final plans.
+      const universalRequests = buildUniversalTestInjectionRequests({
         age,
         sex: profile?.sex ?? null,
         conditionsLower,
@@ -2037,32 +2054,16 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
         labsLower,
         medsLower,
       });
-      for (const u of universalTests) {
-        // Skip only on EXACT name match (case-insensitive). The previous
-        // first-word match was too aggressive — when the AI generated a
-        // narrow subset like "Total Testosterone, SHBG, Estradiol", the
-        // comprehensive injector "Testosterone Panel (Total T + Free T +
-        // Bioavailable T + SHBG + Estradiol + LH + FSH)" got skipped
-        // because both contained "Testosterone". Now: push always unless
-        // the exact marker name already exists; the test-family dedup
-        // below picks the more comprehensive entry per family.
-        const exactName = u.name.toLowerCase().trim();
-        if (plan.retest_timeline.some((t: any) => String(t?.marker ?? '').toLowerCase().trim() === exactName)) continue;
-        // Push the FULL injected-test structure so doctor-prep can read this
-        // verbatim and use it as its tests_to_request without going through
-        // its own AI call. Wellness plan is the single source of truth for tests.
-        plan.retest_timeline.push({
-          marker: u.name,
-          retest_at: '12 weeks',
-          why: u.whyLong,
-          why_short: u.whyShort,
-          icd10: u.icd10,
-          icd10_description: u.icd10Description,
-          priority: u.priority,
-          insurance_note: u.insuranceNote,
-          emoji: '🧪',
-        });
-        console.log(`[wellness-plan] Universal-injected: ${u.name}`);
+      for (const req of universalRequests) {
+        const inserted = pushRetestByKey(
+          plan.retest_timeline,
+          req.key,
+          req.whyShort,
+          req.trigger,
+          '12 weeks',
+        );
+        if (inserted) console.log(`[wellness-plan] Universal-injected: ${req.key}`);
+        else console.log(`[wellness-plan] Universal-skipped (alias dup): ${req.key}`);
       }
 
       // Re-cap after all injectors
@@ -2455,6 +2456,34 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
       if (plan.citations.length > 0) {
         console.log(`[wellness-plan] citations: ${plan.citations.length} guideline references`);
       }
+
+      // (h0) FINAL DEEP-SCRUB — walk every string in the plan and apply
+      // canonical scrubbers (fake-test rename, alarm rewrite, decimal fix).
+      // This is the last line of defense before validation: if the AI
+      // invents "Fecal gut hs-CRP" in any field — supplement notes,
+      // condition evidence, plan_summary, etc. — this catches it
+      // regardless of which field it lives in.
+      try {
+        const { scrubFakeTestNames, scrubAlarm, fixDecimalSpaces } = await import('../_shared/canonical.ts');
+        const SKIP_KEYS = new Set(['emergency_alerts', 'crisis_alert', 'launch_validation']);
+        const scrubAll = (s: string): string => fixDecimalSpaces(scrubAlarm(scrubFakeTestNames(s)));
+        const walk = (node: any): any => {
+          if (typeof node === 'string') return scrubAll(node);
+          if (Array.isArray(node)) return node.map(walk);
+          if (node && typeof node === 'object') {
+            for (const k of Object.keys(node)) {
+              if (SKIP_KEYS.has(k)) continue;
+              node[k] = walk(node[k]);
+            }
+            return node;
+          }
+          return node;
+        };
+        for (const k of Object.keys(plan)) {
+          if (SKIP_KEYS.has(k)) continue;
+          plan[k] = walk(plan[k]);
+        }
+      } catch (e) { console.error('[wellness-plan] final-deep-scrub error:', e); }
 
       // (h) PHASE 11 — Self-validate the plan against the 25-check launch
       // checklist. Result lives in plan_data.launch_validation so weekly

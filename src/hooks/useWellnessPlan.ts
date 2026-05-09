@@ -237,7 +237,12 @@ export function useGenerateWellnessPlan() {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 240_000);
 
-    activeGeneration = fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-wellness-plan`, {
+    // V2 is now the default. To opt OUT and use v1 temporarily:
+    //   localStorage.setItem('wellness_v2', '0')
+    const useV1 = typeof window !== 'undefined' && window.localStorage?.getItem('wellness_v2') === '0';
+    const fnName = useV1 ? 'generate-wellness-plan' : 'generate-wellness-plan-v2';
+
+    activeGeneration = fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${fnName}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
