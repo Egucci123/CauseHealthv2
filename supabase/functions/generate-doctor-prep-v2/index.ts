@@ -102,11 +102,23 @@ serve(async (req) => {
     const doc = mergeIntoDoctorPrepOutput({ facts, ai: aiOutput, factsHash });
 
     // ── 6. Save to doctor_prep_documents ───────────────────────────────
-    await supabase.from('doctor_prep_documents').insert({
-      user_id: userId,
-      document_data: doc,
-      generated_at: new Date().toISOString(),
-    });
+    // NOTE: `generated_at` is NOT a column on this table — that field
+    // lives INSIDE document_data. The DB column `created_at` is auto-set.
+    // Earlier versions inserted `generated_at` and the row save failed
+    // silently, causing the "doc flashes then reverts to CTA" bug.
+    const { error: insertErr } = await supabase
+      .from('doctor_prep_documents')
+      .insert({
+        user_id: userId,
+        document_data: doc,
+        draw_id: drawId,
+      });
+    if (insertErr) {
+      console.error('[doctor-prep-v2] insert failed:', insertErr);
+      return json({
+        error: `Failed to save doctor prep: ${insertErr.message ?? String(insertErr)}`,
+      }, 500);
+    }
 
     console.log(`[doctor-prep-v2] complete in ${Date.now() - startTime}ms`);
     return json(doc);
