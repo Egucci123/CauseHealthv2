@@ -162,7 +162,12 @@ export function useWellnessPlan() {
       return planData;
     },
     enabled: !!userId,
-    staleTime: 30 * 1000, refetchOnMount: 'always',
+    // Cache disabled between mounts to prevent the "stale plan flashes
+    // then reverts to CTA" bug. Every page revisit waits for a fresh DB
+    // fetch before rendering. Universal across users.
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: 'always',
   });
 }
 
@@ -179,7 +184,12 @@ export function useActivePlan() {
       return { id: data.id, userId: data.user_id, createdAt: data.created_at, updatedAt: data.updated_at, title: null, planData: data.plan_data, isActive: true, version: 1 } as WellnessPlan;
     },
     enabled: !!userId,
-    staleTime: 30 * 1000, refetchOnMount: 'always',
+    // Cache disabled between mounts to prevent the "stale plan flashes
+    // then reverts to CTA" bug. Every page revisit waits for a fresh DB
+    // fetch before rendering. Universal across users.
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: 'always',
   });
 }
 

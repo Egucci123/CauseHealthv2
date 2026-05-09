@@ -74,7 +74,15 @@ export function useLatestDoctorPrep() {
       (doc as any)._createdAt = data.created_at;
       return doc;
     },
-    enabled: !!userId, staleTime: 30 * 1000, refetchOnMount: 'always',
+    enabled: !!userId,
+    // staleTime + gcTime: 0 means cached data is never trusted across
+    // page revisits — every mount waits for a fresh DB fetch before
+    // rendering. Prevents the "doc flashes then reverts to CTA" bug
+    // where stale cached data briefly rendered before the fresh fetch
+    // (returning null) wiped it. Universal — applies to every user.
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: 'always',
   });
 }
 
