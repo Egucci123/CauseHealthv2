@@ -441,7 +441,7 @@ serve(async (req) => {
     // function platform timeout fires. Returning our own clear error
     // beats a generic HTTP 546 from the edge layer.
     const aiController = new AbortController();
-    const aiTimeout = setTimeout(() => aiController.abort(), 130_000);
+    const aiTimeout = setTimeout(() => aiController.abort(), 145_000);
     let response: Response;
     try {
       response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -458,7 +458,7 @@ serve(async (req) => {
         // headroom without brushing the 130s timeout. If truncation hits,
         // the hard-stop rule still rejects without saving and the user gets
         // a clean retry.
-        model: 'claude-haiku-4-5-20251001', max_tokens: 12000,
+        model: 'claude-haiku-4-5-20251001', max_tokens: 15000,
         system: [{ type: 'text', cache_control: { type: 'ephemeral' }, text: `You are CauseHealth AI — a clinical-translation tool, not a longevity or functional-medicine app. You help patients walk into their PCP appointment with: a focused supplement stack tied to evidence, a thorough retest panel a doctor can't refuse, and lifestyle changes that match their goal. Return ONLY valid JSON.
 
 ═══ VOICE ═══
@@ -541,8 +541,8 @@ Trigger (d) framing in why:
   Not in draw: "(d) Standard baseline missing — doctor should have ordered."
 
 CADENCE:
-  TREATMENT mode (any out-of-range, chronic dx, or multi-system pattern): 12-week retest, 14-22 entries.
-  OPTIMIZATION mode (clean labs, no chronic conditions, no symptoms): 6-month retest, 4-10 entries.
+  TREATMENT mode (any out-of-range, chronic dx, or multi-system pattern): 12-week retest, 12-16 entries (HARD CAP 16). Pick the highest-leverage 16. Do not pad.
+  OPTIMIZATION mode (clean labs, no chronic conditions, no symptoms): 6-month retest, 4-8 entries.
   retest_at field uses the cadence ('12 weeks' or '6 months').
 
 CONSOLIDATE INTO STANDARD PANELS — doctors order panels, not individual markers. Use these exact names:
@@ -1847,9 +1847,9 @@ Healthy clean labs → 0-2 entries each. Multi-issue → 4-7 well-evidenced (not
       if (beforeFilter !== plan.retest_timeline.length) {
         console.log(`[wellness-plan] dropped ${beforeFilter - plan.retest_timeline.length} empty retest entries`);
       }
-      if (plan.retest_timeline.length > 20) {
-        console.log(`[wellness-plan] post-injector cap: ${plan.retest_timeline.length} -> 20`);
-        plan.retest_timeline = plan.retest_timeline.slice(0, 20);
+      if (plan.retest_timeline.length > 16) {
+        console.log(`[wellness-plan] post-injector cap: ${plan.retest_timeline.length} -> 16`);
+        plan.retest_timeline = plan.retest_timeline.slice(0, 16);
       }
     } catch (e) { console.error('[wellness-plan] retest-injector error:', e); }
     // ── Test-quality flagger POST-flight (Layer D) ───────────────────────
