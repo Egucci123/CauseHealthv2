@@ -29,7 +29,7 @@
 // next render checks the latest consent_log rows against the current
 // version and re-fires if any are stale.
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import StandaloneConsent from './StandaloneConsent';
 import {
   OUTPUT_ACK_SHARE_WITH_CLINICIAN,

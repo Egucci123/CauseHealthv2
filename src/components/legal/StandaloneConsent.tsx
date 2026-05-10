@@ -23,7 +23,6 @@
 // user checks the box, the parent should call recordConsentEvent with
 // the same {type, version, text} bundle.
 
-import React from 'react';
 import type { ConsentText } from '../../lib/legal/consentTextTypes';
 
 interface Props {
@@ -43,8 +42,6 @@ interface Props {
    *  consents (arbitration, residency). */
   emphasis?: 'normal' | 'high';
 }
-
-export const ConsentTextSchema = null; // re-exported below for convenience
 
 export default function StandaloneConsent({
   consent,
