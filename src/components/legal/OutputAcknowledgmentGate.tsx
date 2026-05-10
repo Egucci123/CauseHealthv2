@@ -51,18 +51,27 @@ interface Props {
   /** Render-blocking — set true while the parent is recording the
    *  consent rows. Disables all inputs to prevent double-submit. */
   submitting?: boolean;
+  /** Pre-fills the clinician name + practice from registration so the
+   *  user just confirms or edits instead of retyping. The output ack
+   *  still records its own clinician_name_entered consent at this
+   *  moment with whatever values are submitted (which may have been
+   *  edited from the pre-fill). */
+  defaultClinicianName?: string;
+  defaultClinicianPractice?: string;
 }
 
 export default function OutputAcknowledgmentGate({
   onComplete,
   onDismiss,
   submitting = false,
+  defaultClinicianName = '',
+  defaultClinicianPractice = '',
 }: Props) {
   const [item1, setItem1] = useState(false);
   const [item2, setItem2] = useState(false);
   const [item3, setItem3] = useState(false);
-  const [clinicianName, setClinicianName] = useState('');
-  const [clinicianPractice, setClinicianPractice] = useState('');
+  const [clinicianName, setClinicianName] = useState(defaultClinicianName);
+  const [clinicianPractice, setClinicianPractice] = useState(defaultClinicianPractice);
 
   const item2Enabled = item1 && !submitting;
   const item3Enabled = item1 && item2 && !submitting;
@@ -86,13 +95,20 @@ export default function OutputAcknowledgmentGate({
             id="ack-gate-heading"
             className="text-authority text-2xl font-bold text-clinical-charcoal mb-3"
           >
-            Before you read your Doctor Prep Document
+            Your Doctor Prep Document is ready
           </h2>
           <p className="text-body text-[0.95rem] text-clinical-charcoal/80 mb-6 leading-relaxed">
-            This document is designed to be read <strong>with your clinician</strong>,
-            not instead of your clinician. Please confirm the following before
-            we show it to you. Each item is logged with the exact wording you
-            saw and the time you confirmed it.
+            It&apos;s designed to be reviewed with{' '}
+            {defaultClinicianName ? (
+              <strong>{defaultClinicianName}</strong>
+            ) : (
+              <strong>your doctor</strong>
+            )}
+            {defaultClinicianPractice ? (
+              <> at <strong>{defaultClinicianPractice}</strong></>
+            ) : null}
+            . Before we open it, let&apos;s make sure we&apos;re on the same page —
+            three quick confirmations.
           </p>
 
           {/* Step 1 */}
@@ -137,9 +153,9 @@ export default function OutputAcknowledgmentGate({
             }`}
           >
             <p className="text-body text-[0.88rem] text-clinical-charcoal font-medium mb-3">
-              Tell us which clinician you'll review this with. We won't contact
-              them — this just creates a record that you identified one before
-              reading the document.
+              {defaultClinicianName
+                ? "Confirm the clinician you'll review this with — edit if it's changed."
+                : "Tell us which clinician you'll review this with."}
             </p>
             <div className="space-y-3">
               <div>

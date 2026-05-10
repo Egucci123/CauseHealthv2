@@ -40,17 +40,22 @@ export type ConsentType =
   | 'clinician_relationship'
   | 'arbitration_class_waiver';
 
+// Per the v6 collapsed-onboarding spec (May 2026):
+// - age_18_plus / state_residency_certify / eu_geoblock_certify /
+//   clinician_relationship / sensitive_health_consent are now captured
+//   IMPLICITLY by the Register form (state dropdown, clinician fields,
+//   18+ checkbox) and recorded via recordPostSignupConsents. They no
+//   longer need standalone screens.
+// - The ToS umbrella now covers ai_processing / health_data_authorization /
+//   mhmda_wa_authorization since those describe the same data uses
+//   already disclosed in the ToS itself ("documented actual notice" per
+//   counsel — one well-designed moment captures it all).
+// - Only TWO consents are non-collapsible: 'terms' (clear-and-
+//   conspicuous ToS scroll-and-accept) and 'arbitration_class_waiver'
+//   (Berman v. Freedom Financial standalone). Everything else is
+//   stamped before the gate ever runs.
 const REQUIRED_CONSENTS: ConsentType[] = [
-  // v1 — legacy bundle, still required as defensive cover.
-  'age_18_plus',
   'terms',
-  'ai_processing',
-  'health_data_authorization',
-  'mhmda_wa_authorization',
-  // v6 additions — gating per outside-counsel spec.
-  'state_residency_certify',
-  'eu_geoblock_certify',
-  'clinician_relationship',
   'arbitration_class_waiver',
 ];
 

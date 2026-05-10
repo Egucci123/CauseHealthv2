@@ -339,6 +339,8 @@ export const DoctorPrep = () => {
         <OutputAcknowledgmentGate
           onComplete={ack.recordAndComplete}
           submitting={ack.submitting}
+          defaultClinicianName={ack.defaultClinicianName}
+          defaultClinicianPractice={ack.defaultClinicianPractice}
         />
       )}
     </AppShell>

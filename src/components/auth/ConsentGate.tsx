@@ -32,13 +32,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuthStore } from '../../store/authStore';
 import { getMissingConsents, isFullyConsented, type ConsentType } from '../../lib/consent';
-import { AgeGateScreen } from './AgeGateScreen';
 import { AcceptTermsScreen } from './AcceptTermsScreen';
-import { HealthDataConsentScreen } from './HealthDataConsentScreen';
-import { WashingtonHealthDataConsentScreen } from './WashingtonHealthDataConsentScreen';
-import { StateResidencyScreen } from './StateResidencyScreen';
-import { EUGeoblockScreen } from './EUGeoblockScreen';
-import { ClinicianAttestationScreen } from './ClinicianAttestationScreen';
 import { ArbitrationConsentScreen } from './ArbitrationConsentScreen';
 
 const Loading = () => (
@@ -54,36 +48,20 @@ interface Props {
   onConsented: () => void;
 }
 
-// Order is the UI sequence. The user sees the screens in this order;
-// "Step N of M" labels are derived from this list so adding a new
-// screen automatically updates all the eyebrows.
-//
-// Two HealthDataConsentScreen consents (ai_processing +
-// health_data_authorization) are bundled into ONE screen, so the visible
-// step count is REQUIRED.length minus 1.
+// v6 collapsed onboarding: just two screens.
+// All other consents (age, state residency, EU geoblock, clinician
+// relationship, sensitive-health) are captured IMPLICITLY by the
+// Register form fields and stamped via recordPostSignupConsents
+// before this gate ever loads. The two screens here are the ones
+// counsel said cannot be collapsed — ToS clear-and-conspicuous
+// scroll-and-accept, and the Berman-compliant standalone arbitration
+// checkbox.
 const REQUIRED: ConsentType[] = [
-  'age_18_plus',
-  // v6 additions placed BEFORE the legacy terms screens so we block
-  // ineligible users (blocked states, EU residents) before showing them
-  // legal text they're not allowed to accept anyway.
-  'state_residency_certify',
-  'eu_geoblock_certify',
-  'clinician_relationship',
-  // Legacy consents kept for defensive cover.
   'terms',
-  'ai_processing',
-  'health_data_authorization',
-  'mhmda_wa_authorization',
-  // The arbitration / class-waiver checkbox is LAST, immediately
-  // before account use begins, so the user has read everything else
-  // first. Berman compliance: standalone, unchecked-by-default,
-  // operative text adjacent to the box.
   'arbitration_class_waiver',
 ];
 
-// Visible-step count: 9 consents, but ai_processing +
-// health_data_authorization share a single screen, so the user sees 8.
-const TOTAL_STEPS = 8;
+const TOTAL_STEPS = 2;
 const stepLabel = (n: number) => `Step ${n} of ${TOTAL_STEPS}`;
 
 export const ConsentGate = ({ onConsented }: Props) => {
@@ -133,74 +111,22 @@ export const ConsentGate = ({ onConsented }: Props) => {
 
   if (missing === null) return <Loading />;
 
-  // Step 1 — universal 18+ attestation. Catches Google sign-ins which bypass
-  // the inline Register checkbox.
-  if (missing.has('age_18_plus')) {
-    return <AgeGateScreen onAccepted={() => recordedAndRefresh('age_18_plus')} />;
-  }
-
-  // Step 2 — state-residency self-certification. Blocks CA / NY / IL / WA
-  // before the user reads any terms. Captures certified state into
-  // user_eligibility via the edge function side-effect.
-  if (missing.has('state_residency_certify')) {
-    return (
-      <StateResidencyScreen
-        stepLabel={stepLabel(2)}
-        onAccepted={() => recordedAndRefresh('state_residency_certify')}
-      />
-    );
-  }
-
-  // Step 3 — EU/UK/Switzerland self-certification.
-  if (missing.has('eu_geoblock_certify')) {
-    return (
-      <EUGeoblockScreen
-        stepLabel={stepLabel(3)}
-        onAccepted={() => recordedAndRefresh('eu_geoblock_certify')}
-      />
-    );
-  }
-
-  // Step 4 — established-clinician attestation.
-  if (missing.has('clinician_relationship')) {
-    return (
-      <ClinicianAttestationScreen
-        stepLabel={stepLabel(4)}
-        onAccepted={() => recordedAndRefresh('clinician_relationship')}
-      />
-    );
-  }
-
-  // Step 5 — Terms of Service.
+  // Step 1 — Terms of Service + Privacy Policy umbrella. The ToS
+  // describes AI processing, sensitive-health handling, MHMDA-style
+  // disclosures — all the things the legacy 3 separate health-data
+  // screens used to handle. One clear-and-conspicuous scroll-and-
+  // accept now covers them.
   if (missing.has('terms')) {
     return <AcceptTermsScreen onAccepted={() => recordedAndRefresh('terms')} />;
   }
 
-  // Step 6 — health-data + AI processing consents (bundled).
-  if (missing.has('ai_processing') || missing.has('health_data_authorization')) {
-    return (
-      <HealthDataConsentScreen
-        onAccepted={() => recordedAndRefresh('ai_processing', 'health_data_authorization')}
-      />
-    );
-  }
-
-  // Step 7 — Washington MHMDA-style authorization. Kept as defensive
-  // cover even though WA residents are now geoblocked.
-  if (missing.has('mhmda_wa_authorization')) {
-    return (
-      <WashingtonHealthDataConsentScreen
-        onAccepted={() => recordedAndRefresh('mhmda_wa_authorization')}
-      />
-    );
-  }
-
-  // Step 8 — standalone arbitration + class-action waiver, last so it's
-  // the most recent thing the user agreed to before account use begins.
+  // Step 2 — standalone arbitration + class-action waiver. Per Berman
+  // v. Freedom Financial this MUST be a separate, clearly-labeled,
+  // unchecked-by-default checkbox. Cannot be collapsed.
   if (missing.has('arbitration_class_waiver')) {
     return (
       <ArbitrationConsentScreen
-        stepLabel={stepLabel(8)}
+        stepLabel={stepLabel(2)}
         onAccepted={() => recordedAndRefresh('arbitration_class_waiver')}
       />
     );

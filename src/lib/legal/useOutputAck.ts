@@ -61,6 +61,11 @@ export interface UseOutputAck {
   complete: boolean;
   /** True while the consent rows are being written + refetched. */
   submitting: boolean;
+  /** Pre-filled clinician name + practice from user_eligibility (set at
+   *  registration via the doctor field). The gate uses these as default
+   *  values so the user just confirms or edits instead of retyping. */
+  defaultClinicianName: string;
+  defaultClinicianPractice: string;
   /** Pass to OutputAcknowledgmentGate.onComplete. */
   recordAndComplete: (args: {
     clinicianName: string;
@@ -79,7 +84,7 @@ export function useOutputAck(): UseOutputAck {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('user_eligibility')
-        .select('output_ack_completed_at')
+        .select('output_ack_completed_at, clinician_name, clinician_practice')
         .eq('user_id', user!.id)
         .maybeSingle();
       if (error) throw error;
@@ -123,5 +128,12 @@ export function useOutputAck(): UseOutputAck {
     [qc, user?.id],
   );
 
-  return { ready, complete, submitting, recordAndComplete };
+  return {
+    ready,
+    complete,
+    submitting,
+    defaultClinicianName: (q.data?.clinician_name as string | undefined) ?? '',
+    defaultClinicianPractice: (q.data?.clinician_practice as string | undefined) ?? '',
+    recordAndComplete,
+  };
 }
