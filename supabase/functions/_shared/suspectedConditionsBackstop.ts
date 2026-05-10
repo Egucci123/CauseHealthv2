@@ -425,6 +425,56 @@ const RULES: BackstopRule[] = [
     },
   },
 
+  // ── Early hypochromic / iron-deficient erythropoiesis (rule-out) ──────
+  // Catches the population BEFORE overt anemia: hemoglobin still in
+  // range, but MCV/MCH/MCHC drift to low-normal and/or RDW elevated —
+  // the textbook fingerprint of iron stores being depleted while the
+  // marrow compensates. Caught early it's reversible with diet/iron.
+  // Soft framing — this is "rule-out before anemia," not a diagnosis.
+  // Skipped automatically if the overt iron_deficiency_anemia rule
+  // already fired (alreadyRaisedIf).
+  {
+    key: 'early_hypochromic_pattern',
+    alreadyRaisedIf: [/iron deficien/i, /anemia/i, /hypochromic/i, /erythropoiesis/i],
+    skipIfDx: ['iron_deficiency_anemia', 'anemia'],
+    detect: (ctx) => {
+      const mcv = mark(ctx.labValues, [/^mcv\b/i, /^mean corpuscular volume$/i]);
+      const mch = mark(ctx.labValues, [/^mch\b/i, /^mean corpuscular hemoglobin$/i]);
+      const mchc = mark(ctx.labValues, [/^mchc\b/i, /^mean corpuscular hemoglobin concentration$/i]);
+      const rdw = mark(ctx.labValues, [/^rdw(?:[-\s]*cv)?$/i, /^red cell distribution width(?:\s+cv)?$/i]);
+      const ferritin = mark(ctx.labValues, [/^ferritin\b/i]);
+
+      // Need at least two of: low-normal MCV, low-normal MCH, low-normal
+      // MCHC, elevated RDW. One alone is too noisy; two paints a pattern.
+      const mcvLowNormal = !!mcv && mcv.value < 88 && mcv.value >= 80;
+      const mchLow = !!mch && mch.value < 28;
+      const mchcLow = !!mchc && mchc.value < 33;
+      const rdwHigh = !!rdw && rdw.value > 13.0;
+      const ferritinBorderline = !!ferritin && ferritin.value < 50 && ferritin.value >= 30;
+
+      const hits = [mcvLowNormal, mchLow, mchcLow, rdwHigh, ferritinBorderline].filter(Boolean).length;
+      if (hits < 2) return null;
+
+      const ev: string[] = [];
+      if (mcvLowNormal) ev.push(`MCV ${mcv!.value} fL (low-normal)`);
+      if (mchLow) ev.push(`MCH ${mch!.value} pg (low)`);
+      if (mchcLow) ev.push(`MCHC ${mchc!.value} g/dL (low)`);
+      if (rdwHigh) ev.push(`RDW ${rdw!.value}% (elevated)`);
+      if (ferritinBorderline) ev.push(`Ferritin ${ferritin!.value} (borderline)`);
+
+      return {
+        name: 'Early hypochromic pattern (rule-out iron deficiency before anemia)',
+        category: 'hematology',
+        confidence: 'moderate',
+        evidence: `${ev.join(', ')}. Pattern fits early iron-deficient erythropoiesis — red cells are smaller and lighter than optimal even though hemoglobin is still in range. Worth ruling out with an iron panel before it progresses to overt anemia.`,
+        confirmatory_tests: ['Iron Panel (Iron, TIBC, Transferrin Saturation, Ferritin)', 'Reticulocyte count', 'B12 + Folate (rule out mixed deficiency)'],
+        icd10: 'E61.1',
+        what_to_ask_doctor: "My MCV / MCH / MCHC are at the low end of normal. Can we run a full iron panel (iron, ferritin, TIBC, transferrin saturation) to see if iron stores are dropping before this turns into anemia?",
+        source: 'deterministic',
+      };
+    },
+  },
+
   // ── Pernicious anemia / B12 deficiency ─────────────────────────────────
   {
     key: 'b12_deficiency',

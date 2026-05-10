@@ -188,6 +188,44 @@ function getRulesForPatient(ctx: DemographicContext): OptimalRange[] {
         : 'Optimal uric acid <5.0 mg/dL for women.',
       source: 'ACR 2020 Gout Guidelines',
     },
+
+    // ── CBC RED-CELL INDICES — universal early-iron-deficiency signal ─
+    // Lab reference ranges are wide; the LOW end of normal for MCV/MCH/
+    // MCHC plus a high-normal RDW is the textbook fingerprint of iron
+    // deficiency BEFORE hemoglobin drops out of range. Catching it as
+    // watch-tier outliers feeds the early-hypochromic pattern card and
+    // gives users an early opportunity to fix it with diet / iron.
+    // Anchored regexes so we never collide with the plain Hemoglobin
+    // / Platelet / RBC thresholds.
+    {
+      marker: /^mean\s+corpuscular\s+volume$|^mcv$/i,
+      low: 88,
+      high: 95,
+      unit: 'fL',
+      rationale: 'Optimal MCV 88–95 fL. Lab normal extends to 80–100; low-normal MCV (<88) is an early sign of microcytic / iron-deficient erythropoiesis before hemoglobin drops.',
+      source: 'Lab medicine consensus + functional optimal',
+    },
+    {
+      marker: /^mean\s+corpuscular\s+hemoglobin$|^mch$/i,
+      low: 28,
+      unit: 'pg',
+      rationale: 'Optimal MCH ≥28 pg. Low MCH (hypochromia) is an early sign of iron deficiency or thalassemia trait — caught before anemia develops.',
+      source: 'Lab medicine consensus',
+    },
+    {
+      marker: /^mean\s+corpuscular\s+hemoglobin\s+concentration$|^mchc$/i,
+      low: 33,
+      unit: 'g/dL',
+      rationale: 'Optimal MCHC ≥33 g/dL. Low MCHC (hypochromia) often precedes overt iron-deficiency anemia and is reversible with iron repletion.',
+      source: 'Lab medicine consensus',
+    },
+    {
+      marker: /^rdw(?:[-\s]*cv)?$|^red\s+cell\s+distribution\s+width(?:\s+cv)?$/i,
+      high: 13.0,
+      unit: '%',
+      rationale: 'Optimal RDW-CV ≤13%. Elevated RDW reflects increased red-cell size variability — earliest CBC sign of disordered erythropoiesis (iron deficiency, B12/folate deficiency, mixed pattern).',
+      source: 'Lab medicine consensus',
+    },
   ];
 
   return rules;

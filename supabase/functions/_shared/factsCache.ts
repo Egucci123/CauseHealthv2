@@ -33,7 +33,15 @@ import { buildPlan, type ClinicalFacts, type PatientInput } from './buildPlan.ts
 // ("Thyroid pattern worth tracking" / "Above functional optimal"). TSH
 // optimal upper bound also lowered 2.5 → 2.0 so values 2.0–2.5 surface
 // as watch-tier outliers on the lab card.
-export const RULE_LIBRARY_VERSION = '2026-05-10-2';
+//
+// 2026-05-10-3: added optimal ranges for MCV / MCH / MCHC / RDW so
+// low-normal values surface as watch-tier outliers. Added new
+// 'early_hypochromic_pattern' rule (rule-out iron deficiency before
+// overt anemia develops): fires when ≥2 of {MCV low-normal, MCH low,
+// MCHC low, RDW elevated, ferritin borderline} present. Confidence
+// moderate. Soft framing — "rule-out," not a diagnosis. Universal
+// across every CBC upload.
+export const RULE_LIBRARY_VERSION = '2026-05-10-3';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
