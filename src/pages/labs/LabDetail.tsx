@@ -79,6 +79,17 @@ export const LabDetail = () => {
       if (!drawId || !user) throw new Error('Missing context');
       setAnalysisCapHit(null);
       setRetriedAt(Date.now());
+      // Capture the existing analysis_result BEFORE wiping so we can restore
+      // it on a 429 cap-hit. Without this, hitting Retry once at the cap
+      // permanently destroys the previous good analysis — frontend wipes,
+      // edge function returns 429, frontend rolls back status but the result
+      // is gone for good.
+      const { data: prevDraw } = await supabase
+        .from('lab_draws')
+        .select('analysis_result')
+        .eq('id', drawId)
+        .maybeSingle();
+      const prevAnalysisResult = prevDraw?.analysis_result ?? null;
       await supabase.from('lab_draws').update({ processing_status: 'processing', analysis_result: null }).eq('id', drawId);
       // Get fresh JWT and fire the function. We DO a short response check
       // first to catch a 429 cap-reached rejection, then fall back to
@@ -108,8 +119,13 @@ export const LabDetail = () => {
           let detail = '';
           try { const j = await res.json(); detail = j?.error ?? ''; } catch {}
           setAnalysisCapHit(detail || 'Analysis limit reached for these labs.');
-          // Roll back the processing_status so the UI doesn't show a stuck spinner.
-          await supabase.from('lab_draws').update({ processing_status: 'complete' }).eq('id', drawId);
+          // Roll back BOTH the status AND the analysis_result we wiped before
+          // firing. The cap was hit so no new result is coming — restoring
+          // the previous one keeps the user's existing analysis intact.
+          await supabase
+            .from('lab_draws')
+            .update({ processing_status: 'complete', analysis_result: prevAnalysisResult })
+            .eq('id', drawId);
           throw new Error(detail || 'REGEN_LIMIT_REACHED');
         }
         if (res.status === 409) {
