@@ -140,14 +140,14 @@ const RULES: BackstopRule[] = [
         name: 'Hemoconcentration / chronic underhydration (rule-out before erythrocytosis)',
         category: 'metabolic',
         confidence: 'high',
-        evidence: `${clues}. Every blood component reads high because plasma volume is low — classic hemoconcentration. Albumin is the keystone marker (it concentrates, doesn\'t physiologically rise). Statistically much more common than absolute erythrocytosis in a fit adult.`,
+        evidence: `${clues}. All your blood numbers look high because the water part of your blood is low — like soup that\'s been boiled down. Albumin is the giveaway: it can only go up if you\'re low on water. This is way more common than a real blood disease in someone fit.`,
         confirmatory_tests: [
           'Hydration trial (3L water/day + electrolytes) for 14 days',
           'Repeat CBC + albumin after trial',
           'Urine specific gravity (random sample)',
         ],
         icd10: 'E86.0',
-        what_to_ask_doctor: "My albumin, hemoglobin, and hematocrit are all elevated together — could this be hemoconcentration from underhydration rather than a blood disorder? Can we do a 2-week hydration trial and recheck before more invasive workup?",
+        what_to_ask_doctor: "My albumin, hemoglobin, and hematocrit are all high together. Could this just be from not drinking enough water instead of a blood disease? Can I try drinking more water for 2 weeks and recheck before doing more tests?",
         source: 'deterministic',
       };
     },
@@ -181,7 +181,7 @@ const RULES: BackstopRule[] = [
           evidence: `TPO antibodies ${tpo.value} IU/mL (positive)${tsh ? ` + TSH ${tsh.value} mIU/L` : ''}${ft4 && ft4.value < 0.9 ? ` + Free T4 ${ft4.value} ng/dL (low)` : ''}. TPO+ is the most specific marker for Hashimoto's.`,
           confirmatory_tests: ['Thyroglobulin Antibodies', 'Free T4', 'Free T3', 'Reverse T3', 'Thyroid Ultrasound'],
           icd10: 'E06.3',
-          what_to_ask_doctor: "My TPO antibodies are positive — that's diagnostic for Hashimoto's autoimmune thyroiditis. Can we discuss treatment and monitoring?",
+          what_to_ask_doctor: "My TPO antibodies came back positive. That points to Hashimoto's, an autoimmune thyroid problem. Can we talk about treatment and how often to check it?",
           source: 'deterministic',
         };
       }
@@ -195,7 +195,7 @@ const RULES: BackstopRule[] = [
           evidence: `Thyroglobulin antibodies ${tgab.value} IU/mL (positive). TgAb+ alone is suggestive of autoimmune thyroid involvement.`,
           confirmatory_tests: ['TPO Antibodies', 'Free T4', 'Free T3', 'Reverse T3'],
           icd10: 'E06.3',
-          what_to_ask_doctor: "My thyroglobulin antibodies are positive — can we run TPO antibodies to confirm autoimmune thyroid disease?",
+          what_to_ask_doctor: "My thyroglobulin antibodies came back positive. Can we run a TPO antibody test to confirm autoimmune thyroid disease?",
           source: 'deterministic',
         };
       }
@@ -213,7 +213,7 @@ const RULES: BackstopRule[] = [
           evidence: `TSH ${tsh.value} mIU/L${ft4 ? ` + Free T4 ${ft4.value} ng/dL` : ''} fits overt hypothyroidism. Most common cause in adults is Hashimoto's.`,
           confirmatory_tests: ['TPO Antibodies', 'Thyroglobulin Antibodies', 'Free T4', 'Free T3'],
           icd10: 'E03.9',
-          what_to_ask_doctor: "My TSH is in the overt hypothyroid range — can we confirm with TPO antibodies and start treatment?",
+          what_to_ask_doctor: "My TSH is in the clearly-low-thyroid range. Can we confirm with TPO antibodies and start treatment?",
           source: 'deterministic',
         };
       }
@@ -251,7 +251,7 @@ const RULES: BackstopRule[] = [
           evidence: `TSH ${tsh.value} mIU/L (subclinical range) + ${symptomCount} hypothyroid-pattern symptoms (${matched}).`,
           confirmatory_tests: ['TPO Antibodies', 'Thyroglobulin Antibodies', 'Free T4', 'Free T3', 'Reverse T3'],
           icd10: 'E06.3',
-          what_to_ask_doctor: "My TSH is elevated and I have multiple hypothyroid symptoms — can we run TPO and Tg antibodies to rule out Hashimoto's?",
+          what_to_ask_doctor: "My TSH is high and I have a bunch of low-thyroid symptoms. Can we run TPO and Tg antibody tests to check for Hashimoto's?",
           source: 'deterministic',
         };
       }
@@ -297,7 +297,7 @@ const RULES: BackstopRule[] = [
           evidence: `Female with androgen + cycle/acne/insulin pattern: ${ev.join(', ')}.`,
           confirmatory_tests: ['Free Testosterone', 'SHBG', 'Fasting Insulin + HOMA-IR', 'Pelvic Ultrasound'],
           icd10: 'E28.2',
-          what_to_ask_doctor: "My androgen markers and cycle pattern fit PCOS — can we run a complete androgen panel + fasting insulin and consider a pelvic ultrasound?",
+          what_to_ask_doctor: "My hormone numbers and cycle issues fit PCOS. Can we run a full androgen panel and fasting insulin, and think about a pelvic ultrasound?",
           source: 'deterministic',
         };
       }
@@ -332,7 +332,7 @@ const RULES: BackstopRule[] = [
           evidence: `Labs meet ADA diagnostic criteria for diabetes despite no diagnosis on file: ${ev.join(', ')}.`,
           confirmatory_tests: ['Repeat HbA1c on a separate day to confirm', 'Fasting glucose (repeat)', 'Fasting Insulin + HOMA-IR', 'Comprehensive metabolic panel + UACR (kidney)', 'Lipid panel (extended)', 'Dilated eye exam (baseline retinopathy screen)'],
           icd10: 'E11.9',
-          what_to_ask_doctor: "My A1c/glucose is in the diabetic range — can we confirm with a repeat draw and start a treatment plan? I'd also like baseline kidney (UACR) and eye-exam referrals.",
+          what_to_ask_doctor: "My A1c and blood sugar are in the diabetes range. Can we recheck with a second blood draw and start a plan? I\'d also like a kidney check (UACR) and an eye exam.",
           source: 'deterministic',
         };
       }
@@ -364,7 +364,7 @@ const RULES: BackstopRule[] = [
           evidence: `Glycemic markers in prediabetic range: ${ev.join(', ')}.`,
           confirmatory_tests: ['Fasting Insulin + HOMA-IR', 'HbA1c (repeat in 3 months)', 'Lipid panel (extended)', 'UACR'],
           icd10: 'R73.09',
-          what_to_ask_doctor: "My glucose markers are in the prediabetic range — can we add fasting insulin + HOMA-IR and discuss intensive lifestyle vs metformin?",
+          what_to_ask_doctor: "My blood sugar markers are in the prediabetes range. Can we add a fasting insulin (HOMA-IR) test and talk about whether to try lifestyle changes alone or add metformin?",
           source: 'deterministic',
         };
       }
@@ -409,10 +409,10 @@ const RULES: BackstopRule[] = [
           name: 'NAFLD (Non-alcoholic Fatty Liver Disease)',
           category: 'gi',
           confidence: isHigh ? 'high' : 'moderate',
-          evidence: `Liver enzymes elevated alongside insulin-resistance markers: ${ev.join(', ')}.`,
+          evidence: `Your liver numbers are high and your blood-sugar markers say your body isn\'t using insulin well: ${ev.join(', ')}. This combo points to fat building up in the liver.`,
           confirmatory_tests: ['Liver Ultrasound', 'GGT', 'Fasting Insulin + HOMA-IR', 'FibroScan if available'],
           icd10: 'K76.0',
-          what_to_ask_doctor: "My liver enzymes are elevated and I have insulin-resistance markers — can we get a liver ultrasound (or FibroScan) to rule out fatty liver?",
+          what_to_ask_doctor: "My liver numbers are high and my blood-sugar markers look off. Can I get a liver ultrasound (or a FibroScan) to check for fatty liver?",
           source: 'deterministic',
         };
       }
@@ -445,7 +445,7 @@ const RULES: BackstopRule[] = [
           evidence: `Microcytic + low iron stores: ${ev.join(', ')}.`,
           confirmatory_tests: ['Iron Panel (Iron, TIBC, Transferrin Saturation, Ferritin)', 'Reticulocyte count', 'Stool occult blood (rule out GI source)'],
           icd10: 'D50.9',
-          what_to_ask_doctor: "I have iron deficiency anemia — can we run a full iron panel, retic count, and rule out GI blood loss? (colonoscopy if 45+ or family hx)",
+          what_to_ask_doctor: "I have iron-deficiency anemia. Can we do a full iron panel and a young-red-cell (retic) count, and rule out bleeding from the gut? (A colonoscopy if I\'m 45+ or have family history.)",
           source: 'deterministic',
         };
       }
@@ -482,7 +482,7 @@ const RULES: BackstopRule[] = [
           evidence: ev.join(', '),
           confirmatory_tests: ['MMA (Methylmalonic Acid)', 'Homocysteine', 'Intrinsic Factor antibodies', 'Parietal cell antibodies'],
           icd10: 'D51.0',
-          what_to_ask_doctor: "My B12 markers and pattern fit a deficiency — can we run MMA, homocysteine, and intrinsic factor antibodies to rule out pernicious anemia?",
+          what_to_ask_doctor: "My B12 numbers and symptoms point to a deficiency. Can we run MMA, homocysteine, and intrinsic-factor antibodies to rule out pernicious anemia?",
           source: 'deterministic',
         };
       }
@@ -509,7 +509,7 @@ const RULES: BackstopRule[] = [
           evidence: `Ferritin ${ferritin!.value} + Transferrin saturation ${sat!.value}% — iron overload pattern.`,
           confirmatory_tests: ['HFE gene testing (C282Y, H63D)', 'Liver enzymes', 'Iron panel repeat'],
           icd10: 'E83.110',
-          what_to_ask_doctor: "My ferritin and transferrin saturation are both high — can we order HFE gene testing to rule out hereditary hemochromatosis?",
+          what_to_ask_doctor: "My ferritin and transferrin saturation are both high. Can we order HFE gene testing to rule out hereditary iron overload (hemochromatosis)?",
           source: 'deterministic',
         };
       }
@@ -575,10 +575,10 @@ const RULES: BackstopRule[] = [
           name: 'Obstructive Sleep Apnea (rule-out)',
           category: 'respiratory',
           confidence: 'moderate',
-          evidence: `${evParts.join(', ')} — pattern fits nocturnal hypoxemia driving secondary erythrocytosis.`,
+          evidence: `${evParts.join(', ')}. Pattern fits poor breathing at night — your body makes extra red blood cells to grab more oxygen.`,
           confirmatory_tests: ['STOP-BANG questionnaire', 'Home sleep study (HSAT)', 'Overnight pulse oximetry'],
           icd10: 'G47.30',
-          what_to_ask_doctor: "My RBC and hematocrit are elevated and I have sleep / fatigue / weight signals — can we order a home sleep study to rule out obstructive sleep apnea?",
+          what_to_ask_doctor: "My red blood cell numbers are high and I\'m tired, snore, or wake up a lot at night. Can I do an at-home sleep study to check for sleep apnea?",
           source: 'deterministic',
         };
       }
@@ -630,10 +630,10 @@ const RULES: BackstopRule[] = [
         name: 'Insulin resistance with plaque-forming dyslipidemia (metabolic syndrome precursor)',
         category: 'metabolic',
         confidence,
-        evidence: `${ev.join(', ')} — fits hyperinsulinemia driving small-dense-LDL pattern before A1c crosses diabetic range.`,
+        evidence: `${ev.join(', ')}. Pattern says your pancreas is pumping out extra insulin to keep blood sugar normal, and it\'s pushing your cholesterol into the small, sticky kind that clogs arteries — even before A1c crosses into the diabetes range.`,
         confirmatory_tests: ['Fasting Insulin + HOMA-IR', 'ApoB', 'Lp(a) once-in-lifetime', 'hs-CRP', 'Coronary Artery Calcium (CAC) score'],
         icd10: 'E88.81',
-        what_to_ask_doctor: "My triglycerides and other markers fit early insulin resistance — can we add fasting insulin and ApoB to confirm and guide treatment?",
+        what_to_ask_doctor: "My triglycerides and other numbers look like early insulin resistance. Can we add a fasting insulin and ApoB test to confirm it and figure out the best plan?",
         source: 'deterministic',
       };
     },
@@ -670,7 +670,7 @@ const RULES: BackstopRule[] = [
         evidence: `TSH ${tsh.value} in the early-Hashimoto grey zone (≥2.5) with classic thyroid-pattern symptoms.`,
         confirmatory_tests: ['Thyroid Panel (TSH + Free T4 + Free T3)', 'TPO antibodies', 'Thyroglobulin antibodies (Tg-Ab)', 'Reverse T3'],
         icd10: 'E03.9',
-        what_to_ask_doctor: "My TSH is in the upper-normal range and I have fatigue / weight / hair / cold symptoms — can we check Free T4, Free T3, and thyroid antibodies?",
+        what_to_ask_doctor: "My TSH is on the high end of normal and I have fatigue, weight, hair, or feeling-cold symptoms. Can we check Free T4, Free T3, and thyroid antibodies?",
         source: 'deterministic',
       };
     },
@@ -701,7 +701,7 @@ const RULES: BackstopRule[] = [
         evidence: `hs-CRP ${crp.value} mg/L + metabolic abnormality — inflammation independently raises 10-yr CV risk by 30-40%.`,
         confirmatory_tests: ['hs-CRP repeat at 12 weeks', 'ApoB', 'Coronary Artery Calcium (CAC) score', 'Fasting Insulin'],
         icd10: 'R74.0',
-        what_to_ask_doctor: "My hs-CRP plus my lipid / glucose pattern shows inflammation is amplifying my heart risk — should we factor that into our statin and lifestyle plan?",
+        what_to_ask_doctor: "My hs-CRP is up along with my cholesterol or blood-sugar markers, which means hidden inflammation is adding to my heart risk. Should that change my statin or lifestyle plan?",
         source: 'deterministic',
       };
     },
@@ -724,7 +724,7 @@ const RULES: BackstopRule[] = [
           evidence: `FSH ${fsh.value} mIU/mL${e2 ? ` + Estradiol ${e2.value} pg/mL` : ''} — postmenopausal hormone pattern.`,
           confirmatory_tests: ['Repeat FSH + Estradiol in 4-6 weeks', 'Female Hormone Panel (E2, P4, T)', 'DEXA scan for bone density'],
           icd10: 'N95.1',
-          what_to_ask_doctor: "My FSH is in the postmenopausal range — can we discuss HRT options, bone-density screening, and the cardiovascular implications of estrogen loss?",
+          what_to_ask_doctor: "My FSH is in the post-menopause range. Can we talk about hormone therapy (HRT) options, a bone-density scan, and how losing estrogen can affect heart health?",
           source: 'deterministic',
         };
       }
@@ -753,7 +753,7 @@ const RULES: BackstopRule[] = [
           evidence: evParts.join(', '),
           confirmatory_tests: ['Free Testosterone', 'SHBG', 'LH + FSH', 'Estradiol (sensitive)', 'Prolactin'],
           icd10: 'E29.1',
-          what_to_ask_doctor: "My total testosterone is low — can we run free T, SHBG, LH/FSH, and prolactin to figure out if this is primary or central, and discuss whether TRT or treating root cause makes sense?",
+          what_to_ask_doctor: "My total testosterone is low. Can we run Free T, SHBG, LH/FSH, and prolactin to find out if the problem is in the testes or the brain — and decide whether to treat the cause or start testosterone therapy (TRT)?",
           source: 'deterministic',
         };
       }
@@ -776,7 +776,7 @@ const RULES: BackstopRule[] = [
           evidence: `25-OH Vitamin D ${d.value} ng/mL — clinically deficient (<20).`,
           confirmatory_tests: ['Repeat 25-OH Vitamin D after 8 weeks of D3', 'Calcium', 'PTH (parathyroid)'],
           icd10: 'E55.9',
-          what_to_ask_doctor: "My vitamin D is severely low — can we start high-dose D3 (5000 IU+ daily) and recheck in 8 weeks?",
+          what_to_ask_doctor: "My vitamin D is very low. Can we start high-dose D3 (5,000 IU or more per day) and recheck in 8 weeks?",
           source: 'deterministic',
         };
       }
@@ -809,7 +809,7 @@ const RULES: BackstopRule[] = [
           evidence: `Particle pattern flags atherosclerotic CV risk: ${ev.join(', ')}.`,
           confirmatory_tests: ['ApoB', 'Lp(a) once-in-lifetime', 'Coronary Artery Calcium (CAC) score', 'hs-CRP'],
           icd10: 'E78.5',
-          what_to_ask_doctor: "My LDL particle pattern is plaque-forming even though my standard cholesterol numbers look OK — can we get ApoB, Lp(a), and a coronary calcium score?",
+          what_to_ask_doctor: "Even though my regular cholesterol looks OK, my LDL particles are the kind that clog arteries. Can we get ApoB, Lp(a), and a coronary calcium scan?",
           source: 'deterministic',
         };
       }
@@ -833,7 +833,7 @@ const RULES: BackstopRule[] = [
           evidence: `LDL ${ldl.value} mg/dL at age ${ageNum} — markedly elevated for age.`,
           confirmatory_tests: ['Family history (lipids, early CV events)', 'ApoB', 'Lp(a)', 'PCSK9 / LDLR genetic testing if pattern fits', 'Coronary Calcium Score'],
           icd10: 'E78.01',
-          what_to_ask_doctor: "My LDL is very high for my age — can we discuss family history of high cholesterol, get ApoB and Lp(a), and consider lipid genetic testing to rule out familial hypercholesterolemia?",
+          what_to_ask_doctor: "My LDL is very high for my age. Can we talk about family history of high cholesterol, run ApoB and Lp(a), and think about genetic testing to rule out a family form (familial hypercholesterolemia)?",
           source: 'deterministic',
         };
       }
@@ -861,7 +861,7 @@ const RULES: BackstopRule[] = [
           evidence: `Age ${ageNum}+ with elevated inflammation (${crp ? `CRP ${crp.value}` : ''}${esr ? `, ESR ${esr.value}` : ''}) + shoulder/hip stiffness symptoms.`,
           confirmatory_tests: ['ESR (if not already done)', 'hs-CRP', 'CK', 'Rheumatology referral if pattern persists'],
           icd10: 'M35.3',
-          what_to_ask_doctor: "I'm over 50 with shoulder/hip stiffness and elevated inflammation markers — can we rule out polymyalgia rheumatica and consider rheum referral?",
+          what_to_ask_doctor: "I\'m over 50 with shoulder and hip stiffness plus high inflammation markers. Can we rule out polymyalgia rheumatica and maybe see a rheumatologist?",
           source: 'deterministic',
         };
       }
@@ -895,7 +895,7 @@ const RULES: BackstopRule[] = [
           evidence: `Age ${ageNum}+ with ${hits} of 5 myeloma red flags (CRAB+pain): elevated globulin / calcium / creatinine / anemia / bone pain.`,
           confirmatory_tests: ['SPEP (Serum Protein Electrophoresis)', 'Serum Free Light Chains', 'Immunofixation', '24-hour urine for Bence Jones protein'],
           icd10: 'D47.2',
-          what_to_ask_doctor: "Several of my markers fit the CRAB criteria pattern — can we run SPEP and serum free light chains to rule out a monoclonal gammopathy?",
+          what_to_ask_doctor: "Several of my numbers fit a pattern doctors call CRAB. Can we run SPEP and serum free light chains to rule out a blood-protein disorder (monoclonal gammopathy)?",
           source: 'deterministic',
         };
       }

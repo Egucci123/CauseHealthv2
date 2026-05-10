@@ -6,98 +6,105 @@
 // it actually reveals" explanation. Same wording on every surface.
 // Universal across users — same test → same explanation.
 //
-// To add a new test: append the regex + description below. Patient sees
-// the explanation under the test name on the Possible Conditions card.
+// READING LEVEL: 6th grade. Short sentences. No jargon without a
+// plain-English chaser. If a doctor word slips in, follow it with
+// "(what that means: ...)".
+//
+// IMPORTANT: regex order matters — first match wins. Always anchor
+// short tokens (alt/ast/ck/lh/fsh/rf) with \b word boundaries so they
+// don't match inside other words (e.g. "fAST" inside "fasting").
 
 export interface TestCatches {
   /** Pattern that matches the confirmatory test string (case-insensitive). */
   pattern: RegExp;
-  /** What the test catches — one sentence in plain English. */
+  /** What the test catches — one sentence in plain English (6th grade). */
   catches: string;
 }
 
 const REGISTRY: TestCatches[] = [
   // ── Liver / hepatic ─────────────────────────────────────────────────
-  { pattern: /liver ultrasound|hepatic ultrasound/i, catches: 'Imaging that detects fatty infiltration (steatosis) — non-invasive, ~$200, covered with abnormal LFTs.' },
-  { pattern: /fibroscan|transient elastography/i, catches: 'Quantifies liver stiffness (fibrosis stage) and fat content (CAP score) — distinguishes simple fatty liver from progressing fibrosis.' },
-  { pattern: /\bggt\b|gamma[\s-]?glutamyl/i, catches: 'Sensitive liver/biliary marker — clarifies if elevated ALT/AST is hepatocellular vs cholestatic.' },
-  { pattern: /alt|sgpt/i, catches: 'Liver-cell injury marker — primary screen for hepatic stress.' },
-  { pattern: /ast|sgot/i, catches: 'Liver-cell injury marker — AST/ALT ratio differentiates causes (alcohol, NAFLD, etc.).' },
+  { pattern: /liver ultrasound|hepatic ultrasound/i, catches: 'A picture of your liver to see if fat is building up inside it. No needles, no radiation, about $200.' },
+  { pattern: /fibroscan|transient elastography/i, catches: 'A painless scan that measures how stiff your liver is and how much fat it holds. Tells the doctor if any damage is just fat or has started turning into scar tissue.' },
+  { pattern: /\bggt\b|gamma[\s-]?glutamyl/i, catches: 'A liver enzyme. Helps the doctor figure out whether your liver irritation is from fat, alcohol, or a blocked bile duct.' },
+  { pattern: /\balt\b|\bsgpt\b/i, catches: 'A liver enzyme that leaks into the blood when liver cells are stressed. Main early warning that the liver needs help.' },
+  { pattern: /\bast\b|\bsgot\b/i, catches: 'A second liver enzyme. Comparing it to ALT helps point to the cause (alcohol, fatty liver, etc.).' },
 
   // ── Metabolic / insulin / dyslipidemia ──────────────────────────────
-  { pattern: /fasting insulin|homa[\s-]?ir/i, catches: 'Catches hyperinsulinemia BEFORE A1c crosses the diabetic range — pancreas is overworking to keep glucose normal. HOMA-IR >2.5 = insulin resistance.' },
-  { pattern: /\bapob\b|apolipoprotein b/i, catches: 'Counts the actual plaque-forming particles — more predictive of heart attack risk than LDL alone, especially on a statin.' },
-  { pattern: /\blp\(a\)|lipoprotein.?a/i, catches: 'Once-in-a-lifetime genetic CV risk marker — independent of diet, lifestyle, statins; affects 20% of people.' },
-  { pattern: /coronary artery calcium|\bcac\b/i, catches: 'CT scan that quantifies actual arterial plaque buildup — score of 0 = essentially no heart disease; >100 = aggressive prevention.' },
-  { pattern: /hs[\s-]?crp|c[\s-]?reactive/i, catches: 'Systemic inflammation marker — independently raises 10-yr CV risk and predicts response to statins/lifestyle.' },
-  { pattern: /a1c|hba1c|hemoglobin a1c/i, catches: '3-month average blood sugar — tracks glycemic control. Watch tier ≥5.4%; prediabetic 5.7–6.4%; diabetic ≥6.5%.' },
-  { pattern: /lipid panel|cholesterol panel/i, catches: 'Standard cardiovascular risk panel — TC, LDL, HDL, triglycerides, VLDL.' },
-  { pattern: /uric acid/i, catches: 'Metabolic syndrome amplifier — high levels predict gout, hypertension, kidney stones, and CV risk.' },
+  // NOTE: this MUST come before any \bast\b-style pattern that could
+  // catch "fAST" inside "fasting". Above ALT/AST patterns are now \b-anchored.
+  { pattern: /fasting insulin|homa[\s-]?ir/i, catches: 'Shows if your pancreas is working overtime to keep blood sugar normal. Catches the problem years before A1c looks high. A score above 2.5 = insulin resistance.' },
+  { pattern: /\bapob\b|apolipoprotein b/i, catches: 'Counts the actual cholesterol particles that get stuck in artery walls. A better heart-attack predictor than regular LDL.' },
+  { pattern: /\blp\(a\)|lipoprotein.?a/i, catches: 'A genetic heart-risk marker. Only need to check it once in your life. About 1 in 5 people have a high level — it raises heart risk no matter how clean the diet is.' },
+  { pattern: /coronary artery calcium|\bcac\b/i, catches: 'A quick CT scan that counts plaque in your heart arteries. A score of 0 means almost no risk; over 100 means it\'s time to get serious.' },
+  { pattern: /hs[\s-]?crp|c[\s-]?reactive/i, catches: 'Measures hidden inflammation in your body. High levels raise heart-attack risk on their own and tell the doctor how aggressive to be with treatment.' },
+  { pattern: /a1c|hba1c|hemoglobin a1c/i, catches: 'Your average blood sugar over the last 3 months. Watch zone is 5.4%+, prediabetes 5.7–6.4%, diabetes 6.5%+.' },
+  { pattern: /lipid panel|cholesterol panel/i, catches: 'The standard cholesterol blood test. Total, LDL ("bad"), HDL ("good"), and triglycerides — your basic heart-risk numbers.' },
+  { pattern: /uric acid/i, catches: 'High levels cause gout and kidney stones, and quietly raise blood pressure and heart risk. Often goes up alongside insulin resistance.' },
 
   // ── Hematology / hydration ──────────────────────────────────────────
-  { pattern: /hydration trial/i, catches: 'Diagnostic test masquerading as a treatment — if blood counts normalize after 2 weeks of 3L/day water + electrolytes, it was hemoconcentration not erythrocytosis.' },
-  { pattern: /repeat cbc|cbc.*after trial|cbc \+ albumin/i, catches: 'Confirms hemoconcentration resolved — RBC, Hct, Hgb should drop into normal range with adequate plasma volume.' },
-  { pattern: /urine specific gravity/i, catches: 'Direct measure of urine concentration — >1.025 confirms dehydration; pairs with the hydration trial as the cheapest possible workup.' },
-  { pattern: /\bcbc\b|complete blood count/i, catches: 'Red cells, white cells, platelets, plus indices that flag iron deficiency, B12 deficiency, infection, or marrow issues.' },
-  { pattern: /reticulocyte/i, catches: 'Young-red-cell count — distinguishes active overproduction (high retic) from passive elevation (low/normal retic = hemoconcentration).' },
-  { pattern: /\bepo\b|erythropoietin/i, catches: 'The hormone that drives red-cell production — high in nocturnal hypoxemia (sleep apnea); low in primary polycythemia vera.' },
-  { pattern: /jak2/i, catches: 'Genetic test for primary polycythemia vera — only ordered if other markers (low EPO, high Hgb >18.5) point that way.' },
+  { pattern: /hydration trial/i, catches: 'A simple at-home test: drink 3 liters of water a day (with electrolytes) for 2 weeks, then recheck blood. If the high red-cell count drops, you were just dehydrated — not a blood disease.' },
+  { pattern: /repeat cbc|cbc.*after trial|cbc \+ albumin/i, catches: 'A second blood count after the hydration trial. Confirms the high numbers came from low water — not from your bone marrow making too many cells.' },
+  { pattern: /urine specific gravity/i, catches: 'A cheap urine test that shows how concentrated your pee is. A reading above 1.025 means you\'re dehydrated.' },
+  { pattern: /\bcbc\b|complete blood count/i, catches: 'Counts your red cells, white cells, and platelets. Flags anemia, infection, low B12 or iron, and bone-marrow problems.' },
+  { pattern: /reticulocyte/i, catches: 'Counts brand-new red blood cells. Tells the doctor if your body is actively making more cells (real overproduction) or just running on low water (dehydration).' },
+  { pattern: /\bepo\b|erythropoietin/i, catches: 'The hormone that tells bone marrow to make red cells. High = body is starved for oxygen at night (often sleep apnea); low = a true blood disease.' },
+  { pattern: /jak2/i, catches: 'A genetic test for a rare bone-marrow disease (polycythemia vera). Only ordered when other clues (low EPO, very high hemoglobin) point that way.' },
 
   // ── Sleep / OSA ─────────────────────────────────────────────────────
-  { pattern: /stop[\s-]?bang/i, catches: '8-question screening tool — score ≥3 has 90% sensitivity for moderate-severe sleep apnea. Free, takes 1 minute.' },
-  { pattern: /home sleep study|hsat|polysomnography|sleep apnea screening|sleep study/i, catches: 'Records overnight breathing, oxygen saturation, and movements — confirms or rules out OSA. Covered with positive STOP-BANG; ~$200-500 at-home.' },
-  { pattern: /overnight pulse oximetry|nocturnal pulse ox/i, catches: 'Tracks blood oxygen overnight — repeated drops below 90% support OSA diagnosis. Cheaper than a full sleep study.' },
+  { pattern: /stop[\s-]?bang/i, catches: 'A free 8-question quiz for sleep apnea. Takes 1 minute. A score of 3 or more catches 9 out of 10 cases.' },
+  { pattern: /home sleep study|hsat|polysomnography|sleep apnea screening|sleep study/i, catches: 'You wear a small device at home overnight. It records breathing and oxygen levels to confirm or rule out sleep apnea. Usually $200–$500 and often covered.' },
+  { pattern: /overnight pulse oximetry|nocturnal pulse ox/i, catches: 'A fingertip clip that tracks oxygen levels while you sleep. Repeated drops below 90% point to sleep apnea. Cheaper than a full sleep study.' },
 
   // ── Thyroid ─────────────────────────────────────────────────────────
-  { pattern: /tpo antibod|thyroid peroxidase/i, catches: 'Confirms autoimmune Hashimoto\'s — present in 95% of cases. Positive even before TSH crosses the abnormal range.' },
-  { pattern: /thyroglobulin antibod|tg.?ab/i, catches: 'Pairs with TPO — second autoimmune thyroid antibody. Catches a subset of Hashimoto\'s cases TPO misses.' },
-  { pattern: /reverse t3|rt3/i, catches: 'Inactive thyroid metabolite — high values point to impaired T4→T3 conversion (stress, illness, low calorie state).' },
-  { pattern: /free t3|t3 free/i, catches: 'Active thyroid hormone — most clinically meaningful. Low Free T3 explains symptoms even when TSH is normal.' },
-  { pattern: /free t4|t4 free/i, catches: 'Pre-conversion thyroid hormone — low value suggests pituitary issue or central hypothyroidism.' },
-  { pattern: /thyroid panel|tsh.*free t/i, catches: 'Comprehensive thyroid function — TSH alone misses central hypothyroidism and impaired conversion.' },
+  { pattern: /tpo antibod|thyroid peroxidase/i, catches: 'Confirms Hashimoto\'s — an autoimmune cause of low thyroid. Positive in 95% of cases, often before TSH looks abnormal.' },
+  { pattern: /thyroglobulin antibod|tg.?ab/i, catches: 'A second autoimmune thyroid marker. Catches some Hashimoto\'s cases that the TPO test misses.' },
+  { pattern: /reverse t3|rt3/i, catches: 'An "off-switch" version of thyroid hormone. High levels mean stress, illness, or under-eating is blocking your active hormone.' },
+  { pattern: /free t3|t3 free/i, catches: 'The active thyroid hormone your body actually uses. Low Free T3 explains tired/cold/foggy symptoms even when the basic TSH test looks normal.' },
+  { pattern: /free t4|t4 free/i, catches: 'The pre-active thyroid hormone. Low Free T4 can point to a brain (pituitary) problem instead of a thyroid problem.' },
+  { pattern: /thyroid panel|tsh.*free t/i, catches: 'A full thyroid workup — TSH alone misses some real problems. Adds Free T4 and Free T3 for a complete picture.' },
 
   // ── Gut / IBD ───────────────────────────────────────────────────────
-  { pattern: /fecal calprotectin/i, catches: 'IBD disease-activity marker — elevated value means active inflammation, even before symptoms return.' },
-  { pattern: /celiac|tt?g[\s-]?iga|total iga/i, catches: 'Celiac antibody screen — positive tTG-IgA + low total IgA rules in/out gluten enteropathy.' },
+  { pattern: /fecal calprotectin/i, catches: 'A stool test that detects gut inflammation. Goes up when inflammatory bowel disease (IBD) is active, even before symptoms come back.' },
+  { pattern: /celiac|tt?g[\s-]?iga|total iga/i, catches: 'Screens for celiac disease (gluten intolerance). Positive tTG-IgA with normal total IgA is the standard combo to rule it in or out.' },
 
   // ── Kidney ──────────────────────────────────────────────────────────
-  { pattern: /uacr|microalbumin/i, catches: 'Earliest sign of diabetic / hypertensive kidney damage — catches it before creatinine rises.' },
-  { pattern: /cystatin c/i, catches: 'eGFR alternative that\'s more accurate in muscular or low-muscle patients (creatinine misleads in both directions).' },
+  { pattern: /uacr|microalbumin/i, catches: 'A simple urine test. Catches early kidney damage from diabetes or high blood pressure — years before standard kidney tests show a problem.' },
+  { pattern: /cystatin c/i, catches: 'A more accurate kidney test for people with very high or very low muscle mass (regular creatinine misleads in both directions).' },
 
   // ── Hormones ────────────────────────────────────────────────────────
-  { pattern: /testosterone panel|total t.*free t.*shbg|testosterone.*total.*free/i, catches: 'Comprehensive male hormonal baseline — Total + Free + Bioavailable + SHBG + Estradiol + LH + FSH paint the full picture.' },
-  { pattern: /total testosterone|^testosterone$/i, catches: 'Standard male hormonal screen — first check; if low or low-normal, expand to free + SHBG + LH/FSH.' },
-  { pattern: /free testosterone/i, catches: 'Active hormone unbound to SHBG — what your tissues actually use. Low Free T explains symptoms even with normal Total T.' },
-  { pattern: /\bshbg\b|sex[\s-]?hormone[\s-]?binding/i, catches: 'Carrier protein — high SHBG locks up testosterone (lowers Free T); low SHBG suggests insulin resistance.' },
-  { pattern: /estradiol/i, catches: 'Important for males too — high E2 (often from belly fat aromatizing T) drives breast tissue, mood swings, low libido.' },
-  { pattern: /\blh\b|luteinizing hormone/i, catches: 'Pituitary signal to testes — distinguishes testicular failure (high LH) from pituitary issue (low LH).' },
-  { pattern: /\bfsh\b|follicle.?stimulating/i, catches: 'Pairs with LH — confirms primary vs secondary cause of low testosterone or amenorrhea.' },
-  { pattern: /dhea[\s-]?s|dehydroepiandrosterone/i, catches: 'Adrenal androgen — low DHEA-S in chronic stress / HPA-axis dysfunction; high in PCOS.' },
-  { pattern: /am cortisol|morning cortisol/i, catches: 'Adrenal output — abnormal AM cortisol screens for HPA-axis issues, Addison\'s, Cushing\'s.' },
-  { pattern: /prolactin/i, catches: 'Pituitary hormone — high levels disrupt fertility, libido, menstrual cycles; rules out pituitary adenoma.' },
+  { pattern: /testosterone panel|total t.*free t.*shbg|testosterone.*total.*free/i, catches: 'A full male-hormone workup — Total T, Free T, SHBG, Estradiol, LH, and FSH. Together they show the full picture instead of just one number.' },
+  { pattern: /total testosterone|^testosterone$/i, catches: 'The basic male-hormone test. If it\'s low or borderline, the doctor adds Free T, SHBG, and LH/FSH to dig deeper.' },
+  { pattern: /free testosterone/i, catches: 'The active testosterone your body actually uses. Can be low even when total testosterone looks normal — this often explains the symptoms.' },
+  { pattern: /\bshbg\b|sex[\s-]?hormone[\s-]?binding/i, catches: 'A protein that holds testosterone in storage. High SHBG locks testosterone away; low SHBG is a clue for insulin resistance.' },
+  { pattern: /estradiol/i, catches: 'The main estrogen hormone. Important for men too — high levels (often from belly fat) cause mood swings, low drive, and breast tissue.' },
+  { pattern: /\blh\b|luteinizing hormone/i, catches: 'A signal from the brain to the testes (or ovaries). Tells the doctor if low testosterone is from the testes or from the brain/pituitary.' },
+  { pattern: /\bfsh\b|follicle.?stimulating/i, catches: 'A pituitary hormone that pairs with LH. Confirms whether the cause of low hormones is upstream (brain) or downstream (gonads).' },
+  { pattern: /dhea[\s-]?s|dehydroepiandrosterone/i, catches: 'An adrenal-gland hormone. Low levels show up with chronic stress; high levels are common in PCOS.' },
+  { pattern: /am cortisol|morning cortisol/i, catches: 'Measures your main stress hormone first thing in the morning. Screens for adrenal problems like Addison\'s or Cushing\'s.' },
+  { pattern: /prolactin/i, catches: 'A pituitary hormone. High levels mess with fertility, sex drive, and periods, and can point to a small pituitary tumor.' },
 
   // ── Vitamins / nutrients ────────────────────────────────────────────
-  { pattern: /vitamin d|25.?hydroxy/i, catches: 'Functional D status — drives mood, immunity, bone, autoimmunity. Optimal 40-60 ng/mL.' },
-  { pattern: /b12.*workup|b12.*mma|methylmalonic.*homocysteine/i, catches: 'Tissue B12 status — MMA + homocysteine catch functional deficiency that serum B12 alone misses.' },
-  { pattern: /vitamin b12|cobalamin|^b12/i, catches: 'Direct B12 level — borderline values need MMA confirmation; depleted by metformin / PPIs / chronic GI issues.' },
-  { pattern: /folate workup|serum.*rbc folate|rbc folate/i, catches: 'Tissue folate status — RBC folate reflects 3-month stores (gold standard). Catches mesalamine / methotrexate depletion.' },
-  { pattern: /\bmma\b|methylmalonic/i, catches: 'Confirms B12 functional deficiency at the cellular level when serum B12 is borderline.' },
-  { pattern: /homocysteine/i, catches: 'Methylation marker — elevated value = functional B12 / folate / B6 deficiency, plus independent CV risk factor.' },
-  { pattern: /iron panel|^iron\b|tibc|transferrin sat/i, catches: 'Iron stores + transport — fatigue, hair loss, restless legs all show up here BEFORE hemoglobin drops.' },
-  { pattern: /ferritin/i, catches: 'Iron storage protein — low ferritin = depleted reserves; <50 drives hair shedding; <30 = clinically iron-deficient.' },
-  { pattern: /rbc magnesium|red.?cell magnesium/i, catches: 'Intracellular Mg — far more sensitive than serum Mg (which only reflects 1% of body stores).' },
+  { pattern: /vitamin d|25.?hydroxy/i, catches: 'Your vitamin D level. Drives mood, immune function, and bone health. Best zone is 40–60 ng/mL.' },
+  { pattern: /b12.*workup|b12.*mma|methylmalonic.*homocysteine/i, catches: 'A deeper B12 check (MMA + homocysteine). Catches "hidden" B12 deficiency that the basic blood test misses.' },
+  { pattern: /vitamin b12|cobalamin|^b12/i, catches: 'Your B12 level. Borderline numbers need an MMA test to confirm. Often gets depleted by metformin, acid blockers, or gut issues.' },
+  { pattern: /folate workup|serum.*rbc folate|rbc folate/i, catches: 'A deeper folate (B9) check. RBC folate shows your last 3 months of stores — best for catching depletion from drugs like mesalamine or methotrexate.' },
+  { pattern: /\bmma\b|methylmalonic/i, catches: 'A confirmation test for low B12 at the cell level. Useful when the regular B12 number is in a grey zone.' },
+  { pattern: /homocysteine/i, catches: 'A marker that goes up when B12, folate, or B6 are low. High levels also raise heart-disease risk on their own.' },
+  { pattern: /iron panel|^iron\b|tibc|transferrin sat/i, catches: 'A full look at iron — both stores and how iron moves through the blood. Catches fatigue, hair loss, and restless legs before hemoglobin drops.' },
+  { pattern: /ferritin/i, catches: 'Your iron storage number. Below 50 starts driving hair loss; below 30 = iron deficiency, even if hemoglobin still looks fine.' },
+  { pattern: /rbc magnesium|red.?cell magnesium/i, catches: 'Magnesium inside the cells, where it actually works. Much more accurate than the standard blood test (which only sees 1% of body magnesium).' },
 
   // ── Lipid sub-tests ─────────────────────────────────────────────────
-  { pattern: /particle size|nmr|small dense/i, catches: 'Lipid particle profiling — small-dense LDL is the plaque-forming subtype; quantifies what standard LDL doesn\'t reveal.' },
+  { pattern: /particle size|nmr|small dense/i, catches: 'Sorts your LDL into big fluffy particles vs. small dense ones. The small dense kind is what actually clogs arteries.' },
 
   // ── Inflammation / autoimmune ───────────────────────────────────────
-  { pattern: /\besr\b|sed rate|erythrocyte sedimentation/i, catches: 'Non-specific inflammation marker — sensitive but not specific; pairs with CRP for autoimmune workup.' },
-  { pattern: /ana reflex|antinuclear antibod/i, catches: 'Autoimmune screen — positive ANA prompts reflex titer + pattern + dsDNA / Smith / RNP confirmation.' },
-  { pattern: /anti.?ccp|cyclic citrull/i, catches: 'Highly specific for rheumatoid arthritis — positive in 60-70% of RA cases, often before joint damage shows.' },
-  { pattern: /rheumatoid factor|^rf\b/i, catches: 'RA antibody — less specific than anti-CCP but standard. RF + anti-CCP both positive = high RA likelihood.' },
+  { pattern: /\besr\b|sed rate|erythrocyte sedimentation/i, catches: 'A general inflammation marker. Pairs with CRP for autoimmune workups — if both are high, something inflammatory is active.' },
+  { pattern: /ana reflex|antinuclear antibod/i, catches: 'A starting test for autoimmune diseases like lupus. If positive, the lab automatically runs the next round (titer + pattern + specific antibodies).' },
+  { pattern: /anti.?ccp|cyclic citrull/i, catches: 'A very specific test for rheumatoid arthritis. Positive in most RA cases, often before joints start showing damage.' },
+  { pattern: /rheumatoid factor|\brf\b/i, catches: 'A rheumatoid arthritis antibody. Less specific than anti-CCP, but standard. If both come back positive, RA is very likely.' },
 
   // ── Statin / muscle ─────────────────────────────────────────────────
-  { pattern: /creatine kinase|^ck\b/i, catches: 'Muscle injury marker — rules out statin-induced myopathy; >5× ULN warrants stopping the statin.' },
+  { pattern: /creatine kinase|\bck\b/i, catches: 'A muscle-damage marker. Used to rule out muscle injury from statins — if it\'s more than 5× normal, the statin needs to stop.' },
 ];
 
 /**
