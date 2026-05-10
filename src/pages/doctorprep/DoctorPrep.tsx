@@ -22,6 +22,8 @@ import { PaywallGate } from '../../components/paywall/PaywallGate';
 import { useAuthStore } from '../../store/authStore';
 import { exportDoctorPrepPDF, exportPatientVisitGuidePDF } from '../../lib/exportPDF';
 import { format } from 'date-fns';
+import OutputAcknowledgmentGate from '../../components/legal/OutputAcknowledgmentGate';
+import { useOutputAck } from '../../lib/legal/useOutputAck';
 
 const TABS = [
   { id: 'visit',       label: 'At Your Visit',     shortLabel: 'Visit',   icon: 'fact_check' },
@@ -38,6 +40,8 @@ export const DoctorPrep = () => {
   const { generate, generating } = useGenerateDoctorPrep();
   const { data: latestDraw } = useLatestLabDraw();
   const { data: latestValues } = useLatestLabValues();
+  // v6 output-acknowledgment gate.
+  const ack = useOutputAck();
 
   // Force-fresh on mount + realtime so the doctor prep appears the instant
   // generation completes — no manual refresh required. Same pattern as
@@ -252,7 +256,12 @@ export const DoctorPrep = () => {
             <Button variant="primary" size="lg" loading={generating} onClick={handleGenerate} icon="auto_awesome" className="w-full sm:w-auto">Generate Clinical Summary</Button>
           </div>
         </PaywallGate>
-      ) : (
+      ) : !ack.complete ? null : (
+        // v6 gate: when a doc exists but ack isn't complete, render
+        // nothing in the body — the OutputAcknowledgmentGate overlay
+        // below covers the screen until the user completes the quiz.
+        // We don't render the AI content at all (not just hide visually)
+        // so screen readers + DOM inspection can't bypass the gate.
         <div className="space-y-5">
           {/* Tab nav — same segmented-control style as Wellness Plan + Lab Detail */}
           <TabNav tabs={TABS} active={activeTab} onChange={(id) => setActiveTab(id as any)} variant="full" />
@@ -312,6 +321,19 @@ export const DoctorPrep = () => {
           )}
           {activeTab === 'medications' && <MedicationsTab />}
         </div>
+      )}
+
+      {/* v6 output-acknowledgment gate. Renders ONLY when:
+          - A doctor-prep doc has loaded
+          - Eligibility query has resolved
+          - User has not yet completed the gate
+          The gate is a full-screen modal that covers the page chrome
+          including the doc body that may have rendered above it. */}
+      {!!doc && ack.ready && !ack.complete && (
+        <OutputAcknowledgmentGate
+          onComplete={ack.recordAndComplete}
+          submitting={ack.submitting}
+        />
       )}
     </AppShell>
   );

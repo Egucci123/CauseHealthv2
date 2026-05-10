@@ -22,6 +22,8 @@ import { PaywallGate } from '../../components/paywall/PaywallGate';
 import { useAuthStore } from '../../store/authStore';
 import { exportWellnessPlanPDF } from '../../lib/exportPDF';
 import { format } from 'date-fns';
+import OutputAcknowledgmentGate from '../../components/legal/OutputAcknowledgmentGate';
+import { useOutputAck } from '../../lib/legal/useOutputAck';
 
 type TabKey = 'today' | 'eat' | 'move' | 'take';
 
@@ -640,6 +642,8 @@ export const WellnessPlanPage = () => {
   const { data: latestDraw } = useLatestLabDraw();
   const { data: latestValues } = useLatestLabValues();
   const [tab, setTab] = useState<TabKey>('today');
+  // v6 output-acknowledgment gate. Plan body is gated on completion.
+  const ack = useOutputAck();
 
   // ── Force-fresh on mount + realtime so the plan appears the instant it's
   // ready, never requires a manual refresh. Three-layer safety:
@@ -774,7 +778,12 @@ export const WellnessPlanPage = () => {
           </div>
         </div>
       )}
-      {/* Plan undefined = loading. Plan null = no plan generated yet. */}
+      {/* Plan undefined = loading. Plan null = no plan generated yet.
+          v6 gate: when a plan exists but ack isn't complete, render
+          nothing in the body — the OutputAcknowledgmentGate overlay
+          below covers the screen until the user completes the quiz.
+          We don't render the AI content at all (not just hide visually)
+          so screen readers + DOM inspection can't bypass the gate. */}
       {plan === undefined ? <WellnessSkeleton />
         : generating ? <GeneratingState />
         : !plan ? (
@@ -785,6 +794,7 @@ export const WellnessPlanPage = () => {
             <EmptyState onGenerate={handleGenerate} loading={generating} />
           </PaywallGate>
         )
+        : !ack.complete ? null
         : (
         <div className="space-y-5">
           {/* Headline + actions */}
@@ -1119,6 +1129,19 @@ export const WellnessPlanPage = () => {
             </div>
           )}
         </div>
+      )}
+
+      {/* v6 output-acknowledgment gate. Renders ONLY when:
+          - A plan has loaded (no point gating the empty / paywall state)
+          - Eligibility query has resolved
+          - User has not yet completed the gate
+          The gate is a full-screen modal that covers the page chrome
+          including the plan body that may have rendered above it. */}
+      {!!plan && ack.ready && !ack.complete && (
+        <OutputAcknowledgmentGate
+          onComplete={ack.recordAndComplete}
+          submitting={ack.submitting}
+        />
       )}
     </AppShell>
   );

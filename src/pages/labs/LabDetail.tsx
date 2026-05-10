@@ -17,6 +17,8 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useSubscription } from '../../lib/subscription';
 import { logEvent } from '../../lib/clientLog';
+import OutputAcknowledgmentGate from '../../components/legal/OutputAcknowledgmentGate';
+import { useOutputAck } from '../../lib/legal/useOutputAck';
 
 const CATEGORY_ORDER = ['liver', 'cardiovascular', 'metabolic', 'kidney', 'thyroid', 'hormones', 'nutrients', 'cbc', 'inflammation', 'other'];
 const CATEGORY_LABELS: Record<string, string> = {
@@ -33,6 +35,11 @@ export const LabDetail = () => {
   const [appendOpen, setAppendOpen] = useState(false);
   const qc = useQueryClient();
   const { isPro } = useSubscription();
+  // v6 output-acknowledgment gate. Pro users with an analysis loaded
+  // must complete the 3-affirmation + clinician-name flow before any
+  // AI-derived narrative is shown to them. Free users never see AI
+  // output, so the gate is irrelevant for them.
+  const ack = useOutputAck();
 
   // ── Retry-lock state — declared early so the mutation can read setRetriedAt ─
   // The actual retryLocked / polling logic lives below the useQuery call
@@ -492,6 +499,11 @@ export const LabDetail = () => {
     return bag;
   };
   const findAnalysis = (markerName: string) => {
+    // v6 gate: until the user completes the output-ack quiz, do not
+    // attach AI-derived narrative to the marker cards. The cards still
+    // render with the raw value and reference range — that's the user's
+    // own data, not AI output.
+    if (!ack.complete) return null;
     if (!analysis?.priority_findings?.length) return null;
     const markerBag = buildSynonymBag(markerName);
     return analysis.priority_findings.find((f: any) => {
@@ -675,7 +687,7 @@ export const LabDetail = () => {
           </div>
         </Link>
       )}
-      {isPro && analysis?.summary && (
+      {isPro && analysis?.summary && ack.complete && (
         <div className="bg-[#131313] rounded-[10px] p-6">
           <SectionLabel light icon="insights" className="text-on-surface-variant">Analysis Summary</SectionLabel>
           <p className="text-body text-on-surface leading-relaxed">{analysis.summary}</p>
@@ -781,6 +793,22 @@ export const LabDetail = () => {
           drawDate={format(new Date(draw.draw_date), 'MMMM d, yyyy')}
           open={appendOpen}
           onClose={() => setAppendOpen(false)}
+        />
+      )}
+
+      {/* v6 output-acknowledgment gate. Renders ONLY when:
+          - Pro user (free users see the locked teaser, not AI output)
+          - An analysis has loaded (no point gating an empty page)
+          - Eligibility query has resolved
+          - User has not yet completed the gate
+          The gate is a full-screen modal (z-50) with its own backdrop;
+          when active, it covers the page chrome including any AI surface
+          that may have rendered above. We do NOT attach a Dismiss button
+          here — the gate is required, not optional. */}
+      {isPro && !!analysis && ack.ready && !ack.complete && (
+        <OutputAcknowledgmentGate
+          onComplete={ack.recordAndComplete}
+          submitting={ack.submitting}
         />
       )}
     </AppShell>
