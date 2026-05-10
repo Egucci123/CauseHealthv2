@@ -47,7 +47,42 @@ export const LabUpload = () => {
           try { await useAuthStore.getState().fetchProfile(); } catch {}
         }
       };
+      // Belt-and-suspenders: also call verify-payment with the session_id
+      // so we DON'T depend on the Stripe webhook firing. If the webhook is
+      // misconfigured, this still grants the credit by hitting Stripe's API
+      // directly and confirming the session is paid.
+      const sessionId = searchParams.get('session_id');
+      const verifyDirect = async () => {
+        if (!sessionId) return;
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          const token = session?.access_token;
+          if (!token) return;
+          const res = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/verify-payment`,
+            {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${token}`,
+                apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ session_id: sessionId }),
+            },
+          );
+          if (res.ok) {
+            const j = await res.json();
+            console.log('[LabUpload] verify-payment:', j);
+            await useAuthStore.getState().fetchProfile();
+          } else {
+            console.warn('[LabUpload] verify-payment HTTP', res.status);
+          }
+        } catch (e) {
+          console.warn('[LabUpload] verify-payment failed:', e);
+        }
+      };
       fetchWithRetry();
+      verifyDirect();
 
       // Auto-resume the stashed upload — fire-and-forget so we don't block
       // the URL cleanup. If files are present in IndexedDB, kick off the

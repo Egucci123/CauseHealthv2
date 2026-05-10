@@ -63,7 +63,9 @@ serve(async (req) => {
       mode: 'payment',
       client_reference_id: user.id,
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${APP_URL}/labs?upload=success`,
+      // Include session_id so the success URL can verify payment server-
+      // side via verify-payment. Belt-and-suspenders alongside the webhook.
+      success_url: `${APP_URL}/labs?upload=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${APP_URL}/labs?upload=canceled`,
       metadata: {
         supabase_user_id: user.id,

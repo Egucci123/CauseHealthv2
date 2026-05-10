@@ -6,6 +6,7 @@ import { useSubscription } from '../../lib/subscription';
 import { useCreateCheckoutSession, useCreatePortalSession } from '../../hooks/useProfile';
 import { useAuthStore } from '../../store/authStore';
 import { RedeemCodeForm } from '../paywall/PaywallGate';
+import { supabase } from '../../lib/supabase';
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   active: { label: 'Active', color: '#1B4332' }, trialing: { label: 'Trial', color: '#D4A574' },
@@ -65,23 +66,65 @@ export const SubscriptionManagement = () => {
           },
         });
       }
-      // Background-confirm with the server. The webhook MAY have already
-      // fired — fetch immediately, then retry a couple times to catch the
-      // real values (Stripe customer ID, period end, etc.) once the
-      // webhook lands. Each fetchProfile pushes the truth back into
-      // zustand, so any field we got wrong above gets corrected.
+      // Belt-and-suspenders confirmation. We try two paths in parallel and
+      // whichever wins, the user is unlocked:
+      //
+      //   1. Webhook path (canonical) — re-fetch the profile a few times
+      //      until the Stripe webhook has updated the DB.
+      //   2. Verify-payment path — call our verify-payment edge function
+      //      with the session_id from the URL. It hits Stripe's API
+      //      directly using the secret key, confirms the session is paid,
+      //      and grants Pro + 1 credit even if the webhook never fires.
+      //
+      // The verify-payment path is the safety net for the bug where the
+      // Stripe webhook destination is misconfigured / paused — without it,
+      // a paying user would land here optimistically marked Pro but the
+      // server-side state stays Free until manual intervention.
+      const sessionId = searchParams.get('session_id');
       const fetchWithRetry = async () => {
         const delays = [0, 2000, 5000, 10000];
         for (const d of delays) {
           if (d > 0) await new Promise(r => setTimeout(r, d));
           try { await useAuthStore.getState().fetchProfile(); } catch {}
-          // Stop early once the server confirms an active paid sub.
           const p = useAuthStore.getState().profile;
           if (p?.subscriptionTier === 'pro' && p?.subscriptionStatus === 'active') break;
         }
         qc.invalidateQueries({ queryKey: ['profile', user?.id] });
       };
+      const verifyDirect = async () => {
+        if (!sessionId) return;
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          const token = session?.access_token;
+          if (!token) return;
+          const res = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/verify-payment`,
+            {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${token}`,
+                apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ session_id: sessionId }),
+            },
+          );
+          if (res.ok) {
+            const j = await res.json();
+            console.log('[SubscriptionManagement] verify-payment:', j);
+            // After grant, refresh the profile so the UI shows the
+            // server-confirmed state (period_end, customer_id, etc.).
+            await useAuthStore.getState().fetchProfile();
+            qc.invalidateQueries({ queryKey: ['profile', user?.id] });
+          } else {
+            console.warn('[SubscriptionManagement] verify-payment HTTP', res.status);
+          }
+        } catch (e) {
+          console.warn('[SubscriptionManagement] verify-payment failed:', e);
+        }
+      };
       fetchWithRetry();
+      verifyDirect();
       setSearchParams({});
     } else if (result === 'canceled') {
       setSearchParams({});

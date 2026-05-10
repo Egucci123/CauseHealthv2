@@ -70,7 +70,11 @@ serve(async (req) => {
       line_items: [{ price: priceId, quantity: 1 }],
       // Reuse the existing ?subscription=success handler in
       // SubscriptionManagement — it already does optimistic Pro flip + retry-fetch.
-      success_url: `${APP_URL}/settings?tab=subscription&subscription=success`,
+      // Include session_id so the success page can verify payment server-
+      // side via verify-payment edge function. Belt-and-suspenders alongside
+      // the webhook: even if the webhook is misconfigured / paused / lagging,
+      // the user still gets unlocked the moment they land on the success URL.
+      success_url: `${APP_URL}/settings?tab=subscription&subscription=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${APP_URL}/settings?tab=subscription&subscription=canceled`,
       // Tag the session so the webhook knows which product was purchased.
       metadata: {
