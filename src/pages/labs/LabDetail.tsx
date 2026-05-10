@@ -37,7 +37,35 @@ export const LabDetail = () => {
   // ── Retry-lock state — declared early so the mutation can read setRetriedAt ─
   // The actual retryLocked / polling logic lives below the useQuery call
   // because it depends on `data` and the query state.
-  const [retriedAt, setRetriedAt] = useState<number | null>(null);
+  //
+  // PERSISTENCE: retriedAt mirrors to localStorage keyed by drawId so that if
+  // the user navigates away and comes back mid-analysis, we restore the
+  // retry-lock and resume polling — instead of showing the "Analysis failed +
+  // Retry" CTA that they have to click again.
+  // 30s TTL matches the in-memory ceiling. Old keys self-expire on read.
+  const retryLockStorageKey = drawId ? `lab_retry_at_${drawId}` : '';
+  const [retriedAt, _setRetriedAt] = useState<number | null>(() => {
+    if (typeof window === 'undefined' || !retryLockStorageKey) return null;
+    try {
+      const raw = window.localStorage.getItem(retryLockStorageKey);
+      if (!raw) return null;
+      const n = Number(raw);
+      if (!Number.isFinite(n)) return null;
+      if (Date.now() - n >= 90_000) {
+        window.localStorage.removeItem(retryLockStorageKey);
+        return null;
+      }
+      return n;
+    } catch { return null; }
+  });
+  const setRetriedAt = (v: number | null) => {
+    _setRetriedAt(v);
+    if (typeof window === 'undefined' || !retryLockStorageKey) return;
+    try {
+      if (v == null) window.localStorage.removeItem(retryLockStorageKey);
+      else window.localStorage.setItem(retryLockStorageKey, String(v));
+    } catch {}
+  };
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     if (!retriedAt) return;
@@ -174,7 +202,7 @@ export const LabDetail = () => {
   const retryLocked = (() => {
     if (!retriedAt) return false;
     const elapsed = now - retriedAt;
-    if (elapsed >= 30_000) return false;                                // hard 30s ceiling
+    if (elapsed >= 90_000) return false;                                // hard 90s ceiling — matches server lock TTL
     if (
       dataUpdatedAt > retriedAt &&
       status === 'complete' &&
@@ -309,6 +337,12 @@ export const LabDetail = () => {
   const drawIsStale = (() => {
     if (retryLocked) return false;                                          // user just retried → trust the lock
     if (retryAnalysis.isPending) return false;                              // mutation in flight → trust it
+    // Persisted-retry guard: even if the in-memory lock expired (90s),
+    // a retry less than 180s ago means the edge function may still be
+    // running. Without this, lab_draws (which has no updated_at column)
+    // falls back to created_at and "Stuck — Retry" fires immediately on
+    // any draw older than 3 minutes — even mid-analysis after page-leave.
+    if (retriedAt && Date.now() - retriedAt < 180_000) return false;
     if (!drawForStale || drawForStale.processing_status !== 'processing') return false;
     const updatedAt = (drawForStale as any).updated_at ?? drawForStale.created_at;
     if (!updatedAt) return false;
