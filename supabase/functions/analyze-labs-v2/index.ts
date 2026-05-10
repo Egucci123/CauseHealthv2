@@ -85,8 +85,54 @@ serve(async (req) => {
       }, 409);
     }
 
-    try {
-    // ── 3. Load patient data ───────────────────────────────────────────
+    // ── 2c. Detach from request lifecycle ──────────────────────────────
+    // The browser tab may navigate away mid-analysis. If the work was
+    // bound to the request, the edge runtime would kill it the moment the
+    // client disconnects — and the user comes back to a stuck 'processing'
+    // row. We use EdgeRuntime.waitUntil so the work keeps running past
+    // response and past disconnect. Result is picked up by Realtime + the
+    // page's 2s/3s polling loop. We return 202 immediately.
+    const backgroundWork = (async () => {
+      try {
+        await runAnalysis({ supabase, drawId, userId, used, startTime });
+      } catch (err) {
+        console.error('[analyze-labs-v2] background error:', err);
+        try {
+          await supabase
+            .from('lab_draws')
+            .update({ processing_status: 'failed' })
+            .eq('id', drawId);
+        } catch {}
+      } finally {
+        try {
+          await releaseLock(supabase, { userId, surface: `lab_analysis:${drawId}` });
+        } catch {}
+      }
+    })();
+
+    // @ts-ignore — EdgeRuntime is a Supabase Edge Runtime global. In local
+    // dev (deno run) this will be undefined; fall back to awaiting.
+    if (typeof EdgeRuntime !== 'undefined' && (EdgeRuntime as any)?.waitUntil) {
+      // @ts-ignore
+      EdgeRuntime.waitUntil(backgroundWork);
+      return json({ status: 'started', code: 'ANALYSIS_STARTED' }, 202);
+    }
+    // Fallback (local dev): await synchronously
+    await backgroundWork;
+    return json({ status: 'completed' });
+  } catch (err) {
+    console.error('[analyze-labs-v2] error:', err);
+    return json({ error: String(err) }, 500);
+  }
+});
+
+// Hoisted analysis routine — same logic, just lifted out of the request
+// handler so it can run inside EdgeRuntime.waitUntil.
+async function runAnalysis(args: {
+  supabase: any; drawId: string; userId: string; used: number; startTime: number;
+}) {
+  const { supabase, drawId, userId, used, startTime } = args;
+  // ── 3. Load patient data ───────────────────────────────────────────
     const [{ data: labValues }, { data: profile }, { data: meds }, { data: symptoms }, { data: conditionsData }, { data: suppsData }] = await Promise.all([
       supabase.from('lab_values').select('*').eq('draw_id', drawId),
       supabase.from('profiles').select('*').eq('id', userId).single(),
@@ -96,7 +142,10 @@ serve(async (req) => {
       supabase.from('user_supplements').select('name, dose').eq('user_id', userId).eq('is_active', true),
     ]);
 
-    if (!labValues?.length) return json({ error: 'No lab values found' }, 404);
+    if (!labValues?.length) {
+      await supabase.from('lab_draws').update({ processing_status: 'failed' }).eq('id', drawId);
+      throw new Error('No lab values found');
+    }
 
     // ── 4. Normalize → PatientInput ────────────────────────────────────
     const input = normalizePatientInput({
@@ -136,17 +185,7 @@ serve(async (req) => {
       .eq('id', drawId);
 
     console.log(`[analyze-labs-v2] complete in ${Date.now() - startTime}ms`);
-    return json(result);
-    } finally {
-      // Always release the lock — even on errors. Prevents a stuck lock
-      // from blocking future retries.
-      await releaseLock(supabase, { userId, surface: `lab_analysis:${drawId}` });
-    }
-  } catch (err) {
-    console.error('[analyze-labs-v2] error:', err);
-    return json({ error: String(err) }, 500);
-  }
-});
+}
 
 // ──────────────────────────────────────────────────────────────────────
 // HELPERS

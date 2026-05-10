@@ -88,6 +88,18 @@ serve(async (req) => {
       }, 409);
     }
 
+    // Detach from request lifecycle. Without this, if the user navigates
+    // away mid-generation the edge runtime can tear down the isolate before
+    // the AI call resolves and the row gets written. waitUntil holds the
+    // isolate alive until we resolve the deferred promise in `finally`.
+    let resolveKeepAlive: () => void = () => {};
+    const keepAlive = new Promise<void>((r) => { resolveKeepAlive = r; });
+    // @ts-ignore EdgeRuntime is a Supabase Edge Runtime global.
+    if (typeof EdgeRuntime !== 'undefined' && (EdgeRuntime as any)?.waitUntil) {
+      // @ts-ignore
+      EdgeRuntime.waitUntil(keepAlive);
+    }
+
     try {
 
     // 1. Load patient data in parallel
@@ -172,7 +184,9 @@ serve(async (req) => {
     return json(plan, 200);
     } finally {
       // Release the wellness lock — always, even on errors.
-      await releaseLock(supabase, { userId, surface: 'wellness' });
+      try { await releaseLock(supabase, { userId, surface: 'wellness' }); } catch {}
+      // Release waitUntil — runtime can now tear down the isolate.
+      resolveKeepAlive();
     }
   } catch (err) {
     console.error('[v2] error:', err);

@@ -53,6 +53,17 @@ serve(async (req) => {
       }, 409);
     }
 
+    // Keep the isolate alive past client disconnect (user navigates away
+    // mid-generation). Without waitUntil, the edge runtime can kill the
+    // function before the AI call returns and the row is written.
+    let resolveKeepAlive: () => void = () => {};
+    const keepAlive = new Promise<void>((r) => { resolveKeepAlive = r; });
+    // @ts-ignore EdgeRuntime is a Supabase Edge Runtime global.
+    if (typeof EdgeRuntime !== 'undefined' && (EdgeRuntime as any)?.waitUntil) {
+      // @ts-ignore
+      EdgeRuntime.waitUntil(keepAlive);
+    }
+
     try {
 
     // ── 1. Load patient data ───────────────────────────────────────────
@@ -123,7 +134,8 @@ serve(async (req) => {
     console.log(`[doctor-prep-v2] complete in ${Date.now() - startTime}ms`);
     return json(doc);
     } finally {
-      await releaseLock(supabase, { userId, surface: 'doctor_prep' });
+      try { await releaseLock(supabase, { userId, surface: 'doctor_prep' }); } catch {}
+      resolveKeepAlive();
     }
   } catch (err) {
     console.error('[doctor-prep-v2] error:', err);
