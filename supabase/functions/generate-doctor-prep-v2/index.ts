@@ -231,7 +231,11 @@ function mergeIntoDoctorPrepOutput(args: {
   const { facts, ai, factsHash } = args;
   const today = new Date();
 
-  // tests_to_request — deterministic, mirrors wellness retest_timeline
+  // tests_to_request — deterministic, mirrors wellness retest_timeline.
+  // `specialist` field is what the frontend's TestsToRequest component
+  // groups by (PCP / GI / Cardiology / Imaging / etc.) — without it,
+  // every test falls through to the PCP bucket (e.g., Fecal Calprotectin
+  // ends up in PCP instead of GI).
   const tests_to_request = facts.tests.map((t: any) => ({
     emoji: t.emoji ?? '🧪',
     test_name: t.name,
@@ -241,8 +245,9 @@ function mergeIntoDoctorPrepOutput(args: {
     icd10_description: t.icd10Description,
     priority: t.priority,
     insurance_note: t.insuranceNote,
+    specialist: t.specialist,    // frontend reads this for bucket routing
     _key: t.key,
-    _specialist: t.specialist,
+    _specialist: t.specialist,   // legacy/debug field, kept for compatibility
   }));
 
   // possible_conditions — deterministic

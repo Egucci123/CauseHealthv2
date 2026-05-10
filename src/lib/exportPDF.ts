@@ -287,11 +287,14 @@ export function exportPatientVisitGuidePDF(doc: DoctorPrepDocument, userName: st
   // (rendered above) is the single source of truth, already filtered by the
   // strict triage rule.
 
-  // ── Possible conditions to investigate (differential) ────────────────
-  // Distinct from tests_to_request: those are the baseline tests the doctor
-  // missed; this is the differential — patterns the data fits that the
-  // patient hasn't been diagnosed with, each with its own confirmatory workup.
-  if (Array.isArray(doc.possible_conditions) && doc.possible_conditions.length > 0) {
+  // ── Possible conditions to investigate ───────────────────────────────
+  // INTENTIONALLY OMITTED FROM PATIENT GUIDE — clinical-grade differential
+  // belongs in the doctor PDF only. The patient already has each pattern
+  // surfaced in the wellness-plan UI and in the "Possible conditions to
+  // investigate" tab; reproducing it on the visit-prep PDF was redundant
+  // and made the patient guide read like a clinical letter.
+  // See exportDoctorPrepPDF below for the differential rendering.
+  if (false && Array.isArray(doc.possible_conditions) && doc.possible_conditions.length > 0) {
     sectionHeader('Possible conditions to investigate');
     para(
       'Patterns in the labs / symptoms that fit conditions not yet on the chart. NOT A DIAGNOSIS — only the patient\'s physician can diagnose. CauseHealth provides pattern-matching against the data, not clinical judgment. Each entry lists tests that would help evaluate the pattern.',
@@ -302,9 +305,6 @@ export function exportPatientVisitGuidePDF(doc: DoctorPrepDocument, userName: st
       pdf.setFontSize(10); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(19, 19, 19);
       const conf = String(c.confidence ?? 'low').toUpperCase();
       pdf.text(stripUnsupportedChars(`${i + 1}. ${c.name}  [${conf}]`), margin, y); y += 5;
-      // ICD-10 codes intentionally omitted from the patient copy — those
-      // are clinical reference for the doctor and live in the clinical
-      // PDF (exportDoctorPrepPDF). Patient copy stays plain-language.
       if (c.evidence) {
         pdf.setFontSize(8.5); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(212, 165, 116);
         pdf.text('Why we flagged this pattern:', margin + 3, y); y += 4;
@@ -316,9 +316,6 @@ export function exportPatientVisitGuidePDF(doc: DoctorPrepDocument, userName: st
         pdf.setFontSize(8.5); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(212, 165, 116);
         pdf.text('Tests to confirm:', margin + 3, y); y += 4;
         pdf.setFont('helvetica', 'normal'); pdf.setTextColor(40, 40, 40);
-        // confirmatory_tests can be string[] (legacy) or Array<{test, why}>
-        // (current). Normalize to "Test name — rationale" strings before
-        // joining. Without this, objects string-coerce to "[object Object]".
         const testLines: string[] = c.confirmatory_tests
           .map((t: any) => {
             if (typeof t === 'string') return t;
@@ -625,6 +622,49 @@ export function exportDoctorPrepPDF(doc: DoctorPrepDocument, userName: string) {
   // is filtered by the strict triage rule (symptom OR med depletion OR
   // out-of-range marker OR early-detection pattern). No more hardcoded
   // baseline-for-everyone lists in any PDF or page.
+
+  // ── Possible conditions to investigate (CLINICAL DIFFERENTIAL) ───────
+  // Renders only on the doctor PDF — clinical-grade differential with
+  // evidence + ICD-10 + confirmatory tests. Patient PDF intentionally
+  // omits this section (it lives on the patient app UI but not in the
+  // visit-prep printout — keeps the patient guide plain-language).
+  if (Array.isArray(doc.possible_conditions) && doc.possible_conditions.length > 0) {
+    addSectionHeader('Possible Conditions to Investigate (Differential)');
+    pdf.setFontSize(8); pdf.setFont('helvetica', 'italic'); pdf.setTextColor(107, 107, 107);
+    pdf.text(stripUnsupportedChars('Pattern matches against patient data — not a diagnosis. Each entry includes ICD-10 + confirmatory workup.'), margin, y, { maxWidth: contentW });
+    y += 7;
+    doc.possible_conditions.forEach((c: any, i: number) => {
+      checkPage(34);
+      pdf.setFontSize(10); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(19, 19, 19);
+      const conf = String(c.confidence ?? 'low').toUpperCase();
+      pdf.text(stripUnsupportedChars(`${i + 1}. ${c.name}  [${conf}]`), margin, y); y += 5;
+      if (c.icd10) {
+        pdf.setFontSize(8); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(212, 165, 116);
+        pdf.text(stripUnsupportedChars(`ICD-10: ${c.icd10}`), margin + 3, y); y += 4;
+      }
+      if (c.evidence) {
+        pdf.setFontSize(8.5); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(60, 60, 60);
+        pdf.text('Evidence:', margin + 3, y); y += 4;
+        pdf.setFont('helvetica', 'normal'); pdf.setTextColor(40, 40, 40);
+        const evLines = pdf.splitTextToSize(stripUnsupportedChars(c.evidence), contentW - 6);
+        pdf.text(evLines, margin + 3, y); y += evLines.length * 3.8 + 2;
+      }
+      if (Array.isArray(c.confirmatory_tests) && c.confirmatory_tests.length > 0) {
+        pdf.setFontSize(8.5); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(60, 60, 60);
+        pdf.text('Confirmatory workup:', margin + 3, y); y += 4;
+        pdf.setFont('helvetica', 'normal'); pdf.setTextColor(40, 40, 40);
+        const testLines: string[] = c.confirmatory_tests
+          .map((t: any) => (typeof t === 'string' ? t : t?.test ?? ''))
+          .filter(Boolean);
+        if (testLines.length > 0) {
+          const tLines = pdf.splitTextToSize(stripUnsupportedChars('• ' + testLines.join('\n• ')), contentW - 6);
+          pdf.text(tLines, margin + 3, y); y += tLines.length * 3.8 + 2;
+        }
+      }
+      y += 2;
+    });
+    addRule();
+  }
 
   // Medication alternatives — only renders when AI populated with strict-bar
   // entries (specific finding + genuinely better drug exists + guideline-
