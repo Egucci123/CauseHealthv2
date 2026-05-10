@@ -34,13 +34,29 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Could not verify credits' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
     const credits = (prof as any)?.upload_credits ?? 0;
-    if (credits <= 0) {
+    const body = await req.json();
+    const { pdfText, pdfBase64, imageBase64, imageMimeType, drawDate, appendToDrawId } = body;
+
+    // Append-mode: user is adding markers to an EXISTING lab draw they
+    // already paid for. Skip the upload-credit check, but verify they
+    // own the drawId being appended to (prevents using append-mode to
+    // bypass credits on someone else's draw).
+    if (appendToDrawId) {
+      const { data: drawRow, error: drawErr } = await admin
+        .from('lab_draws')
+        .select('user_id')
+        .eq('id', appendToDrawId)
+        .single();
+      if (drawErr || !drawRow || drawRow.user_id !== userId) {
+        console.warn('[extract-labs] append-mode draw ownership failed', { userId, appendToDrawId });
+        return new Response(JSON.stringify({ error: 'Draw not found or access denied', code: 'APPEND_FORBIDDEN' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      // Ownership verified — append-mode is free. Continue without credit check.
+      console.log('[extract-labs] append-mode: skipping credit check for owner', userId);
+    } else if (credits <= 0) {
       console.warn('[extract-labs] credit gate blocked user', userId, 'credits=', credits);
       return new Response(JSON.stringify({ error: 'No upload credits remaining', code: 'NO_CREDITS' }), { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
-
-    const body = await req.json();
-    const { pdfText, pdfBase64, imageBase64, imageMimeType, drawDate } = body;
 
     // Shared prompt — same parser instructions for PDF and image inputs
     const PARSER_PROMPT = `You are a medical lab report parser. First determine if this is a medical laboratory report. If it is NOT a lab report (e.g. bank statement, resume, invoice, or any non-medical document), return: { "draw_date": null, "lab_name": null, "ordering_provider": null, "values": [] }\n\nIf it IS a lab report, extract all laboratory test values.\n\nReturn ONLY valid JSON — no markdown, no explanation.\n\nReturn: { "draw_date": "YYYY-MM-DD or null", "lab_name": "name or null", "ordering_provider": "name or null", "values": [{ "marker_name": "name", "value": 97.0, "unit": "IU/L", "standard_low": 0, "standard_high": 44, "standard_flag": "normal|low|high|critical_low|critical_high", "category": "metabolic|cardiovascular|liver|kidney|thyroid|hormones|nutrients|cbc|inflammation|other" }] }\n\nInclude every single lab value. value must be a number. IMPORTANT: If lab values use international units (mmol/L, umol/L, nmol/L), convert them to US conventional units (mg/dL, ng/mL, ug/dL) before returning. Common conversions: glucose mmol/L x 18 = mg/dL, cholesterol mmol/L x 38.67 = mg/dL, triglycerides mmol/L x 88.57 = mg/dL, creatinine umol/L / 88.4 = mg/dL, calcium mmol/L x 4.0 = mg/dL, uric acid umol/L / 59.48 = mg/dL. Always return values in US conventional units with the US unit label.\n\nFor IMAGES of lab paperwork (photos taken with a phone camera): focus on the printed result columns. Skip handwritten notes. If the image is blurry or you can't read a value confidently, omit that row rather than guess.`;

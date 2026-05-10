@@ -121,6 +121,10 @@ export function useAppendToDraw(drawId: string | null) {
           ? { imageBase64: base64, imageMimeType: file.type }
           : { pdfBase64: base64 };
       }
+      // Append-mode flag: tells extract-labs this is adding to an existing
+      // (already-paid-for) draw, not a new upload — skips the credit gate.
+      // Server verifies ownership before honoring the bypass.
+      extractBody.appendToDrawId = drawId;
       const { data: extracted, error: extractErr } = await supabase.functions.invoke('extract-labs', { body: extractBody });
       console.log('[append] extract-labs response:', { extracted, extractErr, usedText: useText });
       if (extractErr) {
