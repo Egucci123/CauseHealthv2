@@ -142,13 +142,19 @@ function getRulesForPatient(ctx: DemographicContext): OptimalRange[] {
     },
 
     // ── TSH — universal optimal ──────────────────────────────────────
+    // Tightened 2026-05-10 audit: optimal high 2.5 → 2.0 so values
+    // 2.0–2.5 surface as watch-tier outliers ("creeping above functional
+    // optimal"). Lab reference upper limit is 4.5; AACE 2014 calls 2.5+
+    // "grey zone"; functional medicine targets <2.0. The 2.0–4.5 band
+    // is also caught by the 'subclinical_hypothyroidism' pattern rule
+    // when paired with 2+ thyroid-pattern symptoms.
     {
       marker: /\btsh\b|thyroid stimulating/i,
       low: 0.5,
-      high: 2.5,
+      high: 2.0,
       unit: 'mIU/L',
-      rationale: 'Optimal TSH 0.5-2.5 mIU/L. Lab normal (0.4-4.5) includes the early-Hashimoto\'s grey zone (2.5-4.5) where antibody screen is warranted with symptoms.',
-      source: 'AACE 2014 / Endocrine Society',
+      rationale: 'Optimal TSH 0.5–2.0 mIU/L (functional optimal). Lab normal extends to 4.5; values 2.0–4.5 are tracked as watch-tier and get the antibody workup with thyroid-pattern symptoms.',
+      source: 'AACE 2014 / Endocrine Society + functional-medicine optimal',
     },
 
     // ── Vitamin B12 — universal optimal ──────────────────────────────

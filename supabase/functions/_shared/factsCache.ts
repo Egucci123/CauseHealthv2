@@ -25,7 +25,15 @@ import { buildPlan, type ClinicalFacts, type PatientInput } from './buildPlan.ts
 // MCHC / MPV / IPF / BUN-Creatinine-Ratio no longer trip the same-name
 // hemoglobin / platelet / creatinine emergency alerts. Dropped TSH 2.0–2.5
 // low band on Subclinical Hashimoto's pattern (was firing on normal TSH).
-export const RULE_LIBRARY_VERSION = '2026-05-10-1';
+//
+// 2026-05-10-2: restructured thyroid-pattern flagging. Hashimoto's-named
+// card now requires antibodies (TPO/TgAb) OR overt hypothyroidism (TSH≥10
+// or TSH≥4.5+low Free T4). Borderline TSH 2.0–4.5 + symptoms folds into
+// the soft 'subclinical_hypothyroidism' card with non-alarming naming
+// ("Thyroid pattern worth tracking" / "Above functional optimal"). TSH
+// optimal upper bound also lowered 2.5 → 2.0 so values 2.0–2.5 surface
+// as watch-tier outliers on the lab card.
+export const RULE_LIBRARY_VERSION = '2026-05-10-2';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;

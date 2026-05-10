@@ -218,49 +218,15 @@ const RULES: BackstopRule[] = [
         };
       }
 
-      // ── Trigger D: Subclinical hypothyroid + broader symptom cluster ──
-      // Hypothyroidism manifests across MANY symptoms, not just 3. Universal
-      // symptom net: fatigue, brain fog, weight gain, hair loss, cold,
-      // depression/mood, joint pain, dry skin, slow metabolism, memory.
-      const fatigue = symptom(ctx.symptomsLower, [/fatigue/i, /tired/i, /low energy/i, /afternoon (energy )?crash/i]);
-      const brainFog = symptom(ctx.symptomsLower, [/brain fog/i, /memory/i, /forget|concentr|focus/i]);
-      const weightGain = symptom(ctx.symptomsLower, [/weight gain/i, /can'?t lose weight/i, /slow metabolism/i]);
-      const hairLoss = symptom(ctx.symptomsLower, [/hair (loss|thin|fall)/i]);
-      const cold = symptom(ctx.symptomsLower, [/cold (hand|feet|intoler)/i]);
-      const moodIssues = symptom(ctx.symptomsLower, [/anxiety/i, /depress|low mood|mood swing/i]);
-      const symptomCount = [fatigue, brainFog, weightGain, hairLoss, cold, moodIssues].filter(Boolean).length;
-      // Threshold (tightened 2026-05-10 audit): only fire at TSH ≥ 2.5 with
-      // 2+ hypothyroid symptoms. The previous 2.0–2.5 low band fired on
-      // perfectly normal TSH values (functional optimal is <2.0, but
-      // standard reference range upper limit is 4.5; 2.0–2.5 is squarely
-      // normal by every clinical guideline). Calling that range
-      // "Subclinical Hashimoto's / Hypothyroidism" with even moderate
-      // confidence creates panic in healthy users.
-      //
-      // For the borderline 2.0–2.5 + symptoms population, the upgrade is
-      // handled by the separate 'subclinical_hypothyroidism' rule below
-      // (TSH 2.5–4.5 + symptoms) — not by this Hashimoto's pattern card.
-      const tshSubclinicalHigh = tsh.value >= 2.5 && symptomCount >= 2;
-      if (tshSubclinicalHigh) {
-        const matched = [
-          fatigue ? 'fatigue' : null,
-          brainFog ? 'brain fog/memory' : null,
-          weightGain ? 'weight gain' : null,
-          hairLoss ? 'hair loss' : null,
-          cold ? 'cold intolerance' : null,
-          moodIssues ? 'mood symptoms' : null,
-        ].filter(Boolean).join(', ');
-        return {
-          name: "Subclinical Hashimoto's / Hypothyroidism",
-          category: 'endocrine',
-          confidence: tsh.value >= 4.5 ? 'high' : 'moderate',
-          evidence: `TSH ${tsh.value} mIU/L (above functional optimal) + ${symptomCount} hypothyroid-pattern symptoms (${matched}).`,
-          confirmatory_tests: ['TPO Antibodies', 'Thyroglobulin Antibodies', 'Free T4', 'Free T3', 'Reverse T3'],
-          icd10: 'E06.3',
-          what_to_ask_doctor: "My TSH is on the high side and I have a bunch of low-thyroid symptoms. Can we run TPO and Tg antibody tests to check for Hashimoto's?",
-          source: 'deterministic',
-        };
-      }
+      // The Hashimoto's-specific card is reserved for HIGH-CONFIDENCE
+      // signals only: positive antibodies (Trigger A or B above) or overt
+      // hypothyroidism (Trigger C). The borderline-TSH + symptoms pattern
+      // is covered by the separate 'subclinical_hypothyroidism' rule
+      // below — same recommended workup, but framed as "early thyroid
+      // pattern worth tracking" instead of "you have Hashimoto's." That
+      // separation prevents alarming naming on a value that's still
+      // within standard lab reference range while still surfacing the
+      // borderline signal with a useful confirmatory-test list.
       return null;
     },
   },
@@ -645,38 +611,69 @@ const RULES: BackstopRule[] = [
     },
   },
 
-  // ── Subclinical hypothyroidism (separate from full Hashimoto's rule) ──
-  // Catches TSH 2.5-4.5 patients with thyroid-pattern symptoms whose
-  // Hashimoto's rule didn't fire (no antibody result, no overt TSH).
+  // ── Borderline / early-pattern thyroid (NOT yet "Hashimoto's") ────────
+  // Catches the TSH 2.0–4.5 + thyroid-pattern symptoms population:
+  //   - TSH 2.0–2.5: above functional-medicine optimal (<2.0), still inside
+  //     standard reference range. Worth tracking + getting the workup,
+  //     NOT a "diagnosis."
+  //   - TSH 2.5–4.5: AACE 2014 / Endocrine Society "subclinical / grey zone."
+  //     Antibody screen warranted with symptoms.
+  // Both bands fold into ONE moderate-confidence card with intentionally
+  // soft naming ("worth tracking" / "early pattern") and require ≥ 2
+  // hypothyroid-pattern symptoms — not just 1, to avoid false positives
+  // on isolated fatigue.
+  // The Hashimoto's-named card upstream is reserved for antibody-positive
+  // OR overt-hypothyroid cases. That separation is intentional.
   {
     key: 'subclinical_hypothyroidism',
-    alreadyRaisedIf: [/subclinical hypothyroid/i, /hashimoto/i, /hypothyroid/i],
+    alreadyRaisedIf: [/subclinical hypothyroid/i, /hashimoto/i, /hypothyroid/i, /thyroid pattern/i, /thyroid function/i],
     skipIfDx: ['hashimotos', 'hypothyroidism'],
     detect: (ctx) => {
-      const tsh = mark(ctx.labValues, [/\btsh\b/i, /thyroid[\s-]*stimulating[\s-]*hormone/i]);
+      const tsh = mark(ctx.labValues, [/^tsh\b/i, /^thyroid[\s-]*stimulating[\s-]*hormone\b/i]);
       if (!tsh) return null;
-      const tshBorderline = tsh.value >= 2.5 && tsh.value < 4.5;
-      const thyroidSx = symptom(ctx.symptomsLower, [
-        /\bfatigue\b/i, /\btired\b/i, /\bexhaust/i,
-        /weight (gain|resist)/i, /can'?t lose weight/i,
-        /hair (loss|thin|fall)/i,
-        /cold intoler/i, /\bcold (hand|feet|extremit)/i,
-        /constipation/i,
-        /brain fog/i, /poor memory/i,
-        /dry skin/i,
-        /low mood/i, /\bdepress/i,
-      ]);
+      const tshBorderline = tsh.value >= 2.0 && tsh.value < 4.5;
       if (!tshBorderline) return null;
-      // require at least one symptom — TSH 2.5 alone isn't enough
-      if (!thyroidSx) return null;
+
+      const fatigue = symptom(ctx.symptomsLower, [/\bfatigue\b/i, /\btired\b/i, /\bexhaust/i, /low energy/i]);
+      const brainFog = symptom(ctx.symptomsLower, [/brain fog/i, /poor memory/i, /memory|forget|concentr|focus/i]);
+      const weightGain = symptom(ctx.symptomsLower, [/weight (gain|resist)/i, /can'?t lose weight/i, /slow metabolism/i]);
+      const hairLoss = symptom(ctx.symptomsLower, [/hair (loss|thin|fall)/i]);
+      const cold = symptom(ctx.symptomsLower, [/cold intoler/i, /\bcold (hand|feet|extremit)/i]);
+      const constipation = symptom(ctx.symptomsLower, [/constipation/i]);
+      const drySkin = symptom(ctx.symptomsLower, [/dry skin/i]);
+      const moodIssues = symptom(ctx.symptomsLower, [/low mood/i, /\bdepress/i, /mood swing/i]);
+      const sxCount = [fatigue, brainFog, weightGain, hairLoss, cold, constipation, drySkin, moodIssues].filter(Boolean).length;
+
+      // Require 2+ symptoms — single fatigue is too noisy.
+      if (sxCount < 2) return null;
+
+      const matched = [
+        fatigue ? 'fatigue' : null,
+        brainFog ? 'brain fog/memory' : null,
+        weightGain ? 'weight gain' : null,
+        hairLoss ? 'hair loss' : null,
+        cold ? 'cold intolerance' : null,
+        constipation ? 'constipation' : null,
+        drySkin ? 'dry skin' : null,
+        moodIssues ? 'mood symptoms' : null,
+      ].filter(Boolean).join(', ');
+
+      // TSH 2.5+ gets the AACE-recognized "grey zone" framing; 2.0–2.5
+      // gets a softer "above functional optimal" framing. Both share the
+      // same confirmatory-test list.
+      const isGreyZone = tsh.value >= 2.5;
       return {
-        name: 'Subclinical hypothyroidism (early Hashimoto pattern)',
+        name: isGreyZone
+          ? 'Thyroid pattern worth tracking (subclinical / early)'
+          : 'Thyroid function above functional optimal — worth tracking',
         category: 'endocrine',
         confidence: 'moderate',
-        evidence: `TSH ${tsh.value} in the early-Hashimoto grey zone (≥2.5) with classic thyroid-pattern symptoms.`,
+        evidence: isGreyZone
+          ? `TSH ${tsh.value} mIU/L is in the AACE grey zone (≥2.5) and you have ${sxCount} thyroid-pattern symptoms (${matched}). Worth ruling out early Hashimoto's with antibody testing.`
+          : `TSH ${tsh.value} mIU/L is above the functional optimal (<2.0) but inside the standard reference range, paired with ${sxCount} thyroid-pattern symptoms (${matched}). Not a diagnosis — a flag to track and to get the antibody workup if symptoms persist.`,
         confirmatory_tests: ['Thyroid Panel (TSH + Free T4 + Free T3)', 'TPO antibodies', 'Thyroglobulin antibodies (Tg-Ab)', 'Reverse T3'],
         icd10: 'E03.9',
-        what_to_ask_doctor: "My TSH is on the high end of normal and I have fatigue, weight, hair, or feeling-cold symptoms. Can we check Free T4, Free T3, and thyroid antibodies?",
+        what_to_ask_doctor: "My TSH is on the high side and I have a few low-thyroid symptoms. Can we check Free T4, Free T3, and thyroid antibodies (TPO, Tg-Ab) to see if anything is brewing?",
         source: 'deterministic',
       };
     },
