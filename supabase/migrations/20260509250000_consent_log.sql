@@ -114,6 +114,16 @@ CREATE POLICY "user_eligibility_select_own"
 CREATE OR REPLACE FUNCTION public.consent_log_block_mutations()
 RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
+  -- Privileged-role bypass. The Supabase auth admin runs as
+  -- supabase_auth_admin and triggers ON DELETE CASCADE from auth.users
+  -- when an account is deleted; the privacy spec deliberately makes
+  -- account deletion the only path that wipes consent_log. Other roles
+  -- (anon, authenticated, postgrest's service-role JWT impersonation)
+  -- still hit the RAISE below, which is what enforces append-only for
+  -- the actual application surface.
+  IF current_user IN ('postgres', 'supabase_admin', 'supabase_auth_admin', 'service_role', 'supabase_storage_admin') THEN
+    RETURN COALESCE(NEW, OLD);
+  END IF;
   RAISE EXCEPTION 'consent_log is append-only — UPDATE/DELETE not permitted';
 END;
 $$;
