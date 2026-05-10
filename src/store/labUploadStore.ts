@@ -769,8 +769,12 @@ function getOptimalRanges(sex?: string | null): Record<string, { optimal_low: nu
     'thyroxine (t4)': { optimal_low: 6.0, optimal_high: 10.0 }, t4: { optimal_low: 6.0, optimal_high: 10.0 },
     'total t4': { optimal_low: 6.0, optimal_high: 10.0 }, 'total t3': { optimal_low: 80, optimal_high: 180 },
     'triiodothyronine (t3)': { optimal_low: 80, optimal_high: 180 }, 'triiodothyronine (t3), free': { optimal_low: 3.0, optimal_high: 4.0 },
-    'hs-crp': { optimal_low: 0, optimal_high: 0.5 }, crp: { optimal_low: 0, optimal_high: 0.5 },
-    'c-reactive protein': { optimal_low: 0, optimal_high: 0.5 }, 'c-reactive protein, cardiac': { optimal_low: 0, optimal_high: 0.5 },
+    // hs-CRP / CRP — watch threshold raised to 1.0 mg/L to match the
+    // backend optimalRanges rule (AHA/CDC: <1.0 = low CV risk, 1-3 =
+    // moderate, >3 = high). Was 0.5 — too aggressive, flagged
+    // perfectly normal CRP values like 0.5 mg/L as 'watch'.
+    'hs-crp': { optimal_low: 0, optimal_high: 1.0 }, crp: { optimal_low: 0, optimal_high: 1.0 },
+    'c-reactive protein': { optimal_low: 0, optimal_high: 1.0 }, 'c-reactive protein, cardiac': { optimal_low: 0, optimal_high: 1.0 },
     esr: { optimal_low: 0, optimal_high: 10 }, homocysteine: { optimal_low: 5, optimal_high: 8 },
     'uric acid': { optimal_low: 3.5, optimal_high: 5.5 },
     testosterone, 'free testosterone': freeTestosterone, 'free testosterone (direct)': freeTestosterone,
@@ -914,11 +918,12 @@ export function checkWatchList(value: number, markerName: string): string | null
   // HDL 40-49 (within standard but lower-protective)
   if (/(\bhdl\b|hdl cholesterol)/.test(n) && value >= 40 && value < 50)
     return 'Lower-end protective cholesterol — exercise and omega-3 raise it.';
-  // hs-CRP / CRP 0.5-3 (cardio risk band, still within standard <3 for hs-CRP).
+  // hs-CRP / CRP 1.0-3 (cardio risk band, still within standard <3 for hs-CRP).
   // Catches all lab-report variants: 'hs-CRP', 'CRP', 'C-Reactive Protein',
   // 'C-Reactive Protein, Quant', 'C-Reactive Protein, Cardiac', 'high sensitivity C-reactive...',
-  // etc. Any inflammation marker ≥0.5 in mg/L scale belongs on the watch list.
-  if (/(\bhs-?crp\b|\bcrp\b|c-reactive protein|high sensitivity c)/.test(n) && value >= 0.5 && value < 3)
+  // etc. AHA/CDC: <1.0 = low CV risk, 1-3 = moderate, >3 = high. Was
+  // 0.5 — too aggressive, flagged normal CRP values as 'watch'.
+  if (/(\bhs-?crp\b|\bcrp\b|c-reactive protein|high sensitivity c)/.test(n) && value >= 1.0 && value < 3)
     return 'Detectable inflammation — track and reduce.';
   // Homocysteine 10-15 (within standard <15)
   if (/homocysteine/.test(n) && value >= 10 && value < 15)
