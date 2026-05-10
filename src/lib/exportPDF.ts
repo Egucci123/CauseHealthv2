@@ -287,63 +287,12 @@ export function exportPatientVisitGuidePDF(doc: DoctorPrepDocument, userName: st
   // (rendered above) is the single source of truth, already filtered by the
   // strict triage rule.
 
-  // ── Possible conditions to investigate ───────────────────────────────
-  // INTENTIONALLY OMITTED FROM PATIENT GUIDE — clinical-grade differential
-  // belongs in the doctor PDF only. The patient already has each pattern
-  // surfaced in the wellness-plan UI and in the "Possible conditions to
-  // investigate" tab; reproducing it on the visit-prep PDF was redundant
-  // and made the patient guide read like a clinical letter.
-  // See exportDoctorPrepPDF below for the differential rendering.
-  if (false && Array.isArray(doc.possible_conditions) && doc.possible_conditions.length > 0) {
-    sectionHeader('Possible conditions to investigate');
-    para(
-      'Patterns in the labs / symptoms that fit conditions not yet on the chart. NOT A DIAGNOSIS — only the patient\'s physician can diagnose. CauseHealth provides pattern-matching against the data, not clinical judgment. Each entry lists tests that would help evaluate the pattern.',
-      { color: [80, 80, 80], italic: true, size: 9, gap: 4 },
-    );
-    doc.possible_conditions.forEach((c, i) => {
-      checkPage(34);
-      pdf.setFontSize(10); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(19, 19, 19);
-      const conf = String(c.confidence ?? 'low').toUpperCase();
-      pdf.text(stripUnsupportedChars(`${i + 1}. ${c.name}  [${conf}]`), margin, y); y += 5;
-      if (c.evidence) {
-        pdf.setFontSize(8.5); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(212, 165, 116);
-        pdf.text('Why we flagged this pattern:', margin + 3, y); y += 4;
-        pdf.setFont('helvetica', 'normal'); pdf.setTextColor(40, 40, 40);
-        const evLines = pdf.splitTextToSize(stripUnsupportedChars(c.evidence), contentW - 6);
-        pdf.text(evLines, margin + 3, y); y += evLines.length * 3.8 + 2;
-      }
-      if (Array.isArray(c.confirmatory_tests) && c.confirmatory_tests.length > 0) {
-        pdf.setFontSize(8.5); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(212, 165, 116);
-        pdf.text('Tests to confirm:', margin + 3, y); y += 4;
-        pdf.setFont('helvetica', 'normal'); pdf.setTextColor(40, 40, 40);
-        const testLines: string[] = c.confirmatory_tests
-          .map((t: any) => {
-            if (typeof t === 'string') return t;
-            if (t && typeof t === 'object') {
-              const name = String(t.test ?? '').trim();
-              const why = String(t.why ?? '').trim();
-              if (!name) return '';
-              return why ? `${name} — ${why}` : name;
-            }
-            return '';
-          })
-          .filter((s: string) => s.length > 0);
-        if (testLines.length > 0) {
-          const tLines = pdf.splitTextToSize(stripUnsupportedChars('• ' + testLines.join('\n• ')), contentW - 6);
-          pdf.text(tLines, margin + 3, y); y += tLines.length * 3.8 + 2;
-        }
-      }
-      if (c.what_to_ask_doctor) {
-        pdf.setFontSize(8.5); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(212, 165, 116);
-        pdf.text('Script for the visit:', margin + 3, y); y += 4;
-        pdf.setFont('helvetica', 'italic'); pdf.setTextColor(40, 40, 40);
-        const sLines = pdf.splitTextToSize(stripUnsupportedChars(`"${c.what_to_ask_doctor}"`), contentW - 6);
-        pdf.text(sLines, margin + 3, y); y += sLines.length * 3.8 + 4;
-      } else {
-        y += 2;
-      }
-    });
-  }
+  // ── Possible conditions to investigate — INTENTIONALLY OMITTED ──────
+  // Clinical-grade differential belongs in the doctor PDF only. The
+  // patient already has each pattern surfaced in the wellness-plan UI
+  // and in the "Possible conditions to investigate" tab; reproducing it
+  // on the visit-prep PDF was redundant and made the patient guide read
+  // like a clinical letter. See exportDoctorPrepPDF for the differential.
 
   // ── Medication alternatives — patient-side framing ───────────────────
   // Only renders if AI populated. Plain language: "ask your doctor if X
