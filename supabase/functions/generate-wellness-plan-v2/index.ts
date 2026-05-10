@@ -552,11 +552,18 @@ function mergeIntoFinalPlan(args: {
 
   const suspectedConditions = facts.conditions.map(c => {
     const prose = proseByName.get(c.name.toLowerCase());
-    const annotatedConfirmatory = (c.confirmatory_tests ?? []).map(t => {
-      const s = String(t ?? '').trim();
-      if (!s) return s;
-      return isAlreadyOrdered(s) ? `${s} (✓ already on your test sheet)` : s;
-    });
+    // confirmatory_tests is now { test, why }[] from enrichConfirmatoryTests.
+    // Annotate each with "✓ already on your test sheet" when applicable;
+    // preserve the why (what-this-test-catches) line.
+    const annotatedConfirmatory = (c.confirmatory_tests ?? []).map((t: any) => {
+      const test = String(t?.test ?? t ?? '').trim();
+      if (!test) return null;
+      const why = String(t?.why ?? '').trim();
+      return {
+        test: isAlreadyOrdered(test) ? `${test} (✓ already on your test sheet)` : test,
+        why,
+      };
+    }).filter((x: any) => x !== null);
     return {
       // Stable cross-surface key — lets drift detector compare wellness ↔
       // analysis ↔ doctor prep on the same identifier. Without this, drift

@@ -11,6 +11,7 @@
 
 import { runSuspectedConditionsBackstop, type SuspectedConditionEntry } from '../suspectedConditionsBackstop.ts';
 import type { LabValue } from '../buildPlan.ts';
+import { enrichConfirmatoryTests } from './testCatchesRegistry.ts';
 
 export interface SuspectedConditionFact {
   /** Stable key — same across lab analysis, wellness plan, doctor prep.
@@ -20,7 +21,9 @@ export interface SuspectedConditionFact {
   category: SuspectedConditionEntry['category'];
   confidence: 'high' | 'moderate';
   evidence: string;
-  confirmatory_tests: string[];
+  /** Each confirmatory test now ships with a "what it catches" sentence.
+   * Frontend renders { test, why } — same shape across all surfaces. */
+  confirmatory_tests: Array<{ test: string; why: string }>;
   icd10: string;
   what_to_ask_doctor: string;
   source: 'deterministic';
@@ -71,7 +74,9 @@ export function buildConditionList(input: Input): SuspectedConditionFact[] {
       category: augmented.category,
       confidence: augmented.confidence,
       evidence: augmented.evidence,
-      confirmatory_tests: augmented.confirmatory_tests,
+      // Enrich each confirmatory test with a "what it catches" line — same
+      // wording on every surface, looked up from testCatchesRegistry.
+      confirmatory_tests: enrichConfirmatoryTests(augmented.confirmatory_tests),
       icd10: augmented.icd10,
       what_to_ask_doctor: augmented.what_to_ask_doctor,
       source: 'deterministic' as const,
