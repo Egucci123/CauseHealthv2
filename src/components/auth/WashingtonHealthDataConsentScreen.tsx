@@ -47,7 +47,7 @@ export const WashingtonHealthDataConsentScreen = ({ onAccepted }: Props) => {
     <div className="min-h-screen bg-clinical-cream flex items-center justify-center p-4 sm:p-6">
       <div className="w-full max-w-2xl bg-clinical-white rounded-[14px] shadow-card-md p-6 sm:p-10">
         <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-primary-container mb-2">
-          Step 4 of 4
+          Step 7 of 8
         </p>
         <h1 className="text-authority text-2xl sm:text-3xl text-clinical-charcoal font-bold mb-3 leading-tight">
           Washington State Health Data Authorization

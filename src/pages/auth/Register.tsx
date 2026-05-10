@@ -173,7 +173,8 @@ export const Register = () => {
           After signup you&apos;ll review and accept our{' '}
           <a href="/terms" className="text-primary-container hover:underline">Terms</a>,{' '}
           <a href="/privacy" className="text-primary-container hover:underline">Privacy Policy</a>,
-          and health-data authorizations across a few short screens before onboarding begins.
+          state-residency and clinician attestations, and an arbitration agreement
+          (with a 30-day opt-out) across a few short screens before onboarding begins.
         </p>
 
         <Button

@@ -19,22 +19,39 @@
 import { supabase } from './supabase';
 
 /** Bumped any time the legal text materially changes. Existing users with
- *  consent for an older version are re-prompted on next login. */
-export const CONSENT_POLICY_VERSION = '2.1';
+ *  consent for an older version are re-prompted on next login.
+ *
+ *  v6 (2026-05-09-1): Geo-blocked CA/NY/IL/WA + EU/UK/CH; added
+ *  state-residency self-cert, EU geoblock self-cert, established-clinician
+ *  attestation, and standalone arbitration + class-action waiver per Berman
+ *  v. Freedom Financial. Materially changed legal text → forces re-prompt. */
+export const CONSENT_POLICY_VERSION = '2026-05-09-1';
 
 export type ConsentType =
+  // v1 legacy
   | 'age_18_plus'
   | 'terms'
   | 'ai_processing'
   | 'health_data_authorization'
-  | 'mhmda_wa_authorization';
+  | 'mhmda_wa_authorization'
+  // v6 additions
+  | 'state_residency_certify'
+  | 'eu_geoblock_certify'
+  | 'clinician_relationship'
+  | 'arbitration_class_waiver';
 
 const REQUIRED_CONSENTS: ConsentType[] = [
+  // v1 — legacy bundle, still required as defensive cover.
   'age_18_plus',
   'terms',
   'ai_processing',
   'health_data_authorization',
   'mhmda_wa_authorization',
+  // v6 additions — gating per outside-counsel spec.
+  'state_residency_certify',
+  'eu_geoblock_certify',
+  'clinician_relationship',
+  'arbitration_class_waiver',
 ];
 
 /** Record a single consent event via the record-consent edge function.

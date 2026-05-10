@@ -47,7 +47,7 @@ export const AgeGateScreen = ({ onAccepted }: Props) => {
         {/* Header */}
         <div className="px-6 sm:px-8 py-5 border-b border-clinical-cream">
           <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-primary-container mb-1">
-            Step 1 of 4
+            Step 1 of 8
           </p>
           <h1 className="text-authority text-xl sm:text-2xl text-clinical-charcoal font-bold">
             Age confirmation
