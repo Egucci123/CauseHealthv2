@@ -5,8 +5,6 @@ import { supabase } from '../../lib/supabase';
 import { AppShell } from '../../components/layout/AppShell';
 import { Button } from '../../components/ui/Button';
 import { ClinicalSummary } from '../../components/doctorprep/ClinicalSummary';
-import { TestsToRequest } from '../../components/doctorprep/TestsToRequest';
-import { PossibleConditionsCard } from '../../components/doctorprep/PossibleConditionsCard';
 import { VisitCardStacks } from '../../components/doctorprep/VisitCardStacks';
 import { MedicationsTab } from '../../components/doctorprep/MedicationsTab';
 import { TabNav } from '../../components/ui/TabNav';
@@ -24,6 +22,7 @@ import { exportDoctorPrepPDF, exportPatientVisitGuidePDF } from '../../lib/expor
 import { format } from 'date-fns';
 import OutputAcknowledgmentGate from '../../components/legal/OutputAcknowledgmentGate';
 import { useOutputAck } from '../../lib/legal/useOutputAck';
+import { SpecialistTestStacks } from '../../components/clinical/SpecialistTestStacks';
 
 const TABS = [
   { id: 'visit',       label: 'At Your Visit',     shortLabel: 'Visit',   icon: 'fact_check' },
@@ -309,14 +308,21 @@ export const DoctorPrep = () => {
           {activeTab === 'summary' && <ClinicalSummary doc={doc} />}
           {activeTab === 'tests' && (
             <div className="space-y-4">
-              <TestsToRequest
-                tests={Array.isArray(doc.tests_to_request) ? doc.tests_to_request : []}
-                advanced={Array.isArray(doc.advanced_screening) ? doc.advanced_screening : []}
-                possibleConditions={Array.isArray(doc.possible_conditions) ? doc.possible_conditions : []}
+              {/* v6 spec: the test recommendations + possible-conditions stack
+                  is the canonical clinical-prep view, lifted from the wellness
+                  plan. Each folder is collapsed by default so the AI content
+                  is "covered behind the consent form" — user has to click
+                  through both the OutputAcknowledgmentGate AND each folder
+                  before reading any AI-generated narrative. */}
+              <SpecialistTestStacks
+                tests={[
+                  ...(Array.isArray(doc.tests_to_request) ? doc.tests_to_request : []),
+                  ...(Array.isArray(doc.advanced_screening) ? doc.advanced_screening : []),
+                ]}
+                suspectedConditions={
+                  Array.isArray(doc.possible_conditions) ? doc.possible_conditions : []
+                }
               />
-              {Array.isArray(doc.possible_conditions) && doc.possible_conditions.length > 0 && (
-                <PossibleConditionsCard conditions={doc.possible_conditions} />
-              )}
             </div>
           )}
           {activeTab === 'medications' && <MedicationsTab />}

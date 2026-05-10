@@ -11,7 +11,6 @@ import { TabNav } from '../../components/ui/TabNav';
 import { FolderSection } from '../../components/ui/FolderSection';
 import { LifestyleInterventions } from '../../components/wellness/LifestyleInterventions';
 import { ActionPlan } from '../../components/wellness/ActionPlan';
-import { PossibleConditions } from '../../components/wellness/PossibleConditions';
 import { InteractionWarnings } from '../../components/wellness/InteractionWarnings';
 import { ProgressSummary } from '../../components/wellness/ProgressSummary';
 import { TransformationForecast } from '../../components/wellness/TransformationForecast';
@@ -854,112 +853,12 @@ export const WellnessPlanPage = () => {
             </FolderSection>
           )}
 
-          {/* Single unified test list — re-measures + new tests in one folder.
-              The split into 'retest' vs 'new tests' was a UX experiment that
-              tested poorly: users had to mentally merge two lists. Now ONE
-              comprehensive list of every test to ask for at the 12-week visit. */}
-          {/* Tests grouped by specialist. Each folder is the focused, defensible
-              list for that visit — PCP gets the basics, GI gets UC-relevant
-              tests, cardiology gets ApoB/Lp(a), etc. The user walks in to each
-              specialist with a list that doesn't feel "extreme" and is paired
-              with the right ICD-10. */}
-          {(() => {
-            const validRetests = (plan.retest_timeline ?? []).filter(
-              (r: any) => typeof r?.marker === 'string' && r.marker.trim().length > 0,
-            );
-            if (validRetests.length === 0) return null;
-
-            // Routing philosophy: PCP is the default. Most blood tests
-            // (including ApoB/Lp(a)/Free T3/MMA) belong here — your PCP can
-            // order them with the ICD-10 codes we provide. Only route OUT
-            // when there's a real reason: imaging needs a separate order;
-            // functional tests are insurance-denied even with good codes;
-            // GI tests fold into the existing GI follow-up visit.
-            const SPECIALIST_META: Record<string, { title: string; explanation: string; icon: string; accent: string }> = {
-              pcp:           { title: 'Tests to ask your PCP for',   icon: 'medical_services', accent: '#1B423A', explanation: 'Bring this list to your primary care follow-up. Each test pairs with an ICD-10 code your PCP can use to get insurance to cover it. Yes, even the advanced markers (ApoB, Lp(a), Free T3, etc.) — a good PCP will run them with the right diagnosis code.' },
-              gi:            { title: 'Tests at your GI follow-up',  icon: 'restaurant',       accent: '#8B6F47', explanation: 'These fold into your existing GI visits — no extra copay. Your gastroenterologist routinely orders these for UC/Crohn\'s monitoring.' },
-              imaging:       { title: 'Imaging to schedule',         icon: 'visibility',       accent: '#6B6B6B', explanation: 'Non-blood studies — ultrasound, FibroScan, sleep study, CAC, DEXA. These need separate orders. Your PCP can refer you with appropriate documentation; insurance coverage varies by indication.' },
-              functional:    { title: 'Cash-pay / functional MD',    icon: 'spa',              accent: '#5F7A4D', explanation: 'Tests insurance often denies even with good ICD-10 codes (DUTCH cortisol, organic acids, comprehensive stool). A functional medicine MD or direct-to-consumer lab will run these — usually $100–300 cash-pay total.' },
-              mental_health: { title: 'Mental health screening',     icon: 'psychology',       accent: '#7B6FA0', explanation: 'Standard screening tools (PHQ-9, GAD-7) your PCP can administer in 5 minutes during your existing visit. No referral needed.' },
-              // Legacy specialist keys still mapped — fall back to PCP visually
-              // if the AI emits them, since most are covered there now.
-              cardiology:    { title: 'Tests to ask your PCP for',   icon: 'medical_services', accent: '#1B423A', explanation: 'Bring this list to your primary care follow-up. ApoB, Lp(a), and CAC-related discussion are PCP-orderable with the right ICD-10.' },
-              endocrinology: { title: 'Tests to ask your PCP for',   icon: 'medical_services', accent: '#1B423A', explanation: 'Free T3, Reverse T3, hormone panels — your PCP can order these with R53.83 or appropriate symptom code.' },
-              sleep_medicine:{ title: 'Imaging to schedule',         icon: 'visibility',       accent: '#6B6B6B', explanation: 'Sleep study (HSAT or polysomnography). Your PCP can order or refer.' },
-              hepatology:    { title: 'Tests to ask your PCP for',   icon: 'medical_services', accent: '#1B423A', explanation: 'Liver enzymes + GGT — PCP-orderable. Hepatology referral only if ALT remains elevated >60 across two draws.' },
-              rheumatology:  { title: 'Tests to ask your PCP for',   icon: 'medical_services', accent: '#1B423A', explanation: 'ANA reflex / RF / anti-CCP — initial autoimmune workup is PCP-orderable. Rheumatology referral only if positive.' },
-              nephrology:    { title: 'Tests to ask your PCP for',   icon: 'medical_services', accent: '#1B423A', explanation: 'eGFR + UACR + cystatin C — PCP-orderable. Nephrology referral only if GFR<60 sustained.' },
-              hematology:    { title: 'Tests to ask your PCP for',   icon: 'medical_services', accent: '#1B423A', explanation: 'CBC + iron studies — PCP-orderable. Hematology referral only for unexplained patterns.' },
-            };
-
-            // Collapse legacy specialty buckets into the simplified 5-folder
-            // model: pcp / gi / imaging / functional / mental_health.
-            // cardiology/endocrinology/etc. all go to PCP since a good PCP
-            // can order their tests with the right ICD-10.
-            const COLLAPSE: Record<string, string> = {
-              cardiology: 'pcp',
-              endocrinology: 'pcp',
-              hepatology: 'pcp',
-              rheumatology: 'pcp',
-              nephrology: 'pcp',
-              hematology: 'pcp',
-              sleep_medicine: 'imaging', // sleep study IS an imaging-class study
-            };
-            const groups: Record<string, any[]> = {};
-            for (const r of validRetests) {
-              const raw = (r.specialist ?? 'pcp') as string;
-              const key = COLLAPSE[raw] ?? raw;
-              (groups[key] ??= []).push(r);
-            }
-            const order: string[] = ['pcp', 'gi', 'imaging', 'functional', 'mental_health'];
-
-            return (
-              <>
-                {order.filter(k => groups[k]?.length).map((k) => {
-                  const meta = SPECIALIST_META[k] ?? SPECIALIST_META.pcp;
-                  const items = groups[k];
-                  return (
-                    <FolderSection
-                      key={k}
-                      icon={meta.icon}
-                      title={meta.title}
-                      count={items.length}
-                      countLabel={items.length === 1 ? 'test' : 'tests'}
-                      explanation={meta.explanation}
-                      accentColor={meta.accent}
-                      // All folders closed by default — user expands what they want.
-                      // Open-by-default was making the page feel noisy during regen
-                      // (previous PCP folder showed before new plan loaded).
-                    >
-                      <div className="space-y-2">
-                        {items.map((r: any, i: number) => (
-                          <div key={i} className="bg-clinical-cream/40 rounded-[8px] p-3">
-                            <div className="flex items-start gap-2">
-                              <span className="material-symbols-outlined text-[16px] flex-shrink-0 mt-0.5" style={{ color: meta.accent }}>science</span>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <p className="text-body text-clinical-charcoal text-sm font-semibold leading-tight">{r.marker}</p>
-                                  {r.icd10 && (
-                                    <span className="text-precision text-[0.6rem] text-clinical-stone tracking-wider px-1.5 py-0.5 bg-clinical-white border border-clinical-cream" style={{ borderRadius: '2px' }}>
-                                      ICD-10 · {r.icd10}
-                                    </span>
-                                  )}
-                                </div>
-                                {r.why && <p className="text-precision text-[0.65rem] text-clinical-stone mt-1 leading-snug">{r.why}</p>}
-                                {r.insurance_note && (
-                                  <p className="text-precision text-[0.6rem] text-clinical-stone/80 mt-1 italic leading-snug">{r.insurance_note}</p>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </FolderSection>
-                  );
-                })}
-              </>
-            );
-          })()}
+          {/* v6 (2026-05-10): Specialist-grouped test stacks + Possible
+              Conditions to investigate moved to Clinical Prep, where they
+              sit behind the OutputAcknowledgmentGate and inside collapsed-
+              by-default folders. The wellness plan now focuses on the
+              lifestyle plan; clinicians see the test workup on
+              /doctor-prep via the SpecialistTestStacks component. */}
 
           {/* Drug-supplement interaction warnings — safety-critical, render
               high on the page so the user sees them before the supplement
@@ -978,28 +877,7 @@ export const WellnessPlanPage = () => {
             </FolderSection>
           )}
 
-          {/* Possible conditions to investigate — separate from retests.
-              Retests = baseline tests the doctor missed. This = differential
-              diagnosis (patterns the data fits but never made it onto a
-              chart). Each entry carries its own confirmatory_tests, so the
-              user knows exactly what to ask for. */}
-          {(() => {
-            const suspected = (plan.suspected_conditions ?? []).filter(
-              (c: any) => c && typeof c.name === 'string' && c.name.trim().length > 0,
-            );
-            return suspected.length > 0 && (
-              <FolderSection
-                icon="quiz"
-                title="Possible conditions to investigate"
-                count={suspected.length}
-                countLabel={suspected.length === 1 ? 'pattern' : 'patterns'}
-                explanation="Patterns in your bloodwork and symptoms that fit conditions you haven't been diagnosed with. Not a diagnosis — a starting point for discussion. Each one comes with tests that would help your doctor evaluate the pattern."
-                accentColor="#C94F4F"
-              >
-                <PossibleConditions conditions={suspected} />
-              </FolderSection>
-            );
-          })()}
+          {/* Possible conditions moved to Clinical Prep (see comment above). */}
 
           {/* 90-day retest CTA — surfaces in last 2 weeks of protocol */}
           {showRetestCTA && (
