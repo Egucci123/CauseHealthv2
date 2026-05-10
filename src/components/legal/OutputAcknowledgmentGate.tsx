@@ -145,7 +145,7 @@ export default function OutputAcknowledgmentGate({
               <div>
                 <label
                   htmlFor="clinician-name"
-                  className="block text-body text-[0.82rem] text-clinical-charcoal/70 mb-1"
+                  className="block text-body text-[0.82rem] text-clinical-charcoal font-medium mb-1"
                 >
                   Clinician name (e.g., Dr. Jane Doe)
                 </label>
@@ -155,7 +155,8 @@ export default function OutputAcknowledgmentGate({
                   value={clinicianName}
                   onChange={(e) => setClinicianName(e.target.value)}
                   disabled={!clinicianFieldsEnabled}
-                  className="w-full px-3 py-2 border border-[#E8E3DB] rounded-md text-body text-[0.92rem] focus:outline-none focus:ring-2 focus:ring-[#1E40AF]/30"
+                  placeholder="Dr. Jane Doe"
+                  className="w-full px-3 py-2 border border-clinical-stone/40 rounded-md text-body text-[0.95rem] text-clinical-charcoal placeholder:text-clinical-stone/60 bg-clinical-white focus:outline-none focus:border-[#1E40AF] focus:ring-2 focus:ring-[#1E40AF]/30 disabled:bg-clinical-cream disabled:text-clinical-charcoal disabled:cursor-not-allowed"
                   autoComplete="off"
                   spellCheck={false}
                 />
@@ -163,7 +164,7 @@ export default function OutputAcknowledgmentGate({
               <div>
                 <label
                   htmlFor="clinician-practice"
-                  className="block text-body text-[0.82rem] text-clinical-charcoal/70 mb-1"
+                  className="block text-body text-[0.82rem] text-clinical-charcoal font-medium mb-1"
                 >
                   Practice or clinic name
                 </label>
@@ -172,8 +173,9 @@ export default function OutputAcknowledgmentGate({
                   type="text"
                   value={clinicianPractice}
                   onChange={(e) => setClinicianPractice(e.target.value)}
+                  placeholder="Penn Internal Medicine"
                   disabled={!clinicianFieldsEnabled}
-                  className="w-full px-3 py-2 border border-[#E8E3DB] rounded-md text-body text-[0.92rem] focus:outline-none focus:ring-2 focus:ring-[#1E40AF]/30"
+                  className="w-full px-3 py-2 border border-clinical-stone/40 rounded-md text-body text-[0.95rem] text-clinical-charcoal placeholder:text-clinical-stone/60 bg-clinical-white focus:outline-none focus:border-[#1E40AF] focus:ring-2 focus:ring-[#1E40AF]/30 disabled:bg-clinical-cream disabled:text-clinical-charcoal disabled:cursor-not-allowed"
                   autoComplete="off"
                   spellCheck={false}
                 />
