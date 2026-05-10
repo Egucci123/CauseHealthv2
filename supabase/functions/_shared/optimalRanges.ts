@@ -289,3 +289,62 @@ export function detectSuboptimalValues(
 
   return out;
 }
+
+/**
+ * UNIVERSAL FLAG RECOMPUTATION — single source of truth for a lab's
+ * "in-range / out-of-range / borderline" classification.
+ *
+ * The DB column `optimal_flag` on lab_values is stamped at upload time
+ * and can go stale when rules change (CRP threshold, TSH cutoff, MCV
+ * range, etc.). Trusting the stored value led to bugs like Evan's CRP
+ * 0.5 mg/L showing as `watch` even after we lowered the watch threshold
+ * to >1.0 mg/L.
+ *
+ * Returns one of the canonical flag values:
+ *   'critical_high' | 'critical_low'  — outside the lab's reference
+ *                                        range AND in the safety-net
+ *                                        emergency zone
+ *   'high' | 'low'                    — outside the lab's reference
+ *                                        range (per standard_flag)
+ *   'suboptimal_high'                 — INSIDE the lab's reference range
+ *                                        but ABOVE the watch-tier
+ *                                        threshold from optimalRanges
+ *                                        rules (borderline-high)
+ *   'suboptimal_low'                  — INSIDE the lab's reference range
+ *                                        but BELOW the watch-tier
+ *                                        threshold (borderline-low)
+ *   'normal'                          — fully within range, no signal
+ *
+ * Caller responsible for handing in demographic context — testosterone
+ * + ferritin rules are sex-stratified, A1c is not, etc.
+ */
+export function recomputeFlag(
+  lab: LabRow,
+  ctx: DemographicContext,
+): 'critical_high' | 'critical_low' | 'high' | 'low' | 'suboptimal_high' | 'suboptimal_low' | 'normal' {
+  const val = num(lab.value);
+  if (val === null) return 'normal';
+
+  // 1) Trust the lab's own out-of-range determination first. The lab is
+  //    the authority on its own reference range — if it says high/low we
+  //    don't second-guess. We DO normalize to canonical names.
+  const stdRaw = String(lab.standard_flag ?? '').toLowerCase().trim();
+  if (stdRaw === 'critical_high' || stdRaw === 'critical_low') return stdRaw;
+  if (stdRaw === 'high' || stdRaw === 'elevated') return 'high';
+  if (stdRaw === 'low' || stdRaw === 'deficient') return 'low';
+
+  // 2) In-range — check the watch-tier rules to surface borderline drift.
+  const rules = getRulesForPatient(ctx);
+  const name = String(lab.marker_name ?? '');
+  for (const rule of rules) {
+    if (!rule.marker.test(name)) continue;
+    const lowMiss  = rule.low  !== undefined && val < rule.low;
+    const highMiss = rule.high !== undefined && val > rule.high;
+    if (highMiss) return 'suboptimal_high';
+    if (lowMiss)  return 'suboptimal_low';
+    return 'normal'; // matched a rule and value is in the watch-tier safe zone
+  }
+  // No rule matched at all — value is in lab range, no curated watch
+  // threshold available. Treat as normal.
+  return 'normal';
+}

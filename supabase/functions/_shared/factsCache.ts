@@ -86,7 +86,14 @@ import { buildPlan, type ClinicalFacts, type PatientInput } from './buildPlan.ts
 // Product positioning is borderline early-detection, not
 // optimization — vocabulary now: out-of-range low, in-range low,
 // in-range normal, in-range high, out-of-range high.
-export const RULE_LIBRARY_VERSION = '2026-05-10-8';
+// 2026-05-10-9: universal flag recomputation. The DB column
+// optimal_flag is stamped at upload time and goes stale when rules
+// change (Evan's CRP 0.5 mg/L was stamped 'watch' under an older rule
+// and never updated). New helper recomputeFlag() in optimalRanges.ts
+// derives the flag from value + standard_flag + standard_low/high +
+// current rules per request. All three v2 normalize functions now
+// call it via pickFlag(l, ctx) instead of trusting the stored flag.
+export const RULE_LIBRARY_VERSION = '2026-05-10-9';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;

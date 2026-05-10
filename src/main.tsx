@@ -1,3 +1,4 @@
+// Build marker: rule-library 2026-05-10-9 (universal flag recompute)
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, useLocation } from 'react-router-dom';

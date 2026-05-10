@@ -17,6 +17,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { type PatientInput, type LabValue } from '../_shared/buildPlan.ts';
 import { loadOrComputeFacts } from '../_shared/factsCache.ts';
 import { acquireLock, releaseLock } from '../_shared/generationLock.ts';
+import { recomputeFlag } from '../_shared/optimalRanges.ts';
 import {
   LAB_ANALYSIS_SYSTEM_PROMPT,
   LAB_ANALYSIS_TOOL_SCHEMA,
@@ -191,21 +192,26 @@ async function runAnalysis(args: {
 // HELPERS
 // ──────────────────────────────────────────────────────────────────────
 /**
- * Pick the right flag for a lab row. Prefer the tighter optimal_flag,
- * but treat 'unknown' as missing — the optimal-range registry returns
- * 'unknown' for markers without a curated optimal range, and the
- * legacy `optimal_flag ?? standard_flag` only fired on null/undefined,
- * leaving the flag stuck at 'unknown'. That silently filtered values
- * out of the outlier ranker (Luba's A1c 7.9 / glucose 138 / LDL 106
- * all had optimal_flag='unknown' or 'elevated' and disappeared from
- * the priority-findings list).
+ * Compute the flag for a lab row from scratch using the lab's own
+ * out-of-range determination + the current optimalRanges rules.
+ * Ignores the stored optimal_flag entirely (it can go stale when rules
+ * change — Evan's CRP 0.5 mg/L was stamped 'watch' under an older rule
+ * and stayed that way after the threshold was raised to >1.0 mg/L).
+ *
+ * The recomputeFlag helper is the single source of truth — same call
+ * here, in generate-wellness-plan-v2, and in generate-doctor-prep-v2.
  */
-function pickFlag(l: any): string {
-  const opt = l?.optimal_flag;
-  const std = l?.standard_flag;
-  if (opt && opt !== 'unknown') return opt;
-  if (std) return std;
-  return 'normal';
+function pickFlag(l: any, ctx: { age: number; sex: 'male' | 'female' | string; isPregnant?: boolean }): string {
+  return recomputeFlag(
+    {
+      marker_name: String(l?.marker_name ?? ''),
+      value: l?.value,
+      unit: l?.unit,
+      standard_flag: l?.standard_flag,
+      optimal_flag: l?.optimal_flag,
+    },
+    { age: ctx.age, sex: ctx.sex, isPregnant: ctx.isPregnant ?? false },
+  );
 }
 
 function json(body: unknown, status = 200): Response {
@@ -229,20 +235,27 @@ function normalizePatientInput(args: {
     }))
     .filter((s: { name: string }) => s.name.length > 0);
 
+  // Compute demographics first — pickFlag needs them for sex-stratified
+  // rules (testosterone, ferritin, uric acid).
+  const age = profile?.date_of_birth
+    ? Math.floor((Date.now() - new Date(profile.date_of_birth).getTime()) / 31_557_600_000)
+    : null;
+  const flagCtx = {
+    age: age ?? 35,
+    sex: (profile?.sex ?? 'unknown') as string,
+    isPregnant: !!profile?.is_pregnant,
+  };
+
   const labs: LabValue[] = (labValues ?? []).map((l: any) => ({
     marker: String(l?.marker_name ?? ''),
     value: l?.value ?? null,
     unit: String(l?.unit ?? ''),
-    flag: pickFlag(l) as LabValue['flag'],
+    flag: pickFlag(l, flagCtx) as LabValue['flag'],
     refLow: l?.standard_low ?? l?.reference_low ?? null,
     refHigh: l?.standard_high ?? l?.reference_high ?? null,
     drawnAt: l?.created_at ?? null,
   }));
   const labsLower = labs.map(l => `${l.marker}: ${l.value} ${l.unit} [${l.flag}]`).join('\n').toLowerCase();
-
-  const age = profile?.date_of_birth
-    ? Math.floor((Date.now() - new Date(profile.date_of_birth).getTime()) / 31_557_600_000)
-    : null;
   const heightCm = typeof profile?.height_cm === 'number' && profile.height_cm > 0 ? profile.height_cm : null;
   const weightKg = typeof profile?.weight_kg === 'number' && profile.weight_kg > 0 ? profile.weight_kg : null;
   const bmi = (heightCm && weightKg) ? +(weightKg / Math.pow(heightCm / 100, 2)).toFixed(1) : null;

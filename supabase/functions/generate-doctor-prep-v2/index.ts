@@ -13,6 +13,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { type PatientInput, type LabValue } from '../_shared/buildPlan.ts';
+import { recomputeFlag } from '../_shared/optimalRanges.ts';
 import { loadOrComputeFacts } from '../_shared/factsCache.ts';
 import { acquireLock, releaseLock } from '../_shared/generationLock.ts';
 import {
@@ -143,14 +144,20 @@ serve(async (req) => {
   }
 });
 
-/** See pickFlag in analyze-labs-v2/index.ts — same fix for the
- *  optimal_flag='unknown' fallback bug. */
-function pickFlag(l: any): string {
-  const opt = l?.optimal_flag;
-  const std = l?.standard_flag;
-  if (opt && opt !== 'unknown') return opt;
-  if (std) return std;
-  return 'normal';
+/** See pickFlag in analyze-labs-v2/index.ts — universal flag
+ *  recomputation that ignores the stale stored optimal_flag and
+ *  re-derives from value + ranges + current rules. */
+function pickFlag(l: any, ctx: { age: number; sex: 'male' | 'female' | string; isPregnant?: boolean }): string {
+  return recomputeFlag(
+    {
+      marker_name: String(l?.marker_name ?? ''),
+      value: l?.value,
+      unit: l?.unit,
+      standard_flag: l?.standard_flag,
+      optimal_flag: l?.optimal_flag,
+    },
+    { age: ctx.age, sex: ctx.sex, isPregnant: ctx.isPregnant ?? false },
+  );
 }
 
 function json(body: unknown, status = 200): Response {
@@ -174,20 +181,26 @@ function normalizePatientInput(args: {
     }))
     .filter((s: { name: string }) => s.name.length > 0);
 
+  // Demographics first — pickFlag needs them.
+  const age = profile?.date_of_birth
+    ? Math.floor((Date.now() - new Date(profile.date_of_birth).getTime()) / 31_557_600_000)
+    : null;
+  const flagCtx = {
+    age: age ?? 35,
+    sex: (profile?.sex ?? 'unknown') as string,
+    isPregnant: !!profile?.is_pregnant,
+  };
+
   const labs: LabValue[] = (labValues ?? []).map((l: any) => ({
     marker: String(l?.marker_name ?? ''),
     value: l?.value ?? null,
     unit: String(l?.unit ?? ''),
-    flag: pickFlag(l) as LabValue['flag'],
+    flag: pickFlag(l, flagCtx) as LabValue['flag'],
     refLow: l?.standard_low ?? l?.reference_low ?? null,
     refHigh: l?.standard_high ?? l?.reference_high ?? null,
     drawnAt: l?.created_at ?? null,
   }));
   const labsLower = labs.map(l => `${l.marker}: ${l.value} ${l.unit} [${l.flag}]`).join('\n').toLowerCase();
-
-  const age = profile?.date_of_birth
-    ? Math.floor((Date.now() - new Date(profile.date_of_birth).getTime()) / 31_557_600_000)
-    : null;
   const heightCm = typeof profile?.height_cm === 'number' && profile.height_cm > 0 ? profile.height_cm : null;
   const weightKg = typeof profile?.weight_kg === 'number' && profile.weight_kg > 0 ? profile.weight_kg : null;
   const bmi = (heightCm && weightKg) ? +(weightKg / Math.pow(heightCm / 100, 2)).toFixed(1) : null;
