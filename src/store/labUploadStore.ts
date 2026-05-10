@@ -506,13 +506,16 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
         // values are in the DB and we hydrate state from there. (Old behavior: values
         // sat in client memory only, refresh wiped them.)
         try {
-          const sex = useAuthStore.getState().profile?.sex ?? null;
+          const profile = useAuthStore.getState().profile;
+          const sex = profile?.sex ?? null;
+          const dob = profile?.dateOfBirth ?? null;
+          const age = dob ? Math.floor((Date.now() - new Date(dob).getTime()) / 31_557_600_000) : null;
           const ranges = getOptimalRanges(sex);
           const validOptimal = ['healthy', 'watch', 'low', 'high', 'critical_low', 'critical_high', 'unknown'];
           const validStandard = ['normal', 'low', 'high', 'critical_low', 'critical_high'];
           const persistRows = extraction.values.map(v => {
             const r = findOptimalRange(ranges, v.marker_name);
-            const of_ = computeFlag(v.value, r, v.standard_low, v.standard_high, v.marker_name);
+            const of_ = computeFlag(v.value, r, v.standard_low, v.standard_high, v.marker_name, sex, age);
             return {
               draw_id: draw.id, user_id: userId, marker_name: v.marker_name,
               marker_category: v.category, value: v.value, unit: v.unit,
@@ -654,14 +657,17 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
         // Values are already persisted from the extraction step. Only do delete+reinsert
         // if user edited the table during review (we always do it for safety — handles
         // edits, additions, deletions cleanly). 8s timeout per op so nothing hangs.
-        const sex = useAuthStore.getState().profile?.sex ?? null;
+        const profile = useAuthStore.getState().profile;
+        const sex = profile?.sex ?? null;
+        const dob = profile?.dateOfBirth ?? null;
+        const age = dob ? Math.floor((Date.now() - new Date(dob).getTime()) / 31_557_600_000) : null;
         const ranges = getOptimalRanges(sex);
         const validOptimal = ['healthy', 'watch', 'low', 'high', 'critical_low', 'critical_high', 'unknown'];
         const validStandard = ['normal', 'low', 'high', 'critical_low', 'critical_high'];
 
         const cleaned = values.map(v => {
           const r = findOptimalRange(ranges, v.marker_name);
-          const of_ = computeFlag(v.value, r, v.standard_low, v.standard_high, v.marker_name);
+          const of_ = computeFlag(v.value, r, v.standard_low, v.standard_high, v.marker_name, sex, age);
           return {
             draw_id: drawId, user_id: userId, marker_name: v.marker_name,
             marker_category: v.category, value: v.value, unit: v.unit,
@@ -897,46 +903,113 @@ const HIGHER_IS_BETTER = [
 ];
 
 // ── Watch list ──────────────────────────────────────────────────────────────
-// Markers where high-normal (or low-normal) within the standard lab range
-// genuinely predicts disease trajectory and is worth pushing back from. Not
-// applied universally — only these specific markers have a "Watch" tier.
+// FRONTEND/BACKEND RULE PARITY (audit 2026-05-10):
+// ════════════════════════════════════════════════════════════════════════════
+// This function determines the optimal_flag stamped on a lab_value at
+// upload time. The backend's recomputeFlag() in
+// supabase/functions/_shared/optimalRanges.ts uses the SAME thresholds
+// when re-deriving the flag during analysis. The two MUST stay in sync —
+// drift here was the root cause of stale-flag bugs (Evan's CRP 0.5 mg/L
+// stamped 'watch' under an old frontend rule that didn't match the
+// backend's >1.0 mg/L threshold).
+//
+// Canonical thresholds (as of 2026-05-10):
+//   A1c:           ≥ 5.4         → borderline-high
+//   Fasting gluc:  ≥ 90          → borderline-high
+//   Triglycerides: ≥ 100         → borderline-high
+//   HDL:           < 50 male     → borderline-low
+//                  < 60 female
+//   hs-CRP:        ≥ 1.0         → borderline-high
+//   Uric acid:     > 6.0 male    → borderline-high
+//                  > 5.0 female
+//   Vitamin D:     < 40          → borderline-low
+//   Ferritin:      < 75 male / < 75 female age≥50 / < 50 female age<50
+//   TSH:           > 2.0         → borderline-high
+//   Testosterone:  < 600 male age≤40, < 500 male age>40 → borderline-low
+//   ApoB:          ≥ 90          → borderline-high (frontend-only)
+//   Homocysteine:  ≥ 10          → borderline-high (frontend-only)
+//
+// When you change a threshold here, change supabase/functions/_shared/
+// optimalRanges.ts to match. There's a parity comment in that file too.
+// ════════════════════════════════════════════════════════════════════════════
+// Markers where the value is INSIDE the lab's reference range but pressed
+// against either edge — the early-detection signal CauseHealth surfaces.
 // Returns reason text if the value qualifies, null otherwise.
-export function checkWatchList(value: number, markerName: string): string | null {
+//
+// Sex param: optional, derived from useAuthStore.profile.sex at call
+// site (computeFlag threads it through). Sex-stratified markers
+// (ferritin, HDL, uric acid, testosterone) use it; sex-neutral markers
+// ignore it.
+export function checkWatchList(
+  value: number,
+  markerName: string,
+  sex?: string | null,
+  age?: number | null,
+): string | null {
   const n = (markerName ?? '').toLowerCase();
-  // HbA1c 5.4-5.6 — prediabetes path
+  const isMale = sex === 'male';
+  const isFemale = sex === 'female';
+
+  // HbA1c ≥5.4 (backend: high 5.4 — borderline-high above this).
   if (/\b(hba1c|hemoglobin a1c|a1c)\b/.test(n) && value >= 5.4 && value <= 5.6)
-    return 'Trending toward prediabetes — push down with diet and movement.';
-  // Fasting glucose 95-99
-  if ((/fasting glucose/.test(n) || /^glucose/.test(n) || /glucose,? serum/.test(n)) && value >= 95 && value <= 99)
-    return 'High-normal blood sugar — early signal before prediabetes.';
-  // ApoB ≥90
+    return 'Borderline-high A1c — early dysglycemia signal before prediabetes (≥5.7).';
+  // Fasting glucose ≥90 (backend: high 90 — borderline-high above this).
+  if ((/fasting glucose/.test(n) || /^glucose/.test(n) || /glucose,? serum/.test(n)) && value >= 90 && value <= 99)
+    return 'Borderline-high blood sugar — early signal before prediabetes.';
+  // ApoB ≥90 — atherogenic-particle borderline (no backend equivalent yet, kept frontend-only).
   if (/(apolipoprotein b|\bapo\s*b\b|apob)/.test(n) && value >= 90)
-    return 'High-normal cholesterol particle count — CV risk worth lowering.';
-  // Triglycerides 120-149 (within standard <150)
-  if (/triglyceride/.test(n) && value >= 120 && value < 150)
-    return 'Trending high — early metabolic syndrome marker.';
-  // HDL 40-49 (within standard but lower-protective)
-  if (/(\bhdl\b|hdl cholesterol)/.test(n) && value >= 40 && value < 50)
-    return 'Lower-end protective cholesterol — exercise and omega-3 raise it.';
-  // hs-CRP / CRP 1.0-3 (cardio risk band, still within standard <3 for hs-CRP).
-  // Catches all lab-report variants: 'hs-CRP', 'CRP', 'C-Reactive Protein',
-  // 'C-Reactive Protein, Quant', 'C-Reactive Protein, Cardiac', 'high sensitivity C-reactive...',
-  // etc. AHA/CDC: <1.0 = low CV risk, 1-3 = moderate, >3 = high. Was
-  // 0.5 — too aggressive, flagged normal CRP values as 'watch'.
+    return 'Borderline-high atherogenic-particle count — CV risk worth lowering.';
+  // Triglycerides ≥100 (backend: high 100).
+  if (/triglyceride/.test(n) && value >= 100 && value < 150)
+    return 'Borderline-high triglycerides — early insulin-resistance signal.';
+  // HDL: borderline-low if below sex-stratified threshold (backend: male
+  // <50, female <60).
+  if (/(\bhdl\b|hdl cholesterol)/.test(n)) {
+    const lowFloor = isMale ? 50 : isFemale ? 60 : 50;
+    if (value < lowFloor && value >= 40) {
+      return `Borderline-low HDL (${isFemale ? 'female target ≥60' : 'male target ≥50'}) — exercise and omega-3 raise it.`;
+    }
+  }
+  // hs-CRP / CRP ≥1.0 (backend: high 1.0 — AHA/CDC: 1-3 = moderate CV risk).
   if (/(\bhs-?crp\b|\bcrp\b|c-reactive protein|high sensitivity c)/.test(n) && value >= 1.0 && value < 3)
     return 'Detectable inflammation — track and reduce.';
-  // Homocysteine 10-15 (within standard <15)
+  // Homocysteine ≥10 — frontend-only (no backend rule yet).
   if (/homocysteine/.test(n) && value >= 10 && value < 15)
-    return 'High-normal homocysteine — B-vitamins help.';
-  // Uric acid 6.5-7.5 (within standard <8)
-  if (/uric acid/.test(n) && value > 6.5 && value < 8)
-    return 'Metabolic syndrome / gout signal worth tracking.';
-  // Vitamin D 30-40 (mild deficiency, within standard 30-100)
-  if (/(vitamin d|25-oh|25-hydroxy)/.test(n) && value >= 30 && value <= 40)
-    return 'Mild deficiency — fixable with supplementation.';
-  // Ferritin <50 (within standard, but functional iron deficiency band)
-  if (/^ferritin/.test(n) && value < 50)
-    return 'Low iron stores — early signal before anemia shows.';
+    return 'Borderline-high homocysteine — B-vitamins help.';
+  // Uric acid: borderline-high if above sex-stratified threshold (backend:
+  // male >6.0, female >5.0).
+  if (/uric acid/.test(n)) {
+    const highCeil = isMale ? 6.0 : isFemale ? 5.0 : 6.0;
+    if (value > highCeil && value < 8) {
+      return 'Borderline-high uric acid — metabolic-syndrome / gout signal.';
+    }
+  }
+  // Vitamin D 30–40 (backend: low 40 — anything below 40 is borderline-low).
+  if (/(vitamin d|25-oh|25-hydroxy)/.test(n) && value >= 30 && value < 40)
+    return 'Borderline-low vitamin D — fixable with supplementation.';
+  // Ferritin: borderline-low if below sex/age-stratified threshold
+  // (backend: male <75; female age≥50: <75; female age<50: <50).
+  if (/^ferritin/.test(n)) {
+    const ageNum = age ?? 35;
+    const lowFloor = isMale ? 75 : (ageNum >= 50 ? 75 : 50);
+    if (value < lowFloor && value >= 30) {
+      return 'Borderline-low iron stores — early signal before anemia shows.';
+    }
+  }
+  // TSH 2.0–2.5 (backend: high 2.0 — borderline-high above this; standard
+  // lab range goes to 4.5, but functional optimal is ≤2.0).
+  if (/\btsh\b|thyroid stimulating/.test(n) && value > 2.0 && value <= 2.5)
+    return 'Borderline-high TSH — early thyroid-pattern drift signal.';
+  // Testosterone (male only): borderline-low for symptoms-driven workup
+  // (backend: low age≤40: 600, age>40: 500).
+  if (isMale && /\btestosterone\b/.test(n) && !/free|shbg/.test(n)) {
+    const ageNum = age ?? 35;
+    const lowFloor = ageNum <= 40 ? 600 : 500;
+    if (value < lowFloor && value >= 264) {
+      return 'Borderline-low testosterone — full hormonal panel worth running.';
+    }
+  }
+
   return null;
 }
 
@@ -954,6 +1027,8 @@ function computeFlag(
   stdLow?: number | null,
   stdHigh?: number | null,
   markerName?: string,
+  sex?: string | null,
+  age?: number | null,
 ): string {
   void _range; // optimal range still stored for chart bands but no longer drives flag
   const name = markerName ?? '';
@@ -972,8 +1047,10 @@ function computeFlag(
     return margin > 0.25 ? 'critical_low' : 'low';
   }
 
-  // Within standard range — check Watch list
-  const watchReason = checkWatchList(value, name);
+  // Within standard range — check Watch list (sex/age-aware so sex-
+  // stratified markers like ferritin / HDL / uric acid / testosterone
+  // resolve correctly).
+  const watchReason = checkWatchList(value, name, sex, age);
   if (watchReason) return 'watch';
   return 'healthy';
 }

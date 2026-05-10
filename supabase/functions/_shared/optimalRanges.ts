@@ -1,19 +1,31 @@
 // supabase/functions/_shared/optimalRanges.ts
 //
-// PHASE 7 — OPTIMAL RANGE STRATIFICATION
-// ======================================
-// "Normal" lab ranges are calibrated to 95% of the population — including
-// the chronically-suboptimal 80%. OPTIMAL ranges reflect what's biologically
-// best for someone of this age + sex, not just "not pathologically off."
+// WATCH-TIER THRESHOLD REGISTRY
+// =============================
+// "Normal" lab reference ranges are calibrated to 95% of the population —
+// including the chronically-borderline 80%. This module surfaces a Watch
+// tier when a value is INSIDE the lab's reference range but pressed
+// against either edge — the borderline-detection signal CauseHealth
+// surfaces ("borderline-low" / "borderline-high" — never "optimal").
 //
-// This module surfaces a Watch tier when a value is in the lab's "normal"
-// range but outside the OPTIMAL range. The user sees:
-//   "Your ferritin is 42 — labs say normal (15-200), but optimal for males
-//   your age is 75-150. Low-normal ferritin drives fatigue + hair loss."
+// FRONTEND/BACKEND RULE PARITY (audit 2026-05-10):
+// ════════════════════════════════════════════════════════════════════════
+// The frontend's checkWatchList() in src/store/labUploadStore.ts uses
+// the SAME thresholds when stamping the optimal_flag at upload time.
+// recomputeFlag() below is the analysis-time mirror that derives flags
+// fresh from value + reference range + these rules. The two MUST stay
+// in sync — drift here was the root cause of stale-flag bugs (Evan's
+// CRP 0.5 mg/L stamped 'watch' under an old frontend rule that didn't
+// match the backend's >1.0 mg/L threshold).
+//
+// When you change a threshold here, change checkWatchList() to match.
+// There's a parity comment in that file too with the canonical table.
+// ════════════════════════════════════════════════════════════════════════
 //
 // Sources:
-//   AACE Optimal Ranges, Bredesen Aging Protocol, Function Health reference
-//   ranges, InsideTracker population percentile standards.
+//   AACE / Endocrine Society guidelines, AHA/CDC, ADA, Bredesen Aging
+//   Protocol, Function Health reference ranges, InsideTracker population
+//   percentile standards.
 
 export interface OptimalRange {
   marker: RegExp;
