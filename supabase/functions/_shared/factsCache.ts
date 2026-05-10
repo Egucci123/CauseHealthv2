@@ -48,12 +48,17 @@ import { buildPlan, type ClinicalFacts, type PatientInput } from './buildPlan.ts
 // out_high) using the lab's own reference range. Wired refLow/refHigh
 // from standard_low/standard_high in DB through the v2 normalize
 // functions (was a column-name bug — refLow always null pre-fix).
-// Added 3 borderline-correlation rules:
-//   - liver_early_stress_pattern (≥2 of ALT/AST/GGT high-side)
-//   - early_insulin_resistance_pattern (glucose+lipid both drifting)
-//   - b12_functional_deficiency (B12 low-side + hcy high OR neuro sx)
-// Connects-the-dots across multiple borderline values + symptoms.
-export const RULE_LIBRARY_VERSION = '2026-05-10-4';
+//
+// 2026-05-10-5: replaced 3 hand-coded borderline-correlation rules
+// with ONE universal system-drift detector. Adds markerSystems.ts
+// (marker → body-system taxonomy) and detectSystemDrift() that fires
+// "Early {system} drift" cards for any system with ≥ 2 markers
+// pressed to the same side of the lab's reference range. No per-
+// pattern hand-coding. Dedups against named-pattern rules that
+// already cover the same system. Universal: new marker added to a
+// system → automatically participates; new system added → automatic
+// new card. The detection routine itself never changes.
+export const RULE_LIBRARY_VERSION = '2026-05-10-5';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;

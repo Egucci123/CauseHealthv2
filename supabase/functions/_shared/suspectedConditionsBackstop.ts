@@ -23,6 +23,7 @@
 import { hasCondition } from './conditionAliases.ts';
 import { isOnMed } from './medicationAliases.ts';
 import { detectBorderlineZone, type BorderlineZone } from './borderlineDetector.ts';
+import { MARKER_SYSTEMS, type MarkerSystem } from './markerSystems.ts';
 
 export interface SuspectedConditionEntry {
   /** Stable cross-surface key — e.g., 'nafld', 'osa', 'hemoconcentration'.
@@ -1003,136 +1004,13 @@ const RULES: BackstopRule[] = [
   },
 
   // ════════════════════════════════════════════════════════════════════
-  // BORDERLINE-PATTERN CORRELATION RULES
+  // (Generic borderline-pattern correlation moved to the universal
+  // system-drift detector — see detectSystemDrift below the RULES array.
+  // The named-pattern rules above remain for specific clinical syndromes
+  // with curated evidence + confirmatory workups; the system-drift
+  // detector handles every remaining "marker cluster pressed to one
+  // side" case automatically, without per-pattern hand-coding.)
   // ════════════════════════════════════════════════════════════════════
-  // These rules connect-the-dots across multiple markers that are each
-  // INSIDE the lab's reference range but pressed against either edge —
-  // the kind of pattern a routine doctor read would call "in range" but
-  // actually represents a coherent early-detection signal. Universal
-  // across every patient and every CBC + CMP + lipid panel.
-  //
-  // Naming convention: "Early X pattern (rule-out before Y develops)"
-  // — soft framing, moderate confidence, recommends the appropriate
-  // confirmatory workup. Never says "you have X."
-
-  // ── Liver early-stress pattern (rule-out NAFLD before LFTs flag) ──
-  {
-    key: 'liver_early_stress_pattern',
-    alreadyRaisedIf: [/nafld|fatty liver|nash/i, /liver early stress/i, /hepatobiliary/i, /hepatic stress/i],
-    skipIfDx: ['nafld', 'fatty_liver', 'nash', 'hepatitis'],
-    detect: (ctx) => {
-      const alt = markBorderline(ctx.labValues, [/^alt\b|^sgpt\b|^alanine aminotransferase\b/i]);
-      const ast = markBorderline(ctx.labValues, [/^ast\b|^sgot\b|^aspartate aminotransferase\b/i]);
-      const ggt = markBorderline(ctx.labValues, [/^ggt\b|^gamma[\s-]?glutamyl/i]);
-      // Need at least 2 of {ALT, AST, GGT} pressing the high side.
-      const hits = [alt, ast, ggt].filter(m => m && m.isHighSide).length;
-      if (hits < 2) return null;
-      const ev: string[] = [];
-      if (alt?.isHighSide) ev.push(`ALT ${alt.value} (${alt.zone === 'out_high' ? 'above range' : 'borderline-high'})`);
-      if (ast?.isHighSide) ev.push(`AST ${ast.value} (${ast.zone === 'out_high' ? 'above range' : 'borderline-high'})`);
-      if (ggt?.isHighSide) ev.push(`GGT ${ggt.value} (${ggt.zone === 'out_high' ? 'above range' : 'borderline-high'})`);
-      return {
-        name: 'Early liver-stress pattern (rule-out NAFLD / hepatobiliary)',
-        category: 'gi',
-        confidence: 'moderate',
-        evidence: `${ev.join(', ')}. Multiple liver enzymes pressing the upper end of normal — fits early hepatic stress, often from fatty liver, alcohol, or medication metabolism. Worth confirming with imaging before it progresses.`,
-        confirmatory_tests: ['Liver Ultrasound', 'GGT (if not done)', 'Fasting Insulin + HOMA-IR', 'AST/ALT ratio', 'FibroScan if available'],
-        icd10: 'R74.0',
-        what_to_ask_doctor: "My liver enzymes are pressed to the high end of normal. Can we get a liver ultrasound and check fasting insulin to rule out fatty liver before it progresses?",
-        source: 'deterministic',
-      };
-    },
-  },
-
-  // ── Insulin resistance — early metabolic drift (rule-out before A1c) ──
-  // Catches the population whose A1c hasn't crossed 5.7 yet but whose
-  // fasting glucose is already drifting up + lipid pattern fits IR
-  // (high TG, low HDL). Anchored on borderline detection so it works
-  // for any user without curated optimal ranges per marker.
-  {
-    key: 'early_insulin_resistance_pattern',
-    alreadyRaisedIf: [/insulin resistance/i, /metabolic syndrome/i, /pre-?diab/i, /atherogenic dyslipid/i],
-    skipIfDx: ['type_2_diabetes', 'prediabetes', 'metabolic_syndrome'],
-    detect: (ctx) => {
-      const glu = markBorderline(ctx.labValues, [/^(?:fasting\s+)?glucose(?:,?\s*(?:serum|plasma|fasting|random))?$/i]);
-      const a1c = markBorderline(ctx.labValues, [/^(?:hemoglobin\s+a1c|hba1c|a1c)$/i]);
-      const tg = markBorderline(ctx.labValues, [/^triglycerides?$/i]);
-      const hdl = markBorderline(ctx.labValues, [/^hdl(?:\s*cholesterol)?$/i]);
-
-      // Glucose-side signal: fasting glucose borderline-high (90+) OR
-      // A1c borderline-high (5.4+) — already-overt diabetes/prediabetes
-      // is filtered by skipIfDx and by the existing diabetes rule.
-      const glucoseSignal = (glu?.isHighSide ?? false) || (a1c?.isHighSide ?? false);
-      // Lipid-side signal: TG high-side OR HDL low-side.
-      const lipidSignal = (tg?.isHighSide ?? false) || (hdl?.isLowSide ?? false);
-      if (!glucoseSignal || !lipidSignal) return null;
-
-      const ev: string[] = [];
-      if (glu?.isHighSide) ev.push(`fasting glucose ${glu.value} (borderline-high)`);
-      if (a1c?.isHighSide) ev.push(`A1c ${a1c.value}% (borderline-high)`);
-      if (tg?.isHighSide) ev.push(`triglycerides ${tg.value} (borderline-high)`);
-      if (hdl?.isLowSide) ev.push(`HDL ${hdl.value} (borderline-low)`);
-
-      return {
-        name: 'Early insulin-resistance pattern (rule-out before prediabetes develops)',
-        category: 'metabolic',
-        confidence: 'moderate',
-        evidence: `${ev.join(', ')}. Glucose marker plus lipid pattern both drifting in the insulin-resistance direction — pancreas working harder to keep blood sugar in range. Caught early, this is fully reversible with diet + sleep + movement before A1c crosses into prediabetes.`,
-        confirmatory_tests: ['Fasting Insulin + HOMA-IR', 'ApoB', 'Lp(a) once-in-lifetime', 'hs-CRP'],
-        icd10: 'E88.81',
-        what_to_ask_doctor: "My fasting glucose is borderline-high and my lipid pattern is drifting. Can we add fasting insulin (HOMA-IR) and ApoB to see if early insulin resistance is what's brewing?",
-        source: 'deterministic',
-      };
-    },
-  },
-
-  // ── Functional B12 deficiency (rule-out before neuro symptoms) ──
-  // B12 200–400 is "in range" by lab refs but functionally insufficient
-  // for many people, especially with elevated homocysteine. Universal
-  // rule: borderline-low B12 + (homocysteine borderline-high OR neuro
-  // symptoms) → soft pattern card recommending MMA confirmation.
-  {
-    key: 'b12_functional_deficiency',
-    alreadyRaisedIf: [/b12 deficien/i, /pernicious anemia/i, /macrocytic/i, /functional b12/i],
-    skipIfDx: ['b12_deficiency', 'pernicious_anemia'],
-    detect: (ctx) => {
-      const b12 = markBorderline(ctx.labValues, [/^vitamin b[\s-]?12$|^b12$|^cobalamin$/i]);
-      const hcy = markBorderline(ctx.labValues, [/^homocysteine\b/i]);
-      const mma = markBorderline(ctx.labValues, [/^methylmalonic\b|^mma\b/i]);
-
-      // Need B12 borderline-low. If MMA is already elevated, the overt
-      // b12_deficiency rule fires — let it. We only fire when the
-      // signal is borderline.
-      if (!b12 || !b12.isLowSide) return null;
-      // Avoid double-firing when MMA confirms outright deficiency.
-      if (mma?.isHighSide) return null;
-
-      const neuroSx = symptom(ctx.symptomsLower, [
-        /tingling/i, /numb/i, /pins and needles/i, /neuropath/i,
-        /brain fog/i, /memory/i, /forget|concentr|focus/i,
-        /fatigue/i, /tired/i, /low energy/i,
-      ]);
-      const hcyHigh = !!hcy?.isHighSide;
-      // Need supporting signal: elevated homocysteine OR neuro/cognitive symptoms.
-      if (!hcyHigh && !neuroSx) return null;
-
-      const ev: string[] = [];
-      ev.push(`B12 ${b12.value} (${b12.zone === 'out_low' ? 'below range' : 'borderline-low'})`);
-      if (hcyHigh) ev.push(`homocysteine ${hcy!.value} (borderline-high)`);
-      if (neuroSx) ev.push('neurological/cognitive symptoms reported');
-
-      return {
-        name: 'Functional B12 deficiency pattern (rule-out before overt anemia)',
-        category: 'nutrition',
-        confidence: 'moderate',
-        evidence: `${ev.join(', ')}. Serum B12 is at the low end of "normal" but symptoms or homocysteine suggest the actual tissue level is insufficient. Confirmed via MMA — that's the test that catches functional deficiency the basic B12 number misses.`,
-        confirmatory_tests: ['Methylmalonic Acid (MMA)', 'Homocysteine (if not done)', 'Folate (RBC folate preferred)', 'CBC with reticulocyte count'],
-        icd10: 'E53.8',
-        what_to_ask_doctor: "My B12 is at the low end of normal and I have some symptoms. Can we run MMA and homocysteine to check whether my actual tissue B12 is low even though serum B12 reads in range?",
-        source: 'deterministic',
-      };
-    },
-  },
 ];
 
 export function runSuspectedConditionsBackstop(input: {
@@ -1141,18 +1019,25 @@ export function runSuspectedConditionsBackstop(input: {
   conditionsLower: string;
   symptomsLower: string;
   medsLower: string;
-  labValues: Array<{ marker_name?: string; value?: number | string | null; unit?: string | null; optimal_flag?: string | null }>;
+  labValues: Array<{
+    marker_name?: string;
+    value?: number | string | null;
+    unit?: string | null;
+    optimal_flag?: string | null;
+    standard_low?: number | string | null;
+    standard_high?: number | string | null;
+  }>;
   aiSuspectedConditions: Array<{ name?: string }>;
 }): SuspectedConditionEntry[] {
   const aiNames = (input.aiSuspectedConditions ?? [])
     .map(c => String(c?.name ?? '').toLowerCase());
   const out: SuspectedConditionEntry[] = [];
+  // Phase 1 — named clinical pattern rules (NAFLD, PCOS, OSA, Hashimoto's,
+  // T2D-range, Iron Deficiency Anemia, etc.). High-curated content with
+  // specific confirmatory workups and ICD-10 codes.
   for (const rule of RULES) {
-    // Skip if user has the dx
     if (rule.skipIfDx.some(k => hasCondition(input.conditionsLower, k))) continue;
-    // Skip if AI already raised it
     if (rule.alreadyRaisedIf.some(re => aiNames.some(n => re.test(n)))) continue;
-    // Run detector
     const entry = rule.detect({
       age: input.age,
       sex: input.sex,
@@ -1162,13 +1047,166 @@ export function runSuspectedConditionsBackstop(input: {
       labValues: input.labValues,
       aiSuspectedNamesLower: aiNames,
     });
-    if (entry) {
-      // Stamp the rule's key onto the entry so downstream surfaces can
-      // route by 'nafld' / 'osa' / etc. — independent of the human-
-      // readable name (which the AI may rephrase). Universal across
-      // every patient, every detector.
-      out.push({ ...entry, key: rule.key });
-    }
+    if (entry) out.push({ ...entry, key: rule.key });
   }
+
+  // Phase 2 — universal system-drift detector. Runs once across all
+  // body systems defined in markerSystems.ts. For each system with
+  // ≥ 2 markers pressed to the same side of the lab's reference range,
+  // emits ONE generic "Early {system} drift" card. No per-pattern
+  // hand-coding required.
+  //
+  // Dedup: if a Phase-1 named rule already covered this system (e.g.,
+  // NAFLD covers 'liver', PCOS covers 'female_hormone', Iron-Deficiency-
+  // Anemia covers 'iron_hematology'), the system-drift card is
+  // suppressed for that system. The named rules win because their
+  // content is more specific.
+  const driftEntries = detectSystemDrift({
+    age: input.age,
+    sex: input.sex,
+    conditionsLower: input.conditionsLower,
+    symptomsLower: input.symptomsLower,
+    medsLower: input.medsLower,
+    labValues: input.labValues,
+    alreadyFiredKeys: out.map(e => e.key ?? ''),
+    aiSuspectedNamesLower: aiNames,
+  });
+  out.push(...driftEntries);
+
+  return out;
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// UNIVERSAL SYSTEM-DRIFT DETECTOR
+// ──────────────────────────────────────────────────────────────────────
+// One detection routine, no per-pattern rules. For each body system in
+// markerSystems.ts, classify every marker against the lab's own
+// reference range. If 2+ markers in the same system are pressed to the
+// same side (high or low), emit a generic "Early {system} drift" card.
+//
+// Universal coverage: NEW marker added to the registry → automatically
+// participates. NEW system added → automatically gets a card. The
+// detection routine itself never changes.
+//
+// Cards intentionally use generic "early drift / worth tracking"
+// framing rather than attempting to name a specific condition. Specific
+// named conditions are covered by the Phase-1 named-pattern rules
+// (NAFLD, PCOS, OSA, Hashimoto's, etc.) when their full evidence set
+// matches. The system-drift card is the safety net for the long tail.
+
+/** Map from system id → list of named-pattern rule keys that already
+ *  cover that system. If any of these keys already fired for the
+ *  patient, the generic system-drift card for that system is suppressed
+ *  to avoid duplicate cards.
+ *
+ *  Adding a new named-pattern rule? Map its key to its system here.
+ *  Universal: the system-drift detector itself doesn't need to change. */
+const SYSTEM_NAMED_RULE_DEDUP: Record<string, string[]> = {
+  liver:               ['nafld'],
+  kidney:              [],
+  glucose_metabolism:  ['t2d_range', 'prediabetes_range', 'insulin_resistance_dyslipidemia'],
+  lipid:               ['ldl_high_for_age', 'particle_pattern_atherogenic', 'inflammation_cv_amplifier'],
+  thyroid:             ['hashimoto_or_hypothyroid', 'subclinical_hypothyroidism'],
+  iron_hematology:     ['iron_deficiency_anemia', 'hemoconcentration_dehydration', 'b12_deficiency', 'hemochromatosis', 'early_hypochromic_pattern'],
+  inflammation:        ['inflammation_cv_amplifier', 'pmr_age_50plus'],
+  b_vitamin:           ['b12_deficiency'],
+  male_hormone:        ['low_t_male'],
+  female_hormone:      ['pcos', 'postmenopausal_pattern'],
+};
+
+interface SystemDriftCtx {
+  age: number | null;
+  sex: string | null;
+  conditionsLower: string;
+  symptomsLower: string;
+  medsLower: string;
+  labValues: Array<{
+    marker_name?: string;
+    value?: number | string | null;
+    unit?: string | null;
+    optimal_flag?: string | null;
+    standard_low?: number | string | null;
+    standard_high?: number | string | null;
+  }>;
+  alreadyFiredKeys: string[];
+  aiSuspectedNamesLower: string[];
+}
+
+function detectSystemDrift(ctx: SystemDriftCtx): SuspectedConditionEntry[] {
+  const out: SuspectedConditionEntry[] = [];
+
+  for (const sys of MARKER_SYSTEMS) {
+    // Skip this system if a named-pattern rule already covered it.
+    const dedupKeys = SYSTEM_NAMED_RULE_DEDUP[sys.system] ?? [];
+    const alreadyCovered = dedupKeys.some(k => ctx.alreadyFiredKeys.includes(k));
+    if (alreadyCovered) continue;
+
+    // Skip if AI already raised something for this system (loose match
+    // on the system label).
+    const aiCoversSystem = ctx.aiSuspectedNamesLower.some(n =>
+      n.includes(sys.system.replace(/_/g, ' ')) || n.includes(sys.label.toLowerCase()),
+    );
+    if (aiCoversSystem) continue;
+
+    // Find every marker in this system that has a measurable value AND
+    // a usable reference range, classify each against borderline zones.
+    const classified = ctx.labValues
+      .filter(v => sys.markers.some(re => re.test(String(v.marker_name ?? ''))))
+      .map(v => {
+        const num = typeof v.value === 'number' ? v.value : parseFloat(String(v.value ?? ''));
+        if (!Number.isFinite(num)) return null;
+        const r = detectBorderlineZone({
+          marker_name: String(v.marker_name ?? ''),
+          value: num,
+          standard_low: v.standard_low,
+          standard_high: v.standard_high,
+        });
+        return r.zone === 'unknown' ? null : { marker: String(v.marker_name ?? ''), value: num, zone: r.zone };
+      })
+      .filter((x): x is { marker: string; value: number; zone: BorderlineZone } => x !== null);
+
+    const highSide = classified.filter(c => c.zone === 'borderline_high' || c.zone === 'out_high');
+    const lowSide  = classified.filter(c => c.zone === 'borderline_low'  || c.zone === 'out_low');
+
+    // Need ≥ 2 markers on the SAME side to emit a system-level drift card.
+    // A single marker drifting alone fires as an outlier on the lab card,
+    // not as a system-level pattern.
+    let direction: 'high' | 'low' | null = null;
+    let driftMarkers: typeof classified = [];
+    if (highSide.length >= 2 && highSide.length >= lowSide.length) {
+      direction = 'high';
+      driftMarkers = highSide;
+    } else if (lowSide.length >= 2) {
+      direction = 'low';
+      driftMarkers = lowSide;
+    }
+    if (!direction) continue;
+
+    // Only count out-of-range hits if there's at least one truly
+    // borderline marker, so we don't double-up on already-overt findings
+    // that the named-pattern rules / outlier list already surface.
+    const hasBorderline = driftMarkers.some(m => m.zone === 'borderline_high' || m.zone === 'borderline_low');
+    if (!hasBorderline) continue;
+
+    const ev = driftMarkers
+      .map(m => `${m.marker} ${m.value} (${m.zone === 'out_high' ? 'above range' : m.zone === 'out_low' ? 'below range' : direction === 'high' ? 'borderline-high' : 'borderline-low'})`)
+      .join(', ');
+
+    const directionWord = direction === 'high' ? 'pressed to the high end' : 'pressed to the low end';
+    const driftWord = direction === 'high' ? 'climbing' : 'dropping';
+
+    out.push({
+      key: `system_drift_${sys.system}_${direction}`,
+      name: `${sys.label} — multiple markers ${directionWord} of normal range`,
+      category: sys.system as SuspectedConditionEntry['category'],
+      confidence: 'moderate',
+      evidence: `${ev}. ${driftMarkers.length} markers in this system are ${direction === 'high' ? 'borderline-high or above' : 'borderline-low or below'} the lab's own reference range. ${sys.systemRationale} Caught while still inside normal range, this is the easiest window to act on.`,
+      confirmatory_tests: sys.confirmatoryTests,
+      icd10: sys.icd10,
+      what_to_ask_doctor: sys.questionForDoctor,
+      source: 'deterministic',
+    });
+  }
+
   return out;
 }
