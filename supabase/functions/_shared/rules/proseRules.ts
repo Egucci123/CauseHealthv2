@@ -173,8 +173,8 @@ function buildOutlierProse(o: LabOutlierFact): CanonicalOutlier {
       oneLiner = `Vitamin D ${v} ${u} is severely deficient.`;
       meaning = `Severe deficiency drives fatigue, mood, immune function, and bone health. D3 4000 IU/day typically raises levels 10-15 ng/mL in 12 weeks.`;
     } else {
-      oneLiner = `Vitamin D ${v} ${u} is below the optimal range.`;
-      meaning = `Below-optimal vitamin D contributes to fatigue, mood, and immune dysregulation. D3 4000 IU/day with breakfast typically restores in 12 weeks.`;
+      oneLiner = `Vitamin D ${v} ${u} is in the in-range low end.`;
+      meaning = `In-range-low vitamin D contributes to fatigue, mood, and immune dysregulation. D3 4000 IU/day with breakfast typically restores in 12 weeks.`;
     }
   } else if (/a1c|hba1c/i.test(m)) {
     if (v >= 6.5) {
@@ -197,7 +197,7 @@ function buildOutlierProse(o: LabOutlierFact): CanonicalOutlier {
     oneLiner = `${m} ${v} ${u} is above the normal range.`;
     meaning = `Elevated red-cell markers can mean dehydration (concentrating the blood), nocturnal low oxygen, or a primary blood disorder — workup distinguishes them.`;
   } else if (/ferritin/i.test(m) && (flag === 'low' || flag === 'critical_low')) {
-    oneLiner = `Ferritin ${v} ${u} is below the optimal range.`;
+    oneLiner = `Ferritin ${v} ${u} is in the in-range low end.`;
     meaning = `Low ferritin often drives fatigue, hair shedding, and restless legs before hemoglobin drops. Iron repletion + cause workup are next.`;
   } else if (/hs[\s-]?crp|c[\s-]?reactive/i.test(m)) {
     if (v > 3.0) {

@@ -12,7 +12,7 @@
 //   your age is 75-150. Low-normal ferritin drives fatigue + hair loss."
 //
 // Sources:
-//   AACE Optimal Ranges, Bredesen Optimal Aging, Function Health reference
+//   AACE Optimal Ranges, Bredesen Aging Protocol, Function Health reference
 //   ranges, InsideTracker population percentile standards.
 
 export interface OptimalRange {
@@ -21,7 +21,7 @@ export interface OptimalRange {
   low?: number;
   high?: number;
   unit: string;
-  rationale: string;       // why this is the optimal range
+  rationale: string;       // why this is the watch-tier range
   source: string;          // citation
 }
 
@@ -51,10 +51,10 @@ function num(v: any): number | null {
  *   1. The marker matches by regex
  *   2. The patient's demographic profile fits the rule's filter
  *   3. The lab value is in the lab's "normal" range
- *   4. The value is OUTSIDE the optimal range
+ *   4. The value is OUTSIDE the watch-tier range
  *
  * In that case we emit a Watch flag so the wellness plan + analysis
- * call out the suboptimal value.
+ * call out the in-range-low or in-range-high value.
  */
 function getRulesForPatient(ctx: DemographicContext): OptimalRange[] {
   const isMale = String(ctx.sex).toLowerCase() === 'male';
@@ -71,7 +71,7 @@ function getRulesForPatient(ctx: DemographicContext): OptimalRange[] {
       low: isMale ? 75 : (ctx.age >= 50 ? 75 : 50),
       high: 150,
       unit: 'ng/mL',
-      rationale: 'Optimal ferritin for energy, hair retention, and exercise tolerance. Low-normal ferritin (<50 menstruating, <75 male) drives fatigue, hair loss, restless legs even with normal Hgb.',
+      rationale: 'Watch-tier threshold ferritin for energy, hair retention, and exercise tolerance. Low-normal ferritin (<50 menstruating, <75 male) drives fatigue, hair loss, restless legs even with normal Hgb.',
       source: 'AACE 2023 / Function Health reference range',
     },
 
@@ -81,7 +81,7 @@ function getRulesForPatient(ctx: DemographicContext): OptimalRange[] {
       low: 40,
       high: 60,
       unit: 'ng/mL',
-      rationale: 'Optimal Vit D (40-60 ng/mL) per Endocrine Society + Vitamin D Council. Lab normal (30+) misses immune/mood/bone effects of suboptimal D.',
+      rationale: 'Watch-tier threshold Vit D (40-60 ng/mL) per Endocrine Society + Vitamin D Council. Lab normal (30+) misses immune/mood/bone effects of in-range-low D.',
       source: 'Endocrine Society 2011 / Vitamin D Council',
     },
 
@@ -90,8 +90,8 @@ function getRulesForPatient(ctx: DemographicContext): OptimalRange[] {
       marker: /\b(hemoglobin a1c|hba1c|^a1c$)\b/i,
       high: 5.4,
       unit: '%',
-      rationale: 'Optimal A1c <5.4% (lower-normal). 5.5-5.6% is Watch tier (early dysglycemia); 5.7+ is prediabetic per ADA.',
-      source: 'ADA 2024 / Bredesen Optimal Aging',
+      rationale: 'Watch-tier threshold A1c <5.4% (in-range low). 5.5-5.6% is Watch tier (early dysglycemia); 5.7+ is prediabetic per ADA.',
+      source: 'ADA 2024 / Bredesen Aging Protocol',
     },
 
     // ── FASTING GLUCOSE — universal optimal ───────────────────────────
@@ -99,7 +99,7 @@ function getRulesForPatient(ctx: DemographicContext): OptimalRange[] {
       marker: /\bfasting\s*glucose|^glucose$/i,
       high: 90,
       unit: 'mg/dL',
-      rationale: 'Optimal fasting glucose <90 mg/dL. Lab normal (≤99) includes the pre-diabetic glide path (95-99); modern endo targets 80-90.',
+      rationale: 'Watch-tier threshold fasting glucose <90 mg/dL. Lab normal (≤99) includes the pre-diabetic glide path (95-99); modern endo targets 80-90.',
       source: 'AACE 2024 / functional medicine consensus',
     },
 
@@ -109,8 +109,8 @@ function getRulesForPatient(ctx: DemographicContext): OptimalRange[] {
       low: isMale ? 50 : 60,
       unit: 'mg/dL',
       rationale: isMale
-        ? 'Optimal HDL for men ≥50 mg/dL (cardioprotective threshold). Lab "normal" >40 for men misses moderate-CV-risk patients.'
-        : 'Optimal HDL for women ≥60 mg/dL (cardioprotective threshold).',
+        ? 'Watch-tier threshold HDL for men ≥50 mg/dL (cardioprotective threshold). Lab "normal" >40 for men misses moderate-CV-risk patients.'
+        : 'Watch-tier threshold HDL for women ≥60 mg/dL (cardioprotective threshold).',
       source: 'AHA 2019 / Mayo Clinic reference',
     },
 
@@ -119,7 +119,7 @@ function getRulesForPatient(ctx: DemographicContext): OptimalRange[] {
       marker: /\btriglyceride/i,
       high: 100,
       unit: 'mg/dL',
-      rationale: 'Optimal TG <100 mg/dL (insulin-sensitive metabolism). Lab normal (≤149) includes the IR-development zone (100-149).',
+      rationale: 'Watch-tier threshold TG <100 mg/dL (insulin-sensitive metabolism). Lab normal (≤149) includes the IR-development zone (100-149).',
       source: 'AHA 2019 / NLA position statement',
     },
 
@@ -128,7 +128,7 @@ function getRulesForPatient(ctx: DemographicContext): OptimalRange[] {
       marker: /\bldl\b/i,
       high: 100,
       unit: 'mg/dL',
-      rationale: 'Optimal LDL <100 mg/dL (general population) or <70 for high-risk. Lab "borderline" ≤129 doesn\'t match modern preventive cardiology targets.',
+      rationale: 'Watch-tier threshold LDL <100 mg/dL (general population) or <70 for high-risk. Lab "borderline" ≤129 doesn\'t match modern preventive cardiology targets.',
       source: 'AHA/ACC 2018 lipid guidelines',
     },
 
@@ -137,7 +137,7 @@ function getRulesForPatient(ctx: DemographicContext): OptimalRange[] {
       marker: /\bhs[-\s]?crp\b|c.reactive protein/i,
       high: 1.0,
       unit: 'mg/L',
-      rationale: 'Optimal hs-CRP <1.0 mg/L (low CV risk per AHA/CDC). 1-3 mg/L is moderate risk; >3 high.',
+      rationale: 'Watch-tier threshold hs-CRP <1.0 mg/L (low CV risk per AHA/CDC). 1-3 mg/L is moderate risk; >3 high.',
       source: 'AHA/CDC 2003 / Ridker',
     },
 
@@ -153,8 +153,8 @@ function getRulesForPatient(ctx: DemographicContext): OptimalRange[] {
       low: 0.5,
       high: 2.0,
       unit: 'mIU/L',
-      rationale: 'Optimal TSH 0.5–2.0 mIU/L (functional optimal). Lab normal extends to 4.5; values 2.0–4.5 are tracked as watch-tier and get the antibody workup with thyroid-pattern symptoms.',
-      source: 'AACE 2014 / Endocrine Society + functional-medicine optimal',
+      rationale: 'Watch-tier threshold TSH 0.5–2.0 mIU/L (functional watch-tier). Lab normal extends to 4.5; values 2.0–4.5 are tracked as watch-tier and get the antibody workup with thyroid-pattern symptoms.',
+      source: 'AACE 2014 / Endocrine Society + functional-medicine reference',
     },
 
     // ── Vitamin B12 — universal optimal ──────────────────────────────
@@ -162,7 +162,7 @@ function getRulesForPatient(ctx: DemographicContext): OptimalRange[] {
       marker: /\bvitamin b[\s-]?12|^b12$|cobalamin\b/i,
       low: 500,
       unit: 'pg/mL',
-      rationale: 'Optimal serum B12 >500 pg/mL. Lab normal (≥232) includes the "borderline-low" zone (200-400) where MMA + Homocysteine should confirm tissue-level status.',
+      rationale: 'Watch-tier threshold serum B12 >500 pg/mL. Lab normal (≥232) includes the "borderline-low" zone (200-400) where MMA + Homocysteine should confirm tissue-level status.',
       source: 'AACE 2014 / Pernicious Anemia Society',
     },
 
@@ -173,8 +173,8 @@ function getRulesForPatient(ctx: DemographicContext): OptimalRange[] {
       high: 1200,
       unit: 'ng/dL',
       rationale: ctx.age <= 40
-        ? 'Optimal Total T ≥600 ng/dL for men under 40. Lab normal (264-916) includes low-normal range tied to fatigue, mood, weight resistance.'
-        : 'Optimal Total T ≥500 ng/dL for men 40+.',
+        ? 'Watch-tier threshold Total T ≥600 ng/dL for men under 40. Lab normal (264-916) includes low-normal range tied to fatigue, mood, weight resistance.'
+        : 'Watch-tier threshold Total T ≥500 ng/dL for men 40+.',
       source: 'AACE 2024 / AUA Testosterone Guidelines',
     }] : []),
 
@@ -184,8 +184,8 @@ function getRulesForPatient(ctx: DemographicContext): OptimalRange[] {
       high: isMale ? 6.0 : 5.0,
       unit: 'mg/dL',
       rationale: isMale
-        ? 'Optimal uric acid <6.0 mg/dL for men (gout threshold). Lab normal (≤7.2) includes elevated CV/renal risk zone.'
-        : 'Optimal uric acid <5.0 mg/dL for women.',
+        ? 'Watch-tier threshold uric acid <6.0 mg/dL for men (gout threshold). Lab normal (≤7.2) includes elevated CV/renal risk zone.'
+        : 'Watch-tier threshold uric acid <5.0 mg/dL for women.',
       source: 'ACR 2020 Gout Guidelines',
     },
 
@@ -202,28 +202,28 @@ function getRulesForPatient(ctx: DemographicContext): OptimalRange[] {
       low: 88,
       high: 95,
       unit: 'fL',
-      rationale: 'Optimal MCV 88–95 fL. Lab normal extends to 80–100; low-normal MCV (<88) is an early sign of microcytic / iron-deficient erythropoiesis before hemoglobin drops.',
-      source: 'Lab medicine consensus + functional optimal',
+      rationale: 'Watch-tier threshold MCV 88–95 fL. Lab normal extends to 80–100; low-normal MCV (<88) is an early sign of microcytic / iron-deficient erythropoiesis before hemoglobin drops.',
+      source: 'Lab medicine consensus + functional reference',
     },
     {
       marker: /^mean\s+corpuscular\s+hemoglobin$|^mch$/i,
       low: 28,
       unit: 'pg',
-      rationale: 'Optimal MCH ≥28 pg. Low MCH (hypochromia) is an early sign of iron deficiency or thalassemia trait — caught before anemia develops.',
+      rationale: 'Watch-tier threshold MCH ≥28 pg. Low MCH (hypochromia) is an early sign of iron deficiency or thalassemia trait — caught before anemia develops.',
       source: 'Lab medicine consensus',
     },
     {
       marker: /^mean\s+corpuscular\s+hemoglobin\s+concentration$|^mchc$/i,
       low: 33,
       unit: 'g/dL',
-      rationale: 'Optimal MCHC ≥33 g/dL. Low MCHC (hypochromia) often precedes overt iron-deficiency anemia and is reversible with iron repletion.',
+      rationale: 'Watch-tier threshold MCHC ≥33 g/dL. Low MCHC (hypochromia) often precedes overt iron-deficiency anemia and is reversible with iron repletion.',
       source: 'Lab medicine consensus',
     },
     {
       marker: /^rdw(?:[-\s]*cv)?$|^red\s+cell\s+distribution\s+width(?:\s+cv)?$/i,
       high: 13.0,
       unit: '%',
-      rationale: 'Optimal RDW-CV ≤13%. Elevated RDW reflects increased red-cell size variability — earliest CBC sign of disordered erythropoiesis (iron deficiency, B12/folate deficiency, mixed pattern).',
+      rationale: 'Watch-tier threshold RDW-CV ≤13%. Elevated RDW reflects increased red-cell size variability — earliest CBC sign of disordered erythropoiesis (iron deficiency, B12/folate deficiency, mixed pattern).',
       source: 'Lab medicine consensus',
     },
   ];
@@ -244,7 +244,7 @@ export interface OptimalFlag {
 
 /**
  * Scan a patient's labs and emit Watch flags for values that are in
- * the lab's "normal" range but outside the optimal range for the
+ * the lab's "normal" range but outside the watch-tier range for the
  * patient's age + sex. Universal — every patient gets the appropriate
  * subset of rules.
  */

@@ -190,6 +190,24 @@ async function runAnalysis(args: {
 // ──────────────────────────────────────────────────────────────────────
 // HELPERS
 // ──────────────────────────────────────────────────────────────────────
+/**
+ * Pick the right flag for a lab row. Prefer the tighter optimal_flag,
+ * but treat 'unknown' as missing — the optimal-range registry returns
+ * 'unknown' for markers without a curated optimal range, and the
+ * legacy `optimal_flag ?? standard_flag` only fired on null/undefined,
+ * leaving the flag stuck at 'unknown'. That silently filtered values
+ * out of the outlier ranker (Luba's A1c 7.9 / glucose 138 / LDL 106
+ * all had optimal_flag='unknown' or 'elevated' and disappeared from
+ * the priority-findings list).
+ */
+function pickFlag(l: any): string {
+  const opt = l?.optimal_flag;
+  const std = l?.standard_flag;
+  if (opt && opt !== 'unknown') return opt;
+  if (std) return std;
+  return 'normal';
+}
+
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -215,7 +233,7 @@ function normalizePatientInput(args: {
     marker: String(l?.marker_name ?? ''),
     value: l?.value ?? null,
     unit: String(l?.unit ?? ''),
-    flag: (l?.optimal_flag ?? l?.standard_flag ?? 'normal') as LabValue['flag'],
+    flag: pickFlag(l) as LabValue['flag'],
     refLow: l?.standard_low ?? l?.reference_low ?? null,
     refHigh: l?.standard_high ?? l?.reference_high ?? null,
     drawnAt: l?.created_at ?? null,

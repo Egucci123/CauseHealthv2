@@ -513,7 +513,7 @@ const RULES: BackstopRule[] = [
         name: 'Early hypochromic pattern (rule-out iron deficiency before anemia)',
         category: 'hematology',
         confidence: 'moderate',
-        evidence: `${ev.join(', ')}. Pattern fits early iron-deficient erythropoiesis — red cells are smaller and lighter than optimal even though hemoglobin is still in range. Worth ruling out with an iron panel before it progresses to overt anemia.`,
+        evidence: `${ev.join(', ')}. Pattern fits early iron-deficient erythropoiesis — red cells are smaller and lighter than expected even though hemoglobin is still in range. Worth ruling out with an iron panel before it progresses to overt anemia.`,
         confirmatory_tests: ['Iron Panel (Iron, TIBC, Transferrin Saturation, Ferritin)', 'Reticulocyte count', 'B12 + Folate (rule out mixed deficiency)'],
         icd10: 'E61.1',
         what_to_ask_doctor: "My MCV / MCH / MCHC are at the low end of normal. Can we run a full iron panel (iron, ferritin, TIBC, transferrin saturation) to see if iron stores are dropping before this turns into anemia?",
@@ -755,19 +755,20 @@ const RULES: BackstopRule[] = [
         moodIssues ? 'mood symptoms' : null,
       ].filter(Boolean).join(', ');
 
-      // TSH 2.5+ gets the AACE-recognized "grey zone" framing; 2.0–2.5
-      // gets a softer "above functional optimal" framing. Both share the
-      // same confirmatory-test list.
+      // TSH 2.5+ gets the "AACE grey zone" framing; 2.0–2.5 gets the
+      // softer "in-range high — borderline" framing. Both share the
+      // same confirmatory-test list. No "optimal" language — the
+      // product is borderline early-detection, not optimization.
       const isGreyZone = tsh.value >= 2.5;
       return {
         name: isGreyZone
           ? 'Thyroid pattern worth tracking (subclinical / early)'
-          : 'Thyroid function above functional optimal — worth tracking',
+          : 'Thyroid function — borderline-high TSH (in-range high)',
         category: 'endocrine',
         confidence: 'moderate',
         evidence: isGreyZone
           ? `TSH ${tsh.value} mIU/L is in the AACE grey zone (≥2.5) and you have ${sxCount} thyroid-pattern symptoms (${matched}). Worth ruling out early Hashimoto's with antibody testing.`
-          : `TSH ${tsh.value} mIU/L is above the functional optimal (<2.0) but inside the standard reference range, paired with ${sxCount} thyroid-pattern symptoms (${matched}). Not a diagnosis — a flag to track and to get the antibody workup if symptoms persist.`,
+          : `TSH ${tsh.value} mIU/L is borderline-high — inside the standard lab reference range (0.4–4.5) but pressed to the high end. Paired with ${sxCount} thyroid-pattern symptoms (${matched}). Not a diagnosis — a flag to track and to get the antibody workup if symptoms persist.`,
         confirmatory_tests: ['Thyroid Panel (TSH + Free T4 + Free T3)', 'TPO antibodies', 'Thyroglobulin antibodies (Tg-Ab)', 'Reverse T3'],
         icd10: 'E03.9',
         what_to_ask_doctor: "My TSH is on the high side and I have a few low-thyroid symptoms. Can we check Free T4, Free T3, and thyroid antibodies (TPO, Tg-Ab) to see if anything is brewing?",
@@ -1182,25 +1183,39 @@ function detectSystemDrift(ctx: SystemDriftCtx): SuspectedConditionEntry[] {
     }
     if (!direction) continue;
 
-    // Only count out-of-range hits if there's at least one truly
-    // borderline marker, so we don't double-up on already-overt findings
-    // that the named-pattern rules / outlier list already surface.
-    const hasBorderline = driftMarkers.some(m => m.zone === 'borderline_high' || m.zone === 'borderline_low');
-    if (!hasBorderline) continue;
+    // Fire on ≥ 2 markers on the same side regardless of borderline vs
+    // out-of-range. Earlier draft required at least one borderline marker
+    // to avoid "redundancy" with the outlier list — but for users with
+    // already-diagnosed conditions (T2D, NAFLD, etc.) the named-pattern
+    // rules skip via skipIfDx, leaving them with NO system-level summary
+    // even when their A1c is 7.9 and glucose is 138. The system-drift
+    // card is still useful for that population: "your blood-sugar markers
+    // are above range — here's the workup to discuss with your doctor."
 
     const ev = driftMarkers
       .map(m => `${m.marker} ${m.value} (${m.zone === 'out_high' ? 'above range' : m.zone === 'out_low' ? 'below range' : direction === 'high' ? 'borderline-high' : 'borderline-low'})`)
       .join(', ');
 
-    const directionWord = direction === 'high' ? 'pressed to the high end' : 'pressed to the low end';
-    const driftWord = direction === 'high' ? 'climbing' : 'dropping';
+    // Naming reflects severity. If most markers are out-of-range,
+    // headline as "above range" / "below range." If most are still
+    // borderline, headline as "pressed to the edge of normal range."
+    const outOfRangeCount = driftMarkers.filter(m => m.zone === 'out_high' || m.zone === 'out_low').length;
+    const isOvertlyOut = outOfRangeCount >= driftMarkers.length / 2;
+    const directionWordOvert = direction === 'high' ? 'above range' : 'below range';
+    const directionWordEdge  = direction === 'high' ? 'pressed to the high end of normal range' : 'pressed to the low end of normal range';
+    const headlineDir = isOvertlyOut ? directionWordOvert : directionWordEdge;
+    const evidenceTail = isOvertlyOut
+      ? `${driftMarkers.length} markers in this system are outside the lab's own reference range — actionable signal worth bringing to your doctor.`
+      : `${driftMarkers.length} markers in this system are pressed to the edge of the lab's own reference range. ${sys.systemRationale} Caught while still inside normal range, this is the easiest window to act on.`;
+    // Confidence: high when overtly out-of-range, moderate when borderline.
+    const confidence: 'high' | 'moderate' = isOvertlyOut ? 'high' : 'moderate';
 
     out.push({
       key: `system_drift_${sys.system}_${direction}`,
-      name: `${sys.label} — multiple markers ${directionWord} of normal range`,
+      name: `${sys.label} — multiple markers ${headlineDir}`,
       category: sys.system as SuspectedConditionEntry['category'],
-      confidence: 'moderate',
-      evidence: `${ev}. ${driftMarkers.length} markers in this system are ${direction === 'high' ? 'borderline-high or above' : 'borderline-low or below'} the lab's own reference range. ${sys.systemRationale} Caught while still inside normal range, this is the easiest window to act on.`,
+      confidence,
+      evidence: `${ev}. ${evidenceTail}`,
       confirmatory_tests: sys.confirmatoryTests,
       icd10: sys.icd10,
       what_to_ask_doctor: sys.questionForDoctor,

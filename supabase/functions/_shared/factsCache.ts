@@ -58,7 +58,35 @@ import { buildPlan, type ClinicalFacts, type PatientInput } from './buildPlan.ts
 // already cover the same system. Universal: new marker added to a
 // system → automatically participates; new system added → automatic
 // new card. The detection routine itself never changes.
-export const RULE_LIBRARY_VERSION = '2026-05-10-5';
+//
+// 2026-05-10-6: three audit fixes uncovered by Luba's regen (T2D
+// patient with A1c 7.9 / glucose 138 / LDL 106 / ALT 34 — all hidden
+// from priority_findings AND no system-drift card fired):
+//   (a) FLAG_SEVERITY_RANK now recognizes 'elevated', 'suboptimal_high',
+//       'suboptimal_low', 'borderline_high', 'borderline_low', 'optimal'.
+//       Previously these flags fell through and the value never made
+//       the outlier list.
+//   (b) v2 normalize functions now treat optimal_flag='unknown' as
+//       missing (was leaving the flag stuck at 'unknown' → silent drop).
+//   (c) System-drift detector no longer requires ≥1 borderline marker.
+//       Fires on ≥2 same-direction markers regardless of zone, so
+//       diagnosed users (skipIfDx blocks named patterns) still get a
+//       system-level summary of overt findings. Card naming + confidence
+//       adapt: "above range" + 'high' confidence when overtly out, vs
+//       "pressed to edge" + 'moderate' when borderline.
+// 2026-05-10-7: rankLabOutliers now normalizes input flag values
+// (elevated → high, suboptimal_* → watch, borderline_* → watch) so
+// LabOutlierFact actually conforms to its declared enum and the
+// downstream UI flag-mapper produces correct 'urgent' / 'monitor' /
+// in-range tier per finding. Caught when Luba's A1c 7.9 + glucose 138
+// rendered as the wrong flag on the priority-findings card.
+//
+// 2026-05-10-8: scrubbed user-visible "optimal" language from
+// condition cards, evidence strings, and supplement candidate notes.
+// Product positioning is borderline early-detection, not
+// optimization — vocabulary now: out-of-range low, in-range low,
+// in-range normal, in-range high, out-of-range high.
+export const RULE_LIBRARY_VERSION = '2026-05-10-8';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;

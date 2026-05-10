@@ -326,26 +326,72 @@ export function buildPlan(input: PatientInput): ClinicalFacts {
 // ──────────────────────────────────────────────────────────────────────
 
 const FLAG_SEVERITY_RANK: Record<string, number> = {
+  // Critical — outside any clinical reference, urgent attention.
   critical_high: 100,
   critical_low: 100,
+  // Standard out-of-range — above or below the lab's own reference range.
   high: 50,
   low: 50,
+  elevated: 50,                 // alias for 'high' emitted by optimalRanges.ts
+  // Borderline — inside reference range but above/below functional optimal.
+  // These are the "watch tier" outliers — same severity rank as 'watch'
+  // for ranking + UI grouping. Per the v6 product positioning, these are
+  // the "borderline-high / borderline-low" early-detection signals.
   watch: 20,
+  suboptimal_high: 20,
+  suboptimal_low: 20,
+  borderline_high: 20,
+  borderline_low: 20,
+  // Within range / no signal.
   normal: 0,
+  optimal: 0,
+  // Defensive: do NOT treat 'unknown' as a signal. Caller should have
+  // resolved this to a real flag via fallback to standard_flag.
 };
+
+/** Normalize the wide variety of optimal_flag / standard_flag values
+ *  emitted by upstream code (and by lab parsing) into the canonical
+ *  LabOutlierFact flag enum {critical_high, critical_low, high, low, watch}.
+ *  Anything else returns null, which means "not an outlier — skip."
+ *
+ *  Without this, e.g., flag='elevated' (emitted by optimalRanges.ts) made
+ *  it into the outlier list with the literal string 'elevated', and
+ *  downstream UI flag-mappers fell through to 'optimal' even though the
+ *  value was clearly above the lab's reference range. */
+function normalizeOutlierFlag(raw: string): LabOutlierFact['flag'] | null {
+  switch (raw) {
+    case 'critical_high':
+    case 'critical_low':
+    case 'high':
+    case 'low':
+    case 'watch':
+      return raw as LabOutlierFact['flag'];
+    case 'elevated':           // emitted by optimalRanges.ts for above-range
+      return 'high';
+    case 'suboptimal_high':
+    case 'borderline_high':
+      return 'watch';
+    case 'suboptimal_low':
+    case 'borderline_low':
+      return 'watch';
+    default:
+      return null;
+  }
+}
 
 function rankLabOutliers(labs: LabValue[]): LabOutlierFact[] {
   const out: LabOutlierFact[] = [];
   for (const l of labs) {
-    const flag = (l.flag ?? 'normal').toLowerCase();
-    if (flag === 'normal' || !FLAG_SEVERITY_RANK[flag]) continue;
+    const raw = (l.flag ?? 'normal').toLowerCase();
+    const canonical = normalizeOutlierFlag(raw);
+    if (canonical === null) continue;
     out.push({
       marker: l.marker,
       value: typeof l.value === 'number' ? l.value : Number(l.value) || 0,
       unit: l.unit ?? '',
-      flag: flag as LabOutlierFact['flag'],
-      severityRank: FLAG_SEVERITY_RANK[flag] ?? 0,
-      interpretation: interpretOutlier(l.marker, l.value, flag),
+      flag: canonical,
+      severityRank: FLAG_SEVERITY_RANK[canonical] ?? 0,
+      interpretation: interpretOutlier(l.marker, l.value, canonical),
     });
   }
   return out.sort((a, b) => b.severityRank - a.severityRank);

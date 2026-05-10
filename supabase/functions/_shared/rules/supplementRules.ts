@@ -182,7 +182,7 @@ export function buildSupplementCandidates(input: Input): SupplementCandidate[] {
   // ── 2. Lab-driven outliers ──────────────────────────────────────────
   for (const o of input.outliers) {
     if (/vitamin d|25.?hydroxy/i.test(o.marker) && (o.flag === 'low' || o.flag === 'critical_low' || (o.flag === 'watch' && o.value < 40))) {
-      push(vitaminDCandidate('lab_finding', `Vitamin D ${o.value} — ${o.flag === 'low' ? 'deficient' : 'suboptimal'}; supplementation typically raises 10-15 ng/mL in 12 weeks.`));
+      push(vitaminDCandidate('lab_finding', `Vitamin D ${o.value} — ${o.flag === 'low' ? 'deficient' : 'in-range low'}; supplementation typically raises 10-15 ng/mL in 12 weeks.`));
     }
     if (/triglyceride/i.test(o.marker) && o.value >= 150 && !input.hasShellfishAllergy) {
       push({

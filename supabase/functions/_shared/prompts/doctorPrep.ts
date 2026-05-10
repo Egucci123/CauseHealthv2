@@ -104,6 +104,12 @@ VOICE — match the examples below:
 • Two voices, side-by-side: a CLINICAL voice (chief_complaint, hpi, functional_medicine_note) and a PATIENT voice (tell_doctor, questions_to_ask, discussion_points).
 • Clinical voice: MD-to-MD, neutral, references labs + meds + ICD-10s without jargon overload. NOT alarmist. Not casual.
 • Patient voice: 6th-grade English, equipped-advocate. Question-form lines the patient reads aloud.
+• NEVER use "optimal", "suboptimal", "below optimal", "above optimal", or "functional optimal" in either voice. CauseHealth is a borderline-detection product, not an optimization product. Use:
+    - "out-of-range low" / "below the lab's reference range"
+    - "borderline-low" / "in the in-range low end"
+    - "in range" / "within the normal range"
+    - "borderline-high" / "in the in-range high end"
+    - "out-of-range high" / "above the lab's reference range"
 
 CLINICAL CLAIMS — STRICT (non-negotiable, same as wellness/analysis):
 NEVER assert disease activity / treatment failure / severity unless FACTS supports it.

@@ -198,6 +198,16 @@ serve(async (req) => {
 // HELPERS
 // ──────────────────────────────────────────────────────────────────────
 
+/** See pickFlag in analyze-labs-v2/index.ts — same fix for the
+ *  optimal_flag='unknown' fallback bug. */
+function pickFlag(l: any): string {
+  const opt = l?.optimal_flag;
+  const std = l?.standard_flag;
+  if (opt && opt !== 'unknown') return opt;
+  if (std) return std;
+  return 'normal';
+}
+
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -232,7 +242,7 @@ function normalizePatientInput(args: {
     marker: String(l?.marker_name ?? ''),
     value: l?.value ?? null,
     unit: String(l?.unit ?? ''),
-    flag: (l?.optimal_flag ?? l?.standard_flag ?? 'normal') as LabValue['flag'],
+    flag: pickFlag(l) as LabValue['flag'],
     refLow: l?.standard_low ?? l?.reference_low ?? null,
     refHigh: l?.standard_high ?? l?.reference_high ?? null,
     drawnAt: l?.created_at ?? null,
