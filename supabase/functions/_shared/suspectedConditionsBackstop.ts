@@ -22,6 +22,7 @@
 
 import { hasCondition } from './conditionAliases.ts';
 import { isOnMed } from './medicationAliases.ts';
+import { detectBorderlineZone, type BorderlineZone } from './borderlineDetector.ts';
 
 export interface SuspectedConditionEntry {
   /** Stable cross-surface key — e.g., 'nafld', 'osa', 'hemoconcentration'.
@@ -46,7 +47,16 @@ interface BackstopCtx {
   conditionsLower: string;
   symptomsLower: string;
   medsLower: string;
-  labValues: Array<{ marker_name?: string; value?: number | string | null; unit?: string | null; optimal_flag?: string | null }>;
+  labValues: Array<{
+    marker_name?: string;
+    value?: number | string | null;
+    unit?: string | null;
+    optimal_flag?: string | null;
+    /** Lab's own reference low (e.g. lab range 13.5–17.5 for Hgb male). */
+    standard_low?: number | string | null;
+    /** Lab's own reference high. */
+    standard_high?: number | string | null;
+  }>;
   /** AI-returned suspected conditions (lowercase names) — used to dedup. */
   aiSuspectedNamesLower: string[];
 }
@@ -58,6 +68,42 @@ function mark(labs: any[], patterns: RegExp[]): { value: number; flag: string } 
       const num = typeof v.value === 'number' ? v.value : parseFloat(String(v.value ?? ''));
       if (Number.isFinite(num)) return { value: num, flag: (v.optimal_flag ?? '').toLowerCase() };
     }
+  }
+  return null;
+}
+
+/**
+ * Find a marker AND classify its borderline zone against the lab's own
+ * reference range. Used by correlation rules that connect-the-dots
+ * across multiple markers in a "borderline-high / borderline-low" zone.
+ *
+ * Returns null if no marker matches the patterns.
+ * Otherwise returns { value, zone, isBorderline } where zone is one of:
+ *   'out_low' | 'borderline_low' | 'safe_zone' | 'borderline_high'
+ *   | 'out_high' | 'unknown'
+ */
+function markBorderline(
+  labs: any[],
+  patterns: RegExp[],
+): { value: number; zone: BorderlineZone; isBorderline: boolean; isHighSide: boolean; isLowSide: boolean } | null {
+  for (const v of labs) {
+    const name = String(v.marker_name ?? '');
+    if (!patterns.some(re => re.test(name))) continue;
+    const num = typeof v.value === 'number' ? v.value : parseFloat(String(v.value ?? ''));
+    if (!Number.isFinite(num)) continue;
+    const result = detectBorderlineZone({
+      marker_name: name,
+      value: num,
+      standard_low: v.standard_low,
+      standard_high: v.standard_high,
+    });
+    return {
+      value: num,
+      zone: result.zone,
+      isBorderline: result.isBorderline,
+      isHighSide: result.zone === 'borderline_high' || result.zone === 'out_high',
+      isLowSide: result.zone === 'borderline_low' || result.zone === 'out_low',
+    };
   }
   return null;
 }
@@ -953,6 +999,138 @@ const RULES: BackstopRule[] = [
         };
       }
       return null;
+    },
+  },
+
+  // ════════════════════════════════════════════════════════════════════
+  // BORDERLINE-PATTERN CORRELATION RULES
+  // ════════════════════════════════════════════════════════════════════
+  // These rules connect-the-dots across multiple markers that are each
+  // INSIDE the lab's reference range but pressed against either edge —
+  // the kind of pattern a routine doctor read would call "in range" but
+  // actually represents a coherent early-detection signal. Universal
+  // across every patient and every CBC + CMP + lipid panel.
+  //
+  // Naming convention: "Early X pattern (rule-out before Y develops)"
+  // — soft framing, moderate confidence, recommends the appropriate
+  // confirmatory workup. Never says "you have X."
+
+  // ── Liver early-stress pattern (rule-out NAFLD before LFTs flag) ──
+  {
+    key: 'liver_early_stress_pattern',
+    alreadyRaisedIf: [/nafld|fatty liver|nash/i, /liver early stress/i, /hepatobiliary/i, /hepatic stress/i],
+    skipIfDx: ['nafld', 'fatty_liver', 'nash', 'hepatitis'],
+    detect: (ctx) => {
+      const alt = markBorderline(ctx.labValues, [/^alt\b|^sgpt\b|^alanine aminotransferase\b/i]);
+      const ast = markBorderline(ctx.labValues, [/^ast\b|^sgot\b|^aspartate aminotransferase\b/i]);
+      const ggt = markBorderline(ctx.labValues, [/^ggt\b|^gamma[\s-]?glutamyl/i]);
+      // Need at least 2 of {ALT, AST, GGT} pressing the high side.
+      const hits = [alt, ast, ggt].filter(m => m && m.isHighSide).length;
+      if (hits < 2) return null;
+      const ev: string[] = [];
+      if (alt?.isHighSide) ev.push(`ALT ${alt.value} (${alt.zone === 'out_high' ? 'above range' : 'borderline-high'})`);
+      if (ast?.isHighSide) ev.push(`AST ${ast.value} (${ast.zone === 'out_high' ? 'above range' : 'borderline-high'})`);
+      if (ggt?.isHighSide) ev.push(`GGT ${ggt.value} (${ggt.zone === 'out_high' ? 'above range' : 'borderline-high'})`);
+      return {
+        name: 'Early liver-stress pattern (rule-out NAFLD / hepatobiliary)',
+        category: 'gi',
+        confidence: 'moderate',
+        evidence: `${ev.join(', ')}. Multiple liver enzymes pressing the upper end of normal — fits early hepatic stress, often from fatty liver, alcohol, or medication metabolism. Worth confirming with imaging before it progresses.`,
+        confirmatory_tests: ['Liver Ultrasound', 'GGT (if not done)', 'Fasting Insulin + HOMA-IR', 'AST/ALT ratio', 'FibroScan if available'],
+        icd10: 'R74.0',
+        what_to_ask_doctor: "My liver enzymes are pressed to the high end of normal. Can we get a liver ultrasound and check fasting insulin to rule out fatty liver before it progresses?",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Insulin resistance — early metabolic drift (rule-out before A1c) ──
+  // Catches the population whose A1c hasn't crossed 5.7 yet but whose
+  // fasting glucose is already drifting up + lipid pattern fits IR
+  // (high TG, low HDL). Anchored on borderline detection so it works
+  // for any user without curated optimal ranges per marker.
+  {
+    key: 'early_insulin_resistance_pattern',
+    alreadyRaisedIf: [/insulin resistance/i, /metabolic syndrome/i, /pre-?diab/i, /atherogenic dyslipid/i],
+    skipIfDx: ['type_2_diabetes', 'prediabetes', 'metabolic_syndrome'],
+    detect: (ctx) => {
+      const glu = markBorderline(ctx.labValues, [/^(?:fasting\s+)?glucose(?:,?\s*(?:serum|plasma|fasting|random))?$/i]);
+      const a1c = markBorderline(ctx.labValues, [/^(?:hemoglobin\s+a1c|hba1c|a1c)$/i]);
+      const tg = markBorderline(ctx.labValues, [/^triglycerides?$/i]);
+      const hdl = markBorderline(ctx.labValues, [/^hdl(?:\s*cholesterol)?$/i]);
+
+      // Glucose-side signal: fasting glucose borderline-high (90+) OR
+      // A1c borderline-high (5.4+) — already-overt diabetes/prediabetes
+      // is filtered by skipIfDx and by the existing diabetes rule.
+      const glucoseSignal = (glu?.isHighSide ?? false) || (a1c?.isHighSide ?? false);
+      // Lipid-side signal: TG high-side OR HDL low-side.
+      const lipidSignal = (tg?.isHighSide ?? false) || (hdl?.isLowSide ?? false);
+      if (!glucoseSignal || !lipidSignal) return null;
+
+      const ev: string[] = [];
+      if (glu?.isHighSide) ev.push(`fasting glucose ${glu.value} (borderline-high)`);
+      if (a1c?.isHighSide) ev.push(`A1c ${a1c.value}% (borderline-high)`);
+      if (tg?.isHighSide) ev.push(`triglycerides ${tg.value} (borderline-high)`);
+      if (hdl?.isLowSide) ev.push(`HDL ${hdl.value} (borderline-low)`);
+
+      return {
+        name: 'Early insulin-resistance pattern (rule-out before prediabetes develops)',
+        category: 'metabolic',
+        confidence: 'moderate',
+        evidence: `${ev.join(', ')}. Glucose marker plus lipid pattern both drifting in the insulin-resistance direction — pancreas working harder to keep blood sugar in range. Caught early, this is fully reversible with diet + sleep + movement before A1c crosses into prediabetes.`,
+        confirmatory_tests: ['Fasting Insulin + HOMA-IR', 'ApoB', 'Lp(a) once-in-lifetime', 'hs-CRP'],
+        icd10: 'E88.81',
+        what_to_ask_doctor: "My fasting glucose is borderline-high and my lipid pattern is drifting. Can we add fasting insulin (HOMA-IR) and ApoB to see if early insulin resistance is what's brewing?",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Functional B12 deficiency (rule-out before neuro symptoms) ──
+  // B12 200–400 is "in range" by lab refs but functionally insufficient
+  // for many people, especially with elevated homocysteine. Universal
+  // rule: borderline-low B12 + (homocysteine borderline-high OR neuro
+  // symptoms) → soft pattern card recommending MMA confirmation.
+  {
+    key: 'b12_functional_deficiency',
+    alreadyRaisedIf: [/b12 deficien/i, /pernicious anemia/i, /macrocytic/i, /functional b12/i],
+    skipIfDx: ['b12_deficiency', 'pernicious_anemia'],
+    detect: (ctx) => {
+      const b12 = markBorderline(ctx.labValues, [/^vitamin b[\s-]?12$|^b12$|^cobalamin$/i]);
+      const hcy = markBorderline(ctx.labValues, [/^homocysteine\b/i]);
+      const mma = markBorderline(ctx.labValues, [/^methylmalonic\b|^mma\b/i]);
+
+      // Need B12 borderline-low. If MMA is already elevated, the overt
+      // b12_deficiency rule fires — let it. We only fire when the
+      // signal is borderline.
+      if (!b12 || !b12.isLowSide) return null;
+      // Avoid double-firing when MMA confirms outright deficiency.
+      if (mma?.isHighSide) return null;
+
+      const neuroSx = symptom(ctx.symptomsLower, [
+        /tingling/i, /numb/i, /pins and needles/i, /neuropath/i,
+        /brain fog/i, /memory/i, /forget|concentr|focus/i,
+        /fatigue/i, /tired/i, /low energy/i,
+      ]);
+      const hcyHigh = !!hcy?.isHighSide;
+      // Need supporting signal: elevated homocysteine OR neuro/cognitive symptoms.
+      if (!hcyHigh && !neuroSx) return null;
+
+      const ev: string[] = [];
+      ev.push(`B12 ${b12.value} (${b12.zone === 'out_low' ? 'below range' : 'borderline-low'})`);
+      if (hcyHigh) ev.push(`homocysteine ${hcy!.value} (borderline-high)`);
+      if (neuroSx) ev.push('neurological/cognitive symptoms reported');
+
+      return {
+        name: 'Functional B12 deficiency pattern (rule-out before overt anemia)',
+        category: 'nutrition',
+        confidence: 'moderate',
+        evidence: `${ev.join(', ')}. Serum B12 is at the low end of "normal" but symptoms or homocysteine suggest the actual tissue level is insufficient. Confirmed via MMA — that's the test that catches functional deficiency the basic B12 number misses.`,
+        confirmatory_tests: ['Methylmalonic Acid (MMA)', 'Homocysteine (if not done)', 'Folate (RBC folate preferred)', 'CBC with reticulocyte count'],
+        icd10: 'E53.8',
+        what_to_ask_doctor: "My B12 is at the low end of normal and I have some symptoms. Can we run MMA and homocysteine to check whether my actual tissue B12 is low even though serum B12 reads in range?",
+        source: 'deterministic',
+      };
     },
   },
 ];

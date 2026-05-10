@@ -169,8 +169,8 @@ function normalizePatientInput(args: {
     value: l?.value ?? null,
     unit: String(l?.unit ?? ''),
     flag: (l?.optimal_flag ?? l?.standard_flag ?? 'normal') as LabValue['flag'],
-    refLow: l?.reference_low ?? null,
-    refHigh: l?.reference_high ?? null,
+    refLow: l?.standard_low ?? l?.reference_low ?? null,
+    refHigh: l?.standard_high ?? l?.reference_high ?? null,
     drawnAt: l?.created_at ?? null,
   }));
   const labsLower = labs.map(l => `${l.marker}: ${l.value} ${l.unit} [${l.flag}]`).join('\n').toLowerCase();

@@ -41,7 +41,19 @@ import { buildPlan, type ClinicalFacts, type PatientInput } from './buildPlan.ts
 // MCHC low, RDW elevated, ferritin borderline} present. Confidence
 // moderate. Soft framing — "rule-out," not a diagnosis. Universal
 // across every CBC upload.
-export const RULE_LIBRARY_VERSION = '2026-05-10-3';
+//
+// 2026-05-10-4: added borderline-zone detection layer
+// (borderlineDetector.ts) that classifies any lab value into a 5-tier
+// zone (out_low / borderline_low / safe_zone / borderline_high /
+// out_high) using the lab's own reference range. Wired refLow/refHigh
+// from standard_low/standard_high in DB through the v2 normalize
+// functions (was a column-name bug — refLow always null pre-fix).
+// Added 3 borderline-correlation rules:
+//   - liver_early_stress_pattern (≥2 of ALT/AST/GGT high-side)
+//   - early_insulin_resistance_pattern (glucose+lipid both drifting)
+//   - b12_functional_deficiency (B12 low-side + hcy high OR neuro sx)
+// Connects-the-dots across multiple borderline values + symptoms.
+export const RULE_LIBRARY_VERSION = '2026-05-10-4';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;

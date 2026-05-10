@@ -40,12 +40,18 @@ interface Input {
 }
 
 export function buildConditionList(input: Input): SuspectedConditionFact[] {
-  // Map our LabValue → backstop's labValues shape
+  // Map our LabValue → backstop's labValues shape. Pass through the
+  // lab's own reference range (refLow/refHigh from the v2 normalizer)
+  // so backstop rules can detect "borderline-high / borderline-low"
+  // zones — universal early-detection layer that doesn't depend on
+  // a curated optimal range existing for the marker.
   const labValues = input.labs.map(l => ({
     marker_name: l.marker,
     value: l.value,
     unit: l.unit,
     optimal_flag: l.flag,
+    standard_low: l.refLow ?? null,
+    standard_high: l.refHigh ?? null,
   }));
 
   const raw = runSuspectedConditionsBackstop({
