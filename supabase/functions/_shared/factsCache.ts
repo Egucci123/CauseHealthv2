@@ -20,7 +20,12 @@ import { buildPlan, type ClinicalFacts, type PatientInput } from './buildPlan.ts
 // guaranteed to match the current rule library.
 //
 // Convention: bump on every rule-impacting deploy. Format: 'YYYY-MM-DD-N'.
-export const RULE_LIBRARY_VERSION = '2026-05-09-1';
+//
+// 2026-05-10-1: tightened CRITICAL_VALUE_THRESHOLDS regex anchors so MCH /
+// MCHC / MPV / IPF / BUN-Creatinine-Ratio no longer trip the same-name
+// hemoglobin / platelet / creatinine emergency alerts. Dropped TSH 2.0–2.5
+// low band on Subclinical Hashimoto's pattern (was firing on normal TSH).
+export const RULE_LIBRARY_VERSION = '2026-05-10-1';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;

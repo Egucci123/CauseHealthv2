@@ -167,15 +167,35 @@ export interface CriticalThreshold {
   message: string;
 }
 
+// Each regex is anchored with ^ to match ONLY the canonical marker name —
+// never a compound marker that contains the same word. The previous loose
+// regexes (e.g. /\bhemoglobin\b/) caused these false-positive emergencies:
+//   - "Mean Corpuscular Hemoglobin" (MCH, normal 27-33 pg) flagged as
+//     critical_high vs the plain Hemoglobin threshold (high: 20 g/dL).
+//   - "Mean Platelet Volume" / "Immature Platelet Fraction" flagged as
+//     critical_low vs the plain Platelets threshold (low: 50 k/uL).
+//   - "BUN/Creatinine Ratio" flagged as critical_high vs the plain
+//     Creatinine threshold (high: 3.0 mg/dL).
+// Any healthy user uploading a CBC + CMP would get 5+ "call your doctor
+// TODAY" alerts on perfectly normal values. The anchored regexes below
+// only match the actual marker each threshold is calibrated for.
 export const CRITICAL_VALUE_THRESHOLDS: CriticalThreshold[] = [
-  { marker: /\bpotassium\b|\bk\+?\b/i, low: 2.5, high: 6.0, unit: 'mEq/L', message: 'Severe potassium derangement — call your doctor today or go to urgent care; can affect heart rhythm.' },
-  { marker: /\bsodium\b|\bna\+?\b/i, low: 125, high: 150, unit: 'mEq/L', message: 'Severe sodium derangement — call your doctor today; can cause confusion and seizures if untreated.' },
-  { marker: /\bglucose\b/i, low: 50, high: 400, unit: 'mg/dL', message: 'Severe blood sugar derangement — call your doctor today; if hypoglycemic and symptomatic, eat sugar and get help.' },
-  { marker: /\bhemoglobin\b|\bhgb\b/i, low: 7, high: 20, unit: 'g/dL', message: 'Severe hemoglobin abnormality — call your doctor today; severe anemia or polycythemia needs prompt evaluation.' },
-  { marker: /\bplatelets?\b/i, low: 50, high: 1000, unit: 'k/uL', message: 'Severe platelet derangement — call your doctor today; bleeding or clotting risk depending on direction.' },
-  { marker: /\bcreatinine\b/i, high: 3.0, unit: 'mg/dL', message: 'Markedly elevated creatinine — call your doctor today; possible acute kidney injury.' },
-  { marker: /\balt\b|\bsgpt\b/i, high: 500, unit: 'IU/L', message: 'Markedly elevated liver enzyme — call your doctor today; possible acute hepatitis.' },
-  { marker: /\bcalcium\b/i, low: 7, high: 12, unit: 'mg/dL', message: 'Severe calcium derangement — call your doctor today; affects nerve and heart function.' },
+  // Electrolytes — anchored start; allow optional ", Serum" / ", Plasma" suffix.
+  { marker: /^potassium(?:,?\s*(?:serum|plasma))?$|^k\+?$/i, low: 2.5, high: 6.0, unit: 'mEq/L', message: 'Severe potassium derangement — call your doctor today or go to urgent care; can affect heart rhythm.' },
+  { marker: /^sodium(?:,?\s*(?:serum|plasma))?$|^na\+?$/i, low: 125, high: 150, unit: 'mEq/L', message: 'Severe sodium derangement — call your doctor today; can cause confusion and seizures if untreated.' },
+  // Glucose — accept "Glucose", "Glucose, Serum", "Fasting Glucose", but NOT "Hemoglobin A1c (Glucose)" etc.
+  { marker: /^(?:fasting\s+)?glucose(?:,?\s*(?:serum|plasma|fasting|random))?$/i, low: 50, high: 400, unit: 'mg/dL', message: 'Severe blood sugar derangement — call your doctor today; if hypoglycemic and symptomatic, eat sugar and get help.' },
+  // Hemoglobin — exact match, NOT "Mean Corpuscular Hemoglobin" / "MCHC".
+  { marker: /^(?:hemoglobin|hgb|hb)$/i, low: 7, high: 20, unit: 'g/dL', message: 'Severe hemoglobin abnormality — call your doctor today; severe anemia or polycythemia needs prompt evaluation.' },
+  // Platelets — exact, NOT "Mean Platelet Volume" / "Immature Platelet Fraction".
+  { marker: /^platelets?(?:\s+count)?$|^plt$/i, low: 50, high: 1000, unit: 'k/uL', message: 'Severe platelet derangement — call your doctor today; bleeding or clotting risk depending on direction.' },
+  // Creatinine — exact, NOT "BUN/Creatinine Ratio" or "Creatinine Clearance".
+  { marker: /^creatinine(?:,?\s*(?:serum|plasma))?$/i, high: 3.0, unit: 'mg/dL', message: 'Markedly elevated creatinine — call your doctor today; possible acute kidney injury.' },
+  // ALT — keep loose since "ALT" / "SGPT" / "Alanine Aminotransferase" all valid.
+  // Word-boundary anchored to avoid matching "ALT" inside other words (e.g. "salt").
+  { marker: /^(?:alt|sgpt|alanine\s+aminotransferase)\b/i, high: 500, unit: 'IU/L', message: 'Markedly elevated liver enzyme — call your doctor today; possible acute hepatitis.' },
+  // Calcium — total serum calcium only, NOT "Ionized Calcium" (different thresholds).
+  { marker: /^calcium(?:,?\s*(?:serum|plasma|total))?$/i, low: 7, high: 12, unit: 'mg/dL', message: 'Severe calcium derangement — call your doctor today; affects nerve and heart function.' },
 ];
 
 // ──────────────────────────────────────────────────────────────────────

@@ -229,13 +229,19 @@ const RULES: BackstopRule[] = [
       const cold = symptom(ctx.symptomsLower, [/cold (hand|feet|intoler)/i]);
       const moodIssues = symptom(ctx.symptomsLower, [/anxiety/i, /depress|low mood|mood swing/i]);
       const symptomCount = [fatigue, brainFog, weightGain, hairLoss, cold, moodIssues].filter(Boolean).length;
-      // Threshold tiered to symptom count to avoid over-flagging: at TSH 2.0–2.5
-      // we need 3+ symptoms; at TSH ≥ 2.5 we need only 2+. Functional optimal
-      // is < 2.0; anyone above that with multiple hypothyroid symptoms gets
-      // the conversation started.
-      const tshSubclinicalLow = tsh.value >= 2.0 && tsh.value < 2.5 && symptomCount >= 3;
+      // Threshold (tightened 2026-05-10 audit): only fire at TSH ≥ 2.5 with
+      // 2+ hypothyroid symptoms. The previous 2.0–2.5 low band fired on
+      // perfectly normal TSH values (functional optimal is <2.0, but
+      // standard reference range upper limit is 4.5; 2.0–2.5 is squarely
+      // normal by every clinical guideline). Calling that range
+      // "Subclinical Hashimoto's / Hypothyroidism" with even moderate
+      // confidence creates panic in healthy users.
+      //
+      // For the borderline 2.0–2.5 + symptoms population, the upgrade is
+      // handled by the separate 'subclinical_hypothyroidism' rule below
+      // (TSH 2.5–4.5 + symptoms) — not by this Hashimoto's pattern card.
       const tshSubclinicalHigh = tsh.value >= 2.5 && symptomCount >= 2;
-      if (tshSubclinicalLow || tshSubclinicalHigh) {
+      if (tshSubclinicalHigh) {
         const matched = [
           fatigue ? 'fatigue' : null,
           brainFog ? 'brain fog/memory' : null,
@@ -248,10 +254,10 @@ const RULES: BackstopRule[] = [
           name: "Subclinical Hashimoto's / Hypothyroidism",
           category: 'endocrine',
           confidence: tsh.value >= 4.5 ? 'high' : 'moderate',
-          evidence: `TSH ${tsh.value} mIU/L (subclinical range) + ${symptomCount} hypothyroid-pattern symptoms (${matched}).`,
+          evidence: `TSH ${tsh.value} mIU/L (above functional optimal) + ${symptomCount} hypothyroid-pattern symptoms (${matched}).`,
           confirmatory_tests: ['TPO Antibodies', 'Thyroglobulin Antibodies', 'Free T4', 'Free T3', 'Reverse T3'],
           icd10: 'E06.3',
-          what_to_ask_doctor: "My TSH is high and I have a bunch of low-thyroid symptoms. Can we run TPO and Tg antibody tests to check for Hashimoto's?",
+          what_to_ask_doctor: "My TSH is on the high side and I have a bunch of low-thyroid symptoms. Can we run TPO and Tg antibody tests to check for Hashimoto's?",
           source: 'deterministic',
         };
       }
