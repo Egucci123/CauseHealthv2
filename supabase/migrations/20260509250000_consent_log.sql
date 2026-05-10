@@ -24,15 +24,15 @@
 -- ──────────────────────────────────────────────────────────────────────
 DO $$
 DECLARE
-  conname text;
+  v_conname text;
 BEGIN
-  SELECT conname INTO conname
-  FROM pg_constraint
-  WHERE conrelid = 'public.consent_log'::regclass
-    AND contype = 'c'
-    AND pg_get_constraintdef(oid) ILIKE '%consent_type%';
-  IF conname IS NOT NULL THEN
-    EXECUTE format('ALTER TABLE public.consent_log DROP CONSTRAINT %I', conname);
+  SELECT c.conname INTO v_conname
+  FROM pg_constraint c
+  WHERE c.conrelid = 'public.consent_log'::regclass
+    AND c.contype = 'c'
+    AND pg_get_constraintdef(c.oid) ILIKE '%consent_type%';
+  IF v_conname IS NOT NULL THEN
+    EXECUTE format('ALTER TABLE public.consent_log DROP CONSTRAINT %I', v_conname);
   END IF;
 END $$;
 
