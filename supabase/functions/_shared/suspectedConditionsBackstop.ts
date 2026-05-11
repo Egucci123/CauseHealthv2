@@ -1136,7 +1136,24 @@ interface SystemDriftCtx {
 function detectSystemDrift(ctx: SystemDriftCtx): SuspectedConditionEntry[] {
   const out: SuspectedConditionEntry[] = [];
 
+  // Patient sex used for the sex-gate check below. Normalize once: any
+  // non-'male'/'female' answer (other / prefer-not-to-say / null) is
+  // treated as unknown, which disqualifies BOTH gated systems.
+  const sexLc = String(ctx.sex ?? '').trim().toLowerCase();
+  const patientSex: 'male' | 'female' | null =
+    sexLc === 'male' || sexLc === 'm' ? 'male' :
+    sexLc === 'female' || sexLc === 'f' ? 'female' : null;
+
   for (const sys of MARKER_SYSTEMS) {
+    // Sex-gate: a system tagged with sexGate fires ONLY for matching
+    // biological sex. Without this, the male and female hormonal axes
+    // both fire on the same patient because they share Estradiol, LH,
+    // FSH, Prolactin, Testosterone, SHBG. Marisa Sirkin (27F) saw a
+    // "Male hormonal axis — critical" card before this gate existed.
+    // Patients with unknown sex skip BOTH gated systems — we do not
+    // guess.
+    if (sys.sexGate && sys.sexGate !== patientSex) continue;
+
     // Skip this system if a named-pattern rule already covered it.
     const dedupKeys = SYSTEM_NAMED_RULE_DEDUP[sys.system] ?? [];
     const alreadyCovered = dedupKeys.some(k => ctx.alreadyFiredKeys.includes(k));

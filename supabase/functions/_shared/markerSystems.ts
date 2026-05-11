@@ -40,6 +40,22 @@ export interface MarkerSystem {
   questionForDoctor: string;
   /** Plain-English explanation of why drift in this system matters. */
   systemRationale: string;
+  /** Optional sex-gate. When set, the system-drift detector will SKIP
+   *  this system unless the patient's biological sex matches.
+   *
+   *  Rationale: the male and female hormonal axes share many markers
+   *  (LH, FSH, Prolactin, Estradiol, Total/Free Testosterone, SHBG).
+   *  Without a sex gate, both systems can fire on the same patient,
+   *  producing a "Male hormonal axis — critical" card on a female user
+   *  (Marisa audit, 2026-05-11). Universal-safe behavior: tag the male
+   *  pattern as sex='male', the female pattern as sex='female', leave
+   *  everything else (liver, kidney, thyroid, etc.) un-gated.
+   *
+   *  Unknown / 'other' / 'prefer not to say' / null sex → both gated
+   *  systems are skipped (no inference). The user still gets per-marker
+   *  outlier cards; they just don't get a male/female "axis" pattern
+   *  card auto-fired without confirmed sex. */
+  sexGate?: 'male' | 'female';
 }
 
 export const MARKER_SYSTEMS: MarkerSystem[] = [
@@ -227,6 +243,7 @@ export const MARKER_SYSTEMS: MarkerSystem[] = [
   {
     system: 'male_hormone',
     label: 'Male hormonal axis',
+    sexGate: 'male',
     markers: [
       /^total\s+testosterone$|^testosterone,?\s*total$/i,
       /^free\s+testosterone$/i,
@@ -252,6 +269,7 @@ export const MARKER_SYSTEMS: MarkerSystem[] = [
   {
     system: 'female_hormone',
     label: 'Female hormonal axis',
+    sexGate: 'female',
     markers: [
       /^estradiol$|^e2$/i,
       /^progesterone$/i,

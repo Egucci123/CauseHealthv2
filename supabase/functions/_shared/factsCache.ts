@@ -93,12 +93,14 @@ import { buildPlan, type ClinicalFacts, type PatientInput } from './buildPlan.ts
 // derives the flag from value + standard_flag + standard_low/high +
 // current rules per request. All three v2 normalize functions now
 // call it via pickFlag(l, ctx) instead of trusting the stored flag.
-// 2026-05-10-10: Fix watch-tier outlier prose ("below the normal range" was
-// mis-applied to any non-high flag, including 'watch'). Soften symptom-
-// addressed supplement language from "targets this directly" → "may help with
-// — discuss with your doctor". Bump invalidates clinical_facts_cache so every
-// re-analysis flows through the new prose.
-export const RULE_LIBRARY_VERSION = '2026-05-10-10';
+// 2026-05-11-1: Sex-gate on hormonal-axis system-drift patterns. The
+// male_hormone and female_hormone systems share most markers (LH, FSH,
+// Prolactin, Estradiol, Testosterone, SHBG); without a gate, both fire
+// on the same patient. Marisa Sirkin (27F) audit revealed the failure
+// mode — a "Male hormonal axis — critical" card on a female user.
+// Gate: system fires only when sys.sexGate === patient.sex; unknown sex
+// disqualifies both gated systems.
+export const RULE_LIBRARY_VERSION = '2026-05-11-1';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
