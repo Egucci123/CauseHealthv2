@@ -11,7 +11,7 @@ export const Privacy = () => (
       <p className="text-body text-clinical-stone text-sm"><strong>Effective:</strong> May 10, 2026</p>
       <p className="text-body text-clinical-stone text-sm mb-6">
         <strong>Questions:</strong>{' '}
-        <a href="mailto:privacy@causehealth.com" className="text-primary-container hover:underline">privacy@causehealth.com</a>
+        <a href="mailto:support@causehealth.app" className="text-primary-container hover:underline">support@causehealth.app</a>
       </p>
       <p className="text-body text-clinical-charcoal text-sm mb-10 italic">
         Short version: we collect what we need to run the app, we don't sell your data, and your health information stays yours.
@@ -90,14 +90,14 @@ export const Privacy = () => (
 
         <Section id="section-6" title="6. Security">
           <p>We use TLS encryption for all data in transit, encryption at rest for our database and file storage, and database-level access controls so each user can only see their own data. Passwords are hashed — we never see yours.</p>
-          <p className="mt-3">No system is perfectly secure. If you find a security issue, email <a href="mailto:security@causehealth.com" className="text-primary-container hover:underline">security@causehealth.com</a>.</p>
+          <p className="mt-3">No system is perfectly secure. If you find a security issue, email <a href="mailto:support@causehealth.app" className="text-primary-container hover:underline">support@causehealth.app</a>.</p>
           <p className="mt-3">If there's ever a breach affecting your health data, we'll notify you and the FTC within 60 days of discovery (our internal target is 30 days).</p>
         </Section>
 
         <Section id="section-7" title="7. Your Rights">
           <p>You can:</p>
           <ul className="list-disc pl-5 space-y-1 mt-2">
-            <li>Access a copy of your data — email <a href="mailto:privacy@causehealth.com" className="text-primary-container hover:underline">privacy@causehealth.com</a></li>
+            <li>Access a copy of your data — email <a href="mailto:support@causehealth.app" className="text-primary-container hover:underline">support@causehealth.app</a></li>
             <li>Correct inaccurate information — edit it in the app or email us</li>
             <li>Delete your account and data — Settings → Delete Account, or email us. Health data is purged within 30 days.</li>
             <li>Export your data — Settings → Export</li>
@@ -119,7 +119,7 @@ export const Privacy = () => (
         </Section>
 
         <Section id="section-10" title="10. Children">
-          <p>CauseHealth is for adults 18 and older. We don't knowingly collect information from anyone under 18. If you believe a minor has created an account, email <a href="mailto:privacy@causehealth.com" className="text-primary-container hover:underline">privacy@causehealth.com</a> and we'll delete it.</p>
+          <p>CauseHealth is for adults 18 and older. We don't knowingly collect information from anyone under 18. If you believe a minor has created an account, email <a href="mailto:support@causehealth.app" className="text-primary-container hover:underline">support@causehealth.app</a> and we'll delete it.</p>
         </Section>
 
         <Section id="section-11" title="11. Changes">
@@ -128,8 +128,8 @@ export const Privacy = () => (
 
         <Section id="section-12" title="12. Contact">
           <ul className="list-disc pl-5 space-y-1 mt-2">
-            <li>Privacy questions: <a href="mailto:privacy@causehealth.com" className="text-primary-container hover:underline">privacy@causehealth.com</a></li>
-            <li>Security reports: <a href="mailto:security@causehealth.com" className="text-primary-container hover:underline">security@causehealth.com</a></li>
+            <li>Privacy questions: <a href="mailto:support@causehealth.app" className="text-primary-container hover:underline">support@causehealth.app</a></li>
+            <li>Security reports: <a href="mailto:support@causehealth.app" className="text-primary-container hover:underline">support@causehealth.app</a></li>
             <li>CauseHealth LLC</li>
           </ul>
         </Section>

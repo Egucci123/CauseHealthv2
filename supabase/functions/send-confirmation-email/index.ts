@@ -61,7 +61,7 @@ Your CauseHealth account is active.
 
 By creating your account you agreed to resolve any disputes with CauseHealth through individual binding arbitration rather than in court, as described in Section 9 of our Terms of Service. You also waived the right to participate in any class action lawsuit.
 
-You have the right to opt out. If you don't want to be bound by the arbitration agreement, email legal@causehealth.com with the subject line "Arbitration Opt-Out" and your account email address (${accountEmail}) before ${deadlinePretty}.
+You have the right to opt out. If you don't want to be bound by the arbitration agreement, email legal@causehealth.app with the subject line "Arbitration Opt-Out" and your account email address (${accountEmail}) before ${deadlinePretty}.
 
 If you do nothing, the arbitration agreement applies to your account.
 
@@ -81,7 +81,7 @@ Full text: https://causehealth.app/terms#section-9
       By creating your account you agreed to resolve any disputes with CauseHealth through <strong>individual binding arbitration</strong> rather than in court, as described in Section 9 of our Terms of Service. You also waived the right to participate in any class action lawsuit.
     </p>
     <p>
-      <strong>You have the right to opt out.</strong> If you don&apos;t want to be bound by the arbitration agreement, email <a href="mailto:legal@causehealth.com?subject=Arbitration%20Opt-Out" style="color:#1E40AF;">legal@causehealth.com</a> with the subject line <strong>&quot;Arbitration Opt-Out&quot;</strong> and your account email address (${accountEmail}) before <strong>${deadlinePretty}</strong>.
+      <strong>You have the right to opt out.</strong> If you don&apos;t want to be bound by the arbitration agreement, email <a href="mailto:legal@causehealth.app?subject=Arbitration%20Opt-Out" style="color:#1E40AF;">legal@causehealth.app</a> with the subject line <strong>&quot;Arbitration Opt-Out&quot;</strong> and your account email address (${accountEmail}) before <strong>${deadlinePretty}</strong>.
     </p>
     <p>If you do nothing, the arbitration agreement applies to your account.</p>
     <p>
@@ -103,7 +103,7 @@ Deno.serve(async (req) => {
     const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
     const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') ?? '';
-    const FROM_ADDRESS = Deno.env.get('CONFIRMATION_EMAIL_FROM') ?? 'CauseHealth <legal@causehealth.com>';
+    const FROM_ADDRESS = Deno.env.get('CONFIRMATION_EMAIL_FROM') ?? 'CauseHealth <legal@causehealth.app>';
 
     // ── Authenticate caller ───────────────────────────────────────────
     const authHeader = req.headers.get('Authorization') ?? '';

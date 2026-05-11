@@ -1,7 +1,7 @@
 # CauseHealth Privacy Policy
 
 **Effective:** May 10, 2026
-**Questions:** privacy@causehealth.com
+**Questions:** support@causehealth.app
 
 Short version: we collect what we need to run the app, we don't sell your data, and your health information stays yours.
 
@@ -75,7 +75,7 @@ Because you're sharing sensitive health information with us, we apply stricter r
 
 We use TLS encryption for all data in transit, encryption at rest for our database and file storage, and database-level access controls so each user can only see their own data. Passwords are hashed — we never see yours.
 
-No system is perfectly secure. If you find a security issue, email security@causehealth.com.
+No system is perfectly secure. If you find a security issue, email support@causehealth.app.
 
 If there's ever a breach affecting your health data, we'll notify you and the FTC within 60 days of discovery (our internal target is 30 days).
 
@@ -83,7 +83,7 @@ If there's ever a breach affecting your health data, we'll notify you and the FT
 
 You can:
 
-- Access a copy of your data — email privacy@causehealth.com
+- Access a copy of your data — email support@causehealth.app
 - Correct inaccurate information — edit it in the app or email us
 - Delete your account and data — Settings → Delete Account, or email us. Health data is purged within 30 days.
 - Export your data — Settings → Export
@@ -104,7 +104,7 @@ CauseHealth is available to U.S. residents only, excluding California, New York,
 
 ## 10. Children
 
-CauseHealth is for adults 18 and older. We don't knowingly collect information from anyone under 18. If you believe a minor has created an account, email privacy@causehealth.com and we'll delete it.
+CauseHealth is for adults 18 and older. We don't knowingly collect information from anyone under 18. If you believe a minor has created an account, email support@causehealth.app and we'll delete it.
 
 ## 11. Changes
 
@@ -112,6 +112,6 @@ If we make material changes to this policy we'll notify you by email at least 14
 
 ## 12. Contact
 
-- Privacy questions: privacy@causehealth.com
-- Security reports: security@causehealth.com
+- Privacy questions: support@causehealth.app
+- Security reports: support@causehealth.app
 - CauseHealth LLC

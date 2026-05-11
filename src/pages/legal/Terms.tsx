@@ -11,7 +11,7 @@ export const Terms = () => (
       <p className="text-body text-clinical-stone text-sm"><strong>Effective:</strong> May 10, 2026 · <strong>Governing law:</strong> Pennsylvania · <strong>Venue:</strong> Bucks County, Pennsylvania</p>
       <p className="text-body text-clinical-stone text-sm mb-10">
         <strong>Questions:</strong>{' '}
-        <a href="mailto:legal@causehealth.com" className="text-primary-container hover:underline">legal@causehealth.com</a>
+        <a href="mailto:legal@causehealth.app" className="text-primary-container hover:underline">legal@causehealth.app</a>
       </p>
 
       <div className="prose prose-sm max-w-none space-y-8">
@@ -33,7 +33,7 @@ export const Terms = () => (
         </Section>
 
         <Section id="section-3" title="3. Your Account">
-          <p>Keep your login credentials private. You're responsible for everything that happens under your account. If you think someone has accessed your account without permission, email us at <a href="mailto:legal@causehealth.com" className="text-primary-container hover:underline">legal@causehealth.com</a> right away.</p>
+          <p>Keep your login credentials private. You're responsible for everything that happens under your account. If you think someone has accessed your account without permission, email us at <a href="mailto:legal@causehealth.app" className="text-primary-container hover:underline">legal@causehealth.app</a> right away.</p>
         </Section>
 
         <Section id="section-4" title="4. What You Pay">
@@ -71,9 +71,9 @@ export const Terms = () => (
         </Section>
 
         <Section id="section-9" title="9. Disputes">
-          <p>If you have a problem with CauseHealth, email <a href="mailto:legal@causehealth.com" className="text-primary-container hover:underline">legal@causehealth.com</a> first. Most things can be resolved quickly without anyone lawyering up.</p>
+          <p>If you have a problem with CauseHealth, email <a href="mailto:legal@causehealth.app" className="text-primary-container hover:underline">legal@causehealth.app</a> first. Most things can be resolved quickly without anyone lawyering up.</p>
           <p className="mt-3">If we can't resolve it informally within 60 days, disputes are settled by binding individual arbitration through AAA under its Consumer Arbitration Rules. This means you resolve disputes with us individually, not as part of a class action.</p>
-          <p className="mt-3">You have the right to opt out of arbitration within 30 days of creating your account. To opt out, email <a href="mailto:legal@causehealth.com?subject=Arbitration%20Opt-Out" className="text-primary-container hover:underline">legal@causehealth.com</a> with the subject line "Arbitration Opt-Out" and your account email. If you opt out, disputes go to the courts in Bucks County, Pennsylvania.</p>
+          <p className="mt-3">You have the right to opt out of arbitration within 30 days of creating your account. To opt out, email <a href="mailto:legal@causehealth.app?subject=Arbitration%20Opt-Out" className="text-primary-container hover:underline">legal@causehealth.app</a> with the subject line "Arbitration Opt-Out" and your account email. If you opt out, disputes go to the courts in Bucks County, Pennsylvania.</p>
           <p className="mt-3">Pennsylvania law governs these Terms.</p>
         </Section>
 
@@ -82,7 +82,7 @@ export const Terms = () => (
         </Section>
 
         <Section id="section-11" title="11. Contact">
-          <p>CauseHealth LLC · <a href="mailto:legal@causehealth.com" className="text-primary-container hover:underline">legal@causehealth.com</a></p>
+          <p>CauseHealth LLC · <a href="mailto:legal@causehealth.app" className="text-primary-container hover:underline">legal@causehealth.app</a></p>
         </Section>
       </div>
     </div>

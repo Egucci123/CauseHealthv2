@@ -203,7 +203,7 @@ export const CombinedConsentScreen = ({ onAccepted }: Props) => {
               <ul className="list-disc pl-5 space-y-1 mt-1">
                 <li><strong>Access</strong> all data we hold (Settings &rarr; Export All Data).</li>
                 <li><strong>Delete</strong> your data and account (Settings &rarr; Delete Account).</li>
-                <li><strong>Withdraw consent</strong> at any time (privacy@causehealth.com).</li>
+                <li><strong>Withdraw consent</strong> at any time (support@causehealth.app).</li>
                 <li><strong>Appeal</strong> any denial within 45 days.</li>
               </ul>
               <p className="mt-2">
@@ -260,10 +260,10 @@ export const CombinedConsentScreen = ({ onAccepted }: Props) => {
             <p className="text-body text-clinical-charcoal text-xs leading-relaxed mb-3">
               You agree to resolve disputes through <strong>individual arbitration</strong> — not in court — and you waive participation in any class action. You have <strong>30 days</strong> to opt out by emailing{' '}
               <a
-                href="mailto:legal@causehealth.com?subject=Arbitration%20Opt-Out"
+                href="mailto:legal@causehealth.app?subject=Arbitration%20Opt-Out"
                 className="text-primary-container underline hover:text-primary-container/80"
               >
-                legal@causehealth.com
+                legal@causehealth.app
               </a>.
             </p>
 
