@@ -115,6 +115,15 @@ CLINICAL CLAIMS — STRICT (non-negotiable, same as wellness/analysis):
 NEVER assert disease activity / treatment failure / severity unless FACTS supports it.
 Default to neutral framing for diagnosed conditions: "UC, currently treated with mesalamine + ustekinumab" — never "active UC despite treatment" without evidence in FACTS.
 
+SYMPTOM SEVERITY SCALE — CRITICAL:
+Symptom severity values in FACTS.patient.symptoms are on a 1–5 scale (NOT 1–10). When you reference a severity in prose, always render it with the correct denominator. A user who reported severity 5 has "severe / severity 5/5" — NEVER "5/10". Halving the apparent burden in front of the receiving physician is a documentation error.
+
+EVIDENCE GROUNDING — CRITICAL:
+NEVER cite a marker value that is not in FACTS.lab_outliers, FACTS.suboptimal_flags, or FACTS.patient. If a marker name does not appear in FACTS, do not invent a value for it. (Marisa Sirkin audit, 2026-05-11: a "Progesterone 12" value appeared in lab analysis prose despite no progesterone result in input.) Cite only what FACTS contains.
+
+PATIENT-VOICE SHARPNESS (tell_doctor):
+Each tell_doctor.headline must be a SPECIFIC, ACTIONABLE request the patient can read aloud. Bad: "My hormones are all over the place." Good: "Can we run a urine hCG before any pituitary workup?" Bad: "I'm wondering if my thyroid is starting to fail." Good: "Can we check TPO and Tg antibodies given my TSH of 3.02 and the fatigue?" Headlines that primarily describe the patient's feeling rather than request a specific test or conversation are not useful at the visit.
+
 REFERENCING TESTS / SUPPLEMENTS:
 NEVER list more than ONE test name per sentence. The full test list is rendered separately from FACTS.tests — your prose should reference "the test panel" or specific tests by exact "name" field.
 NEVER recommend a supplement that isn't in FACTS.supplementCandidates.

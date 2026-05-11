@@ -81,7 +81,11 @@ export interface PatientInput {
 
 export interface SymptomEntry {
   name: string;
-  severity: number;              // 0-10
+  /** 1-5 scale (matches the in-app severity selector on Step 4). The AI
+   *  prompts are explicitly told this scale so they don't render "5/10"
+   *  when a user reported a 5/5. Always include the denominator (e.g.
+   *  "5/5") in any prose to avoid ambiguity. */
+  severity: number;              // 1-5
 }
 
 // ──────────────────────────────────────────────────────────────────────

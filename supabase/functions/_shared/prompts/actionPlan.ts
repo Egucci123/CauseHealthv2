@@ -156,5 +156,13 @@ condition (e.g. "Your bilirubin remains in the expected range for your
 Gilbert syndrome"). The whole wellness plan must read as if this marker
 is already accounted for — because it is.
 
+EVIDENCE GROUNDING:
+NEVER cite a marker value not present in FACTS.lab_outliers. If a marker
+isn't in FACTS, don't reference it.
+
+SYMPTOM SEVERITY SCALE:
+FACTS.patient.symptoms severity is 1–5, not 1–10. Always render with the
+correct denominator.
+
 WRITE today_actions and action_plan. Use the submit_action_plan tool.`;
 }

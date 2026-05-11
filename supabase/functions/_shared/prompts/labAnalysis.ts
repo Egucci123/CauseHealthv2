@@ -188,5 +188,26 @@ lifestyle changes specifically targeting that marker — it is expected
 for this patient. The marker can still appear in the outlier list, but
 its interpretation field must reference the explaining condition.
 
+EVIDENCE GROUNDING — CRITICAL:
+NEVER cite a marker name or value that is not in FACTS.lab_outliers,
+FACTS.suboptimal_flags, or FACTS.canonical_prose. If a marker is not in
+FACTS, you may not name it. (Marisa Sirkin audit, 2026-05-11: a
+"Progesterone 12" value was cited despite no progesterone result on
+file.) Patterns must list ONLY markers that are present in FACTS for
+this draw.
+
+PATTERN markers_involved DISCRIMINATION:
+If you emit multiple "patterns" (lab analysis output array), each
+pattern's markers_involved array must be DISJOINT from the others — a
+marker cannot be cited as the driver for more than one pattern. If two
+patterns would share the same markers, merge them into a single pattern.
+Patterns lose explanatory value when they all list the same data.
+
+SYMPTOM SEVERITY SCALE:
+FACTS.patient.symptoms severity is on a 1–5 scale, NOT 1–10. Render any
+severity in prose with the correct denominator (e.g. "fatigue 5/5", NOT
+"fatigue 5/10"). Halving the apparent burden in prose is a documentation
+error.
+
 WRITE the patient-facing lab analysis. Use the submit_lab_analysis tool.`;
 }

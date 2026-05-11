@@ -90,7 +90,7 @@ For each diagnosed condition in FACTS.patient.conditions, default to NEUTRAL fra
 
 Activity / control / flare claims are ONLY allowed when:
   • An explicit inflammatory marker (hs-CRP, ESR, fecal calprotectin) is FLAGGED in FACTS.lab_outliers, OR
-  • A symptom in FACTS.patient.symptoms has severity ≥ 7, OR
+  • A symptom in FACTS.patient.symptoms has severity ≥ 4 (scale is 1–5, NOT 1–10), OR
   • A risk calculator in FACTS.risk_calculators is in a "high" / "advanced" category.
 
 If none of those apply, describe the condition as treated / monitored, NOT as active.
