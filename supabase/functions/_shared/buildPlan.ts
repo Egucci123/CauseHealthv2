@@ -227,13 +227,25 @@ export function buildPlan(input: PatientInput): ClinicalFacts {
     hasSulfaAllergy: input.hasSulfaAllergy,
   });
 
-  // 5.5  Merge condition workup tests into the main test list
+  // 5.5  Condition workup tests — owned by the condition card, NOT the top list.
   //
   // Each suspected-condition rule (hyperprolactinemia, adrenal cortisol,
-  // hemochromatosis, etc.) ships with its own confirmatory_tests array
-  // — plain-English strings the rule authored. Previously these only
-  // surfaced under the condition card and never reached the main
-  // tests_to_request list the patient hands to their PCP.
+  // hemochromatosis, etc.) ships with its own confirmatory_tests array.
+  // These render inside the pattern card under "Tests to confirm" — each
+  // already with its ICD-10 code and "what to ask your doctor" prose.
+  //
+  // We DO NOT merge them into the top-level test list, because that
+  // double-prints the same test (once standalone, once inside the
+  // pattern). The 2026-05-12 Marisa audit surfaced this directly:
+  // β-hCG, repeat prolactin, Free Testosterone, DHEA-S, AMH, Pelvic US,
+  // repeat AM cortisol all appeared twice. Universal fix: top list is
+  // for canonical/baseline/lab-driven tests only; pattern-owned workup
+  // tests live under the pattern that owns them.
+  //
+  // The legacy dedup machinery below is kept (TEST_COVERAGE map, three-
+  // layer matcher) for the rare case a condition workup test ALSO has
+  // an independent reason to surface in the top list (handled by the
+  // canonical testIndications.ts registry directly).
   //
   // SMART DEDUP (universal): three layers, each handles a different
   // duplicate pattern. The user's Marisa output showed both
@@ -366,38 +378,9 @@ export function buildPlan(input: PatientInput): ClinicalFacts {
 
     return false;
   };
+  // Pattern-owned workup tests are intentionally NOT merged into the top
+  // list. They're displayed inside the condition card by the UI.
   const conditionDrivenTests: TestOrder[] = [];
-  for (const cond of conditions) {
-    if (!Array.isArray(cond.confirmatory_tests)) continue;
-    for (const ct of cond.confirmatory_tests) {
-      // Confirmatory tests come in two shapes depending on whether the
-      // condition was enriched via testCatchesRegistry: either a plain
-      // string OR an object { test, why }. Tolerate both.
-      const name = typeof ct === 'string'
-        ? ct
-        : (ct as any)?.test ?? '';
-      const why = typeof ct === 'string'
-        ? `Confirmatory workup for ${cond.name}.`
-        : (ct as any)?.why ?? `Confirmatory workup for ${cond.name}.`;
-      const trimmed = String(name).trim();
-      if (!trimmed) continue;
-      // Dedup against canonical baseline AND every condition-workup entry
-      // we've already added in this loop. Universal coverage check.
-      const liveList = [...tests, ...conditionDrivenTests];
-      if (isCoveredByExisting(trimmed, liveList)) continue;
-      const norm = normalizeTestName(trimmed);
-      conditionDrivenTests.push({
-        key: `cond_workup__${cond.key}__${norm.replace(/\s+/g, '_').slice(0, 40)}`,
-        name: trimmed,
-        icd10: cond.icd10 ?? null,
-        priority: cond.confidence === 'high' ? 'high' : 'moderate',
-        specialist: 'pcp',
-        whyShort: `Workup for ${cond.name.toLowerCase()}`,
-        why,
-        sourcedFrom: 'condition_workup',
-      } as any);
-    }
-  }
 
   // Final test list: canonical baseline tests + dedup'd condition-workup
   // tests, then cap. Universal cap stops the list from ballooning to 25+
