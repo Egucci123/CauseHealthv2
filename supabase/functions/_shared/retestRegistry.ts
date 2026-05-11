@@ -635,11 +635,11 @@ const REGISTRY: RetestDef[] = [
   },
   {
     key: 'dexa_female_65_or_risk',
-    canonical: 'DEXA Scan — female ≥65 or earlier with risk factors',
+    canonical: 'DEXA Scan (Bone Density)',
     icd10: 'Z13.820',
     icd10Description: 'Encounter for screening for osteoporosis',
-    insuranceNote: 'USPSTF recommended for women 65+; earlier with chronic steroid use, prior fracture, low BMI, smoking, IBD, hyperparathyroidism.',
-    defaultPriority: 'moderate',
+    insuranceNote: 'USPSTF: women ≥65 universal, men ≥70 universal. Earlier for either sex with chronic steroid use, prior fragility fracture, low BMI, smoking, IBD, hyperparathyroidism, hypogonadism, family history.',
+    defaultPriority: 'high',
     aliases: [/\bdexa\b/i, /bone density/i, /\bdxa\b/i],
   },
   {

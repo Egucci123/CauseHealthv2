@@ -803,12 +803,23 @@ export const TEST_INDICATIONS: TestIndication[] = [
   {
     id: 'autonomic_pots_workup',
     triggers: [
-      { kind: 'symptom_match', pattern: /\b(heart palpitation\w*|palpitation\w*)/i },
-      { kind: 'symptom_match', pattern: /\b(dizziness on standing|orthostatic|lightheaded)/i },
+      // Two paths:
+      //  A) Palpitations + orthostatic / dizziness  (alone justifies EKG)
+      //  B) Palpitations alone WITH a long-COVID-style symptom cluster
+      //     (fatigue / exercise intolerance / brain fog) — also EKG-worthy
       { kind: 'any', of: [
-        { kind: 'symptom_match', pattern: /\b(reduced exercise tolerance|exercise intolerance)/i },
-        { kind: 'flag_true', flag: 'hasFatigue' },
-        { kind: 'symptom_match', pattern: /\bbrain fog\b/i },
+        { kind: 'all', of: [
+          { kind: 'symptom_match', pattern: /\b(heart palpitation\w*|palpitation\w*)/i },
+          { kind: 'symptom_match', pattern: /\b(dizziness on standing|orthostatic|lightheaded)/i },
+        ]},
+        { kind: 'all', of: [
+          { kind: 'symptom_match', pattern: /\b(heart palpitation\w*|palpitation\w*)/i },
+          { kind: 'any', of: [
+            { kind: 'symptom_match', pattern: /\b(reduced exercise tolerance|exercise intolerance)/i },
+            { kind: 'flag_true', flag: 'hasFatigue' },
+            { kind: 'symptom_match', pattern: /\bbrain fog\b/i },
+          ]},
+        ]},
       ]},
     ],
     tests: [{ key: 'ekg_if_dose_high', whyShort: 'Palpitations + dizziness on standing + exercise intolerance — 12-lead EKG rules out arrhythmia; orthostatic vitals + tilt-table workup if EKG normal (POTS / dysautonomia / long-COVID pattern)', trigger: 'b' }],

@@ -265,6 +265,28 @@ const RULES: BackstopRule[] = [
         };
       }
 
+      // ── Trigger D: Above-range TSH 4.5–10 with Free T4 NOT drawn ────
+      //
+      // Universal coverage gap fix (2026-05-12 audit). When TSH crosses
+      // the lab's upper reference (typically 4.5) but Free T4 is missing
+      // from the panel, we still need to surface this. Without Free T4
+      // we can't distinguish overt from subclinical, but TSH alone
+      // ≥4.5 is already a hard signal — the right answer is "get a
+      // full thyroid panel + antibodies." Confidence: high (TSH out
+      // of standard range is unambiguous), name: hypothyroid pattern.
+      if (tsh.value >= 4.5 && tsh.value < 10 && !ft4) {
+        return {
+          name: 'Hypothyroid pattern — TSH above range, Free T4 needed',
+          category: 'endocrine',
+          confidence: 'high',
+          evidence: `TSH ${tsh.value} mIU/L is above the standard lab reference (~4.5). Free T4 wasn't drawn — without it we can't separate overt from subclinical hypothyroidism, but the TSH alone is enough to act on.`,
+          confirmatory_tests: ['Free T4', 'Free T3', 'Reverse T3', 'TPO Antibodies', 'Thyroglobulin Antibodies (Tg-Ab)'],
+          icd10: 'E03.9',
+          what_to_ask_doctor: "My TSH is above the standard lab reference range. Can we get a full thyroid panel (Free T4, Free T3) and thyroid antibodies (TPO, Tg-Ab) to see if this is Hashimoto's or another cause?",
+          source: 'deterministic',
+        };
+      }
+
       // The Hashimoto's-specific card is reserved for HIGH-CONFIDENCE
       // signals only: positive antibodies (Trigger A or B above) or overt
       // hypothyroidism (Trigger C). The borderline-TSH + symptoms pattern
@@ -436,6 +458,92 @@ const RULES: BackstopRule[] = [
         };
       }
       return null;
+    },
+  },
+
+  // ── Hepatic stress / alcoholic-liver-pattern ──────────────────────────
+  //
+  // NAFLD rule above requires a metabolic signal (A1c or TG). That
+  // misses the alcoholic-liver phenotype: elevated ALT + AST + GGT
+  // without any metabolic component. AST/ALT > 1 and MCV ≥ 100 are
+  // additional alcoholic-pattern indicators (de Ritis ratio + macrocytic).
+  //
+  // Universal across both sexes. Fires regardless of self-reported
+  // alcohol use (we can't trust under-reporting). Name framed as
+  // "hepatic stress" to avoid stigma; ICD-10 K76.9 is generic-liver.
+  {
+    key: 'hepatic_stress_pattern',
+    alreadyRaisedIf: [/nafld/i, /fatty liver/i, /alcoholic liver/i, /hepatitis/i, /cirrhos/i, /\bnash\b/i],
+    skipIfDx: ['nafld', 'alcoholic_liver_disease', 'cirrhosis'],
+    detect: (ctx) => {
+      const alt = mark(ctx.labValues, [/\balt\b/i, /\bsgpt\b/i, /alanine[\s-]?aminotransferase/i]);
+      const ast = mark(ctx.labValues, [/\bast\b/i, /\bsgot\b/i, /aspartate[\s-]?aminotransferase/i]);
+      const ggt = mark(ctx.labValues, [/\bggt\b/i, /gamma[\s-]?glutamyl/i]);
+      const mcv = mark(ctx.labValues, [/\bmcv\b/i]);
+      const altHigh = alt && alt.value > 35;
+      const astHigh = ast && ast.value > 35;
+      const ggtHigh = ggt && ggt.value > 50;
+      // Need at least 2 of (ALT, AST, GGT) elevated to fire.
+      const elevatedCount = [altHigh, astHigh, ggtHigh].filter(Boolean).length;
+      if (elevatedCount < 2) return null;
+      const ev: string[] = [];
+      if (altHigh) ev.push(`ALT ${alt!.value}`);
+      if (astHigh) ev.push(`AST ${ast!.value}`);
+      if (ggtHigh) ev.push(`GGT ${ggt!.value}`);
+      // Alcoholic-pattern indicators (informational, not gating).
+      const astAltRatio = (alt && ast && alt.value > 0) ? (ast.value / alt.value) : 0;
+      const astDominant = astAltRatio >= 1.5;             // classic alcoholic ratio
+      const macrocytic = mcv && mcv.value >= 100;
+      if (astDominant) ev.push(`AST/ALT ${astAltRatio.toFixed(1)} (high — alcoholic pattern)`);
+      if (macrocytic) ev.push(`MCV ${mcv!.value} (macrocytic — supports alcoholic pattern)`);
+      const isHigh = elevatedCount === 3 || astDominant || macrocytic;
+      return {
+        name: 'Hepatic stress pattern — rule out alcohol-related or NAFLD',
+        category: 'gi',
+        confidence: isHigh ? 'high' : 'moderate',
+        evidence: `Liver enzymes elevated: ${ev.join(', ')}. ${astDominant || macrocytic ? 'The AST/ALT ratio and/or macrocytic red cells point toward alcohol-related liver stress; NAFLD remains in the differential.' : 'Both alcohol-related liver disease and NAFLD can produce this pattern.'}`,
+        confirmatory_tests: ['Liver Ultrasound', 'GGT (already drawn)', 'Hepatitis B + C serology', 'Ferritin + Iron Studies (rule out hemochromatosis)', 'Fasting Insulin + HOMA-IR'],
+        icd10: 'K76.9',
+        what_to_ask_doctor: "My liver enzymes are elevated. Can we get a liver ultrasound, hepatitis B and C screening, and iron studies to figure out what's driving this? I'd also like to honestly review my alcohol intake.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Hyperthyroidism / rule-out Graves disease ─────────────────────────
+  //
+  // TSH below the lab's lower reference (typically 0.4) is suspicious
+  // for hyperthyroidism — Graves disease is the most common cause in
+  // adults. Add hyperthyroid-pattern symptoms (heat intolerance,
+  // palpitations, anxiety, unexplained weight loss, tremor) for
+  // confidence. Universal across sexes.
+  {
+    key: 'hyperthyroidism_rule_out_graves',
+    alreadyRaisedIf: [/hyperthyroid/i, /graves/i, /toxic.*goiter/i, /thyrotoxicosis/i],
+    skipIfDx: ['hyperthyroidism', 'graves'],
+    detect: (ctx) => {
+      const tsh = mark(ctx.labValues, [/^tsh\b/i, /^thyroid[\s-]*stimulating[\s-]*hormone\b/i]);
+      if (!tsh || tsh.value >= 0.4) return null;
+      const sx = ctx.symptomsLower ?? '';
+      const sxMatches: string[] = [];
+      if (/\bheat intolerance\b/i.test(sx)) sxMatches.push('heat intolerance');
+      if (/\bheart palpitation\w*|palpitation\w*/i.test(sx)) sxMatches.push('palpitations');
+      if (/\banxiety\b/i.test(sx)) sxMatches.push('anxiety');
+      if (/\bunexplained weight loss\b/i.test(sx)) sxMatches.push('weight loss');
+      if (/\btremor\b/i.test(sx)) sxMatches.push('tremor');
+      if (/\bdiarrhea\b/i.test(sx)) sxMatches.push('GI hypermotility');
+      const overt = tsh.value < 0.1;     // very low — classic overt
+      const isHigh = overt || sxMatches.length >= 2;
+      return {
+        name: overt ? 'Overt hyperthyroidism — rule out Graves disease' : 'Hyperthyroid pattern — TSH below range',
+        category: 'endocrine',
+        confidence: isHigh ? 'high' : 'moderate',
+        evidence: `TSH ${tsh.value} mIU/L is below the standard reference (~0.4)${sxMatches.length ? ` with hyperthyroid-pattern symptoms (${sxMatches.join(', ')})` : ''}. Graves disease is the most common cause in adults; toxic nodular goiter and thyroiditis are next.`,
+        confirmatory_tests: ['Free T4', 'Free T3', 'TSI / TRAb antibodies (Graves-specific)', 'Thyroid uptake scan if antibodies negative', 'Thyroid ultrasound'],
+        icd10: 'E05.90',
+        what_to_ask_doctor: "My TSH is below the lab's lower reference. Can we check Free T4, Free T3, and TSI / TRAb antibodies to see if this is Graves disease, and would a thyroid uptake scan be appropriate if antibodies are negative?",
+        source: 'deterministic',
+      };
     },
   },
 
@@ -1220,11 +1328,11 @@ export function runSuspectedConditionsBackstop(input: {
  *  Adding a new named-pattern rule? Map its key to its system here.
  *  Universal: the system-drift detector itself doesn't need to change. */
 const SYSTEM_NAMED_RULE_DEDUP: Record<string, string[]> = {
-  liver:               ['nafld'],
+  liver:               ['nafld', 'hepatic_stress_pattern'],
   kidney:              [],
   glucose_metabolism:  ['t2d_range', 'prediabetes_range', 'insulin_resistance_dyslipidemia'],
   lipid:               ['ldl_high_for_age', 'particle_pattern_atherogenic', 'inflammation_cv_amplifier'],
-  thyroid:             ['hashimoto_or_hypothyroid', 'subclinical_hypothyroidism'],
+  thyroid:             ['hashimoto_or_hypothyroid', 'subclinical_hypothyroidism', 'hyperthyroidism_rule_out_graves'],
   iron_hematology:     ['iron_deficiency_anemia', 'hemoconcentration_dehydration', 'b12_deficiency', 'hemochromatosis', 'early_hypochromic_pattern'],
   inflammation:        ['inflammation_cv_amplifier', 'pmr_age_50plus'],
   b_vitamin:           ['b12_deficiency'],
