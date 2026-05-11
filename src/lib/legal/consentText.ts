@@ -161,6 +161,10 @@ const REGISTRY: Record<ConsentType, ConsentText | null> = {
   ai_processing: null,
   health_data_authorization: null,
   mhmda_wa_authorization: null,
+  // Ops-entered when a user emails to opt out of arbitration within 30
+  // days. No user-facing checkbox — the consent_log row's checkbox_text
+  // is set by the ops tool that records it.
+  arbitration_optout: null,
 };
 
 export function getConsentText(type: ConsentType): ConsentText | null {
