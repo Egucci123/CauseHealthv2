@@ -270,7 +270,7 @@ export const Register = () => {
           >
             I agree to resolve disputes through individual arbitration instead of court (
             <a
-              href="/terms#section-17"
+              href="/terms#section-9"
               target="_blank"
               rel="noreferrer"
               className="text-primary-container underline hover:no-underline"

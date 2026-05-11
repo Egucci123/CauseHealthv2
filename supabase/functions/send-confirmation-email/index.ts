@@ -59,13 +59,13 @@ function buildEmail(args: {
 
 Your CauseHealth account is active.
 
-By creating your account you agreed to resolve any disputes with CauseHealth through individual binding arbitration rather than in court, as described in Section 17 of our Terms of Service. You also waived the right to participate in any class action lawsuit.
+By creating your account you agreed to resolve any disputes with CauseHealth through individual binding arbitration rather than in court, as described in Section 9 of our Terms of Service. You also waived the right to participate in any class action lawsuit.
 
 You have the right to opt out. If you don't want to be bound by the arbitration agreement, email legal@causehealth.com with the subject line "Arbitration Opt-Out" and your account email address (${accountEmail}) before ${deadlinePretty}.
 
 If you do nothing, the arbitration agreement applies to your account.
 
-Full text: https://causehealth.app/terms#section-17
+Full text: https://causehealth.app/terms#section-9
 
 — The CauseHealth team`;
 
@@ -78,14 +78,14 @@ Full text: https://causehealth.app/terms#section-17
     <p>Hi ${greetingName},</p>
     <p>Your CauseHealth account is active.</p>
     <p>
-      By creating your account you agreed to resolve any disputes with CauseHealth through <strong>individual binding arbitration</strong> rather than in court, as described in Section 17 of our Terms of Service. You also waived the right to participate in any class action lawsuit.
+      By creating your account you agreed to resolve any disputes with CauseHealth through <strong>individual binding arbitration</strong> rather than in court, as described in Section 9 of our Terms of Service. You also waived the right to participate in any class action lawsuit.
     </p>
     <p>
       <strong>You have the right to opt out.</strong> If you don&apos;t want to be bound by the arbitration agreement, email <a href="mailto:legal@causehealth.com?subject=Arbitration%20Opt-Out" style="color:#1E40AF;">legal@causehealth.com</a> with the subject line <strong>&quot;Arbitration Opt-Out&quot;</strong> and your account email address (${accountEmail}) before <strong>${deadlinePretty}</strong>.
     </p>
     <p>If you do nothing, the arbitration agreement applies to your account.</p>
     <p>
-      Full text: <a href="https://causehealth.app/terms#section-17" style="color:#1E40AF;">Section 17 of the Terms of Service</a>
+      Full text: <a href="https://causehealth.app/terms#section-9" style="color:#1E40AF;">Section 9 of the Terms of Service</a>
     </p>
     <p style="color:#5B6573;">— The CauseHealth team</p>
   </body>

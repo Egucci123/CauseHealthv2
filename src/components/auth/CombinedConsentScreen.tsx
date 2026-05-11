@@ -272,8 +272,8 @@ export const CombinedConsentScreen = ({ onAccepted }: Props) => {
               checked={arbitrationChecked}
               onChange={setArbitrationChecked}
               disabled={submitting}
-              hyperlinkText="Read Section 17 →"
-              hyperlinkHref="/terms#section-17"
+              hyperlinkText="Read Section 9 →"
+              hyperlinkHref="/terms#section-9"
               emphasis="high"
             />
           </div>

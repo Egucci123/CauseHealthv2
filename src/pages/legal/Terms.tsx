@@ -1,5 +1,5 @@
 // src/pages/legal/Terms.tsx
-// v6 — synced from legal/TERMS_OF_SERVICE.md
+// v7 — synced from legal/TERMS_OF_SERVICE.md (May 10, 2026)
 import { LandingNav } from '../../components/landing/LandingNav';
 import { LandingFooter } from '../../components/landing/LandingFooter';
 
@@ -8,247 +8,81 @@ export const Terms = () => (
     <LandingNav />
     <div className="max-w-3xl mx-auto px-6 pt-32 pb-20">
       <h1 className="text-authority text-4xl text-clinical-charcoal font-bold mb-2">CauseHealth Terms of Service</h1>
-      <p className="text-body text-clinical-stone mb-1 text-sm"><strong>Effective Date:</strong> May 10, 2026</p>
-      <p className="text-body text-clinical-stone mb-1 text-sm"><strong>Last Updated:</strong> May 10, 2026</p>
-      <p className="text-body text-clinical-stone mb-1 text-sm"><strong>Entity:</strong> CauseHealth LLC</p>
-      <p className="text-body text-clinical-stone mb-8 text-sm"><strong>Legal Contact:</strong> legal@causehealth.com</p>
-
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-10">
-        <h2 className="text-authority text-lg text-red-900 font-bold mb-2">❌ MANDATORY PRE-READING — ARBITRATION AND CLASS WAIVER</h2>
-        <p className="text-sm text-red-900">
-          These Terms contain a <strong>mandatory binding individual arbitration agreement (Section 17)</strong> and a <strong>class-action waiver</strong>. By creating an account or using the Service, you agree to resolve all disputes through individual arbitration rather than in court, and you waive the right to participate in any class action, collective action, or representative proceeding. <strong>You have 30 days from first account creation to opt out of arbitration.</strong> See Section 17.6.
-        </p>
-      </div>
+      <p className="text-body text-clinical-stone text-sm"><strong>Effective:</strong> May 10, 2026 · <strong>Governing law:</strong> Pennsylvania · <strong>Venue:</strong> Bucks County, Pennsylvania</p>
+      <p className="text-body text-clinical-stone text-sm mb-10">
+        <strong>Questions:</strong>{' '}
+        <a href="mailto:legal@causehealth.com" className="text-primary-container hover:underline">legal@causehealth.com</a>
+      </p>
 
       <div className="prose prose-sm max-w-none space-y-8">
-        <Section title="1. Agreement to These Terms">
-          <p>These Terms of Service ("Terms") form a binding legal contract between you and CauseHealth LLC ("CauseHealth," "we," "us"). By creating an account, accessing, or using the Service, you agree to these Terms and our Privacy Policy, which is incorporated by reference. If you do not agree with any provision of these Terms, do not use the Service.</p>
+        <Section id="section-1" title="1. What CauseHealth Is — and Isn't">
+          <p>CauseHealth is a wellness app that helps you understand your bloodwork and prepare for conversations with your doctor. You upload your lab results, and we generate a Doctor Prep Document — a structured summary designed to be reviewed with your licensed clinician, not instead of one.</p>
+          <p className="mt-3">CauseHealth is not a medical provider. We do not diagnose, treat, or prescribe anything. Nothing in this app is medical advice. Your doctor makes health decisions. We help you have a better conversation with them.</p>
+          <p className="mt-3">If you are having a medical emergency, call 911. Do not use this app in an emergency.</p>
         </Section>
 
-        <Section title="2. NOT MEDICAL ADVICE — READ THIS FIRST">
-          <p>CauseHealth is a consumer wellness and educational information tool. It is not a healthcare provider, not a HIPAA-covered entity or business associate, not a clinical decision support system, not a medical device, not a telehealth platform, not a pharmacy, and not a substitute for a licensed clinician.</p>
-          <p className="mt-2">The output produced by the Service — including biomarker interpretations, topics for discussion with your doctor, supplement information, and Doctor Prep Documents — is informational and educational only. It is not a medical diagnosis, treatment recommendation, prescription, or clinical decision. It is not intended to replace a conversation with a licensed clinician who has your complete medical history.</p>
-          <p className="mt-2">Always consult a licensed clinician who has your full medical history before: making any change to your diet, exercise, or lifestyle; starting, changing, or stopping any medication or supplement; or acting on any information displayed in the Service.</p>
-          <p className="mt-2"><strong>EMERGENCY: If you are experiencing a medical emergency, call 911 or go to the nearest emergency room immediately. Do not use the Service in a medical emergency.</strong></p>
-          <p className="mt-2">You assume sole responsibility for any health decision you make on the basis of information displayed in the Service. CauseHealth expressly disclaims any liability for clinical outcomes. See Section 14.</p>
-          <p className="mt-2"><strong>Corporate Practice of Medicine.</strong> CauseHealth does not employ licensed physicians or other healthcare professionals to deliver clinical services. No physician-patient, nurse-patient, or other professional-patient relationship is created by your use of the Service.</p>
-        </Section>
-
-        <Section title="3. Eligibility">
-          <p>To use the Service you must:</p>
+        <Section id="section-2" title="2. Who Can Use CauseHealth">
+          <p>You can use CauseHealth if you:</p>
           <ul className="list-disc pl-5 space-y-1 mt-2">
-            <li>be at least <strong>18 years of age</strong>;</li>
-            <li>be a current resident of the United States, but <strong>not</strong> a current resident of California, New York, Illinois, or Washington State, which are blocked jurisdictions (see Section 7);</li>
-            <li>be an <strong>established patient of a licensed physician, nurse practitioner, or physician assistant</strong> — meaning you have an active clinical relationship with a licensed clinician who can review health information with you;</li>
-            <li>have the legal capacity to enter into a binding contract under the laws of your state;</li>
-            <li>not be subject to U.S. sanctions, OFAC restricted-party lists, or comprehensive U.S. trade embargoes;</li>
-            <li>not be prohibited from using the Service under any applicable law;</li>
-            <li>be using the Service solely for your own personal health information.</li>
+            <li>Are 18 or older</li>
+            <li>Live in the United States (excluding California, New York, Illinois, and Washington State — we don't currently operate there)</li>
+            <li>Have a licensed doctor, nurse practitioner, or physician assistant you can discuss your results with</li>
+            <li>Are uploading your own personal lab results</li>
           </ul>
-          <p className="mt-2">By creating an account, you represent and warrant that all of the above are true. We reserve the right to verify eligibility and to refuse service, suspend, or terminate accounts that do not meet these criteria without refund.</p>
+          <p className="mt-3">By creating an account you confirm all of the above are true.</p>
         </Section>
 
-        <Section title="4. The Service">
-          <p>CauseHealth allows you to upload your personal bloodwork results, enter health information, and receive a Doctor Prep Document — a structured document designed to help you have a more informed conversation with your licensed clinician. Output is generated by a combination of deterministic clinical rules and a large-language-model AI operated by Anthropic, PBC.</p>
-          <p className="mt-2">We may add, modify, or discontinue features at any time. We may impose usage limits to maintain Service stability and affordability; applicable limits are disclosed in the product interface.</p>
+        <Section id="section-3" title="3. Your Account">
+          <p>Keep your login credentials private. You're responsible for everything that happens under your account. If you think someone has accessed your account without permission, email us at <a href="mailto:legal@causehealth.com" className="text-primary-container hover:underline">legal@causehealth.com</a> right away.</p>
         </Section>
 
-        <Section title="5. Account Registration and Security">
-          <p>You must register an account to use the Service. You agree to: (a) provide accurate and complete information during registration; (b) keep your login credentials confidential and not share them; (c) notify us immediately at security@causehealth.com if you suspect unauthorized access; and (d) accept responsibility for all activity under your account.</p>
-          <p className="mt-2">We reserve the right to suspend or close accounts that show signs of compromise, fraud, abuse, or misrepresentation.</p>
+        <Section id="section-4" title="4. What You Pay">
+          <p>CauseHealth costs $19 for your first lab analysis, which includes up to three wellness plan generations. Additional lab uploads are $5 each.</p>
+          <p className="mt-3">There are no subscriptions and no auto-renewal. You pay once per analysis.</p>
+          <p className="mt-3">Because we generate your Doctor Prep Document immediately after purchase, all sales are final once your document has been generated. If you were charged in error, email us within 14 days and we'll make it right.</p>
+          <p className="mt-3">Payments are processed by Stripe. We never see your full card number.</p>
         </Section>
 
-        <Section title="6. Subscriptions, Payments, and Refunds">
-          <p><strong>6.1 Pricing and Billing Model.</strong> The Service is sold as a one-time purchase of $19 per analysis. Additional lab uploads (e.g., a 12-week retest) are $5 each. No recurring charges.</p>
-          <p className="mt-2"><strong>6.2 Payment Processor.</strong> All payments are processed by Stripe, Inc. By submitting payment information, you also agree to Stripe's Privacy Policy and Terms of Service. We do not store your full card number, CVV, or bank account number.</p>
-          <p className="mt-2"><strong>6.3 Refund Policy.</strong> All purchases are final. Because the Service generates an immediate, personalized output that cannot be returned, we do not offer refunds as a general policy. If you believe you were charged in error, contact billing@causehealth.com within 14 days and we will investigate in good faith.</p>
-          <p className="mt-2"><strong>6.4 Taxes.</strong> Prices are exclusive of applicable sales tax, use tax, or similar governmental charges. You are responsible for any such taxes owed on your purchases.</p>
-          <p className="mt-2"><strong>6.5 Failed Payments.</strong> If a payment fails, we will notify you and may suspend your access until the issue is resolved. Persistent failure may result in account termination after reasonable notice.</p>
+        <Section id="section-5" title="5. What the App Does With Your Labs">
+          <p>When you upload bloodwork, we extract your biomarker values and run them through our analysis pipeline. This combines a set of clinical reference rules we've built with AI (Claude, by Anthropic) to generate your Doctor Prep Document.</p>
+          <p className="mt-3">The AI sees your biomarker values, medications, supplements, conditions, and relevant health info you've entered. It does not see your name, email, or payment information — those are stripped before anything is sent.</p>
+          <p className="mt-3">Output flagged as critically abnormal triggers a mandatory warning regardless of what the AI produces. We've built safety rails. But no automated system is perfect — which is why your doctor's review is the required final step before you act on anything.</p>
         </Section>
 
-        <Section title="7. Blocked Jurisdictions, Sanctions, and Geographic Restrictions">
-          <p><strong>Blocked U.S. Jurisdictions.</strong> The Service is not available to residents of California, New York, Illinois, or Washington State. If you are a resident of a blocked jurisdiction:</p>
+        <Section id="section-6" title="6. Using the App Responsibly">
+          <p>You agree not to:</p>
           <ul className="list-disc pl-5 space-y-1 mt-2">
-            <li>you are not eligible to create an account or use the Service;</li>
-            <li>you may not circumvent IP geofence or self-certification controls;</li>
-            <li>accounts identified as operated by a blocked-jurisdiction resident may be terminated immediately, with subscription fees retained as liquidated damages.</li>
-          </ul>
-          <p className="mt-2"><strong>International.</strong> The Service is not available outside the United States, including the European Economic Area, the United Kingdom, or Switzerland. International access is blocked at the IP level.</p>
-          <p className="mt-2"><strong>Sanctions.</strong> You represent and warrant that you are not located in, or a resident or national of, any country or territory subject to a comprehensive U.S. trade embargo (Cuba, Iran, North Korea, Syria, the Crimea, Donetsk, and Luhansk regions of Ukraine), and you are not on any U.S. government restricted-party list.</p>
-        </Section>
-
-        <Section title="8. Acceptable Use">
-          <p>You agree not to use the Service to:</p>
-          <ul className="list-disc pl-5 space-y-1 mt-2">
-            <li>upload or enter health information that is not your own personal health information;</li>
-            <li>provide, distribute, or resell output as medical advice to any other person;</li>
-            <li>reverse-engineer, decompile, scrape, or extract source code, model weights, proprietary clinical rules, prompts, or training data from the Service;</li>
-            <li>bypass, circumvent, or attempt to disable any usage cap, rate limit, paywall, geographic restriction, or technical security measure;</li>
-            <li>access the Service from a sanctioned jurisdiction or a blocked U.S. jurisdiction;</li>
-            <li>introduce malware, conduct denial-of-service attacks, or attack the Service or its infrastructure;</li>
-            <li>use automated access tools, bots, scrapers, or crawlers without our prior written permission;</li>
-            <li>impersonate any person or entity or misrepresent your identity, qualifications, or affiliation;</li>
-            <li>use the Service for any purpose that violates applicable federal, state, or local law.</li>
-          </ul>
-          <p className="mt-2">We may suspend or terminate any account that violates this Section, with or without prior notice.</p>
-        </Section>
-
-        <Section title="9. Your Content">
-          <p>"Your Content" means all information you upload, enter, or generate within the Service: lab files, profile data, health conditions, medications, supplements, symptoms, free-text notes, and AI-generated analyses and documents.</p>
-          <p className="mt-2">You retain all ownership rights in Your Content. By using the Service, you grant CauseHealth a limited, non-exclusive, royalty-free, worldwide license to host, store, transmit, display, and process Your Content solely to: (a) operate and deliver the Service to you; (b) generate your personalized output; and (c) comply with applicable law. We acquire no other rights in Your Content. We do not sell Your Content. We do not allow any third party to train an AI model on Your Content.</p>
-          <p className="mt-2">You represent and warrant that: (a) you have all rights necessary to upload Your Content; (b) Your Content does not violate any law or third-party right; and (c) the bloodwork and health information you upload is your own.</p>
-          <p className="mt-2">You may delete Your Content at any time from Settings. Deletion is irreversible once retention windows in our Privacy Policy elapse.</p>
-        </Section>
-
-        <Section title="10. AI-Generated Output — Doctor Prep Documents">
-          <p><strong>What the Service produces.</strong> The Service generates a Doctor Prep Document — a structured document designed to help you have a more informed and efficient conversation with your licensed clinician. It is not a standalone health analysis, diagnosis, or wellness plan. Its purpose is to organize your lab data, surface questions worth discussing with your doctor, and provide general educational context for biomarker values. <strong>It is designed to be read with your clinician, not instead of your clinician.</strong></p>
-          <p className="mt-2"><strong>Clinician Name Requirement.</strong> Before accessing your Doctor Prep Document, you must enter the name and practice of the licensed clinician with whom you intend to review it. This information is used solely to (a) generate a pre-written patient message you can send to that clinician and (b) create a record that you identified a clinician before accessing the output. CauseHealth does not contact, verify, or share information with the clinician you identify. If you do not currently have a clinician, you must obtain one before using the Service.</p>
-          <p className="mt-2"><strong>Non-determinism.</strong> The same inputs may produce different outputs across sessions.</p>
-          <p className="mt-2"><strong>Risk of error.</strong> AI output may be incomplete, outdated, or inaccurate. Our deterministic rule layer reduces but does not eliminate this risk.</p>
-          <p className="mt-2"><strong>Informational only.</strong> All AI output should be treated as a starting point for discussion with your licensed clinician, not as a clinical conclusion you should act on independently.</p>
-          <p className="mt-2"><strong>UI formatting is informational, not clinical.</strong> The Service may display your biomarker values alongside reference ranges, flags, or visual indicators. This formatting is designed to help you understand your data and prepare for a clinician conversation — it does not constitute a clinical assessment, normal/abnormal determination, or diagnosis.</p>
-          <p className="mt-2"><strong>Mandatory output acknowledgment.</strong> Before accessing any AI-generated output, you are required to affirmatively acknowledge in the product interface that: (a) you will share and review all AI output with a licensed clinician before making any health decision; (b) you understand AI output is not a clinical assessment; and (c) CauseHealth's liability for AI output is limited as set forth in Section 14. This acknowledgment is a condition of accessing the output.</p>
-          <p className="mt-2"><strong>Clinician intermediary required.</strong> AI output is designed to be reviewed by you and your licensed clinician together — not acted on independently. By using the Service, you affirmatively acknowledge that a licensed clinician who knows your full medical history is the required intermediary between any AI output and any health decision. CauseHealth's role ends at information delivery.</p>
-          <p className="mt-2"><strong>AI output is information, not a product.</strong> The output generated by the Service constitutes general health information — the same category as books, articles, and educational materials — not a manufactured product, medical device, or clinical service. No strict product liability doctrine applies. <em>See</em> Restatement (Third) of Torts § 19; <em>Winter v. G.P. Putnam's Sons</em>, 938 F.2d 1033 (9th Cir. 1991).</p>
-        </Section>
-
-        <Section title="11. Assumption of Risk, Causation Requirements, and Comparative Fault">
-          <p>You voluntarily assume the following specific, disclosed risks in exchange for access to the Service at its stated price:</p>
-          <ul className="list-disc pl-5 space-y-1 mt-2">
-            <li><strong>AI model error:</strong> large language models can produce outputs that are factually incorrect, incomplete, or contextually inappropriate.</li>
-            <li><strong>Reference range limitations:</strong> population-level reference ranges may not apply to your individual circumstances.</li>
-            <li><strong>Upstream model changes:</strong> the AI model may be updated, retrained, or replaced by its developer at any time.</li>
-            <li><strong>Clinician substitution risk:</strong> the greatest risk of harm arises if you use AI output as a substitute for, rather than a supplement to, a licensed clinician's assessment.</li>
-            <li><strong>Data completeness:</strong> AI output quality depends entirely on the completeness and accuracy of the information you provide.</li>
-            <li><strong>Lab collection and processing error:</strong> errors in specimen collection, lab processing, or PDF data extraction are entirely outside CauseHealth's control.</li>
-            <li><strong>Timing and recency:</strong> lab values reflect your biomarkers at the time of collection only.</li>
-          </ul>
-          <p className="mt-2"><strong>Required Causal Chain — Mandatory Elements.</strong> To establish any liability against CauseHealth for a health-related harm, a claimant must prove each of the following as a separate, independent element by a preponderance of the evidence. Failure to establish any single element is a complete defense:</p>
-          <ol className="list-decimal pl-5 space-y-1 mt-2">
-            <li>CauseHealth produced a specific, identifiable output that was factually incorrect or misleading in a material respect;</li>
-            <li>that specific error was caused by CauseHealth's failure to meet an applicable standard of care — not by AI model behavior outside CauseHealth's reasonable control, not by incomplete or inaccurate information you provided, and not by lab collection or processing error;</li>
-            <li>the claimant read and specifically relied on that output, rather than on any other information source, for the decision that caused harm;</li>
-            <li>the claimant did not review that specific output with a licensed clinician before acting on it — or if they did, that a reasonable clinician exercising ordinary care would not have identified and corrected the error;</li>
-            <li>the claimant took a specific, identifiable action directly caused by and traceable to that reliance and to no other cause;</li>
-            <li>that specific action — and not any independent intervening cause, including the claimant's own independent decision-making or a clinician's independent professional judgment — was the proximate cause of the claimant's injury; and</li>
-            <li>the injury was foreseeable at the time CauseHealth generated the output.</li>
-          </ol>
-          <p className="mt-2"><strong>Independent Clinician Decision Doctrine.</strong> Any health decision you or your clinician makes is an independent volitional act that constitutes an intervening cause breaking the causal chain between AI output and any resulting harm.</p>
-          <p className="mt-2"><strong>Comparative and Contributory Fault.</strong> In any jurisdiction applying comparative fault, the following conduct must be allocated as claimant fault and proportionally reduces any award: (a) failure to review AI output with a licensed clinician as required by these Terms; (b) providing incomplete or inaccurate health information; (c) acting on AI output for a material health decision without seeking any second opinion; (d) ignoring any emergency alert, abnormal-value flag, or disclaimer; or (e) continuing to use the Service after experiencing output that appeared incorrect without reporting it. In contributory negligence jurisdictions, any of the above is a complete bar to recovery.</p>
-          <p className="mt-2"><strong>Statute of Limitations.</strong> Notwithstanding any longer period under applicable law, any claim arising from or related to the Service must be brought within <strong>one (1) year</strong> from the date the claimant knew or reasonably should have known of the facts giving rise to the claim, or it is permanently barred. This shortened period does not apply to claims for which applicable law prohibits contractual limitation.</p>
-        </Section>
-
-        <Section title="12. Intellectual Property and Feedback">
-          <p>All software, designs, branding, copy, clinical rule libraries, AI prompts, and other materials forming the Service (excluding Your Content) are owned by CauseHealth or our licensors. We grant you a limited, personal, non-exclusive, non-transferable, revocable license to access and use the Service solely as permitted by these Terms.</p>
-          <p className="mt-2">You may export and download your personalized analyses and Doctor Prep PDFs for personal use and to share with your licensed clinician. You may not: republish, resell, or sublicense any output; use any output to develop, train, or improve a competing product or AI system; or reproduce our proprietary clinical rule logic, prompts, or methodologies.</p>
-          <p className="mt-2">If you voluntarily submit feedback, suggestions, or feature ideas, you grant CauseHealth a perpetual, irrevocable, worldwide, royalty-free license to use them without obligation or compensation.</p>
-        </Section>
-
-        <Section title="13. Termination">
-          <p>You may terminate your account at any time from Settings → Account → Delete Account. We may suspend or terminate your account immediately upon: material breach of these Terms; requirement to do so by law; determination that continued service creates material risk; or discontinuation of the Service. Upon termination, your license ends. Your data is handled per the Privacy Policy. Sections 2, 9, 10, 11, 13, 14, 15, 17, and 18 survive termination.</p>
-        </Section>
-
-        <Section title="14. Disclaimers">
-          <p>THE SERVICE IS PROVIDED "AS IS" AND "AS AVAILABLE" WITH ALL FAULTS AND WITHOUT WARRANTY OF ANY KIND. TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, CAUSEHEALTH EXPRESSLY DISCLAIMS ALL WARRANTIES, EXPRESS, IMPLIED, OR STATUTORY, INCLUDING: (A) ANY IMPLIED WARRANTY OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR NON-INFRINGEMENT; (B) ANY WARRANTY ARISING FROM COURSE OF DEALING; AND (C) ANY WARRANTY THAT THE SERVICE WILL BE UNINTERRUPTED, ERROR-FREE, SECURE, OR FREE FROM HARMFUL COMPONENTS.</p>
-          <p className="mt-2">WE DO NOT WARRANT THAT AI-GENERATED OUTPUT WILL BE ACCURATE, COMPLETE, CURRENT, OR SUITABLE FOR ANY PURPOSE. WE DO NOT WARRANT THAT ANY CLINICAL RULE, WELLNESS RECOMMENDATION, OR BIOMARKER INTERPRETATION PRODUCED BY THE SERVICE IS APPROPRIATE FOR YOUR INDIVIDUAL MEDICAL CIRCUMSTANCES.</p>
-          <p className="mt-2">NOTHING IN THE SERVICE CONSTITUTES MEDICAL, LEGAL, FINANCIAL, OR OTHER PROFESSIONAL ADVICE.</p>
-          <p className="mt-2"><strong>Health Information Disclaimer — No Warranty of Clinical Accuracy.</strong> The Service produces general health information of the same character as health encyclopedias, wellness books, fitness applications, and educational health content. The learned-publication doctrine (<em>Aetna Casualty & Surety Co. v. Jeppesen & Co.</em>, 642 F.2d 339 (9th Cir. 1981); <em>Winter v. G.P. Putnam's Sons</em>, 938 F.2d 1033 (9th Cir. 1991)) holds that publishers of general health and technical information are not subject to product liability for inaccuracies, provided the information is presented as general guidance. CauseHealth explicitly represents its output as general guidance only.</p>
-          <p className="mt-2"><strong>No Implied Warranty from UI Formatting.</strong> The display of reference ranges, visual indicators, flags, charts, or structured output layouts does not create any implied warranty of clinical accuracy. Such formatting is purely presentational and educational.</p>
-          <p className="mt-2">Some jurisdictions do not allow certain warranty disclaimers; in those jurisdictions, the above disclaimers apply to the maximum extent permitted by law. Nothing in this Section limits CauseHealth's liability for gross negligence, willful misconduct, or fraud.</p>
-        </Section>
-
-        <Section title="15. Limitation of Liability">
-          <p>TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW:</p>
-          <p className="mt-2"><strong>(A) EXCLUDED DAMAGES.</strong> IN NO EVENT WILL EITHER PARTY BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, EXEMPLARY, OR PUNITIVE DAMAGES — INCLUDING LOST PROFITS, LOST DATA, LOSS OF GOODWILL, BUSINESS INTERRUPTION, OR COST OF SUBSTITUTE SERVICES — REGARDLESS OF THE THEORY OF LIABILITY, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.</p>
-          <p className="mt-2"><strong>(B) AGGREGATE CAP.</strong> EACH PARTY'S TOTAL AGGREGATE LIABILITY TO THE OTHER FOR ALL CLAIMS ARISING OUT OF OR RELATED TO THE SERVICE IS LIMITED TO THE GREATER OF: (I) THE AMOUNT YOU PAID CAUSEHEALTH IN THE TWELVE (12) MONTHS IMMEDIATELY PRECEDING THE EVENT GIVING RISE TO THE CLAIM; OR (II) ONE HUNDRED U.S. DOLLARS ($100). THIS CAP APPLIES MUTUALLY.</p>
-          <p className="mt-2"><strong>(C) HEALTH OUTCOMES.</strong> CAUSEHEALTH IS NOT LIABLE FOR ANY HEALTH OUTCOME, MEDICAL DECISION, ADVERSE REACTION, OR CLINICAL RESULT ARISING FROM YOUR USE OF OR RELIANCE ON THE SERVICE. ALL HEALTH DECISIONS REMAIN SOLELY YOUR RESPONSIBILITY AND THAT OF YOUR LICENSED CLINICIAN. THIS LIMITATION APPLIES TO ALL THEORIES OF LIABILITY INCLUDING NEGLIGENCE, STRICT LIABILITY, BREACH OF WARRANTY, AND MISREPRESENTATION.</p>
-          <p className="mt-2"><strong>(D) CARVE-OUTS — LIMITATIONS DO NOT APPLY TO:</strong> (i) CauseHealth's gross negligence, willful misconduct, or intentional fraud; (ii) CauseHealth's breach of confidentiality or data security obligations; (iii) CauseHealth's indemnification obligations under Section 16; (iv) statutory damages awarded under the Texas Data Privacy and Security Act, the Virginia Consumer Data Protection Act, or any other state privacy statute that provides a non-waivable private right of action; (v) civil monetary penalties assessed by the FTC under the Health Breach Notification Rule (16 CFR Part 318) or FTC Act Sections 5 and 19; (vi) civil penalties assessed by any state attorney general; or (vii) any other liability that cannot be limited or waived under applicable mandatory law.</p>
-          <p className="mt-2"><strong>Risk Allocation Acknowledgment.</strong> These limitations reflect a reasonable allocation of risk given the price of the Service, the inherent limitations of AI-generated wellness information, and the availability of licensed clinical care as an alternative. You acknowledge that CauseHealth would not be able to offer the Service at this price without these limitations.</p>
-          <p className="mt-2"><strong>Sophisticated User Acknowledgment.</strong> By creating an account, you represent that you are an adult capable of understanding that: (a) AI-generated health information is a supplement to, not a substitute for, licensed clinical care; (b) you have the ability and opportunity to consult a licensed clinician before acting on any information displayed in the Service; (c) you are voluntarily using the Service with full awareness of the limitations; and (d) the price of the Service reflects the limited nature of the obligations CauseHealth undertakes.</p>
-        </Section>
-
-        <Section title="16. Indemnification">
-          <p>You agree to defend, indemnify, and hold harmless CauseHealth and its officers, directors, employees, contractors, and agents from any third-party claim, loss, liability, cost, or expense (including reasonable attorneys' fees) arising directly from:</p>
-          <ul className="list-disc pl-5 space-y-1 mt-2">
-            <li>your material breach of these Terms;</li>
-            <li>your intentional violation of any applicable law or third-party right;</li>
-            <li>your <strong>intentional misuse</strong> of the Service in a manner expressly prohibited by Section 8. For clarity, "intentional misuse" means using the Service for a purpose you knew was prohibited — for example, uploading someone else's bloodwork, reselling output as clinical advice, or circumventing security controls. <strong>Using the Service as designed — uploading your own bloodwork, reading your analysis, and discussing it with your clinician — is never "misuse" under this provision regardless of the outcome;</strong></li>
-            <li>any claim that Your Content (excluding AI-generated output) infringes a third-party intellectual-property right.</li>
-          </ul>
-          <p className="mt-2">This indemnification does not extend to claims arising from CauseHealth's own negligence, willful misconduct, or breach of these Terms or the Privacy Policy. CauseHealth will promptly notify you of any covered claim, allow you reasonable control of the defense with counsel reasonably acceptable to us, and cooperate. You may not settle any claim that imposes obligations on CauseHealth without our prior written consent.</p>
-        </Section>
-
-        <Section title="17. Dispute Resolution; Binding Arbitration; Class-Action Waiver">
-          <p><strong>PLEASE READ THIS SECTION CAREFULLY. IT SIGNIFICANTLY AFFECTS YOUR LEGAL RIGHTS.</strong></p>
-
-          <p className="mt-3"><strong>17.1 Informal Resolution and Mediation (Mandatory Pre-Conditions).</strong> Before either party initiates any formal legal proceeding, the disputing party must send a written Notice of Dispute. Notices to CauseHealth must be sent to legal@causehealth.com <strong>and</strong> by certified mail to our registered mailing address. Notices to you will be sent to the email on your account. The Notice must: (a) identify the specific claim; (b) describe the facts in reasonable detail; (c) state the specific relief and dollar amount sought; and (d) be signed.</p>
-          <p className="mt-2">The parties must negotiate in good faith for at least <strong>sixty (60) calendar days</strong> from receipt of the Notice before commencing arbitration. This requirement does not apply to: (a) claims filed in small-claims court; (b) requests for emergency injunctive relief under Section 17.5; or (c) claims where the other party has expressly refused informal resolution in writing.</p>
-          <p className="mt-2"><strong>Optional Mediation Tier.</strong> If the parties cannot resolve the dispute informally within 30 days, either party may invoke non-binding mediation before a single mediator. Costs are split equally unless the mediator determines one party's position was without reasonable basis.</p>
-          <p className="mt-2"><strong>Fee-Shifting for Frivolous Claims.</strong> If the arbitrator determines a claim was frivolous, asserted in bad faith, or brought for an improper purpose, the arbitrator may award reasonable attorneys' fees and costs to the prevailing party.</p>
-
-          <p className="mt-3"><strong>17.2 Binding Individual Arbitration.</strong> If the dispute is not resolved informally within 60 days, both parties agree to resolve it exclusively through final and binding <strong>individual arbitration</strong> administered by the American Arbitration Association (AAA) under its Consumer Arbitration Rules then in effect. Arbitration will be conducted in Miami-Dade County, Florida, or at your election by telephone or videoconference at no additional cost.</p>
-          <p className="mt-2">The arbitrator will have authority to award any individual relief that a court could award, including injunctive or declaratory relief limited to your individual claim.</p>
-          <p className="mt-2"><strong>FAA Preemption.</strong> This Section is governed by the Federal Arbitration Act, 9 U.S.C. §§ 1 et seq.</p>
-          <p className="mt-2"><strong>Delegation Clause.</strong> The arbitrator, and not any court, has exclusive authority to resolve any dispute relating to the interpretation, applicability, enforceability, or formation of this arbitration agreement — except for the specific question of whether the class-action waiver in Section 17.3 is enforceable, which may be decided by a court. <em>Rent-A-Center, West, Inc. v. Jackson</em>, 561 U.S. 63 (2010).</p>
-          <p className="mt-2"><strong>Upstream Vendor Liability.</strong> To the extent any harm alleged arises from the output, behavior, or failure of a third-party AI model or sub-processor (including but not limited to Anthropic's Claude API), CauseHealth's liability is further limited to the amounts recoverable by CauseHealth from that vendor.</p>
-
-          <p className="mt-3"><strong>17.3 Class-Action Waiver.</strong> YOU AND CAUSEHEALTH AGREE THAT EACH MAY BRING CLAIMS AGAINST THE OTHER <strong>ONLY IN YOUR OR ITS INDIVIDUAL CAPACITY</strong>. NEITHER YOU NOR CAUSEHEALTH MAY PARTICIPATE AS A PLAINTIFF, CLASS MEMBER, OR NAMED PARTY IN ANY CLASS ACTION, COLLECTIVE ACTION, CONSOLIDATED ACTION, PRIVATE ATTORNEY GENERAL ACTION, OR OTHER REPRESENTATIVE PROCEEDING IN ARBITRATION OR IN COURT.</p>
-          <p className="mt-2">The arbitrator may not consolidate more than one person's claims and may not preside over any representative or class proceeding.</p>
-          <p className="mt-2"><strong>Severability Ladder.</strong> If any part of this class-action waiver is held unenforceable: (a) if only the prohibition on class arbitration is unenforceable, that claim must be litigated in court while individual claims remain in arbitration; (b) if the entire class-action waiver is held unenforceable, the entire arbitration agreement is void as to that claim only; (c) all other individual claims continue in individual arbitration.</p>
-
-          <p className="mt-3"><strong>17.4 Mass Arbitration Management.</strong> If 25 or more individuals submit substantially similar claims within 180 days: (a) <strong>Bellwether selection</strong> — the administrator randomly selects 10 representative cases (5 from claimants' nominations, 5 from CauseHealth's nominations) to proceed first. Bellwether awards are not precedential and create no collateral estoppel; (b) <strong>Mediation</strong> — within 30 days of bellwether awards, non-binding mediation of remaining claims, costs split equally; (c) <strong>Continued batching</strong> — if mediation fails, batches of 10 with mandatory 30-day mediation after each batch; (d) <strong>Fee allocation</strong> per administrator's mass-arbitration rules.</p>
-
-          <p className="mt-3"><strong>17.5 Exceptions to Arbitration.</strong> Either party may bring a claim in <strong>small-claims court</strong> without first completing the informal resolution process. Either party may seek <strong>emergency injunctive relief</strong> from the state or federal courts located in Miami-Dade County, Florida only. Either party may report concerns to applicable government agencies (FTC, state attorney general) regardless of this arbitration agreement.</p>
-
-          <p className="mt-3"><strong>17.6 Thirty-Day Opt-Out Right.</strong> You may opt out of the arbitration agreement and class-action waiver by sending written notice to legal@causehealth.com within <strong>thirty (30) days</strong> of the date you first create a CauseHealth account. Your opt-out notice must include the subject line "Arbitration Opt-Out," your name, and the email address associated with your account. Opting out is a one-time right.</p>
-          <p className="mt-2">If you opt out: disputes are resolved in the courts specified in Section 18; the class-action waiver does not apply to you; all other provisions remain in full force.</p>
-
-          <p className="mt-3"><strong>17.7 Arbitration Fees.</strong> CauseHealth will pay all filing, administrative, and arbitrator fees required by the administrator's consumer rules for any consumer claim under $75,000. You will not be required to pay fees exceeding what a court filing would cost.</p>
-
-          <p className="mt-3"><strong>17.8 Presentation and Assent.</strong> The arbitration agreement and class-action waiver are presented at account registration as a <strong>separate, clearly labeled, unchecked-by-default checkbox</strong> with text immediately adjacent to (not buried inside) a general ToS link, stating: <em>"I have read and agree to the Arbitration Agreement and Class-Action Waiver in Section 17 of the Terms of Service, including my right to opt out within 30 days."</em> A post-registration confirmation email summarizes the arbitration agreement, class-action waiver, and 30-day opt-out right and deadline.</p>
-
-          <p className="mt-3"><strong>17.9 Prevailing Party and Bond Requirement.</strong> For any dispute that proceeds to court under Section 17.5, the prevailing party is entitled to recover reasonable attorneys' fees and costs. Any party seeking emergency or preliminary injunctive relief against CauseHealth must post a bond in an amount the court deems adequate.</p>
-
-          <p className="mt-3"><strong>17.10 Survival.</strong> This Section 17 survives any termination indefinitely.</p>
-        </Section>
-
-        <Section title="18. Governing Law, Venue, and Choice of Law">
-          <p>These Terms are governed by the laws of the State of Florida, without regard to conflicts-of-law principles. The U.N. Convention on Contracts for the International Sale of Goods does not apply. The FAA governs all arbitration provisions.</p>
-          <p className="mt-2">Subject to Section 17, you and CauseHealth consent to the exclusive personal jurisdiction and venue of the state and federal courts located in Miami-Dade County, Florida for any matter not subject to arbitration.</p>
-          <p className="mt-2"><strong>Choice of Law — No Class Certification.</strong> The parties agree that the laws of the governing state apply to all disputes regardless of where you are located. The individualized nature of each user's health data, clinical history, and subsequent decisions creates individual questions that necessarily predominate over any common questions for class-certification purposes.</p>
-        </Section>
-
-        <Section title="19. FTC Compliance and Marketing Representations">
-          <p>CauseHealth's marketing and product copy is subject to the FTC Act § 5 (15 U.S.C. § 45). We represent and warrant that:</p>
-          <ul className="list-disc pl-5 space-y-1 mt-2">
-            <li>No marketing copy, in-product text, or exported document uses the words "diagnose," "treat," "cure," or "prevent" in connection with any disease or condition.</li>
-            <li>Any health-related comparative claim is supported by competent and reliable scientific evidence in our substantiation file.</li>
-            <li>User testimonials, if any, reflect honest opinions and are accompanied by appropriate disclosures.</li>
-            <li>We do not make any claim that constitutes the unauthorized practice of medicine.</li>
+            <li>Upload anyone else's lab results</li>
+            <li>Use the app to provide health advice to others</li>
+            <li>Attempt to reverse-engineer or scrape the app</li>
+            <li>Create an account if you live in a blocked state</li>
+            <li>Use the app if you're on a U.S. sanctions list</li>
           </ul>
         </Section>
 
-        <Section title="20. Modifications to These Terms">
-          <p>We may modify these Terms from time to time. Material changes will be communicated by email and in-app notice at least 14 days before they take effect. Continued use after the effective date constitutes acceptance. If you do not agree to a change, your sole remedy is to stop using the Service and delete your account before the change takes effect.</p>
+        <Section id="section-7" title="7. Your Content">
+          <p>You own your data. By using the app, you give us permission to store and process it to generate your output. We use it only for that. We don't sell it. We don't share it with advertisers. We don't train AI models on it.</p>
+          <p className="mt-3">You can delete your account at any time from Settings. Your health data is purged within 30 days. Billing records are kept 7 years for tax purposes.</p>
         </Section>
 
-        <Section title="21. General Provisions">
-          <ul className="list-disc pl-5 space-y-1 mt-2">
-            <li><strong>Entire Agreement.</strong> These Terms and the Privacy Policy are the complete agreement.</li>
-            <li><strong>No Waiver.</strong> Failure to enforce any right is not a waiver.</li>
-            <li><strong>Severability.</strong> Invalid provisions are modified to the minimum extent necessary to make them enforceable.</li>
-            <li><strong>Assignment.</strong> You may not assign without our prior written consent. CauseHealth may assign in connection with a merger, acquisition, sale, or financing.</li>
-            <li><strong>No Agency.</strong> No partnership, joint venture, franchise, or employment relationship is created.</li>
-            <li><strong>Force Majeure.</strong> Neither party is liable for delays caused by events beyond reasonable control.</li>
-            <li><strong>Construction.</strong> "Including" means "including but not limited to."</li>
-            <li><strong>Electronic Signatures.</strong> Your affirmative click constitutes your electronic signature under the E-SIGN Act, 15 U.S.C. § 7001 et seq.</li>
-          </ul>
+        <Section id="section-8" title="8. Liability">
+          <p>CauseHealth is a $19 wellness tool. We're not a hospital or a clinical practice. Our liability to you is limited to the amount you paid us, or $100, whichever is greater. We're not liable for health outcomes — those are between you and your doctor.</p>
+          <p className="mt-3">This cap doesn't apply to gross negligence, fraud, or data breaches on our part.</p>
         </Section>
 
-        <Section title="22. Contact for Legal Notices">
-          <p>CauseHealth LLC<br />Attn: Legal Department</p>
-          <p className="mt-2">Email: <a href="mailto:legal@causehealth.com" className="text-primary-container hover:underline">legal@causehealth.com</a></p>
-          <p className="mt-2">Founder / designated legal contact: Evan Gutman</p>
+        <Section id="section-9" title="9. Disputes">
+          <p>If you have a problem with CauseHealth, email <a href="mailto:legal@causehealth.com" className="text-primary-container hover:underline">legal@causehealth.com</a> first. Most things can be resolved quickly without anyone lawyering up.</p>
+          <p className="mt-3">If we can't resolve it informally within 60 days, disputes are settled by binding individual arbitration through AAA under its Consumer Arbitration Rules. This means you resolve disputes with us individually, not as part of a class action.</p>
+          <p className="mt-3">You have the right to opt out of arbitration within 30 days of creating your account. To opt out, email <a href="mailto:legal@causehealth.com?subject=Arbitration%20Opt-Out" className="text-primary-container hover:underline">legal@causehealth.com</a> with the subject line "Arbitration Opt-Out" and your account email. If you opt out, disputes go to the courts in Bucks County, Pennsylvania.</p>
+          <p className="mt-3">Pennsylvania law governs these Terms.</p>
+        </Section>
+
+        <Section id="section-10" title="10. Changes to These Terms">
+          <p>If we make material changes we'll notify you by email at least 14 days before they take effect. Continued use after that means you accept the new terms.</p>
+        </Section>
+
+        <Section id="section-11" title="11. Contact">
+          <p>CauseHealth LLC · <a href="mailto:legal@causehealth.com" className="text-primary-container hover:underline">legal@causehealth.com</a></p>
         </Section>
       </div>
     </div>
@@ -256,8 +90,8 @@ export const Terms = () => (
   </div>
 );
 
-const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <div>
+const Section = ({ id, title, children }: { id: string; title: string; children: React.ReactNode }) => (
+  <div id={id} className="scroll-mt-24">
     <h2 className="text-authority text-xl text-clinical-charcoal font-semibold mb-3">{title}</h2>
     <div className="text-body text-clinical-stone text-sm leading-relaxed">{children}</div>
   </div>

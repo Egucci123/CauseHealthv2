@@ -48,13 +48,13 @@ export const ArbitrationConsentScreen = ({ stepLabel, onAccepted }: Props) => (
         </p>
         <p className="mt-3 text-clinical-stone text-xs leading-relaxed">
           The full text of the arbitration agreement, class-action waiver, and
-          opt-out instructions is in Section 17 of our Terms of Service. The
+          opt-out instructions is in Section 9 of our Terms of Service. The
           link below opens it in a new tab.
         </p>
       </>
     }
-    hyperlinkText="Read Section 17 →"
-    hyperlinkHref="/terms#section-17"
+    hyperlinkText="Read Section 9 →"
+    hyperlinkHref="/terms#section-9"
     onAccepted={onAccepted}
   />
 );

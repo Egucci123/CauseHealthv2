@@ -130,7 +130,7 @@ export default function OutputAcknowledgmentGate({
             By continuing you confirm you&apos;ll share and review this document with
             a licensed clinician before acting on it, that it&apos;s general health
             information rather than a clinical assessment, and that{' '}
-            <a href="/terms#section-15" target="_blank" rel="noreferrer" className="text-primary-container underline">
+            <a href="/terms#section-8" target="_blank" rel="noreferrer" className="text-primary-container underline">
               liability is limited per the Terms
             </a>.
           </p>

@@ -19,7 +19,9 @@
 import type { ConsentType } from './consentTypes';
 import type { ConsentText } from './consentTextTypes';
 
-const v6 = '2026-05-09-1';
+// Bumped 2026-05-10: ToS renumbered (arbitration §17 → §9, liability §15 → §8).
+// Canonical text changes below force new text_version on consent_log rows.
+const v6 = '2026-05-10-1';
 
 // ──────────────────────────────────────────────────────────────────────
 // Standalone checkboxes — these MUST be unchecked by default and presented
@@ -30,7 +32,7 @@ export const ARBITRATION_CHECKBOX: ConsentText = {
   type: 'arbitration_class_waiver',
   version: v6,
   text:
-    'I have read and agree to the Arbitration Agreement and Class-Action Waiver in Section 17 of the Terms of Service, including my right to opt out within 30 days.',
+    'I agree to the Arbitration Agreement and Class-Action Waiver in Section 9 of the Terms of Service, including my right to opt out within 30 days.',
 };
 
 export const STATE_RESIDENCY_CHECKBOX: ConsentText = {
@@ -113,7 +115,7 @@ export const OUTPUT_ACK_LIABILITY_LIMITED: ConsentText = {
   type: 'output_ack_liability_limited',
   version: v6,
   text:
-    "I acknowledge that CauseHealth's liability for AI-generated output is limited as set forth in Section 15 of the Terms of Service.",
+    "I acknowledge that CauseHealth's liability for AI-generated output is limited as set forth in Section 8 of the Terms of Service.",
 };
 
 export const OUTPUT_ACK_ITEMS = [
