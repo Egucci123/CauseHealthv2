@@ -93,16 +93,19 @@ import { buildPlan, type ClinicalFacts, type PatientInput } from './buildPlan.ts
 // derives the flag from value + standard_flag + standard_low/high +
 // current rules per request. All three v2 normalize functions now
 // call it via pickFlag(l, ctx) instead of trusting the stored flag.
-// 2026-05-11-2: Expected-findings suppressor. Markers whose flag is
-// explained by a known active condition (Gilbert syndrome → bilirubin,
-// CKD → eGFR, diagnosed T1D/T2D → A1c) flow through facts.expectedFindings
-// and every prompt is instructed to acknowledge rather than alarm.
-// Marisa Sirkin (27F, Gilbert syndrome) audit surfaced the Wellness Plan
-// saying "Bilirubin 1.8 needs attention" while Doctor Prep correctly
-// said "expected with Gilbert syndrome." Single source of truth fixes it.
+// 2026-05-11-3: Pregnancy-aware expected findings. When the patient has
+// answered pregnancy_status as pregnant/trying/breastfeeding/prefer-not-
+// to-say (female), the rule layer now flags high prolactin, high
+// estradiol, and low FSH/LH as expected physiologic findings instead of
+// firing a "Female hormonal axis — multiple markers" drift card or a
+// pituitary tumor workup. The Marisa Sirkin audit (27F on prenatal)
+// showed why: the AI chased a pituitary adenoma differential while
+// missing the obvious pregnancy explanation.
 //
-// 2026-05-11-1: Sex-gate on hormonal-axis system-drift patterns.
-export const RULE_LIBRARY_VERSION = '2026-05-11-2';
+// 2026-05-11-2: Expected-findings suppressor for known conditions
+//   (Gilbert → bilirubin, CKD → eGFR, T1D/T2D → A1c)
+// 2026-05-11-1: Sex-gate on hormonal-axis system-drift patterns
+export const RULE_LIBRARY_VERSION = '2026-05-11-3';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;

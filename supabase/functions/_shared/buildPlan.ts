@@ -293,11 +293,16 @@ export function buildPlan(input: PatientInput): ClinicalFacts {
   const symptomsAddressed = buildSymptomsAddressed(factsForSymptoms);
 
   // Expected findings — markers whose flag is explained by a known
-  // active condition. Computed deterministically once here and surfaced
-  // to every prompt to prevent cross-surface contradictions on patients
-  // with conditions like Gilbert syndrome / CKD / diagnosed diabetes.
+  // active condition OR by the patient's pregnancy/lactation state.
+  // Computed deterministically once here and surfaced to every prompt
+  // to prevent cross-surface contradictions on patients with
+  // conditions like Gilbert syndrome / CKD / diagnosed diabetes, and
+  // to suppress HPG-axis "drift" cards on pregnant / breastfeeding
+  // users (Marisa Sirkin audit, 2026-05-11).
   const expectedFindings = computeExpectedFindings({
     conditionsLower: input.conditionsLower,
+    sex: sexNormalized,
+    isPregnant: !!input.isPregnant,
     labValues: input.labs.map(l => ({
       marker_name: String(l.marker ?? ''),
       value: l.value,

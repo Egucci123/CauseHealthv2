@@ -34,6 +34,15 @@
 export interface ExpectedFindingsCtx {
   /** Active conditions joined lowercase, e.g. "gilbert syndrome|asthma|...". */
   conditionsLower: string;
+  /** Biological sex. Some pregnancy-aware rules only apply to female. */
+  sex: 'male' | 'female' | null;
+  /** TRUE when the patient is pregnant / trying / breastfeeding / declined
+   *  to answer (female). Drives the pregnancy-aware suppression rules
+   *  (high prolactin, high estradiol, low FSH all become expected under
+   *  pregnancy / lactation physiology). Read from profiles.is_pregnant,
+   *  which the migration 20260511_pregnancy_status trigger derives from
+   *  the user's explicit onboarding answer. */
+  isPregnant: boolean;
   /** Lab values for this draw (raw rows). */
   labValues: Array<{
     marker_name?: string;
@@ -61,7 +70,10 @@ export interface ExpectedFinding {
 
 interface ExpectedFindingRule {
   key: string;
-  conditionPredicate: (conditionsLower: string) => boolean;
+  /** Predicate over the FULL context, not just conditionsLower. Lets a
+   *  rule fire on isPregnant + sex without polluting the conditions
+   *  string with virtual markers. */
+  predicate: (ctx: ExpectedFindingsCtx) => boolean;
   conditionLabel: string;
   /** Marker matcher (case-insensitive regex on marker_name). */
   markerMatcher: RegExp;
@@ -80,12 +92,10 @@ interface ExpectedFindingRule {
 // ceiling protects against missing a worsening case.
 // ──────────────────────────────────────────────────────────────────────
 const RULES: ExpectedFindingRule[] = [
+  // ── Gilbert syndrome → bilirubin elevation expected ────────────────
   {
-    // Gilbert syndrome — benign unconjugated hyperbilirubinemia. Total
-    // bilirubin runs 1–3 mg/dL in most affected adults. Above ~5 mg/dL
-    // is unusual and warrants workup → safety ceiling kicks in there.
     key: 'gilbert_bilirubin',
-    conditionPredicate: (c) => /\bgilbert/i.test(c),
+    predicate: (ctx) => /\bgilbert/i.test(ctx.conditionsLower),
     conditionLabel: 'Gilbert syndrome',
     markerMatcher: /^bilirubin,?\s*total$|^total\s+bilirubin$/i,
     rationale:
@@ -93,51 +103,99 @@ const RULES: ExpectedFindingRule[] = [
     flagsToSuppress: ['high', 'critical_high', 'watch'],
     safetyCeiling: { type: 'absolute', value: 5.0 },
   },
+
+  // ── Documented CKD → eGFR drift expected ────────────────────────────
   {
-    // Treated hypothyroidism (levothyroxine) — TSH targets vary. We
-    // don't auto-suppress because the dose may be wrong. We just note.
-    // Intentionally NOT added until we can verify dose context. Left
-    // here as a placeholder for future work.
-    //
-    // key: 'treated_hypo_tsh', ...
-  },
-  {
-    // CKD documented — eGFR drift below 90 is expected; the drop is
-    // the diagnosis. Suppression avoids alarming over a value the
-    // patient and clinician already track.
     key: 'ckd_egfr',
-    conditionPredicate: (c) => /\bckd\b|chronic\s+kidney\s+disease|nephrop/i.test(c),
+    predicate: (ctx) => /\bckd\b|chronic\s+kidney\s+disease|nephrop/i.test(ctx.conditionsLower),
     conditionLabel: 'chronic kidney disease',
     markerMatcher: /^egfr$|^estimated\s+gfr/i,
     rationale:
       "eGFR below 90 is expected with documented CKD — the reduced filtration is part of the diagnosis. Bring the trend (not the absolute value) to your nephrologist.",
     flagsToSuppress: ['low', 'critical_low', 'watch'],
-    safetyCeiling: { type: 'absolute', value: 15 }, // <15 = stage 5, escalate
+    safetyCeiling: { type: 'absolute', value: 15 },
   },
+
+  // ── Documented diabetes → A1c elevation expected ────────────────────
   {
-    // Type 1 diabetes documented — A1c above 5.6 is the diagnosis,
-    // not an outlier finding. We acknowledge the elevation and route
-    // to existing diabetes-management conversation.
     key: 't1d_a1c',
-    conditionPredicate: (c) => /type\s*1\s*diabetes|t1dm\b|type\s*i\s*diabetes/i.test(c),
+    predicate: (ctx) => /type\s*1\s*diabetes|t1dm\b|type\s*i\s*diabetes/i.test(ctx.conditionsLower),
     conditionLabel: 'type 1 diabetes',
     markerMatcher: /^(hemoglobin\s+)?a1c$|^hba1c$/i,
     rationale:
       "A1c reflects your overall glucose control with documented T1D — bring it to your endocrinologist as part of your usual follow-up. Sudden changes from your baseline are what warrant attention.",
     flagsToSuppress: ['high', 'critical_high', 'watch'],
-    safetyCeiling: { type: 'absolute', value: 12 }, // >12% = critical control loss
+    safetyCeiling: { type: 'absolute', value: 12 },
   },
   {
-    // Type 2 diabetes documented — same logic as T1D. A1c elevation
-    // is the condition, not a new finding.
     key: 't2d_a1c',
-    conditionPredicate: (c) => /type\s*2\s*diabetes|t2dm\b|type\s*ii\s*diabetes/i.test(c),
+    predicate: (ctx) => /type\s*2\s*diabetes|t2dm\b|type\s*ii\s*diabetes/i.test(ctx.conditionsLower),
     conditionLabel: 'type 2 diabetes',
     markerMatcher: /^(hemoglobin\s+)?a1c$|^hba1c$/i,
     rationale:
       "A1c reflects your overall glucose control with documented T2D — bring it to your physician as part of your usual diabetes follow-up. A jump from your baseline (rather than the absolute value) is what to flag.",
     flagsToSuppress: ['high', 'critical_high', 'watch'],
     safetyCeiling: { type: 'absolute', value: 12 },
+  },
+
+  // ── Pregnancy / lactation → HPG-axis shifts expected ────────────────
+  //
+  // The Marisa Sirkin audit (27F, prenatal vitamin) revealed the failure
+  // mode that drives these rules. In pregnancy / breastfeeding, the HPG
+  // axis is intentionally remodeled by chorionic gonadotropin, placental
+  // estrogens, and prolactin. Common values:
+  //   • Prolactin 100–500 ng/mL during pregnancy, 100–300 while nursing
+  //   • Estradiol rises through the trimesters; postpartum stays elevated
+  //     until lactation winds down
+  //   • FSH suppressed by negative feedback from elevated estrogen
+  //
+  // Flagging these as "drift" or "hyperprolactinemia workup" misleads
+  // the patient and her clinician. Suppression here makes every surface
+  // acknowledge the physiologic state rather than chase a pituitary
+  // workup.
+  //
+  // Predicate: sex === 'female' AND isPregnant === true. The is_pregnant
+  // boolean is derived in DB from the user's explicit pregnancy_status
+  // answer (pregnant / trying / breastfeeding / prefer_not_to_say).
+  {
+    key: 'pregnancy_prolactin',
+    predicate: (ctx) => ctx.sex === 'female' && ctx.isPregnant === true,
+    conditionLabel: 'pregnancy / lactation',
+    markerMatcher: /^prolactin$/i,
+    rationale:
+      "Prolactin runs high during pregnancy and breastfeeding by design — it's how the body prepares and maintains milk supply. This elevation is physiologic, not a pituitary issue. Repeat after you finish breastfeeding (or after delivery if not nursing) — that's when a baseline value is meaningful.",
+    flagsToSuppress: ['high', 'critical_high', 'watch'],
+    // Safety ceiling: prolactin >300 ng/mL in a non-pregnant patient is
+    // concerning. In pregnancy 200–500 can be normal. We set the ceiling
+    // generously high (1000) so only truly extreme values escalate.
+    safetyCeiling: { type: 'absolute', value: 1000 },
+  },
+  {
+    key: 'pregnancy_estradiol',
+    predicate: (ctx) => ctx.sex === 'female' && ctx.isPregnant === true,
+    conditionLabel: 'pregnancy / lactation',
+    markerMatcher: /^estradiol$|^e2$/i,
+    rationale:
+      "Estradiol climbs dramatically through pregnancy and stays elevated postpartum until cycles resume. A value at or above the standard reference range is expected during this window.",
+    flagsToSuppress: ['high', 'critical_high', 'watch'],
+  },
+  {
+    key: 'pregnancy_fsh_suppression',
+    predicate: (ctx) => ctx.sex === 'female' && ctx.isPregnant === true,
+    conditionLabel: 'pregnancy / lactation',
+    markerMatcher: /^fsh$|^follicle[\s-]*stimulating/i,
+    rationale:
+      "FSH is suppressed during pregnancy and breastfeeding — high circulating estrogen and prolactin shut down the pituitary's signal to the ovaries. A low FSH in this context is expected, not a sign of ovarian failure.",
+    flagsToSuppress: ['low', 'critical_low', 'watch'],
+  },
+  {
+    key: 'pregnancy_lh_suppression',
+    predicate: (ctx) => ctx.sex === 'female' && ctx.isPregnant === true,
+    conditionLabel: 'pregnancy / lactation',
+    markerMatcher: /^lh$|^luteinizing\s+hormone$/i,
+    rationale:
+      "LH is suppressed alongside FSH during pregnancy and breastfeeding — same negative-feedback mechanism. Expect to see it recover after lactation ends.",
+    flagsToSuppress: ['low', 'critical_low', 'watch'],
   },
 ];
 
@@ -158,11 +216,10 @@ export function computeExpectedFindings(
   ctx: ExpectedFindingsCtx,
 ): ExpectedFinding[] {
   const out: ExpectedFinding[] = [];
-  const condLower = ctx.conditionsLower ?? '';
 
   for (const rule of RULES) {
-    if (!rule.conditionPredicate || !rule.markerMatcher) continue;
-    if (!rule.conditionPredicate(condLower)) continue;
+    if (!rule.predicate || !rule.markerMatcher) continue;
+    if (!rule.predicate(ctx)) continue;
 
     for (const lab of ctx.labValues ?? []) {
       const name = String(lab.marker_name ?? '');
