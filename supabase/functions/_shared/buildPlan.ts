@@ -235,36 +235,137 @@ export function buildPlan(input: PatientInput): ClinicalFacts {
   // surfaced under the condition card and never reached the main
   // tests_to_request list the patient hands to their PCP.
   //
-  // SMART DEDUP (universal): a naive lowercase-exact match double-lists
-  // things like "TSH" and "Thyroid Panel (TSH + Free T4 + Free T3)" or
-  // "Medication review (dopamine antagonists)" and "Medication review
-  // (corticosteroids)". The normalized check below strips parentheticals
-  // and common qualifiers, then drops any condition-driven test whose
-  // normalized name is already covered by a canonical test (or by an
-  // earlier-added condition-driven test).
+  // SMART DEDUP (universal): three layers, each handles a different
+  // duplicate pattern. The user's Marisa output showed both
+  // "Thyroid Panel (TSH + Free T4 + Free T3)" AND "TSH (rule out primary
+  // hypothyroidism)" — and "Hashimoto's Antibodies (TPO Ab + Thyroglobulin
+  // Ab)" AND "TPO antibodies" — because each layer only caught some.
   //
-  // Result for Marisa: 29 raw merge items → ~13 unique tests, not 10
-  // copies of "TSH"-flavored entries.
+  // Layer 1: COVERAGE — known panels cover their components. If an
+  // existing test name matches a panel pattern, any new test name that
+  // matches one of its covers gets dropped.
+  //
+  // Layer 2: NORMALIZED EXACT MATCH — case + whitespace + qualifier
+  // collapse. Catches "Fasting prolactin" + "Prolactin (repeat fasting)".
+  //
+  // Layer 3: SUBSTRING — if a short new entry is contained whole in a
+  // longer existing entry (parens preserved), dedup. Catches "TSH" inside
+  // "Thyroid Panel (TSH + Free T4 + Free T3)" once parens are kept.
+  //
+  // Adding a new panel = ADD A ROW to TEST_COVERAGE below.
+
+  /** Panel → component coverage. Each row: panel name pattern + list of
+   *  component patterns it subsumes. If panel is in the list, drop any
+   *  component entry. Universal across every user — add a row for any
+   *  new panel that ships in retestRegistry. */
+  const TEST_COVERAGE: Array<{ panel: RegExp; covers: RegExp[] }> = [
+    {
+      panel: /thyroid\s+panel|thyroid\s+function/i,
+      covers: [
+        /^tsh\b/i, /^tsh\s*\(/i,
+        /\bfree\s*t4\b/i, /\bfree\s*t3\b/i, /\breverse\s*t3\b/i,
+        /^t4\b/i, /^t3\b/i,
+      ],
+    },
+    {
+      panel: /hashimoto'?s?\s+antibod|thyroid\s+antibod/i,
+      covers: [
+        /\btpo\s*(antibod|ab\b)/i,
+        /\bthyroglobulin\s*(antibod|ab\b)/i,
+        /\btg.?ab\b/i,
+        /^thyroglobulin\s*antibodies\b/i,
+        /^tpo\s*antibodies\b/i,
+      ],
+    },
+    {
+      panel: /iron\s+panel/i,
+      covers: [/^iron\b/i, /\btibc\b/i, /^ferritin\b/i, /\btransferrin\s*saturation/i],
+    },
+    {
+      panel: /\bcmp\b|comprehensive\s+metabolic/i,
+      covers: [
+        /^sodium\b/i, /^potassium\b/i, /^chloride\b/i, /\bbun\b/i, /^creatinine\b/i,
+        /^glucose\b/i, /^albumin\b/i, /^calcium\b/i, /\begfr\b/i,
+      ],
+    },
+    {
+      panel: /\bcbc\b|complete\s+blood\s+count/i,
+      covers: [
+        /^rbc\b/i, /^wbc\b/i, /\bplatelet/i, /hemoglobin\b(?!\s*a1c)/i,
+        /hematocrit/i, /^mcv\b/i, /^mch\b/i, /^mchc\b/i, /^rdw\b/i,
+      ],
+    },
+    {
+      panel: /lipid\s+panel/i,
+      covers: [
+        /total\s+cholesterol/i, /^ldl\b/i, /^hdl\b/i, /^triglyceride/i, /\bvldl\b/i,
+      ],
+    },
+    {
+      panel: /testosterone\s+panel|male\s+hormon|androgen\s+panel/i,
+      covers: [
+        /total\s+testosterone/i, /free\s+testosterone/i, /\bshbg\b/i,
+        /\bdhea[\s-]?s\b/i, /\blh\b/i, /\bfsh\b/i,
+      ],
+    },
+    {
+      panel: /pcos\s+panel/i,
+      covers: [
+        /total\s+testosterone/i, /free\s+testosterone/i, /\bdhea[\s-]?s\b/i,
+        /\bshbg\b/i, /lh\s*\/?\s*fsh|lh\s+fsh/i, /fasting\s+insulin/i,
+      ],
+    },
+    {
+      panel: /b.?12\s+workup|b\s+vitamin\s+workup\s+macrocytic/i,
+      covers: [/^b.?12\b/i, /^vitamin\s+b.?12\b/i, /\bmma\b/i, /homocysteine/i],
+    },
+    {
+      panel: /folate\s+workup/i,
+      covers: [/^folate\b/i, /^serum\s+folate/i, /^rbc\s+folate/i],
+    },
+  ];
+
+  /** Normalize for exact-match dedup. Preserves parenthetical content
+   *  (we just strip the parens themselves) so panel components stay
+   *  searchable. Lowercases, collapses whitespace, drops common
+   *  qualifiers that don't change the test identity. */
   const normalizeTestName = (s: string): string =>
     s.toLowerCase()
-      .replace(/\([^)]*\)/g, ' ')           // strip parentheticals
-      .replace(/\b(fasting|repeat|am|morning|late[\s-]?night|lab[\s-]?based)\b/gi, ' ')
+      .replace(/[()]/g, ' ')
+      .replace(/\b(fasting|repeat|am|morning|late[\s-]?night|lab[\s-]?based|or\s+serum)\b/gi, ' ')
       .replace(/[^a-z0-9]+/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
-  const isCoveredByExisting = (norm: string, existing: Set<string>): boolean => {
-    if (!norm) return true; // empty name → already covered (skip)
-    if (existing.has(norm)) return true;
-    // Substring containment: "tsh" is covered by "thyroid panel tsh free t4 free t3".
-    // Only apply for short names to avoid false positives on long phrases.
-    if (norm.length < 30) {
-      for (const e of existing) {
-        if (e.length > norm.length && e.includes(norm)) return true;
+
+  /** True if `candidate` is already covered by some entry in `existing`. */
+  const isCoveredByExisting = (candidate: string, existing: TestOrder[]): boolean => {
+    if (!candidate.trim()) return true;
+    const candNorm = normalizeTestName(candidate);
+
+    // Layer 1 — coverage map. Is `candidate` a component of a panel
+    // that's already in `existing`?
+    for (const cov of TEST_COVERAGE) {
+      const panelInExisting = existing.some(t => cov.panel.test(t.name));
+      if (!panelInExisting) continue;
+      if (cov.covers.some(c => c.test(candidate))) return true;
+    }
+
+    // Layer 2 — normalized exact match.
+    const existingNorms = existing.map(t => normalizeTestName(t.name));
+    if (existingNorms.includes(candNorm)) return true;
+
+    // Layer 3 — short-name substring containment. "tsh" inside
+    // "thyroid panel tsh free t4 free t3". Only apply if the candidate
+    // is short enough that containment is meaningful (avoids false
+    // positives on long phrases).
+    if (candNorm.length < 25) {
+      for (const e of existingNorms) {
+        if (e.length > candNorm.length && e.includes(candNorm)) return true;
       }
     }
+
     return false;
   };
-  const existingTestNorms = new Set<string>(tests.map(t => normalizeTestName(t.name)));
   const conditionDrivenTests: TestOrder[] = [];
   for (const cond of conditions) {
     if (!Array.isArray(cond.confirmatory_tests)) continue;
@@ -280,9 +381,11 @@ export function buildPlan(input: PatientInput): ClinicalFacts {
         : (ct as any)?.why ?? `Confirmatory workup for ${cond.name}.`;
       const trimmed = String(name).trim();
       if (!trimmed) continue;
+      // Dedup against canonical baseline AND every condition-workup entry
+      // we've already added in this loop. Universal coverage check.
+      const liveList = [...tests, ...conditionDrivenTests];
+      if (isCoveredByExisting(trimmed, liveList)) continue;
       const norm = normalizeTestName(trimmed);
-      if (isCoveredByExisting(norm, existingTestNorms)) continue;
-      existingTestNorms.add(norm);
       conditionDrivenTests.push({
         key: `cond_workup__${cond.key}__${norm.replace(/\s+/g, '_').slice(0, 40)}`,
         name: trimmed,

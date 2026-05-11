@@ -318,6 +318,52 @@ export const TEST_INDICATIONS: TestIndication[] = [
     tests: [{ key: 'mammogram_if_due', whyShort: 'Adult female ≥40 — annual mammogram per ACS / USPSTF', trigger: 'd' }],
   },
 
+  // ── Female standard-of-care baseline ──────────────────────────────
+  // Universal: every adult female should have these in her baseline
+  // conversation with her PCP. Adding rows in this section covers any
+  // female user regardless of what labs / symptoms / conditions she has.
+  {
+    id: 'pap_female_21_65',
+    triggers: [
+      { kind: 'age_known' },
+      { kind: 'sex', is: 'female' },
+      { kind: 'age_min', value: 21 },
+      { kind: 'age_max', value: 65 },
+    ],
+    tests: [{ key: 'pap_smear_female_21_65', whyShort: 'Adult female 21–65 — Pap every 3 years (21–29) or Pap + HPV co-test every 5 years (30–65) per USPSTF / ACS', trigger: 'd' }],
+  },
+  {
+    id: 'thyroid_antibodies_female_baseline',
+    triggers: [
+      { kind: 'sex', is: 'female' },
+      { kind: 'age_min', value: 18 },
+      { kind: 'flag_false', flag: 'hasHashimotos' },
+    ],
+    tests: [{ key: 'thyroid_antibodies_female_baseline', whyShort: 'Adult female baseline — women have 5–8× higher autoimmune-thyroid risk than men; antibodies often precede TSH drift by years', trigger: 'e' }],
+  },
+  {
+    id: 'dexa_female_65',
+    triggers: [
+      { kind: 'age_known' },
+      { kind: 'sex', is: 'female' },
+      { kind: 'age_min', value: 65 },
+    ],
+    tests: [{ key: 'dexa_female_65_or_risk', whyShort: 'Adult female ≥65 — USPSTF universal bone-density screen', trigger: 'd' }],
+  },
+  // STI screening for sexually active women < 25 is preventive guideline.
+  // We do not currently collect sexual activity in onboarding; the
+  // baseline reminder fires for 18–25 universally and the patient
+  // discusses applicability with her PCP.
+  {
+    id: 'sti_screen_female_under_25',
+    triggers: [
+      { kind: 'sex', is: 'female' },
+      { kind: 'age_min', value: 18 },
+      { kind: 'age_max', value: 25 },
+    ],
+    tests: [{ key: 'sti_screen_sexually_active', whyShort: 'Adult female ≤25 — annual chlamydia + gonorrhea screening if sexually active per CDC / USPSTF', trigger: 'd' }],
+  },
+
   // ── Medication-driven monitoring ──────────────────────────────────
   {
     id: 'steroid_dexa',

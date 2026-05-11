@@ -174,7 +174,15 @@ import { buildPlan, type ClinicalFacts, type PatientInput } from './buildPlan.ts
 // the function iterates the table and falls back to a universal
 // above/below/watch generic for unknown markers. Adding prose for a new
 // marker class = ADD A ROW.
-export const RULE_LIBRARY_VERSION = '2026-05-12-2';
+// 2026-05-12-3: Test-list dedup hardened + female SOC baseline added.
+// (1) Dedup uses TEST_COVERAGE panel→component map so "Thyroid Panel
+//     (TSH+Free T4+Free T3)" eats the standalone "TSH" entry coming
+//     from hyperprolactinemia workup. Same for Hashimoto panel ⊇ TPO+Tg,
+//     Iron Panel ⊇ Iron/TIBC/Ferritin/Transferrin Sat, etc.
+// (2) Added standard-of-care female baseline indications: Pap smear
+//     (21-65), Thyroid antibodies baseline (women 5-8x higher autoimmune
+//     thyroid risk), DEXA (≥65), STI screen (18-25).
+export const RULE_LIBRARY_VERSION = '2026-05-12-3';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
