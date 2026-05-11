@@ -31,13 +31,18 @@
       "priority": "high"
     },
     {
-      "name": "Thyroid Panel (TSH + Free T4 + Free T3)",
-      "icd10": "E03.9",
+      "name": "ApoB (Apolipoprotein B)",
+      "icd10": "E78.5",
       "priority": "high"
     },
     {
       "name": "Lp(a) — Lipoprotein(a)",
       "icd10": "E78.5",
+      "priority": "high"
+    },
+    {
+      "name": "Thyroid Panel (TSH + Free T4 + Free T3)",
+      "icd10": "E03.9",
       "priority": "high"
     },
     {
@@ -61,13 +66,13 @@
       "priority": "moderate"
     },
     {
-      "name": "LH + FSH",
-      "icd10": "E23.0",
+      "name": "AMH (Anti-Müllerian Hormone)",
+      "icd10": "E28.39",
       "priority": "moderate"
     },
     {
-      "name": "AMH (Anti-Müllerian Hormone)",
-      "icd10": "E28.39",
+      "name": "LH + FSH",
+      "icd10": "E23.0",
       "priority": "moderate"
     },
     {

@@ -68,6 +68,13 @@ export interface TestRef {
   trigger: TestTrigger;
 }
 
+export type TestTier =
+  | 'baseline'      // Universal standard-of-care every adult PCP can't deny
+  | 'preventive'    // Age-based screening (USPSTF A/B grade — ACA $0)
+  | 'pattern'       // Lab/symptom-driven workup
+  | 'specialist'    // Post-pattern confirmatory workup
+  | 'imaging';      // Imaging studies
+
 export interface TestIndication {
   /** Stable id for telemetry / debugging. */
   id: string;
@@ -75,6 +82,10 @@ export interface TestIndication {
   triggers: Trigger[];
   /** Tests to emit when triggered. */
   tests: TestRef[];
+  /** Which tier this indication belongs to. Default: 'pattern' for any
+   *  indication that doesn't explicitly declare. The baseline files in
+   *  rules/testTiers/ all set tier='baseline'; imaging files set 'imaging'. */
+  tier?: TestTier;
 }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -85,205 +96,17 @@ export interface TestIndication {
 // `not` triggers for OR / NOT. Group by category for readability only;
 // order doesn't affect output.
 
-export const TEST_INDICATIONS: TestIndication[] = [
-  // ── UNIVERSAL ADULT BASELINE (age >= 18) ──────────────────────────
-  // Each baseline test is its own row so the gate logic stays per-row.
-  // Universal: if not drawn (or not drawn-healthy), include.
+// ── BASELINE + IMAGING — imported from tier-organized files ────────
+// All universal standard-of-care baseline tests + imaging studies live
+// in `./rules/testTiers/`. Adding/changing a baseline = edit that file.
+// Pattern-driven indications continue below in this file (tier defaults
+// to 'pattern' when not explicitly set).
+import { TIERED_INDICATIONS } from './rules/testTiers/index.ts';
 
-  {
-    id: 'baseline_cmp',
-    triggers: [
-      { kind: 'age_min', value: 18 },
-      { kind: 'flag_false', flag: 'cmpDrawn' },
-    ],
-    tests: [{ key: 'cmp', whyShort: 'Standard adult baseline — liver, kidney, electrolytes, glucose, calcium', trigger: 'd' }],
-  },
-  {
-    id: 'baseline_cbc',
-    triggers: [
-      { kind: 'age_min', value: 18 },
-      { kind: 'flag_false', flag: 'cbcDrawn' },
-    ],
-    tests: [{ key: 'cbc', whyShort: 'Standard adult baseline — red cells, white cells, platelets, inflammation patterns', trigger: 'd' }],
-  },
-  {
-    id: 'baseline_lipid',
-    triggers: [
-      { kind: 'age_min', value: 18 },
-      { kind: 'flag_false', flag: 'lipidDrawn' },
-    ],
-    tests: [{ key: 'lipid_panel', whyShort: 'Standard adult cardiovascular risk panel — TC, LDL, HDL, TG, VLDL, non-HDL', trigger: 'd' }],
-  },
-  {
-    id: 'baseline_a1c',
-    triggers: [
-      { kind: 'age_min', value: 18 },
-      { kind: 'flag_false', flag: 'a1cDrawn' },
-    ],
-    tests: [{ key: 'hba1c', whyShort: 'Three-month average blood sugar — catches dysglycemia before fasting glucose does', trigger: 'd' }],
-  },
-  {
-    id: 'baseline_hs_crp',
-    triggers: [
-      { kind: 'age_min', value: 18 },
-      { kind: 'flag_false', flag: 'hsCrpDrawnHealthy' },
-      // Signal-gated: only fire on cardiovascular risk, autoimmune, or
-      // metabolic signal — not as a universal screen. USPSTF says
-      // insufficient evidence for general-population screening.
-      { kind: 'any', of: [
-        { kind: 'age_min', value: 40 },
-        { kind: 'condition_match', pattern: /\b(diabetes|hypertension|cad|coronary|stroke|tia|autoimmune|lupus|rheumatoid|psoriasis|ibd|crohn|colitis|family history.*coronary|family history.*cardiac)/i },
-        { kind: 'flag_true', flag: 'ldlHigh' },
-        { kind: 'flag_true', flag: 'tgHigh' },
-        { kind: 'flag_true', flag: 'glucoseWatch' },
-        { kind: 'flag_true', flag: 'hasJointSymptoms' },
-      ]},
-    ],
-    tests: [{ key: 'hs_crp', whyShort: 'CV / metabolic / autoimmune signal — hs-CRP captures inflammation that amplifies risk', trigger: 'd' }],
-  },
-  {
-    id: 'baseline_vit_d',
-    triggers: [{ kind: 'age_min', value: 18 }],
-    tests: [{ key: 'vit_d_25oh', whyShort: 'Vitamin D status — drives mood, immunity, bone, autoimmunity', trigger: 'd' }],
-  },
-  {
-    id: 'baseline_b12_workup_no_depleter',
-    triggers: [
-      { kind: 'age_min', value: 18 },
-      { kind: 'flag_false', flag: 'b12DrawnHealthy' },
-      // Signal-gated: only fire without an explicit B12 depleter med
-      // when there's a real signal — vegan, age ≥65, macrocytic MCV,
-      // tingling/neuropathy, fatigue cluster, IBD/celiac/malabsorption.
-      // Asymptomatic young adults no longer get B12 workup by default.
-      { kind: 'any', of: [
-        { kind: 'age_min', value: 65 },
-        { kind: 'condition_match', pattern: /\b(vegan|vegetarian|ibd|crohn|colitis|celiac|gastric bypass|atrophic gastritis|pernicious anemia)/i },
-        { kind: 'flag_true', flag: 'macrocytic' },
-        { kind: 'symptom_match', pattern: /\b(tingling|numbness|neuropathy|muscle twitching)/i },
-        { kind: 'all', of: [
-          { kind: 'flag_true', flag: 'hasFatigue' },
-          { kind: 'symptom_match', pattern: /\bbrain fog\b/i },
-        ]},
-      ]},
-    ],
-    tests: [{ key: 'vit_b12_workup', whyShort: 'Age / diet / GI / macrocytic / fatigue+brain-fog signal — Serum B12 + MMA + Homocysteine catches functional deficiency the basic test misses', trigger: 'd' }],
-  },
-  {
-    id: 'baseline_b12_workup_with_depleter',
-    triggers: [
-      { kind: 'age_min', value: 18 },
-      { kind: 'any', of: [
-        { kind: 'flag_true', flag: 'onMetformin' },
-        { kind: 'flag_true', flag: 'onPPI' },
-        { kind: 'flag_true', flag: 'onGLP1' },
-      ]},
-    ],
-    tests: [{ key: 'vit_b12_workup', whyShort: 'On a B12 depleter (metformin / PPI / GLP-1) — Serum B12 + MMA + Homocysteine catches functional deficiency the basic test misses', trigger: 'd' }],
-  },
-  {
-    id: 'baseline_folate_workup_no_depleter',
-    triggers: [
-      { kind: 'age_min', value: 18 },
-      { kind: 'flag_false', flag: 'folateDrawnHealthy' },
-      // Signal-gated: macrocytic, alcohol use, GI malabsorption, anti-
-      // epileptics, methotrexate (caught upstream), or pregnancy planning.
-      { kind: 'any', of: [
-        { kind: 'flag_true', flag: 'macrocytic' },
-        { kind: 'condition_match', pattern: /\b(alcohol use|alcoholism|ibd|crohn|colitis|celiac|sprue|epilepsy|seizure)/i },
-        { kind: 'meds_match', pattern: /\b(phenytoin|carbamazepine|valproate|valproic|primidone|methotrexate|sulfasalazine|trimethoprim)/i },
-        { kind: 'all', of: [
-          { kind: 'sex', is: 'female' },
-          { kind: 'symptom_match', pattern: /\bfertility concerns?|trying to conceive\b/i },
-        ]},
-      ]},
-    ],
-    tests: [{ key: 'folate_workup', whyShort: 'Macrocytic / alcohol / GI malabsorption / anti-epileptic / TTC signal — Serum + RBC folate', trigger: 'd' }],
-  },
-  {
-    id: 'baseline_folate_workup_with_depleter',
-    triggers: [
-      { kind: 'age_min', value: 18 },
-      { kind: 'any', of: [
-        { kind: 'flag_true', flag: 'onMesalamine' },
-        { kind: 'meds_match', pattern: /\bmethotrexate\b|\bsulfasalazine\b/i },
-      ]},
-    ],
-    tests: [{ key: 'folate_workup', whyShort: 'On a folate depleter (mesalamine / methotrexate / sulfasalazine) — Serum + RBC folate catches the depletion before deficiency symptoms', trigger: 'd' }],
-  },
-  {
-    id: 'baseline_iron_panel',
-    triggers: [
-      { kind: 'age_min', value: 18 },
-      { kind: 'flag_false', flag: 'ironPanelDrawnHealthy' },
-      // Signal-gated: every menstruating female, plus signal-based for
-      // both sexes (fatigue, hair loss, restless legs, IBD/celiac,
-      // microcytic, vegan/vegetarian, age ≥65 for occult-loss screen).
-      { kind: 'any', of: [
-        { kind: 'all', of: [
-          { kind: 'sex', is: 'female' },
-          { kind: 'age_min', value: 18 },
-          { kind: 'age_max', value: 55 },
-        ]},
-        { kind: 'flag_true', flag: 'hasFatigue' },
-        { kind: 'flag_true', flag: 'hasHairLoss' },
-        { kind: 'flag_true', flag: 'microcytic' },
-        { kind: 'symptom_match', pattern: /\brestless legs\b/i },
-        { kind: 'condition_match', pattern: /\b(ibd|crohn|colitis|celiac|vegan|vegetarian|gastric bypass)/i },
-        { kind: 'age_min', value: 65 },
-      ]},
-    ],
-    tests: [{ key: 'iron_panel', whyShort: 'Menstruating female / fatigue / hair loss / restless legs / GI malabsorption / age 65+ — iron stores + transport', trigger: 'd' }],
-  },
-  {
-    id: 'baseline_ggt',
-    triggers: [
-      { kind: 'age_min', value: 18 },
-      { kind: 'flag_false', flag: 'ggtDrawn' },
-      // Signal-gated: any liver-enzyme abnormality, alcohol concern,
-      // statin user (rhabdo monitoring), known NAFLD, or BMI ≥30.
-      { kind: 'any', of: [
-        { kind: 'flag_true', flag: 'altElevated' },
-        { kind: 'flag_true', flag: 'astElevated' },
-        { kind: 'flag_true', flag: 'bilirubinElevated' },
-        { kind: 'flag_true', flag: 'onStatin' },
-        { kind: 'condition_match', pattern: /\b(alcohol use|alcoholism|nafld|fatty liver|hepatitis|cirrhos)/i },
-      ]},
-    ],
-    tests: [{ key: 'ggt', whyShort: 'Liver enzyme abnormal / statin / NAFLD / alcohol signal — GGT anchors the hepatic workup', trigger: 'd' }],
-  },
-  {
-    id: 'baseline_thyroid_no_full',
-    triggers: [
-      { kind: 'age_min', value: 18 },
-      { kind: 'flag_false', flag: 'thyroidFullDrawn' },
-    ],
-    tests: [{ key: 'thyroid_panel', whyShort: 'Full thyroid function — TSH alone misses central hypothyroidism + impaired T4→T3 conversion', trigger: 'd' }],
-  },
-  {
-    id: 'baseline_thyroid_tsh_with_sx',
-    triggers: [
-      { kind: 'age_min', value: 18 },
-      { kind: 'flag_false', flag: 'tshDrawnHealthy' },
-      { kind: 'symptom_match', pattern: /\b(fatigue|tired|hair (loss|thin)|cold|weight gain|brain fog|constipation)/i },
-    ],
-    tests: [{ key: 'thyroid_panel', whyShort: 'Thyroid-pattern symptoms with TSH not yet drawn-healthy — full thyroid panel rules in/out autoimmune thyroiditis', trigger: 'd' }],
-  },
-  {
-    id: 'baseline_rbc_mg',
-    triggers: [
-      { kind: 'age_min', value: 18 },
-      { kind: 'flag_false', flag: 'rbcMgDrawn' },
-    ],
-    tests: [{ key: 'rbc_magnesium', whyShort: 'Intracellular Mg — sleep, muscle, glucose handling, cardiovascular rhythm', trigger: 'd' }],
-  },
-  {
-    id: 'baseline_lp_a',
-    triggers: [
-      { kind: 'age_min', value: 18 },
-      { kind: 'flag_false', flag: 'lpADrawn' },
-    ],
-    tests: [{ key: 'lp_a', whyShort: 'Once-in-lifetime genetic CV risk marker — flags risk a normal lipid panel misses', trigger: 'd' }],
-  },
+export const TEST_INDICATIONS: TestIndication[] = [
+  // Baselines + imaging (tier-tagged) come first so they're evaluated
+  // alongside pattern-driven rules in the same evaluator pass.
+  ...TIERED_INDICATIONS,
 
   // ── Condition-driven tests ─────────────────────────────────────────
   {
@@ -965,15 +788,16 @@ export const TEST_INDICATIONS: TestIndication[] = [
 // Flags object is computed at runtime; rule rows reference flag names
 // by string.
 type FlagBag = Record<string, unknown>;
-type AddFn = (key: string, whyShort: string, trigger: TestTrigger) => void;
+type AddFn = (key: string, whyShort: string, trigger: TestTrigger, tier?: TestTier) => void;
 
 /** Universal matcher. Iterates TEST_INDICATIONS and emits via `add`. */
 export function evaluateTestIndications(f: FlagBag, ctx: InjectionContext, add: AddFn): void {
   for (const ind of TEST_INDICATIONS) {
     const allTriggersHit = ind.triggers.every(t => matchTrigger(t, f, ctx));
     if (!allTriggersHit) continue;
+    const tier: TestTier = ind.tier ?? 'pattern';
     for (const ref of ind.tests) {
-      add(ref.key, ref.whyShort, ref.trigger);
+      add(ref.key, ref.whyShort, ref.trigger, tier);
     }
   }
 }

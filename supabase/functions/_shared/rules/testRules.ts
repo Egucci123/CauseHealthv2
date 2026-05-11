@@ -14,6 +14,7 @@
 
 import { buildUniversalTestInjectionRequests, type InjectionContext } from '../testInjectors.ts';
 import { getRetest, specialistForKey, type Specialist } from '../retestRegistry.ts';
+import type { TestTier } from '../testIndications.ts';
 
 export interface TestOrder {
   key: string;                       // canonical registry key
@@ -27,6 +28,9 @@ export interface TestOrder {
   specialist: Specialist;
   insuranceNote: string;
   emoji: string;
+  /** Tier classification — baseline / preventive / pattern / specialist
+   *  / imaging. Used by doctor prep to group tests into sections. */
+  tier?: TestTier;
 }
 
 export function buildTestList(ctx: InjectionContext): TestOrder[] {
@@ -54,6 +58,7 @@ export function buildTestList(ctx: InjectionContext): TestOrder[] {
       specialist: specialistForKey(def.key),
       insuranceNote: def.insuranceNote,
       emoji: '🧪',
+      tier: req.tier,
     });
   }
 

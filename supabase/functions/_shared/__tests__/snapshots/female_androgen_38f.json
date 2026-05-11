@@ -21,6 +21,11 @@
       "priority": "high"
     },
     {
+      "name": "Thyroid Panel (TSH + Free T4 + Free T3)",
+      "icd10": "E03.9",
+      "priority": "high"
+    },
+    {
       "name": "Vitamin D (25-hydroxy)",
       "icd10": "E55.9",
       "priority": "high"
@@ -31,8 +36,8 @@
       "priority": "high"
     },
     {
-      "name": "Thyroid Panel (TSH + Free T4 + Free T3)",
-      "icd10": "E03.9",
+      "name": "ApoB (Apolipoprotein B)",
+      "icd10": "E78.5",
       "priority": "high"
     },
     {
@@ -53,6 +58,11 @@
     {
       "name": "Thyroid Antibodies (TPO + Tg) — female baseline",
       "icd10": "Z13.29",
+      "priority": "moderate"
+    },
+    {
+      "name": "AMH (Anti-Müllerian Hormone)",
+      "icd10": "E28.39",
       "priority": "moderate"
     },
     {

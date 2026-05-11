@@ -44,6 +44,7 @@ export interface InjectedTest {
   icd10Description: string;
   priority: 'urgent' | 'high' | 'moderate';
   insuranceNote: string;
+  tier?: import('./testIndications.ts').TestTier;
 }
 
 // Helper: was this marker drawn AND healthy? Universal across users.
@@ -212,6 +213,7 @@ export interface InjectionRequest {
   key: string;
   whyShort: string;
   trigger: TestTrigger;
+  tier?: import('./testIndications.ts').TestTier;
 }
 
 /**
@@ -221,8 +223,8 @@ export interface InjectionRequest {
 export function buildUniversalTestInjectionRequests(ctx: InjectionContext): InjectionRequest[] {
   const f = buildContextFlags(ctx);
   const reqs: InjectionRequest[] = [];
-  evaluateTestIndications(f, ctx, (key, whyShort, trigger) => {
-    reqs.push({ key, whyShort, trigger });
+  evaluateTestIndications(f, ctx, (key, whyShort, trigger, tier) => {
+    reqs.push({ key, whyShort, trigger, tier });
   });
   return reqs;
 }
@@ -234,7 +236,7 @@ export function buildUniversalTestInjectionRequests(ctx: InjectionContext): Inje
 export function buildUniversalTestInjections(ctx: InjectionContext): InjectedTest[] {
   const f = buildContextFlags(ctx);
   const tests: InjectedTest[] = [];
-  evaluateTestIndications(f, ctx, (key, whyShort, trigger) => {
+  evaluateTestIndications(f, ctx, (key, whyShort, trigger, tier) => {
     const def = getRetest(key);
     if (!def) {
       console.warn(`[testInjectors] Unknown registry key: ${key}`);
@@ -248,6 +250,7 @@ export function buildUniversalTestInjections(ctx: InjectionContext): InjectedTes
       icd10Description: def.icd10Description,
       priority: def.defaultPriority,
       insuranceNote: def.insuranceNote,
+      tier,
     });
   });
   return tests;

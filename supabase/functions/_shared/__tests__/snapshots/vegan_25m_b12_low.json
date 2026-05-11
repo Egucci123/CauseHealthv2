@@ -21,8 +21,23 @@
       "priority": "high"
     },
     {
+      "name": "Thyroid Panel (TSH + Free T4 + Free T3)",
+      "icd10": "E03.9",
+      "priority": "high"
+    },
+    {
       "name": "Vitamin D (25-hydroxy)",
       "icd10": "E55.9",
+      "priority": "high"
+    },
+    {
+      "name": "Iron Panel (Iron, TIBC, Ferritin, Transferrin Saturation)",
+      "icd10": "D64.9",
+      "priority": "high"
+    },
+    {
+      "name": "Lp(a) — Lipoprotein(a)",
+      "icd10": "E78.5",
       "priority": "high"
     },
     {
@@ -33,21 +48,6 @@
     {
       "name": "Folate Workup (Serum + RBC Folate)",
       "icd10": "D52.9",
-      "priority": "high"
-    },
-    {
-      "name": "Iron Panel (Iron, TIBC, Ferritin, Transferrin Saturation)",
-      "icd10": "D64.9",
-      "priority": "high"
-    },
-    {
-      "name": "Thyroid Panel (TSH + Free T4 + Free T3)",
-      "icd10": "E03.9",
-      "priority": "high"
-    },
-    {
-      "name": "Lp(a) — Lipoprotein(a)",
-      "icd10": "E78.5",
       "priority": "high"
     },
     {

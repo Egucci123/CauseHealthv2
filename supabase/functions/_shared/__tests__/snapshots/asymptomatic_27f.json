@@ -31,11 +31,6 @@
       "priority": "high"
     },
     {
-      "name": "Thyroid Panel (TSH + Free T4 + Free T3)",
-      "icd10": "E03.9",
-      "priority": "high"
-    },
-    {
       "name": "Lp(a) — Lipoprotein(a)",
       "icd10": "E78.5",
       "priority": "high"

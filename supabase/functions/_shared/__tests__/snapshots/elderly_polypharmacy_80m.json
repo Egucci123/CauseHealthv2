@@ -21,8 +21,8 @@
       "priority": "high"
     },
     {
-      "name": "High-Sensitivity C-Reactive Protein (hs-CRP)",
-      "icd10": "R74.0",
+      "name": "Thyroid Panel (TSH + Free T4 + Free T3)",
+      "icd10": "E03.9",
       "priority": "high"
     },
     {
@@ -31,13 +31,33 @@
       "priority": "high"
     },
     {
+      "name": "Iron Panel (Iron, TIBC, Ferritin, Transferrin Saturation)",
+      "icd10": "D64.9",
+      "priority": "high"
+    },
+    {
+      "name": "ApoB (Apolipoprotein B)",
+      "icd10": "E78.5",
+      "priority": "high"
+    },
+    {
+      "name": "Lp(a) — Lipoprotein(a)",
+      "icd10": "E78.5",
+      "priority": "high"
+    },
+    {
+      "name": "High-Sensitivity C-Reactive Protein (hs-CRP)",
+      "icd10": "R74.0",
+      "priority": "high"
+    },
+    {
       "name": "B12 Workup (Serum B12 + MMA + Homocysteine)",
       "icd10": "E53.8",
       "priority": "high"
     },
     {
-      "name": "Iron Panel (Iron, TIBC, Ferritin, Transferrin Saturation)",
-      "icd10": "D64.9",
+      "name": "Folate Workup (Serum + RBC Folate)",
+      "icd10": "D52.9",
       "priority": "high"
     },
     {
@@ -46,13 +66,8 @@
       "priority": "high"
     },
     {
-      "name": "Thyroid Panel (TSH + Free T4 + Free T3)",
-      "icd10": "E03.9",
-      "priority": "high"
-    },
-    {
-      "name": "Lp(a) — Lipoprotein(a)",
-      "icd10": "E78.5",
+      "name": "DEXA Scan (Bone Density)",
+      "icd10": "Z13.820",
       "priority": "high"
     },
     {
@@ -71,23 +86,8 @@
       "priority": "high"
     },
     {
-      "name": "ApoB (Apolipoprotein B)",
-      "icd10": "E78.5",
-      "priority": "high"
-    },
-    {
-      "name": "DEXA Scan (Bone Density)",
-      "icd10": "Z13.820",
-      "priority": "high"
-    },
-    {
       "name": "RBC Magnesium",
       "icd10": "E83.42",
-      "priority": "moderate"
-    },
-    {
-      "name": "PTH (Parathyroid Hormone)",
-      "icd10": "E55.9",
       "priority": "moderate"
     }
   ],
