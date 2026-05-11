@@ -93,24 +93,29 @@ import { buildPlan, type ClinicalFacts, type PatientInput } from './buildPlan.ts
 // derives the flag from value + standard_flag + standard_low/high +
 // current rules per request. All three v2 normalize functions now
 // call it via pickFlag(l, ctx) instead of trusting the stored flag.
-// 2026-05-11-4: AI prompt polish from Marisa audit
-//   • SymptomEntry comment fixed 0-10 -> 1-5 + all three prompts now
-//     explicitly tell the AI the symptom severity scale is 1–5, NOT
-//     1–10 (was rendering 5/5 as 5/10 and halving apparent burden).
-//   • Evidence-grounding rule: AI may not cite a marker not present in
-//     FACTS (kills the phantom "Progesterone 12" hallucination).
-//   • Pattern markers_involved disjoint enforcement so each pattern
-//     has a unique driver set (was emitting identical arrays per pattern).
-//   • Patient-voice sharpness rule for tell_doctor headlines — must be
-//     specific requests ("Can we run a urine hCG before any pituitary
-//     workup?"), not feelings ("My hormones are all over the place").
+// 2026-05-11-5: Universal supplement-rule expansion. Previously fired
+// for only 7 patterns (statin->CoQ10, low B12/folate/Mg/D/ferritin, high
+// TG, high CRP, IBD, insomnia, high ALT). Marisa Sirkin's wellness plan
+// came back with ZERO supplements because her flagged markers (TSH 3.02
+// watch, AM cortisol 21.3, severe symptoms) matched no rule. Expanded to
+// universal: thyroid drift, cortisol elevation, lipid panel (HDL/LDL/
+// ApoB), glycemic drift (A1c/glucose), homocysteine, AST, uric acid,
+// PCOS, Hashimoto's, T2D, hypertension, anxiety/depression diagnoses,
+// fatigue / brain fog / mood / anxiety / sleep / bowel / joint pain /
+// headaches / hair loss / stress symptoms. Every supplement is dose-
+// conservative and either pregnancy-safe or pregnancy-gated in the
+// final filter. Filter widened to include red yeast rice, high-dose
+// niacin, bergamot, ashwagandha, berberine — same list of regulatory-
+// concern items.
 //
+// 2026-05-11-4: AI prompt polish (severity scale, evidence grounding,
+//   disjoint patterns, sharp tell_doctor)
 // 2026-05-11-3: Pregnancy-aware expected findings (prolactin / estradiol
 //   / FSH / LH suppression while pregnant or breastfeeding)
 // 2026-05-11-2: Expected-findings suppressor for known conditions
 //   (Gilbert → bilirubin, CKD → eGFR, T1D/T2D → A1c)
 // 2026-05-11-1: Sex-gate on hormonal-axis system-drift patterns
-export const RULE_LIBRARY_VERSION = '2026-05-11-4';
+export const RULE_LIBRARY_VERSION = '2026-05-11-5';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;

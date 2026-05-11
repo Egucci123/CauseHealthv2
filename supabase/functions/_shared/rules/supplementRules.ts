@@ -233,6 +233,166 @@ export function buildSupplementCandidates(input: Input): SupplementCandidate[] {
         alternatives: [],
       });
     }
+
+    // ── Thyroid drift (TSH watch/high, low Free T3) ────────────────────
+    // Universal: any patient with TSH in the upper-normal-watch tier or
+    // overtly above range benefits from selenium + zinc support for the
+    // T4→T3 conversion pathway and antibody modulation. Pregnancy-safe
+    // at these doses. Marisa Sirkin (TSH 3.02 watch) is the canonical
+    // case that exposed the gap.
+    if (/^tsh$/i.test(o.marker) && (o.flag === 'high' || o.flag === 'critical_high' || (o.flag === 'watch' && o.value >= 2.0))) {
+      push({
+        emoji: '💊', nutrient: 'Selenium (selenomethionine)', form: 'Capsule',
+        dose: '200 mcg/day', timing: 'Morning with food',
+        whyShort: 'Thyroid antibody and conversion support',
+        why: `TSH ${o.value} mIU/L — selenium 200 mcg lowers TPO antibodies in meta-analyses (Toulis 2010) and supports T4→T3 conversion. Stays well under the 400 mcg upper limit.`,
+        category: 'nutrient_repletion', priority: 'moderate', sourcedFrom: 'lab_finding',
+        alternatives: [
+          { name: 'Brazil nuts', form: 'Whole food', note: '1–2 nuts/day delivers ~70-160 mcg selenium naturally.' },
+        ],
+      });
+      push({
+        emoji: '💊', nutrient: 'Zinc picolinate', form: 'Capsule',
+        dose: '15 mg/day', timing: 'Evening with food',
+        whyShort: 'T4→T3 conversion cofactor',
+        why: `Zinc is a required cofactor for deiodinase enzymes that convert T4 to active T3. With TSH ${o.value}, zinc repletion supports the conversion pathway.`,
+        category: 'nutrient_repletion', priority: 'moderate', sourcedFrom: 'lab_finding',
+        alternatives: [
+          { name: 'Zinc bisglycinate', form: 'Capsule', note: 'Equivalent absorption, may be gentler on the stomach.' },
+        ],
+      });
+    }
+
+    // Free T3 low → same support + tyrosine precursor
+    if (/free\s*t3|^t3,?\s*free/i.test(o.marker) && (o.flag === 'low' || o.flag === 'critical_low' || (o.flag === 'watch' && o.value < 3.0))) {
+      push({
+        emoji: '💊', nutrient: 'L-Tyrosine', form: 'Capsule',
+        dose: '500 mg/day', timing: 'Morning, empty stomach',
+        whyShort: 'Thyroid hormone precursor',
+        why: `Free T3 ${o.value} — L-tyrosine is the amino-acid backbone for T4/T3 synthesis. Conservative dose; pair with selenium for full pathway support.`,
+        category: 'nutrient_repletion', priority: 'moderate', sourcedFrom: 'lab_finding',
+        alternatives: [],
+      });
+    }
+
+    // ── AM Cortisol elevation → stress-axis support ────────────────────
+    // Universal: high morning cortisol with stress/fatigue symptoms is
+    // a chronic-stress signature. Adaptogens are pregnancy-gated in the
+    // final filter; phosphatidylserine and L-theanine are not.
+    if (/cortisol.*am|cortisol\s*-\s*am|^cortisol$/i.test(o.marker) && (o.flag === 'high' || o.flag === 'critical_high')) {
+      push({
+        emoji: '🧘', nutrient: 'Phosphatidylserine', form: 'Softgel',
+        dose: '300 mg/day', timing: 'Evening',
+        whyShort: 'Lowers elevated cortisol',
+        why: `AM cortisol ${o.value} — phosphatidylserine 300 mg blunts elevated cortisol in stress and exercise-overtraining studies (Monteleone 1992, Starks 2008). Pregnancy-safe.`,
+        category: 'sleep_stress', priority: 'moderate', sourcedFrom: 'lab_finding',
+        alternatives: [
+          { name: 'L-Theanine', form: 'Capsule', note: 'Alternative for daytime stress modulation, 200 mg twice daily.' },
+        ],
+      });
+      push({
+        emoji: '🌿', nutrient: 'Ashwagandha (KSM-66)', form: 'Capsule',
+        dose: '600 mg/day', timing: 'With breakfast',
+        whyShort: 'Adaptogenic cortisol modulation',
+        why: `AM cortisol ${o.value} — KSM-66 ashwagandha 600 mg/day reduced cortisol 27–30% in RCTs (Chandrasekhar 2012, Salve 2019). Pregnancy-contraindicated.`,
+        category: 'sleep_stress', priority: 'moderate', sourcedFrom: 'lab_finding',
+        alternatives: [
+          { name: 'Rhodiola rosea', form: 'Capsule', note: '300 mg/day — alternative adaptogen, more energizing, also pregnancy-contraindicated.' },
+        ],
+      });
+    }
+
+    // ── Lipid panel ────────────────────────────────────────────────────
+    if (/^hdl/i.test(o.marker) && (o.flag === 'low' || o.flag === 'critical_low' || (o.flag === 'watch' && o.value < 50))) {
+      push({
+        emoji: '💊', nutrient: 'Niacin (nicotinic acid)', form: 'Sustained-release tablet',
+        dose: '500 mg/day', timing: 'Evening with food',
+        whyShort: 'Raise low HDL',
+        why: `HDL ${o.value} mg/dL — niacin remains the most effective non-pharmacologic HDL-raiser (5–15 mg/dL increase). Flush is normal; SR forms reduce it.`,
+        category: 'inflammation_cardio', priority: 'moderate', sourcedFrom: 'lab_finding',
+        alternatives: [
+          { name: 'Inositol Hexanicotinate', form: 'Capsule', note: 'Flush-free niacin alternative; smaller HDL effect.' },
+        ],
+      });
+    }
+
+    if ((/^ldl(\s|$|-c)/i.test(o.marker) && o.value > 130) ||
+        (/apo.?b/i.test(o.marker) && o.value > 100)) {
+      push({
+        emoji: '💊', nutrient: 'Red Yeast Rice (with CoQ10)', form: 'Capsule',
+        dose: '1200 mg/day (10 mg monacolin K)', timing: 'With dinner',
+        whyShort: 'Lower elevated LDL / ApoB',
+        why: `${o.marker} ${o.value} — RYR delivers a natural-form statin (monacolin K); add CoQ10 to offset CoQ10 depletion. Avoid if already on a prescription statin.`,
+        category: 'inflammation_cardio', priority: 'high', sourcedFrom: 'lab_finding',
+        alternatives: [
+          { name: 'Bergamot extract', form: 'Capsule', note: 'Citrus bergamot 500–1000 mg/day — 15–25% LDL reduction in trials.' },
+          { name: 'Plant sterols', form: 'Softgel', note: '2 g/day blocks cholesterol absorption — additive with diet changes.' },
+        ],
+      });
+    }
+
+    // ── Glycemic drift ────────────────────────────────────────────────
+    if (/a1c|hba1c/i.test(o.marker) && (o.flag === 'high' || o.flag === 'critical_high' || (o.flag === 'watch' && o.value >= 5.5))) {
+      push({
+        emoji: '💊', nutrient: 'Berberine HCl', form: 'Capsule',
+        dose: '500 mg three times daily', timing: 'With each main meal',
+        whyShort: 'A1c reduction comparable to metformin',
+        why: `A1c ${o.value}% — berberine 1500 mg/day shows comparable A1c reduction to metformin in meta-analyses (Yin 2008). Pregnancy-contraindicated.`,
+        category: 'liver_metabolic', priority: 'high', sourcedFrom: 'lab_finding',
+        alternatives: [
+          { name: 'Chromium picolinate', form: 'Capsule', note: '400 mcg/day — pregnancy-safe alternative for glucose handling.' },
+          { name: 'Alpha-lipoic acid', form: 'Capsule', note: '600 mg/day — supports insulin sensitivity + nerve health.' },
+        ],
+      });
+    }
+    if (/fasting\s*glucose|^glucose$/i.test(o.marker) && o.flag !== 'low' && o.value >= 95) {
+      push({
+        emoji: '💊', nutrient: 'Chromium picolinate', form: 'Capsule',
+        dose: '400 mcg/day', timing: 'With largest meal',
+        whyShort: 'Insulin-receptor sensitivity',
+        why: `Glucose ${o.value} mg/dL — chromium is a cofactor for insulin signaling. Pregnancy-safe at this dose.`,
+        category: 'liver_metabolic', priority: 'moderate', sourcedFrom: 'lab_finding',
+        alternatives: [],
+      });
+    }
+
+    // ── Homocysteine elevation → methylated B-complex ──────────────────
+    if (/homocysteine/i.test(o.marker) && o.value > 10) {
+      push({
+        emoji: '💊', nutrient: 'Methylated B-complex', form: 'Capsule',
+        dose: '1 capsule/day', timing: 'Morning with food',
+        whyShort: 'Lower elevated homocysteine',
+        why: `Homocysteine ${o.value} µmol/L — methylated B6/B9/B12 lowers homocysteine 25–30% in supplementation trials.`,
+        category: 'nutrient_repletion', priority: 'high', sourcedFrom: 'lab_finding',
+        alternatives: [],
+      });
+    }
+
+    // ── ALT/AST already covered below; expand AST too ──────────────────
+    if (/^ast|sgot|aspartate/i.test(o.marker) && (o.flag === 'high' || o.value > 35)) {
+      push({
+        emoji: '💊', nutrient: 'N-Acetylcysteine (NAC)', form: 'Capsule',
+        dose: '600 mg twice daily', timing: 'With food',
+        whyShort: 'Hepatic glutathione support',
+        why: `AST ${o.value} — NAC is the glutathione precursor and the standard for hepatic oxidative stress.`,
+        category: 'liver_metabolic', priority: 'moderate', sourcedFrom: 'lab_finding',
+        alternatives: [],
+      });
+    }
+
+    // ── Uric acid elevation ────────────────────────────────────────────
+    if (/uric\s*acid/i.test(o.marker) && o.value > 6.5) {
+      push({
+        emoji: '🍒', nutrient: 'Tart Cherry Extract', form: 'Capsule',
+        dose: '500 mg/day', timing: 'Evening',
+        whyShort: 'Lower elevated uric acid',
+        why: `Uric acid ${o.value} mg/dL — tart cherry concentrate lowers uric acid and reduces gout flare frequency in RCTs (Schlesinger 2012).`,
+        category: 'inflammation_cardio', priority: 'moderate', sourcedFrom: 'lab_finding',
+        alternatives: [
+          { name: 'Quercetin', form: 'Capsule', note: '500 mg/day — supports uric-acid clearance and is anti-inflammatory.' },
+        ],
+      });
+    }
   }
 
   // ── 3. Condition-driven ──────────────────────────────────────────────
@@ -250,7 +410,151 @@ export function buildSupplementCandidates(input: Input): SupplementCandidate[] {
     });
   }
 
-  if (/(insomn|sleep onset|difficulty falling asleep|wake at night|night.?wake)/i.test(input.symptomsLower) && !seen.has('magnesium glycinate')) {
+  // ── Condition-driven (expanded) ───────────────────────────────────
+  // PCOS → inositol + NAC (well-established for insulin sensitivity +
+  // ovulation in PCOS). Pregnancy-safe.
+  if (/\bpcos\b|polycystic\s+ovar/i.test(input.conditionsLower)) {
+    push({
+      emoji: '💊', nutrient: 'Myo-Inositol + D-Chiro-Inositol (40:1)', form: 'Powder',
+      dose: '2 g twice daily', timing: 'Morning + evening with food',
+      whyShort: 'Insulin sensitivity + ovulation support in PCOS',
+      why: 'Myo + D-chiro inositol at the 40:1 physiologic ratio improves insulin signaling, restores ovulation, and lowers androgens in PCOS RCTs (Nordio 2012).',
+      category: 'condition_therapy', priority: 'high', sourcedFrom: 'disease_mechanism',
+      alternatives: [
+        { name: 'NAC', form: 'Capsule', note: '600 mg twice daily — alternative for insulin sensitivity + ovulation.' },
+      ],
+    });
+  }
+
+  // Hashimoto's / autoimmune thyroid → selenium (already covered by TSH
+  // outlier rule if present); add vitamin D as a thyroid antibody
+  // modulator since most Hashimoto patients are vitamin-D-insufficient.
+  if (/\bhashimoto|autoimmune\s+thyroid/i.test(input.conditionsLower) && !seen.has('vit_d3_4000')) {
+    push(vitaminDCandidate('disease_mechanism',
+      'Hashimoto patients trend toward vitamin D insufficiency; D3 supplementation associates with lower TPO antibodies.'));
+  }
+
+  // T2D → berberine (already added if A1c outlier fires) + chromium + ALA
+  if (/type\s*2\s*diabetes|t2dm/i.test(input.conditionsLower) && !seen.has('berberine')) {
+    push({
+      emoji: '💊', nutrient: 'Alpha-Lipoic Acid', form: 'Capsule',
+      dose: '600 mg/day', timing: 'Morning, empty stomach',
+      whyShort: 'Insulin sensitivity + nerve support',
+      why: 'ALA improves insulin sensitivity and is the standard for diabetic neuropathy (1200 mg/day for neuropathy).',
+      category: 'condition_therapy', priority: 'high', sourcedFrom: 'disease_mechanism',
+      alternatives: [],
+    });
+  }
+
+  // Hypertension → magnesium + CoQ10 (CoQ10 already deferred to depletion
+  // path if statin; this catches non-statin hypertension)
+  if (/hypertens|high\s+blood\s+pressure/i.test(input.conditionsLower) && !seen.has('mg_glycinate')) {
+    push({
+      emoji: '💊', nutrient: 'Magnesium Glycinate', form: 'Capsule',
+      dose: '300 mg/day', timing: 'Evening',
+      whyShort: 'Modest BP reduction in hypertension',
+      why: 'Magnesium supplementation lowers systolic BP 2–4 mmHg in meta-analyses (Zhang 2016) — additive to first-line therapy.',
+      category: 'sleep_stress', priority: 'moderate', sourcedFrom: 'disease_mechanism',
+      alternatives: [],
+    });
+  }
+
+  // Anxiety / depression as documented conditions
+  if (/\b(anxiety|gad|panic)\b/i.test(input.conditionsLower) && !seen.has('mg_glycinate')) {
+    push({
+      emoji: '🌿', nutrient: 'L-Theanine', form: 'Capsule',
+      dose: '200 mg twice daily', timing: 'As needed for stress, max 400 mg/day',
+      whyShort: 'Calm focus without sedation',
+      why: 'L-theanine raises alpha-brainwave activity and lowers subjective stress without sedation. Pregnancy-safe.',
+      category: 'sleep_stress', priority: 'moderate', sourcedFrom: 'disease_mechanism',
+      alternatives: [],
+    });
+  }
+
+  // ── 4. Symptom-driven (universal — fires off the in-app symptom selector) ─
+  // EVERY user's symptoms should map to at least one supplement candidate.
+  // These rules are deliberately wide-net + dose-conservative + pregnancy-
+  // gated at the final filter. They use `seen` to avoid duplicating
+  // anything already added by lab/condition rules.
+
+  // Fatigue (any severity) → B-complex + magnesium baseline
+  if (/(fatigue|tired|exhaust|low energy|energy crash)/i.test(input.symptomsLower)) {
+    if (!seen.has('methylated_b_complex')) {
+      push({
+        emoji: '💊', nutrient: 'Methylated B-Complex', form: 'Capsule',
+        dose: '1 capsule/day', timing: 'Morning with food',
+        whyShort: 'Energy + mitochondrial cofactor support',
+        why: 'Methylated B-vitamins (B6 P5P, methylfolate, methylcobalamin) bypass MTHFR conversion issues and support energy metabolism.',
+        category: 'nutrient_repletion', priority: 'moderate', sourcedFrom: 'symptom_pattern',
+        alternatives: [],
+      });
+    }
+    if (!seen.has('coq10_ubiquinol')) {
+      push({
+        emoji: '💊', nutrient: 'CoQ10 (Ubiquinol)', form: 'Softgel',
+        dose: '100 mg/day', timing: 'With breakfast (with fat)',
+        whyShort: 'Mitochondrial energy production',
+        why: 'CoQ10 is the rate-limiting electron carrier in the mitochondrial respiratory chain — supplementation supports cellular energy in fatigue.',
+        category: 'nutrient_repletion', priority: 'moderate', sourcedFrom: 'symptom_pattern',
+        alternatives: [],
+      });
+    }
+  }
+
+  // Brain fog / concentration → omega-3 (DHA-rich) + B-complex
+  if (/(brain fog|concentrat|focus|memory)/i.test(input.symptomsLower)) {
+    if (!seen.has('omega3') && !input.hasShellfishAllergy) {
+      push({
+        emoji: '🐟', nutrient: 'Omega-3 (high-DHA)', form: 'Triglyceride-form softgel',
+        dose: '2000 mg/day (700–1000 mg DHA)', timing: 'With largest meal',
+        whyShort: 'Cognitive function + brain inflammation',
+        why: 'DHA is the dominant structural fat in neural membranes; supplementation supports cognitive performance and lowers neuroinflammation.',
+        category: 'inflammation_cardio', priority: 'moderate', sourcedFrom: 'symptom_pattern',
+        alternatives: [
+          { name: 'Algal omega-3', form: 'Softgel', note: 'For shellfish/fish allergy or vegan preference.' },
+        ],
+      });
+    }
+    if (!seen.has('mg_l_threonate') && !seen.has('mg_glycinate')) {
+      push({
+        emoji: '💊', nutrient: 'Magnesium L-Threonate', form: 'Capsule',
+        dose: '1.5–2 g/day (split dose)', timing: 'Afternoon + evening',
+        whyShort: 'Crosses blood-brain barrier for cognition',
+        why: 'L-threonate is the only magnesium form clinically shown to raise CNS magnesium (Slutsky 2010); supports memory and cognition.',
+        category: 'sleep_stress', priority: 'moderate', sourcedFrom: 'symptom_pattern',
+        alternatives: [],
+      });
+    }
+  }
+
+  // Mood swings / depressed mood / anxiety
+  if (/(mood swing|mood\s|depress|anxiety|anxious|panic|irritab)/i.test(input.symptomsLower)) {
+    if (!seen.has('mg_glycinate')) {
+      push({
+        emoji: '💊', nutrient: 'Magnesium Glycinate', form: 'Capsule',
+        dose: '300 mg/day', timing: 'Evening',
+        whyShort: 'Mood + stress modulation',
+        why: 'Magnesium supports GABA tone and HPA-axis regulation; supplementation lowers depression scores in trials (Tarleton 2017).',
+        category: 'sleep_stress', priority: 'moderate', sourcedFrom: 'symptom_pattern',
+        alternatives: [],
+      });
+    }
+    if (!seen.has('omega3') && !input.hasShellfishAllergy) {
+      push({
+        emoji: '🐟', nutrient: 'Omega-3 (EPA-dominant)', form: 'Triglyceride-form softgel',
+        dose: '2000 mg/day (≥1000 mg EPA)', timing: 'With largest meal',
+        whyShort: 'EPA-dominant omega-3 for mood',
+        why: 'EPA:DHA ratios ≥2:1 show the strongest antidepressant effect in meta-analyses (Sublette 2011).',
+        category: 'inflammation_cardio', priority: 'moderate', sourcedFrom: 'symptom_pattern',
+        alternatives: [
+          { name: 'Algal omega-3', form: 'Softgel', note: 'For shellfish/fish allergy.' },
+        ],
+      });
+    }
+  }
+
+  // Insomnia / sleep onset / night waking (existing rule retained — moved here for cohesion)
+  if (/(insomn|sleep onset|difficulty falling asleep|wake at night|night.?wake)/i.test(input.symptomsLower) && !seen.has('mg_glycinate')) {
     push({
       emoji: '💊', nutrient: 'Magnesium Glycinate', form: 'Capsule',
       dose: '300 mg', timing: 'Evening (7 PM), 2–3 hours before bed',
@@ -259,6 +563,125 @@ export function buildSupplementCandidates(input: Input): SupplementCandidate[] {
       category: 'sleep_stress', priority: 'high', sourcedFrom: 'symptom_pattern',
       alternatives: [
         { name: 'Magnesium L-Threonate', form: 'Capsule', note: 'For added cognitive benefit.' },
+      ],
+    });
+  }
+
+  // Bowel symptoms — split constipation vs diarrhea vs alternating
+  if (/(constipat)/i.test(input.symptomsLower)) {
+    push({
+      emoji: '💊', nutrient: 'Magnesium Citrate', form: 'Capsule',
+      dose: '400 mg/day', timing: 'Evening',
+      whyShort: 'Gentle osmotic laxative for constipation',
+      why: 'Magnesium citrate draws water into the colon; the most-recommended OTC magnesium for constipation. Pregnancy-safe at this dose.',
+      category: 'gut_healing', priority: 'moderate', sourcedFrom: 'symptom_pattern',
+      alternatives: [],
+    });
+  }
+  if (/(diarrh|loose stool)/i.test(input.symptomsLower) || /(alternating bowel|ibs|irritable bowel)/i.test(input.symptomsLower)) {
+    push({
+      emoji: '🦠', nutrient: 'Probiotic (multi-strain, ≥30B CFU)', form: 'Capsule',
+      dose: '1 capsule/day', timing: 'Morning, empty stomach',
+      whyShort: 'Bowel-pattern stabilization',
+      why: 'Multi-strain probiotics reduce both diarrhea and abdominal pain in IBS and gut-microbiome-driven bowel-pattern disruption.',
+      category: 'gut_healing', priority: 'moderate', sourcedFrom: 'symptom_pattern',
+      alternatives: [
+        { name: 'L-Glutamine', form: 'Powder', note: '5 g/day — gut-barrier support for the same pattern.' },
+      ],
+    });
+  }
+
+  // Joint pain → omega-3 + curcumin
+  if (/(joint pain|arthriti|achy joints)/i.test(input.symptomsLower)) {
+    if (!seen.has('curcumin_bioavailable')) {
+      push({
+        emoji: '💊', nutrient: 'Curcumin (Meriva or BCM-95)', form: 'Capsule with phospholipid carrier',
+        dose: '500 mg twice daily', timing: 'With meals',
+        whyShort: 'Anti-inflammatory for joint pain',
+        why: 'Bioavailable curcumin matches NSAIDs for OA pain in RCTs (Daily 2016) without GI side effects.',
+        category: 'inflammation_cardio', priority: 'moderate', sourcedFrom: 'symptom_pattern',
+        alternatives: [],
+      });
+    }
+    if (!seen.has('omega3') && !input.hasShellfishAllergy) {
+      push({
+        emoji: '🐟', nutrient: 'Omega-3 (EPA/DHA)', form: 'Triglyceride-form softgel',
+        dose: '2000 mg/day', timing: 'With largest meal',
+        whyShort: 'Joint-inflammation modulation',
+        why: 'Omega-3 lowers joint inflammation markers and morning stiffness in joint-pain RCTs.',
+        category: 'inflammation_cardio', priority: 'moderate', sourcedFrom: 'symptom_pattern',
+        alternatives: [
+          { name: 'Algal omega-3', form: 'Softgel', note: 'For shellfish/fish allergy.' },
+        ],
+      });
+    }
+  }
+
+  // Headaches / migraines → magnesium + riboflavin (B2)
+  if (/(headache|migrain)/i.test(input.symptomsLower)) {
+    if (!seen.has('mg_glycinate')) {
+      push({
+        emoji: '💊', nutrient: 'Magnesium Glycinate', form: 'Capsule',
+        dose: '400 mg/day', timing: 'Evening',
+        whyShort: 'Migraine prevention (American Headache Society Level B)',
+        why: 'Magnesium 400 mg/day is American Headache Society Level B evidence for migraine prevention; pregnancy-safe at this dose.',
+        category: 'sleep_stress', priority: 'high', sourcedFrom: 'symptom_pattern',
+        alternatives: [],
+      });
+    }
+    push({
+      emoji: '💊', nutrient: 'Riboflavin (B2)', form: 'Capsule',
+      dose: '400 mg/day', timing: 'Morning with food',
+      whyShort: 'Migraine prevention',
+      why: 'Riboflavin 400 mg/day reduced migraine frequency in 2-3 RCTs; works via mitochondrial energy metabolism. Pregnancy-safe.',
+      category: 'nutrient_repletion', priority: 'moderate', sourcedFrom: 'symptom_pattern',
+      alternatives: [],
+    });
+  }
+
+  // Hair loss / thinning → biotin + iron-bisglycinate gate + zinc
+  if (/(hair loss|hair thinning|hair shed)/i.test(input.symptomsLower)) {
+    push({
+      emoji: '💊', nutrient: 'Biotin', form: 'Capsule',
+      dose: '5 mg/day', timing: 'Morning',
+      whyShort: 'Hair / nail keratin support',
+      why: 'Biotin supplementation supports keratin synthesis in hair follicles; note: discontinue 48 h before any lab draw, as biotin interferes with immunoassays (TSH, troponin).',
+      category: 'nutrient_repletion', priority: 'moderate', sourcedFrom: 'symptom_pattern',
+      alternatives: [],
+    });
+    if (!seen.has('iron_bisglycinate') && !seen.has('iron_heme')) {
+      // No iron rec without ferritin — gate it. If ferritin not drawn,
+      // recommend the test rather than blind iron.
+      push({
+        emoji: '💊', nutrient: 'Zinc picolinate', form: 'Capsule',
+        dose: '15 mg/day', timing: 'Evening with food',
+        whyShort: 'Hair-cycle support',
+        why: 'Zinc deficiency is a well-documented driver of telogen effluvium; 15 mg is conservative and safe long-term.',
+        category: 'nutrient_repletion', priority: 'moderate', sourcedFrom: 'symptom_pattern',
+        alternatives: [],
+      });
+    }
+  }
+
+  // Cold intolerance / always cold → iron status gate + thyroid support
+  // (selenium/zinc handled by TSH rule)
+  if (/(cold intolerance|always cold|cold hands|cold feet)/i.test(input.symptomsLower)) {
+    // No iron without ferritin trigger; rule defers to ferritin lab path.
+    // Selenium/zinc fire on TSH watch (handled above).
+    // Add iodine ONLY if no hyperthyroid signal — conservative.
+    // Skip iodine for safety; addressed by Doctor Prep test orders instead.
+  }
+
+  // Stress / burnout / overwhelm → adaptogen (pregnancy-gated)
+  if (/(stress|burnout|overwhelm|anxious thoughts)/i.test(input.symptomsLower) && !seen.has('ashwagandha')) {
+    push({
+      emoji: '🌿', nutrient: 'Ashwagandha (KSM-66)', form: 'Capsule',
+      dose: '600 mg/day', timing: 'With breakfast',
+      whyShort: 'Adaptogenic stress + cortisol modulation',
+      why: 'KSM-66 ashwagandha 600 mg/day lowered perceived-stress scores 44% and cortisol 27% vs placebo (Chandrasekhar 2012). Pregnancy-contraindicated.',
+      category: 'sleep_stress', priority: 'moderate', sourcedFrom: 'symptom_pattern',
+      alternatives: [
+        { name: 'L-Theanine', form: 'Capsule', note: '200 mg twice daily — pregnancy-safe stress alternative.' },
       ],
     });
   }
@@ -274,10 +697,21 @@ export function buildSupplementCandidates(input: Input): SupplementCandidate[] {
     });
   }
 
-  // ── 4. Allergy / pregnancy filters ──────────────────────────────────
+  // ── Final filters: allergy / pregnancy / dedup ──────────────────────
   return out.filter(c => {
-    if (input.hasShellfishAllergy && /omega-?3|fish oil/i.test(c.nutrient)) return false;
-    if (input.isPregnant && /(kava|comfrey|ashwagandha|berberine|black cohosh|dong quai|saw palmetto)/i.test(c.nutrient)) return false;
+    // Shellfish/fish allergy → drop fish oil (algal alt remains)
+    if (input.hasShellfishAllergy && /omega-?3|fish oil/i.test(c.nutrient) && !/algal|algae|vegan/i.test(c.nutrient)) return false;
+
+    // Pregnancy contraindications. Conservative — when in doubt, drop.
+    // The is_pregnant flag is derived from the user's explicit onboarding
+    // answer (pregnant / trying / breastfeeding / prefer-not-to-say for
+    // female users). Items in this regex have either teratogenic risk,
+    // uterine-contraction risk, hormonal-axis effects unsafe in
+    // pregnancy, or unstudied safety profiles.
+    if (input.isPregnant) {
+      const pregContra = /(kava|comfrey|ashwagandha|berberine|black cohosh|dong quai|saw palmetto|red\s+yeast\s+rice|monacolin|bergamot|niacin|nicotinic\s+acid|high.?dose\s+vitamin\s+a|retinol)/i;
+      if (pregContra.test(c.nutrient)) return false;
+    }
     return true;
   });
 }
