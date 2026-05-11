@@ -34,11 +34,11 @@ const MARKER_CASES: MarkerCase[] = [
     shouldNotMatch:['Free T4', 'T3 Free', 'TPO Antibody'],
   },
   { canonical:'Free T4',
-    patterns:[/free t4|t4 free|\bft4\b/i],
+    patterns:[/free t4|t4[\s,]+free|\bft4\b|free thyroxine/i],
     variants:['Free T4', 'FREE T4', 'T4, Free', 'FT4', 'Free Thyroxine', 'free t4 (direct)'],
   },
   { canonical:'Free T3',
-    patterns:[/free t3|t3 free|\bft3\b/i],
+    patterns:[/free t3|t3[\s,]+free|\bft3\b|triiodothyronine,?\s*free/i],
     variants:['Free T3', 'FREE T3', 'T3, Free', 'FT3', 'Triiodothyronine, Free'],
   },
 
@@ -52,7 +52,7 @@ const MARKER_CASES: MarkerCase[] = [
     shouldNotMatch:['Hemoglobin A1c', 'HbA1c'],
   },
   { canonical:'Hemoglobin A1c',
-    patterns:[/hemoglobin a1c|hba1c|\ba1c\b/i],
+    patterns:[/hemoglobin\s*a1c|hba1c|hgba1c|\ba1c\b|glycated hemoglobin/i],
     variants:[
       'A1c', 'a1c', 'HbA1c', 'Hemoglobin A1c', 'HEMOGLOBIN A1C',
       'A1c, Hemoglobin', 'HgbA1c', 'Glycated Hemoglobin (A1c)',
@@ -73,8 +73,8 @@ const MARKER_CASES: MarkerCase[] = [
 
   // Lipids
   { canonical:'LDL',
-    patterns:[/^ldl\b/i, /ldl[\s-]?cholesterol/i],
-    variants:['LDL', 'ldl', 'LDL Cholesterol', 'LDL-C', 'LDL Cholesterol (calculated)', 'LDL Chol Calc'],
+    patterns:[/(?<!v)\bldl[\s-]?cholesterol\b/i, /(?<!v)\bldl[\s-]?c\b/i, /^ldl$/i, /^ldl\s+(?!particle)/i],
+    variants:['LDL', 'LDL Cholesterol', 'LDL-C', 'LDL Cholesterol (calculated)', 'LDL Chol Calc'],
     shouldNotMatch:['HDL', 'VLDL Cholesterol', 'LDL Particle Number'],
   },
   { canonical:'HDL',
@@ -82,12 +82,12 @@ const MARKER_CASES: MarkerCase[] = [
     variants:['HDL', 'hdl', 'HDL Cholesterol', 'HDL-C', 'HDL Chol'],
   },
   { canonical:'Triglycerides',
-    patterns:[/triglyceride/i, /\btg\b/i],
+    patterns:[/triglyceride|\btg\b|\btrig\b/i],
     variants:['Triglycerides', 'triglycerides', 'Triglyceride', 'TG', 'Trig'],
   },
   { canonical:'Total Cholesterol',
-    patterns:[/total cholesterol/i, /cholesterol, total/i],
-    variants:['Total Cholesterol', 'Cholesterol, Total', 'Cholesterol Total', 'TC'],
+    patterns:[/total\s*cholesterol|cholesterol[\s,]+total/i],
+    variants:['Total Cholesterol', 'Cholesterol, Total', 'Cholesterol Total', 'TotalCholesterol'],
   },
   { canonical:'ApoB',
     patterns:[/apolipoprotein b|\bapob\b|apo b/i],
@@ -100,7 +100,7 @@ const MARKER_CASES: MarkerCase[] = [
 
   // Liver
   { canonical:'ALT',
-    patterns:[/\balt\b/i, /\bsgpt\b/i, /alanine[\s-]?aminotransferase/i],
+    patterns:[/\balt\b|\bsgpt\b|alanine[\s-]?(?:amino)?(?:transferase|transaminase)/i],
     variants:['ALT', 'alt', 'SGPT', 'Alanine Aminotransferase', 'ALT (SGPT)', 'Alanine Transaminase'],
   },
   { canonical:'AST',
@@ -108,7 +108,7 @@ const MARKER_CASES: MarkerCase[] = [
     variants:['AST', 'ast', 'SGOT', 'Aspartate Aminotransferase', 'AST (SGOT)'],
   },
   { canonical:'GGT',
-    patterns:[/\bggt\b/i, /gamma[\s-]?glutamyl/i],
+    patterns:[/\bggt\b|gamma[\s-]?glutamyl|gamma\s*gt/i],
     variants:['GGT', 'ggt', 'Gamma-Glutamyl Transferase', 'GGT (Gamma-Glutamyl Transferase)', 'Gamma GT'],
   },
 
@@ -118,11 +118,11 @@ const MARKER_CASES: MarkerCase[] = [
     variants:['Ferritin', 'ferritin', 'Ferritin, Serum', 'FERRITIN'],
   },
   { canonical:'B12',
-    patterns:[/vitamin b.?12|^b12|cobalamin/i],
+    patterns:[/(?:vitamin|vit\.?)\s*b[-\s]?12|\bb[-\s]?12\b|cobalamin/i],
     variants:['Vitamin B12', 'B12', 'B-12', 'Cobalamin', 'Vit B12', 'VITAMIN B-12'],
   },
   { canonical:'Folate',
-    patterns:[/folate/i],
+    patterns:[/folate|folic\s*acid/i],
     variants:['Folate', 'Folate, Serum', 'Folic Acid', 'RBC Folate', 'Folate (Vitamin B9)'],
   },
 
@@ -146,7 +146,7 @@ const MARKER_CASES: MarkerCase[] = [
 
   // Vitamin D
   { canonical:'Vitamin D',
-    patterns:[/25.?hydroxy.*vitamin d|vitamin d.*25/i],
+    patterns:[/25.?hydroxy.*vitamin d|vitamin d.*25|25\(?oh\)?d|25-hydroxyvitamin/i],
     variants:[
       'Vitamin D, 25-Hydroxy', '25-Hydroxy Vitamin D', '25(OH)D',
       'Vitamin D 25-hydroxy', 'Vitamin D, 25-OH', '25-Hydroxyvitamin D, Total',
@@ -155,7 +155,7 @@ const MARKER_CASES: MarkerCase[] = [
 
   // Kidney
   { canonical:'Creatinine',
-    patterns:[/^creatinine/i],
+    patterns:[/\bcreatinine\b/i],
     variants:['Creatinine', 'CREATININE', 'Creatinine, Serum', 'Serum Creatinine'],
   },
   { canonical:'eGFR',

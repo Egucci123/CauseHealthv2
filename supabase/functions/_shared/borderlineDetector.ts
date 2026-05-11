@@ -77,14 +77,14 @@ const PER_MARKER_OVERRIDES: Array<{ pattern: RegExp; pct: number }> = [
   { pattern: /^mch$|^mean corpuscular hemoglobin$/i, pct: 0.10 },
   { pattern: /^mchc$|^mean corpuscular hemoglobin concentration$/i, pct: 0.10 },
   // GGT: liver early-stress signal — keep tight 10% so it surfaces.
-  { pattern: /^ggt$|^gamma[\s-]?glutamyl/i, pct: 0.10 },
+  { pattern: /^ggt$|^gamma[\s-]?glutamyl|^gamma\s*gt$/i, pct: 0.10 },
   // Fasting glucose: pre-prediabetic zone (90–99) is well-established;
   // 15% of typical lab range (70–99) would only flag 95+. Use 20% so
   // 90+ flags as borderline-high.
   { pattern: /^(?:fasting\s+)?glucose(?:,?\s*(?:serum|plasma|fasting|random))?$/i, pct: 0.20 },
   // Hemoglobin A1c: 5.4–5.6% pre-prediabetic zone. Lab range usually
   // 4.0–5.6, so 20% catches the well-established functional drift.
-  { pattern: /^(?:hemoglobin\s+a1c|hba1c|^a1c)$/i, pct: 0.20 },
+  { pattern: /^(?:hemoglobin\s*a1c|hba1c|hgba1c|a1c|glycated\s*hemoglobin)$/i, pct: 0.20 },
 ];
 
 /** Look up the per-marker override or return the default. */

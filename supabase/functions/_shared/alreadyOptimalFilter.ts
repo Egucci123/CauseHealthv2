@@ -73,7 +73,7 @@ export const OPTIMAL_THRESHOLDS: OptimalThreshold[] = [
   },
   {
     key: 'serum_b12',
-    markerPatterns: [/^vitamin b[-\s]?12$/i, /^b[-\s]?12$/i, /^cobalamin/i, /serum b[-\s]?12/i],
+    markerPatterns: [/(?:vitamin|vit\.?)\s*b[-\s]?12/i, /\bb[-\s]?12\b/i, /cobalamin/i, /serum\s*b[-\s]?12/i],
     unitContains: 'pg/ml',
     optimalRange: () => [500, 2000],
     suppressSupplements: ['b12_methyl'],
@@ -108,7 +108,7 @@ export const OPTIMAL_THRESHOLDS: OptimalThreshold[] = [
   },
   {
     key: 'glucose_a1c',
-    markerPatterns: [/^hemoglobin a1c/i, /^a1c\b/i],
+    markerPatterns: [/hemoglobin\s*a1c/i, /\ba1c\b/i, /hba1c/i, /hgba1c/i, /glycated\s*hemoglobin/i],
     unitContains: '%',
     optimalRange: () => [4.0, 5.6],
     suppressSupplements: ['berberine'],
