@@ -67,19 +67,21 @@ export default function OutputAcknowledgmentGate({
       <div className="bg-clinical-white max-w-lg w-full rounded-2xl shadow-xl my-8">
         <div className="p-8 sm:p-10">
           <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-primary-container mb-3">
-            One thing before we open your document
+            One thing before we open your analysis
           </p>
 
           <h2
             id="ack-gate-heading"
             className="text-authority text-2xl sm:text-[26px] font-bold text-clinical-charcoal mb-4 leading-tight"
           >
-            Your Doctor Prep Document is ready.
+            Your analysis is ready.
           </h2>
 
           <p className="text-body text-[0.98rem] text-clinical-charcoal/85 leading-relaxed mb-8">
-            It&apos;s designed to be reviewed with <strong>{doctorLabel}</strong>. It&apos;s a
-            conversation tool for your next appointment — not a diagnosis.
+            Everything you&apos;re about to see — your lab interpretation, wellness plan,
+            and Doctor Prep document — is designed to be reviewed with{' '}
+            <strong>{doctorLabel}</strong>. It&apos;s educational analysis to support a
+            better conversation at your next visit — not a diagnosis, not medical advice.
           </p>
 
           <label
@@ -95,8 +97,8 @@ export default function OutputAcknowledgmentGate({
               className="mt-0.5 w-4 h-4 cursor-pointer accent-[#1E40AF] flex-shrink-0"
             />
             <span className="text-body text-[0.95rem] text-clinical-charcoal leading-snug select-none">
-              Got it — I&apos;ll review this with my doctor before making any health
-              decisions.
+              I will share and review this with a licensed clinician before making any
+              health decisions.
             </span>
           </label>
 
@@ -122,7 +124,7 @@ export default function OutputAcknowledgmentGate({
               disabled={!acknowledged || submitting}
               className="bg-[#1E40AF] hover:bg-[#1E3A8A] disabled:bg-[#9CA3AF] disabled:cursor-not-allowed text-white px-6 py-3 rounded-md text-precision text-[0.72rem] font-bold tracking-widest uppercase transition-colors w-full sm:w-auto order-1 sm:order-2"
             >
-              {submitting ? 'Opening…' : 'Open My Doctor Prep Document →'}
+              {submitting ? 'Opening…' : 'Open My Analysis →'}
             </button>
           </div>
 
