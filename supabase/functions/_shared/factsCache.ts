@@ -115,7 +115,13 @@ import { buildPlan, type ClinicalFacts, type PatientInput } from './buildPlan.ts
 // 2026-05-11-2: Expected-findings suppressor for known conditions
 //   (Gilbert → bilirubin, CKD → eGFR, T1D/T2D → A1c)
 // 2026-05-11-1: Sex-gate on hormonal-axis system-drift patterns
-export const RULE_LIBRARY_VERSION = '2026-05-11-11';
+// 2026-05-11-12: Revert Fix 6's severity-based supplement gating —
+// the in-app symptom picker has no severity slider; every selected
+// symptom is auto-stamped severity 5. Filtering at >= 3 was dead code.
+// Symptom-driven supplement rules now use unfiltered symptomsLower
+// (selection is the signal). narrative.ts prompt also updated to drop
+// the severity threshold note.
+export const RULE_LIBRARY_VERSION = '2026-05-11-12';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
