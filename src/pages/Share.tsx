@@ -159,7 +159,7 @@ export const Share = () => {
 
           {/* Sub */}
           <p className="ch-sub text-body text-white/75 mb-8 max-w-xl mx-auto leading-relaxed" style={{ fontSize: 'clamp(1rem, 2.5vw, 1.35rem)' }}>
-            Cross-specialty AI catches missed diagnoses, drug-nutrient depletions, and the patterns that show up months before a diagnosis.
+            Cross-specialty pattern surfacing, drug-nutrient depletion mapping, and educational insight on patterns worth discussing earlier with your doctor.
           </p>
 
           {/* Marker line — narrative beat between headline and pills */}
@@ -172,12 +172,12 @@ export const Share = () => {
           {/* Feature pills */}
           <div className="flex flex-wrap justify-center gap-2 sm:gap-2.5 mb-9 max-w-2xl mx-auto">
             {[
-              'Possible-conditions differential',
+              'Pattern discussion topics',
               'Drug + supplement interactions',
               'ICD-10 doctor prep',
               'Cross-specialty synthesis',
               'Biological + cardiometabolic age',
-              'Predicted retest outcomes',
+              'Educational retest expectations',
             ].map((label) => (
               <span
                 key={label}

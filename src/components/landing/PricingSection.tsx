@@ -4,8 +4,8 @@ import { Button } from '../ui/Button';
 const FEATURES = [
   'Optimal range analysis (not just "normal")',
   'Watch list — markers worth tracking even if "in range"',
-  'Tests your doctor didn\'t order, with ICD-10 codes',
-  'Findings your doctor missed — root-cause patterns across markers',
+  'Tests worth asking your doctor about, with reference ICD-10 codes',
+  'Pattern findings to review with your doctor — root-cause synthesis across markers',
   'Doctor Prep document — printable, hand to your doctor',
   '90-day plan with retest schedule',
   'Medication depletion mapping (CoQ10, B12, folate, magnesium)',

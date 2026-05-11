@@ -1,7 +1,7 @@
 // src/components/clinical/SpecialistTestStacks.tsx
 //
 // Specialist-grouped, collapsible-by-default stacks of recommended
-// tests + a "Possible conditions to investigate" folder. Lifted from
+// tests + a "Patterns to discuss with your doctor" folder. Lifted from
 // the wellness plan's inline render block so the same UI ships on
 // the Clinical Prep page (Tests tab) using doctor-prep data.
 //
@@ -209,7 +209,7 @@ export const SpecialistTestStacks = ({
       {validConditions.length > 0 && (
         <FolderSection
           icon="quiz"
-          title="Possible conditions to investigate"
+          title="Patterns to discuss with your doctor"
           count={validConditions.length}
           countLabel={validConditions.length === 1 ? 'pattern' : 'patterns'}
           explanation="Patterns in your bloodwork and symptoms that fit conditions you haven't been diagnosed with. Not a diagnosis — a starting point for discussion. Each one comes with tests that would help your doctor evaluate the pattern."

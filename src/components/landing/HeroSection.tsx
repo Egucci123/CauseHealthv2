@@ -168,15 +168,18 @@ export const HeroSection = () => (
           </h2>
 
           <p className="text-body text-clinical-stone text-lg leading-relaxed mb-4 max-w-lg">
-            Upload your bloodwork. CauseHealth catches the patterns one doctor's 12-minute visit can't:
-            <strong className="text-clinical-charcoal"> medication-nutrient depletions, atherogenic lipid shifts, under-replaced
-            thyroid, prediabetic patterns</strong> — months or years before they become a diagnosis.
+            Upload your bloodwork. CauseHealth surfaces the patterns a 12-minute visit doesn't have time for:
+            <strong className="text-clinical-charcoal"> medication-nutrient depletions, atherogenic lipid shifts, thyroid-axis
+            patterns, prediabetic markers</strong> — worth bringing to your doctor before they become a problem.
           </p>
           <p className="text-body text-clinical-stone text-base leading-relaxed mb-4 max-w-lg">
-            You walk out with a printable <strong className="text-clinical-charcoal">Doctor Prep PDF</strong> (ICD-10 codes
-            so insurance covers the follow-ups), a <strong className="text-clinical-charcoal">90-day plan</strong> with
-            evidence-based supplements + dietary pattern, the right <strong className="text-clinical-charcoal">tests your
-            doctor didn't order</strong>, and an AI that knows your specific labs.
+            You walk out with a printable <strong className="text-clinical-charcoal">Doctor Prep PDF</strong> (with ICD-10
+            reference codes for your provider), a <strong className="text-clinical-charcoal">90-day plan</strong> with
+            evidence-based supplements + dietary pattern, a list of <strong className="text-clinical-charcoal">tests worth
+            asking your doctor about</strong>, and an AI assistant that knows your specific labs.
+          </p>
+          <p className="text-body text-clinical-stone text-xs italic leading-relaxed mb-4 max-w-lg">
+            Educational analysis, not medical advice. CauseHealth does not diagnose, treat, or prescribe.
           </p>
           <p className="text-body text-clinical-stone text-base leading-relaxed mb-10 max-w-lg">
             <strong className="text-clinical-charcoal">$19 per analysis.</strong> No subscription. Pay once, own it forever.

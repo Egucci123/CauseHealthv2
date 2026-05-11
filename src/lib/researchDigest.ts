@@ -27,7 +27,7 @@ export const RESEARCH_DIGEST: DigestEntry[] = [
     bullets: [
       'AHA + ESC 2025 guideline updates moved ApoB from "advanced testing" to "preferred first-line" for adults with any CV risk factor.',
       'Functional target: ApoB <80 mg/dL for general population, <60 for established CV disease or family history.',
-      'Action: ask your doctor for ApoB on your next draw. Insurance covers under E78.5 (hyperlipidemia) or Z82.49 (family hx of ischemic heart disease).',
+      'Action: ask your doctor for ApoB on your next draw. Many plans cover under E78.5 (hyperlipidemia) or Z82.49 (family hx of ischemic heart disease).',
     ],
     source: { name: 'AHA / ESC 2025 Lipid Guidelines' },
     tags: ['cardiovascular', 'longevity'],

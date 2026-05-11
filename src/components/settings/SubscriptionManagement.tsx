@@ -16,7 +16,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 
 const FEATURES = [
   'Optimal-range analysis (not just "normal")',
-  'Watch list — early detection of drift before diagnosis',
+  'Watch list — watch-list patterns worth discussing earlier',
   'Doctor Prep PDF with ICD-10 codes (insurance-covered tests)',
   'Tests your doctor didn\'t order — root-cause workup',
   'Medication depletion mapping (CoQ10, B12, folate, Mg)',
@@ -24,7 +24,7 @@ const FEATURES = [
   'Evidence-based supplement stack with alternatives',
   'Causal cascade — root → driven state → symptoms',
   'Cross-specialty synthesis (endo + cardio + gyn + GI)',
-  'Predicted lab changes at 12-week retest',
+  'Educational expectations at 12-week retest',
   'Biological + Cardiometabolic Age scoring',
   'AI chat that reads your specific labs',
   'Lifetime access to every analysis you buy',

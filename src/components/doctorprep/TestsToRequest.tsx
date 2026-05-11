@@ -221,7 +221,7 @@ export const TestsToRequest = ({ tests, advanced, possibleConditions }: TestsToR
           title="PCP — Comprehensive Baseline"
           count={pcpBaseline.length}
           countLabel="tests"
-          explanation="The thorough adult panel your primary care doctor should run. Each test maps to a body system you don't have a recent baseline for. Insurance-covered, ICD-10 justifiable, the kind of order a good PCP writes when you ask for thorough labs."
+          explanation="The thorough adult panel your primary care doctor should run. Each test maps to a body system you don't have a recent baseline for. Reference ICD-10 codes (coverage depends on your plan), the kind of order a good PCP writes when you ask for thorough labs."
           accentColor="#1B4332"
         >
           <div className="space-y-4">
@@ -268,10 +268,10 @@ export const TestsToRequest = ({ tests, advanced, possibleConditions }: TestsToR
       {hasCondTests && (
         <FolderSection
           icon="biotech"
-          title="Possible Conditions Tests"
+          title="Pattern Discussion Tests"
           count={condTests.length}
           countLabel="tests"
-          explanation="Tests that would help your doctor evaluate the patterns listed in 'Possible conditions to investigate' below. CauseHealth doesn't diagnose — these are simply tests that match each pattern's standard workup. They go beyond the baseline because each one targets a specific pattern. Anything already covered by your PCP baseline above isn't repeated here. Only your doctor can decide which tests to order and what the results mean."
+          explanation="Tests that would help your doctor evaluate the patterns listed in 'Patterns to discuss with your doctor' below. CauseHealth doesn't diagnose — these are simply tests that match each pattern's standard workup. They go beyond the baseline because each one targets a specific pattern. Anything already covered by your PCP baseline above isn't repeated here. Only your doctor can decide which tests to order and what the results mean."
           accentColor="#C94F4F"
         >
           <div className="space-y-3">

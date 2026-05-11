@@ -766,7 +766,7 @@ reason_to_consider must cite the SPECIFIC patient finding that triggers this ent
         console.log(`[doctor-prep] No recent wellness plan — using AI-generated + injected tests_to_request (${doc.tests_to_request.length} tests)`);
       }
 
-      // ── POSSIBLE CONDITIONS (differential) ──────────────────────────────
+      // ── PATTERNS TO DISCUSS (non-diagnostic) ──────────────────────────────
       // Separate from tests_to_request (baseline gap-fill). This list is
       // the differential-diagnosis ask: patterns the data fits that the
       // user hasn't been diagnosed with. Each entry carries its own

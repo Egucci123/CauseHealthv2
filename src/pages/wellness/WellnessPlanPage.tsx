@@ -293,7 +293,7 @@ const FAST_FOOD_LINKS: { label: string; subtitle: string; url: string }[] = [
     subtitle: 'Look up exact calories, protein, carbs, and sodium for any item at any chain before you order.',
     url: 'https://www.calorieking.com/us/en/foods/restaurants/' },
   { label: 'Healthline — Healthy Fast Food Guide',
-    subtitle: 'Medically reviewed best orders at 30+ chains (good when you want a single article instead of browsing).',
+    subtitle: 'Curated best orders at 30+ chains (good when you want a single article instead of browsing).',
     url: 'https://www.healthline.com/nutrition/healthiest-fast-food' },
 ];
 

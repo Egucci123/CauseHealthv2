@@ -1,6 +1,6 @@
 // src/components/doctorprep/PossibleConditionsCard.tsx
 //
-// Doctor-prep "Possible conditions to investigate" — distinct from
+// Doctor-prep "Patterns to discuss with your doctor" — distinct from
 // `tests_to_request` (the baseline-gap list). This is the differential:
 // patterns the data fits that the patient hasn't been diagnosed with,
 // each with its own confirmatory_tests + ICD-10 + script for the visit.
@@ -29,7 +29,7 @@ export const PossibleConditionsCard = ({ conditions }: { conditions: SuspectedCo
   return (
     <FolderSection
       icon="quiz"
-      title="Possible conditions to investigate"
+      title="Patterns to discuss with your doctor"
       count={sorted.length}
       countLabel={sorted.length === 1 ? 'pattern' : 'patterns'}
       explanation="Patterns in the patient's labs and symptoms that fit conditions not on their problem list. Each entry lists tests that would help evaluate the pattern. Not a diagnosis — only the patient's physician can diagnose. CauseHealth provides pattern-matching against the data, not clinical judgment."

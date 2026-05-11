@@ -716,7 +716,7 @@ export const LabDetail = () => {
               <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-[#D4A574] mb-1">For Your Doctor</p>
               <p className="text-authority text-lg text-on-surface font-bold mb-1">Bring this to your appointment</p>
               <p className="text-body text-on-surface-variant text-sm leading-relaxed">
-                Your Doctor Prep has the exact tests to ask for — Essential Baseline, Functional Medicine, and Longevity tiers — with ICD-10 codes so insurance covers them.
+                Your Doctor Prep has the exact tests to ask for — Essential Baseline, Functional Medicine, and Longevity tiers — with ICD-10 codes so your provider can reference these codes when ordering.
               </p>
               <div className="inline-flex items-center gap-1 text-precision text-[0.65rem] font-bold tracking-widest uppercase text-[#D4A574] mt-3">
                 Open Doctor Prep

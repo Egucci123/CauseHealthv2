@@ -8,13 +8,13 @@ const TRUST_PILLARS = [
   },
   {
     icon: 'gavel',
-    title: 'FDA-approved medications only',
-    body: 'We reference only FDA-approved drugs and evidence-based supplements. No gray market compounds, no unapproved protocols. Ever.',
+    title: 'References only FDA-approved medications',
+    body: 'When medications are referenced, we cite only FDA-approved drugs and evidence-based supplements. No gray-market compounds, no unapproved protocols. CauseHealth does not prescribe — talk to your doctor or pharmacist before any medication change.',
   },
   {
     icon: 'lock',
     title: 'Your data is yours',
-    body: 'Health data is encrypted at rest and in transit. We follow HIPAA best practices. You can export or delete all your data at any time. We never sell data.',
+    body: 'Health data is encrypted in transit and at rest, with database-level access controls so only you can see your own data. We are not a HIPAA-covered entity (see our Privacy Policy), but apply HIPAA-grade security practices. You can export or delete all your data at any time. We never sell data.',
   },
   {
     icon: 'verified',
@@ -58,7 +58,7 @@ export const TrustSection = () => (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
           <div>
             <h3 className="text-authority text-3xl text-white font-bold leading-tight mb-4">
-              Find out what your<br />doctor missed.
+              Walk into your next visit<br />with the full picture.
             </h3>
             <p className="text-body text-on-surface-variant text-base leading-relaxed">
               Upload your bloodwork in 60 seconds. Start free.

@@ -13,23 +13,23 @@ const STEPS = [
   {
     number: '02',
     icon: 'biotech',
-    title: 'Pattern + Early-Detection Engine',
-    body: 'Optimal-range analysis on every value (not just "normal"). Watch list flags drift months before diagnosis. Pattern recognition catches what no single doctor sees: atherogenic LDL particles, prediabetic A1c, elevated inflammation markers, under-replaced thyroid, polycythemia. Medication-nutrient depletions mapped automatically (statin → CoQ10, metformin → B12, PPI → Mg).',
-    detail: 'Optimal ranges · Pattern recognition · Depletion mapping · Critical alerts',
+    title: 'Pattern + Watch-List Engine',
+    body: 'Educational optimal-range views on every value (not just "in/out of standard range"). Watch list highlights drift worth discussing earlier with your doctor. Cross-marker patterns to review with them: atherogenic LDL particles, A1c trending up, inflammation markers, thyroid-axis patterns, polycythemia signals. Medication-nutrient depletions mapped automatically (statin → CoQ10, metformin → B12, PPI → Mg).',
+    detail: 'Optimal ranges · Pattern surfacing · Depletion mapping · Critical-value alerts',
   },
   {
     number: '03',
     icon: 'favorite',
     title: '90-Day Plan + Supplement Stack',
-    body: 'Evidence-based supplement stack sourced from your specific labs (curcumin for elevated CRP, selenium for Hashimoto antibodies, berberine for prediabetic A1c) — with practical alternatives, dose, timing, and drug-interaction notes. Eating pattern. Workouts. AI chat that reads your specific labs. Predicted lab changes at 12-week retest.',
-    detail: 'Lab-driven supplements · Alternatives + interactions · Predicted outcomes · AI chat',
+    body: 'Evidence-based supplement stack sourced from your specific labs (curcumin for elevated CRP, selenium for thyroid antibody patterns, berberine for A1c trending up) — with alternatives, dose, timing, and drug-interaction notes. Eating pattern. Workouts. AI chat that reads your specific labs. Educational expectations for your 12-week retest from published research. Talk to your doctor before changing any medication or supplement.',
+    detail: 'Lab-driven supplements · Alternatives + interactions · Educational expectations · AI chat',
   },
   {
     number: '04',
     icon: 'description',
     title: 'Doctor Prep — Walk In Ready',
-    body: 'Doctor Prep PDF formatted as a clinical document: tests your doctor didn\'t order with ICD-10 codes (so insurance covers them), medication alternatives to discuss, cross-specialty synthesis (endo + cardio + gyn + GI in ONE doc — no specialist sees all of it), and questions to ask. Hand it to your doctor and watch the visit transform.',
-    detail: 'ICD-10 codes · Med alternatives · Cross-specialty synthesis · Patient questions',
+    body: 'Doctor Prep PDF organized for your next appointment: tests worth asking your doctor about, with reference ICD-10 codes they can use when ordering (coverage depends on your plan), medication alternatives to discuss, cross-specialty synthesis (endo + cardio + gyn + GI in one document), and questions to bring up. Hand it to your doctor and make the most of the visit.',
+    detail: 'ICD-10 reference codes · Med-alternative talking points · Cross-specialty synthesis · Questions to ask',
   },
 ];
 
@@ -110,7 +110,7 @@ export const HowItWorks = () => {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
             <div>
               <h3 className="text-authority text-2xl text-clinical-charcoal font-semibold">
-                Ready to catch what your doctor missed?
+                Ready to walk into your next visit prepared?
               </h3>
               <p className="text-body text-clinical-stone text-sm mt-2">
                 $19, one-time. Upload your bloodwork in 60 seconds.

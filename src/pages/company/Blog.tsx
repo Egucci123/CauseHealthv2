@@ -21,7 +21,7 @@ export const Blog = () => (
         <p className="text-precision text-[0.68rem] font-bold tracking-widest uppercase text-primary-container mb-3">In the meantime</p>
         <p className="text-body text-clinical-charcoal text-base mb-5 leading-relaxed">
           The fastest way to learn what's actually in your bloodwork is to upload it.
-          We'll show you what your doctor missed in their 12-minute appointment.
+          We'll help you make the most of your next 12-minute appointment.
         </p>
         <a href="/register">
           <Button variant="primary" size="md" icon="upload_file">Upload My Labs — Free</Button>

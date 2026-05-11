@@ -5,12 +5,12 @@ import { motion } from 'framer-motion';
 
 const ROWS: { label: string; us: string; them: string; usWin: boolean }[] = [
   { label: 'Bring your own labs (LabCorp, Quest, MyChart, paper)', us: '✓ Any source — PDF or photo', them: 'Their lab order only', usWin: true },
-  { label: 'Early-detection pattern engine (Watch list)', us: '✓ Flags drift before diagnosis', them: 'Standard ranges only', usWin: true },
+  { label: 'Pattern Watch list', us: '✓ Surfaces drift for discussion', them: 'Standard ranges only', usWin: true },
   { label: 'Causal cascade — root → symptom synthesis', us: '✓ Layered cause-effect map', them: 'Flat findings list', usWin: true },
   { label: 'Cross-specialty synthesis (endo + cardio + gyn)', us: '✓ One synthesis across silos', them: 'Single-system view', usWin: true },
-  { label: 'Doctor Prep with ICD-10 codes', us: '✓ Insurance-covered tests', them: 'Replaces the visit', usWin: true },
+  { label: 'Doctor Prep with ICD-10 reference codes', us: '✓ Reference codes your doctor can use', them: 'Replaces the visit', usWin: true },
   { label: 'Medication depletion + alternatives mapping', us: '✓ Per-drug detection + swaps to discuss', them: 'Generic insights', usWin: true },
-  { label: 'Predicted lab outcomes (falsifiable forecasts)', us: '✓ Specific ΔX in 12 weeks', them: 'No predictions', usWin: true },
+  { label: 'Educational expectations at 12-week retest', us: '✓ Effect-size projections (not guarantees)', them: 'No projections', usWin: true },
   { label: 'AI chat that knows your specific labs', us: '✓ Cites your TSH, ferritin, etc.', them: 'Limited messaging', usWin: true },
   { label: 'Cost', us: '$19 per lab analysis · no subscription', them: '$365/year subscription', usWin: true },
 ];

@@ -1216,7 +1216,7 @@ export function computePanelGaps(testedMarkers: Set<string>): PanelGap[] {
     test_name: 'ApoB (Apolipoprotein B)',
     category: 'advanced',
     why_needed: 'Better cardiovascular risk predictor than LDL alone',
-    script: '"I\'d like an ApoB. It measures cholesterol particle count — current cardiology guidelines recommend it as a better risk predictor than LDL. Insurance covers it under E78.5."',
+    script: '"I\'d like an ApoB. It measures cholesterol particle count — current cardiology guidelines recommend it as a better risk predictor than LDL. Many plans cover it under E78.5."',
     icd10: [
       { code: 'E78.5', description: 'Hyperlipidemia, unspecified' },
       { code: 'Z13.220', description: 'Encounter for screening for lipid disorders' },
@@ -1227,7 +1227,7 @@ export function computePanelGaps(testedMarkers: Set<string>): PanelGap[] {
     test_name: 'Lp(a) (Lipoprotein little a)',
     category: 'advanced',
     why_needed: 'Genetic cardiovascular risk — test once in lifetime',
-    script: '"I want a Lp(a) — lipoprotein little a. It\'s a genetic cardiovascular risk marker that only needs to be checked once in a lifetime. With family history, insurance covers it under Z82.49."',
+    script: '"I want a Lp(a) — lipoprotein little a. It\'s a genetic cardiovascular risk marker that only needs to be checked once in a lifetime. With family history, many plans cover it under Z82.49."',
     icd10: [
       { code: 'Z82.49', description: 'Family history of ischemic heart disease' },
       { code: 'E78.5', description: 'Hyperlipidemia, unspecified' },
@@ -1337,7 +1337,7 @@ export function computeProactiveScreenings(ctx: ProactiveContext): PanelGap[] {
       test_name: 'DEXA Scan (Body Composition + Bone Density)',
       category: 'advanced',
       why_needed: 'Single most accurate measurement of body fat, lean mass, visceral fat, and bone density — and the gold-standard baseline you can track yearly',
-      script: '"I\'d like a DEXA scan. It gives me a precise body composition baseline and screens for early bone loss. Either ordered through this office or referred — happy to use whichever insurance covers."',
+      script: '"I\'d like a DEXA scan. It gives me a precise body composition baseline and screens for early bone loss. Either ordered through this office or referred — happy to use whichever many plans cover."',
       icd10: [
         { code: 'Z13.820', description: 'Encounter for screening for osteoporosis' },
         { code: 'Z13.6', description: 'Encounter for screening for cardiovascular disorders' },
@@ -1382,7 +1382,7 @@ export function computeProactiveScreenings(ctx: ProactiveContext): PanelGap[] {
       test_name: 'Continuous Glucose Monitor (CGM) — 14-Day Trial',
       category: 'advanced',
       why_needed: 'See your real-time glucose response to specific meals, exercise, and sleep. The single most personalized way to understand your metabolic health',
-      script: '"I\'d like a 14-day continuous glucose monitor trial. The data will help me identify foods that spike my blood sugar and validate any dietary changes. Most insurance covers under prediabetes screening."',
+      script: '"I\'d like a 14-day continuous glucose monitor trial. The data will help me identify foods that spike my blood sugar and validate any dietary changes. Many plans cover under prediabetes screening."',
       icd10: [
         { code: 'R73.09', description: 'Other abnormal glucose' },
         { code: 'R73.03', description: 'Prediabetes' },

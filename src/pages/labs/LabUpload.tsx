@@ -191,7 +191,7 @@ export const LabUpload = () => {
 
       <PaywallGate
         feature="Lab Upload"
-        description="Upload your bloodwork to get full AI analysis, possible-conditions differential, drug interaction screening, doctor prep, and a personalized wellness plan."
+        description="Upload your bloodwork to get full AI analysis, patterns-to-discuss differential, drug interaction screening, doctor prep, and a personalized wellness plan."
       >
       <div className="max-w-2xl">
         {phase === 'idle' && (

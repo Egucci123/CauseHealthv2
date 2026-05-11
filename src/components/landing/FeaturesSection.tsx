@@ -52,7 +52,7 @@ const WatchListVisual = () => (
     </p>
     <div className="border-l-2 border-[#E8922A] bg-[#E8922A]/5 p-3">
       <p className="text-body text-clinical-charcoal text-xs leading-relaxed">
-        Your lab says <strong>"normal."</strong> We tag it <strong>Watch</strong> — drifting toward prediabetes. Catchable now. Diagnosed in 5 years if ignored.
+        Your lab says <strong>"normal."</strong> We tag it <strong>Watch</strong> — worth a conversation with your doctor now, not later.
       </p>
     </div>
   </div>
@@ -204,7 +204,7 @@ const DoctorPrepVisual = () => (
             </p>
           ))}
         </div>
-        <p className="text-precision text-[0.65rem] text-primary-container italic mt-2">No single doctor sees all of it. CauseHealth does.</p>
+        <p className="text-precision text-[0.65rem] text-primary-container italic mt-2">Each specialty sees part of the picture. We help you bring all of it to your doctor.</p>
       </div>
     </div>
   </div>
@@ -240,7 +240,7 @@ const SupplementStackVisual = () => (
     {/* Predicted outcome */}
     <div className="bg-primary-container/5 border-l-2 border-primary-container rounded-r-lg p-3">
       <p className="text-precision text-[0.6rem] text-primary-container font-bold tracking-widest uppercase mb-1">
-        Predicted at 12-week retest
+        Educational expectations · 12-week retest
       </p>
       <div className="space-y-1 text-xs">
         <div className="flex items-center justify-between">
@@ -253,7 +253,7 @@ const SupplementStackVisual = () => (
         </div>
       </div>
       <p className="text-precision text-[0.6rem] text-clinical-stone italic mt-2">
-        Falsifiable forecasts from peer-reviewed effect-size data. Doctors don't make these.
+        Educational expectations from published effect-size research. Individual results vary — discuss with your doctor.
       </p>
     </div>
   </div>
@@ -302,9 +302,9 @@ const AIChatVisual = () => (
 
 const FEATURES = [
   {
-    label: 'Watch List · Early Detection',
-    title: 'Catch the drift\nbefore the diagnosis.',
-    body: 'Standard lab ranges flag values that have already crossed into a diagnosis. Our Watch list flags the values that are drifting — A1c at 5.5 (prediabetic pattern), ApoB above 90, ferritin under 50, hs-CRP creeping up, atherogenic LDL particle counts. Markers that are "in range" but show the early signal of a problem you can still fix. Months or years of warning before a diagnosis your doctor would have given you anyway.',
+    label: 'Watch List · Pattern Surfacing',
+    title: 'See the drift\nbefore your next visit.',
+    body: 'Standard lab ranges only flag values that have already crossed a clinical threshold. Our Watch list highlights values worth a conversation — A1c at 5.5, ApoB above 90, ferritin under 50, hs-CRP creeping up, atherogenic LDL particle counts. Markers that are technically "in range" but show patterns worth discussing earlier with your doctor.',
     visual: <WatchListVisual />,
     flip: false,
   },
@@ -331,15 +331,15 @@ const FEATURES = [
   },
   {
     label: 'Doctor Prep · Cross-Specialty Synthesis',
-    title: 'Get the tests your\ndoctor never ordered.',
-    body: 'Printable clinical document for your next appointment: tests with ICD-10 codes (insurance covers what they order when codes are right), medication alternatives to discuss, cross-specialty synthesis (endo + cardio + gyn + GI in one place — no specialist sees all of it), questions to ask, and a clear medical-necessity framing. Walk in prepared. Walk out with the workup you needed years ago.',
+    title: 'Walk into your next\nvisit fully prepared.',
+    body: 'Printable document for your next appointment: tests worth discussing with their reference ICD-10 codes (coverage depends on your plan), medication alternatives to ask about, cross-specialty synthesis (endo + cardio + gyn + GI in one place — patterns one specialty alone may not see), and questions to bring up. Walk in prepared. Your doctor decides what to order.',
     visual: <DoctorPrepVisual />,
     flip: false,
   },
   {
-    label: 'Supplement Stack · Predicted Outcomes',
-    title: 'Evidence-based stacks +\nfalsifiable forecasts.',
-    body: 'Supplement stack sourced from your specific labs (curcumin for elevated CRP, selenium for Hashimoto\'s antibodies, berberine for prediabetic A1c, CoQ10 for statin depletion). Each entry includes dose, timing, drug-interaction notes, and 1-2 alternatives. Then we predict the lab change at your 12-week retest based on peer-reviewed effect-size data: "TSH should drop 1.0–2.0 mIU/L if dose is optimized." Doctors don\'t make falsifiable forecasts. We do.',
+    label: 'Supplement Stack · Educational Expectations',
+    title: 'Evidence-based stacks +\nresearch-backed expectations.',
+    body: 'Supplement stack sourced from your specific labs (curcumin for elevated CRP, selenium for thyroid antibody patterns, berberine for A1c trending up, CoQ10 for statin depletion). Each entry includes dose, timing, drug-interaction notes, and 1-2 alternatives. Then we share what published effect-size research suggests at a 12-week retest — for example, "TSH may drop 1.0–2.0 mIU/L if dose is optimized." Educational expectations, not guarantees. Always talk to your doctor before starting any supplement.',
     visual: <SupplementStackVisual />,
     flip: true,
   },

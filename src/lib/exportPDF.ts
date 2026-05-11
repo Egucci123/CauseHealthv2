@@ -236,8 +236,8 @@ export function exportPatientVisitGuidePDF(doc: DoctorPrepDocument, userName: st
   );
   para(
     isHealthyMode
-      ? "\"My labs look good — I'm using this visit to add a few advanced markers I haven't had before. I brought a summary with the specific tests and the ICD-10 codes that justify insurance coverage. Can we go through it together?\""
-      : "\"I've been tracking my symptoms and I want a thorough workup so we can find the root causes, not just manage symptoms. I brought a summary with the tests I'm requesting and the ICD-10 codes that justify insurance coverage. Can we go through it together?\"",
+      ? "\"My labs look good — I'm using this visit to add a few advanced markers I haven't had before. I brought a summary with the specific tests and the ICD-10 codes that justify insurance coverage where applicable. Can we go through it together?\""
+      : "\"I've been tracking my symptoms and I want a thorough workup so we can find the root causes, not just manage symptoms. I brought a summary with the tests I'm requesting and the ICD-10 codes that justify insurance coverage where applicable. Can we go through it together?\"",
     { italic: true, size: 9.5, color: [19, 19, 19], indent: 4, gap: 5 }
   );
   para(
@@ -287,10 +287,10 @@ export function exportPatientVisitGuidePDF(doc: DoctorPrepDocument, userName: st
   // (rendered above) is the single source of truth, already filtered by the
   // strict triage rule.
 
-  // ── Possible conditions to investigate — INTENTIONALLY OMITTED ──────
+  // ── Patterns to discuss with your doctor — INTENTIONALLY OMITTED ──────
   // Clinical-grade differential belongs in the doctor PDF only. The
   // patient already has each pattern surfaced in the wellness-plan UI
-  // and in the "Possible conditions to investigate" tab; reproducing it
+  // and in the "Patterns to discuss with your doctor" tab; reproducing it
   // on the visit-prep PDF was redundant and made the patient guide read
   // like a clinical letter. See exportDoctorPrepPDF for the differential.
 
@@ -572,13 +572,13 @@ export function exportDoctorPrepPDF(doc: DoctorPrepDocument, userName: string) {
   // out-of-range marker OR early-detection pattern). No more hardcoded
   // baseline-for-everyone lists in any PDF or page.
 
-  // ── Possible conditions to investigate (CLINICAL DIFFERENTIAL) ───────
+  // ── Patterns to discuss with your doctor (CLINICAL DIFFERENTIAL) ───────
   // Renders only on the doctor PDF — clinical-grade differential with
   // evidence + ICD-10 + confirmatory tests. Patient PDF intentionally
   // omits this section (it lives on the patient app UI but not in the
   // visit-prep printout — keeps the patient guide plain-language).
   if (Array.isArray(doc.possible_conditions) && doc.possible_conditions.length > 0) {
-    addSectionHeader('Possible Conditions to Investigate (Differential)');
+    addSectionHeader('Patterns to Discuss With Your Doctor');
     pdf.setFontSize(8); pdf.setFont('helvetica', 'italic'); pdf.setTextColor(107, 107, 107);
     pdf.text(stripUnsupportedChars('Pattern matches against patient data — not a diagnosis. Each entry includes ICD-10 + confirmatory workup.'), margin, y, { maxWidth: contentW });
     y += 7;
