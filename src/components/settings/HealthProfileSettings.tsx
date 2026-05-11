@@ -17,9 +17,14 @@ import { ConditionSearch, type PickedCondition } from '../onboarding/ConditionSe
 import { MedicationSearch, type PickedMedication } from '../onboarding/MedicationSearch';
 import { SupplementSearch, type PickedSupplement } from '../onboarding/SupplementSearch';
 import { LifestyleEditor, type LifestyleValue } from '../health/LifestyleEditor';
-import { DailyLifeEditor } from '../health/DailyLifeEditor';
+// DailyLifeEditor import + section removed 2026-05-11 — the corresponding
+// onboarding step was retired in the v6 collapsed flow, leaving the
+// Settings section orphaned (no way to populate fresh data, confusing UX
+// for users who saw the prompt nowhere else in the app). The DailyLife
+// data shape is preserved in profiles.life_context so any existing user
+// data continues to flow through foodPlaybook tailoring. To re-enable
+// editing, restore the import + the DailyLifeSection render below.
 import { useAuthStore } from '../../store/authStore';
-import type { LifeContext } from '../../store/onboardingStore';
 import { MEDICATIONS } from '../../data/medications';
 
 const findLocalMed = (name: string) =>
@@ -347,41 +352,6 @@ const LifestyleSection = () => {
   );
 };
 
-// ─── Daily Life (work / home / food / healthcare) ────────────────────────────
-
-const DailyLifeSection = () => {
-  const profile = useAuthStore(s => s.profile);
-  const updateProfile = useAuthStore(s => s.updateProfile);
-  const [val, setVal] = useState<Partial<LifeContext>>({});
-  const [saved, setSaved] = useState(false);
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (profile?.lifeContext) setVal(profile.lifeContext as Partial<LifeContext>);
-  }, [profile?.lifeContext]);
-
-  const handleSave = async () => {
-    setSaving(true);
-    await updateProfile({ lifeContext: val } as any);
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <SectionLabel icon="badge">Daily Life (Work · Home · Food · Healthcare)</SectionLabel>
-        <Button variant="primary" size="sm" loading={saving} onClick={handleSave} icon={saved ? 'check' : undefined}>{saved ? 'Saved' : 'Save Daily Life'}</Button>
-      </div>
-      <p className="text-body text-clinical-stone text-sm">
-        Drives how the AI tailors meals, supplements, and tests to your real life. Without this, plans are generic.
-      </p>
-      <DailyLifeEditor value={val} onChange={patch => { setVal(prev => ({ ...prev, ...patch })); setSaved(false); }} />
-    </div>
-  );
-};
-
 // ─── Main ────────────────────────────────────────────────────────────────────
 
 export const HealthProfileSettings = () => {
@@ -396,8 +366,6 @@ export const HealthProfileSettings = () => {
       <SymptomsEditor />
       <div className="border-t border-outline-variant/10" />
       <LifestyleSection />
-      <div className="border-t border-outline-variant/10" />
-      <DailyLifeSection />
     </div>
   );
 };
