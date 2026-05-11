@@ -93,7 +93,12 @@ import { buildPlan, type ClinicalFacts, type PatientInput } from './buildPlan.ts
 // derives the flag from value + standard_flag + standard_low/high +
 // current rules per request. All three v2 normalize functions now
 // call it via pickFlag(l, ctx) instead of trusting the stored flag.
-export const RULE_LIBRARY_VERSION = '2026-05-10-9';
+// 2026-05-10-10: Fix watch-tier outlier prose ("below the normal range" was
+// mis-applied to any non-high flag, including 'watch'). Soften symptom-
+// addressed supplement language from "targets this directly" → "may help with
+// — discuss with your doctor". Bump invalidates clinical_facts_cache so every
+// re-analysis flows through the new prose.
+export const RULE_LIBRARY_VERSION = '2026-05-10-10';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;

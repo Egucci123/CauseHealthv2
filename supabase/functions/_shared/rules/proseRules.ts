@@ -212,9 +212,30 @@ function buildOutlierProse(o: LabOutlierFact): CanonicalOutlier {
     meaning = `Albumin doesn't rise physiologically — when it reads high, the most likely explanation is plasma concentration from dehydration.`;
   } else {
     // Universal fallback. Works for any marker.
-    const dir = String(flag).includes('high') ? 'above' : 'below';
-    oneLiner = `${m} ${v} ${u} is ${dir} the normal range.`;
-    meaning = `${m} ${dir}-range. Discuss with your PCP; pair with a retest at 12 weeks if the cause is correctable.`;
+    //
+    // BUG-FIX (2026-05-10): the previous fallback treated any flag that
+    // didn't contain "high" as "below the normal range" — which mislabeled
+    // 'watch' values (within standard range but in the educational watch
+    // tier) as below-range. Symptom: TSH 2.22 (upper-normal-watch) showed
+    // as both "below the normal range" (here) and "upper-normal" (in
+    // priority_findings) on the same page.
+    //
+    // Now distinguishes three flag classes:
+    //   • critical_high / high  → "above the lab's normal range"
+    //   • critical_low / low    → "below the lab's normal range"
+    //   • watch                  → "within the standard range but in the
+    //                              watch tier" (no above/below claim)
+    if (flag === 'critical_high' || flag === 'high') {
+      oneLiner = `${m} ${v} ${u} is above the lab's normal range.`;
+      meaning = `${m} above-range. Discuss with your PCP; pair with a retest at 12 weeks if the cause is correctable.`;
+    } else if (flag === 'critical_low' || flag === 'low') {
+      oneLiner = `${m} ${v} ${u} is below the lab's normal range.`;
+      meaning = `${m} below-range. Discuss with your PCP; pair with a retest at 12 weeks if the cause is correctable.`;
+    } else {
+      // 'watch' or anything else — within standard range but flagged.
+      oneLiner = `${m} ${v} ${u} is within the standard reference range but in our educational watch tier.`;
+      meaning = `Watch-tier ${m}. Not out of range — just a value worth tracking and discussing with your PCP at your next visit.`;
+    }
   }
 
   return { marker: m, flag, one_liner: oneLiner.slice(0, 160), what_it_means: meaning.slice(0, 240) };

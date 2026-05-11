@@ -335,7 +335,12 @@ export function buildSymptomsAddressed(facts: ClinicalFacts): SymptomAddressed[]
 
     const angleText = variant?.angle ? `${variant.angle} ` : '';
     const driverText = drivers.length ? `Likely drivers: ${drivers.join(', ')}.` : '';
-    const supText = sup ? ` ${sup.nutrient} ${sup.dose} ${sup.timing.toLowerCase()} targets this directly.` : '';
+    // FTC §5 — soft framing on every supplement mention. "Targets this
+    // directly" reads as an efficacy guarantee; "may help with" matches
+    // the educational-information posture in our ToS and Privacy Policy.
+    // Always paired with the global "discuss before starting any supplement"
+    // disclaimer that wraps every wellness plan.
+    const supText = sup ? ` ${sup.nutrient} ${sup.dose} ${sup.timing.toLowerCase()} may help with this — discuss with your doctor before starting.` : '';
     const lifestyleHint = variant?.lifestyleOverride ?? cat.lifestyleHint;
     const lifestyleText = ` Lifestyle: ${lifestyleHint}.`;
     const timelineText = ` ${cat.timeline}`;
