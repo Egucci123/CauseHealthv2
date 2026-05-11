@@ -1,7 +1,7 @@
 # CauseHealth Terms of Service
 
 **Effective:** May 10, 2026 · **Governing law:** Pennsylvania · **Venue:** Bucks County, Pennsylvania
-**Questions:** support@causehealth.app
+**Questions:** legal@causehealth.app
 
 ---
 
@@ -26,7 +26,7 @@ By creating an account you confirm all of the above are true.
 
 ## 3. Your Account
 
-Keep your login credentials private. You're responsible for everything that happens under your account. If you think someone has accessed your account without permission, email us at support@causehealth.app right away.
+Keep your login credentials private. You're responsible for everything that happens under your account. If you think someone has accessed your account without permission, email us at legal@causehealth.app right away.
 
 ## 4. What You Pay
 
@@ -70,11 +70,11 @@ This cap doesn't apply to gross negligence, fraud, or data breaches on our part.
 
 ## 9. Disputes
 
-If you have a problem with CauseHealth, email support@causehealth.app first. Most things can be resolved quickly without anyone lawyering up.
+If you have a problem with CauseHealth, email legal@causehealth.app first. Most things can be resolved quickly without anyone lawyering up.
 
 If we can't resolve it informally within 60 days, disputes are settled by binding individual arbitration through AAA under its Consumer Arbitration Rules. This means you resolve disputes with us individually, not as part of a class action.
 
-You have the right to opt out of arbitration within 30 days of creating your account. To opt out, email support@causehealth.app with the subject line "Arbitration Opt-Out" and your account email. If you opt out, disputes go to the courts in Bucks County, Pennsylvania.
+You have the right to opt out of arbitration within 30 days of creating your account. To opt out, email legal@causehealth.app with the subject line "Arbitration Opt-Out" and your account email. If you opt out, disputes go to the courts in Bucks County, Pennsylvania.
 
 Pennsylvania law governs these Terms.
 
@@ -84,4 +84,4 @@ If we make material changes we'll notify you by email at least 14 days before th
 
 ## 11. Contact
 
-CauseHealth LLC · support@causehealth.app
+CauseHealth LLC · legal@causehealth.app

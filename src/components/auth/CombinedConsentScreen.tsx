@@ -260,10 +260,10 @@ export const CombinedConsentScreen = ({ onAccepted }: Props) => {
             <p className="text-body text-clinical-charcoal text-xs leading-relaxed mb-3">
               You agree to resolve disputes through <strong>individual arbitration</strong> — not in court — and you waive participation in any class action. You have <strong>30 days</strong> to opt out by emailing{' '}
               <a
-                href="mailto:support@causehealth.app?subject=Arbitration%20Opt-Out"
+                href="mailto:legal@causehealth.app?subject=Arbitration%20Opt-Out"
                 className="text-primary-container underline hover:text-primary-container/80"
               >
-                support@causehealth.app
+                legal@causehealth.app
               </a>.
             </p>
 
