@@ -23,7 +23,8 @@ export type ConsentType =
   | 'output_ack_not_clinical'
   | 'output_ack_liability_limited'
   | 'clinician_name_entered'
-  | 'auto_renewal_disclosure';
+  | 'auto_renewal_disclosure'
+  | 'arbitration_optout';
 
 /** Consents that must be present (with current version) before account
  *  registration completes. Order is the recommended UI order. */

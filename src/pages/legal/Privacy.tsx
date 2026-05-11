@@ -1,4 +1,5 @@
 // src/pages/legal/Privacy.tsx
+// v6 — synced from legal/PRIVACY_POLICY.md
 import { LandingNav } from '../../components/landing/LandingNav';
 import { LandingFooter } from '../../components/landing/LandingFooter';
 
@@ -6,220 +7,220 @@ export const Privacy = () => (
   <div className="min-h-screen bg-clinical-cream">
     <LandingNav />
     <div className="max-w-3xl mx-auto px-6 pt-32 pb-20">
-      <h1 className="text-authority text-4xl text-clinical-charcoal font-bold mb-2">Privacy Policy</h1>
-      <p className="text-body text-clinical-stone mb-2">Last updated: May 6, 2026</p>
-      <p className="text-body text-clinical-stone italic text-sm mb-10">
-        This Privacy Policy explains what we collect, how we use it, who we share it with, and your rights. It includes a separate Consumer Health Data Privacy Policy as required by the Washington My Health My Data Act and similar state laws.
-      </p>
+      <h1 className="text-authority text-4xl text-clinical-charcoal font-bold mb-2">CauseHealth Privacy Policy</h1>
+      <p className="text-body text-clinical-stone mb-1 text-sm"><strong>Effective Date:</strong> May 10, 2026</p>
+      <p className="text-body text-clinical-stone mb-1 text-sm"><strong>Last Updated:</strong> May 10, 2026</p>
+      <p className="text-body text-clinical-stone mb-1 text-sm"><strong>Entity:</strong> CauseHealth LLC</p>
+      <p className="text-body text-clinical-stone mb-1 text-sm"><strong>Privacy Contact:</strong> privacy@causehealth.com</p>
+      <p className="text-body text-clinical-stone mb-10 text-sm"><strong>Mailing Address:</strong> CauseHealth LLC, registered mailing address</p>
 
       <div className="prose prose-sm max-w-none space-y-8">
-        <Section title="1. Overview">
-          <p>CauseHealth takes your privacy seriously. We collect only the information needed to provide the Service. We do not sell your personal information or your health data to anyone, ever.</p>
-          <p className="mt-2">By using CauseHealth, you agree to this Privacy Policy. Please also read our <a href="/terms" className="text-primary-container hover:underline">Terms of Service</a> and <a href="/disclaimer" className="text-primary-container hover:underline">Medical Disclaimer</a>.</p>
+        <Section title="1. Introduction">
+          <p>CauseHealth ("we," "us," "our") is a consumer wellness application that helps you organize your bloodwork into a Doctor Prep Document for use with your licensed clinician. We are not a healthcare provider, not a HIPAA-covered entity or business associate, and we do not provide medical advice, diagnosis, or treatment.</p>
+          <p className="mt-2">This Privacy Policy describes what information we collect, how we use it, who we share it with, and the rights you have. Use of the Service is also governed by our <a href="/terms" className="text-primary-container hover:underline">Terms of Service</a>. If you do not agree with this Policy, do not use the Service.</p>
         </Section>
 
-        <Section title="1a. HIPAA Does Not Apply to CauseHealth">
-          <p>
-            <strong>CauseHealth is not a HIPAA covered entity.</strong> The Health Insurance Portability and Accountability Act (HIPAA) regulates healthcare providers who bill electronically, health plans, healthcare clearinghouses, and their "business associates." CauseHealth is a consumer health information and wellness service that you voluntarily upload your own data to — it is none of those things, does not bill insurance, and does not enter into business associate agreements.
-          </p>
-          <p className="mt-2">
-            HIPAA's specific protections, breach-notification rules, and patient-rights provisions <strong>do not apply</strong> to your data on CauseHealth. The protections we provide are governed instead by this Privacy Policy and by the laws below:
-          </p>
+        <Section title="2. Eligibility and Scope">
+          <p>The Service is intended for users who are 18 years of age or older, are residents of the United States (excluding the blocked jurisdictions listed in Section 12), and are established patients of a licensed clinician. We do not knowingly collect personal information from children under 13, and we do not permit users under 18 to create accounts. If you believe a child under 13 has provided us information, contact us at privacy@causehealth.com and we will delete it promptly.</p>
+          <p className="mt-2">The Service is not available to residents of California, New York, Illinois, Washington State, the European Economic Area, the United Kingdom, or Switzerland. See Section 12.</p>
+        </Section>
+
+        <Section title="3. Information We Collect">
+          <p><strong>3.1 Information You Provide Directly</strong></p>
+          <p className="mt-2"><strong>Account information:</strong> email address and password. Passwords are stored only as a salted cryptographic hash by our authentication provider (Supabase). We never receive or store your plaintext password.</p>
+          <p className="mt-2"><strong>Eligibility attestations:</strong> state of residence, age, and confirmation that you are an established patient of a licensed clinician. These are required to use the Service and are logged with timestamp, IP address, and user agent.</p>
+          <p className="mt-2"><strong>Clinician identification:</strong> the name and practice of the licensed clinician with whom you intend to review your Doctor Prep Document. This is collected before output access and is used solely to (a) generate a pre-written patient message you can send to that clinician and (b) create a record that you identified a clinician before accessing the output. We do not contact, verify, or share information with the clinician you identify.</p>
+          <p className="mt-2"><strong>Profile information:</strong> first and last name, date of birth, biological sex, height, weight, pregnancy status, allergies, and free-text health notes you choose to enter.</p>
+          <p className="mt-2"><strong>Health information you submit:</strong> lab reports you upload (PDFs or images) and the biomarker values extracted from them, including but not limited to lipid panels, hemoglobin A1c, vitamin levels, hormone levels, complete blood counts, metabolic panels, inflammation markers, and thyroid markers. You also enter active medications, supplements, diagnosed conditions, and symptoms with severity ratings.</p>
+          <p className="mt-2"><strong>Payment information:</strong> handled entirely by Stripe, Inc. We receive only a payment token, the last four digits of your card, card brand, and billing ZIP code. We never store full card numbers, CVV codes, or bank account numbers.</p>
+          <p className="mt-2"><strong>Communications:</strong> when you contact us or use in-app support, we receive the content of those messages and any attachments.</p>
+          <p className="mt-2"><strong>Consent records:</strong> every checkbox, acknowledgment, and attestation you complete is logged with the exact text shown, the version of that text, the timestamp, your IP address, and your user agent. This record is used solely to demonstrate compliance with applicable law and to defend the integrity of our consent process.</p>
+
+          <p className="mt-4"><strong>3.2 Information Collected Automatically</strong></p>
+          <p className="mt-2">When you use the Service we automatically collect: IP address and approximate city-level location derived from IP; device type, operating system, and browser; referring URL; pages and features accessed; timestamps; and application error logs.</p>
+
+          <p className="mt-4"><strong>3.3 Cookies and Similar Technologies</strong></p>
           <ul className="list-disc pl-5 space-y-1 mt-2">
-            <li><strong>FTC Health Breach Notification Rule (16 CFR Part 318)</strong> — we notify affected users within 60 days of any security breach that exposes identifiable health information.</li>
-            <li><strong>California Consumer Privacy Act (CCPA / CPRA)</strong> — California residents have access, deletion, correction, and "do not sell/share" rights described in Section 9.</li>
-            <li><strong>EU General Data Protection Regulation (GDPR)</strong> — EEA, UK, and Switzerland residents have the rights described in Section 9, with explicit consent recorded for special-category health data under Article 9.</li>
-            <li><strong>Washington My Health My Data Act (MHMDA, RCW 19.373)</strong> — applies to all consumer health data we collect, including from users outside Washington state, with the standalone authorization captured at signup.</li>
-            <li>Other applicable state and federal consumer-data laws.</li>
+            <li><strong>Strictly necessary cookies:</strong> session management and CSRF protection. Required for the Service to function.</li>
+            <li><strong>Functional cookies:</strong> user preference storage (e.g., theme, dismissed notices). Can be disabled in browser settings.</li>
           </ul>
-          <p className="mt-2">
-            If you require HIPAA-covered handling of your health information, do not use CauseHealth. Have your healthcare provider keep that information in their HIPAA-covered systems instead.
-          </p>
+          <p className="mt-2">We do not use third-party advertising cookies or pixels of any kind. The Meta Pixel, Google Ads tags, TikTok Pixel, LinkedIn Insight Tag, and similar advertising technologies are not present on the Service.</p>
+          <p className="mt-2">We honor Global Privacy Control (GPC) signals as a valid opt-out of any cookie-based data collection or sale.</p>
+
+          <p className="mt-4"><strong>3.4 Information From Third Parties</strong></p>
+          <p className="mt-2">If you register or sign in using Google or Apple SSO, we receive only the basic profile information that provider releases to us — typically your email address and name. We do not receive your SSO provider account password.</p>
         </Section>
 
-        <Section title="2. What We Collect">
-          <p><strong>Account information</strong></p>
-          <ul className="list-disc pl-5 space-y-1 mt-1 mb-3">
-            <li>Email address, password (hashed), name</li>
-            <li>Date of birth, biological sex (used for clinical interpretation)</li>
-            <li>Height, weight (optional, used for plan personalization)</li>
-            <li>Primary health goals you select</li>
+        <Section title="4. Sensitive Health Information — Elevated Protections">
+          <p>Information about your bloodwork, medical conditions, medications, supplements, symptoms, and pregnancy status is sensitive health-related personal information. Even though we are not subject to HIPAA, we apply the following elevated restrictions to this data by default, regardless of your location:</p>
+          <ul className="list-disc pl-5 space-y-1 mt-2">
+            <li>We do not sell your health information under any circumstances.</li>
+            <li>We do not use your health information for behavioral advertising, interest-based advertising, or any form of targeted marketing.</li>
+            <li>We do not share your health information with data brokers, insurance companies, employers, or government agencies, except in response to lawful legal process as described in Section 7.</li>
+            <li>We do not use individually identifiable health information to train any AI model, whether operated by us or a third party.</li>
+            <li>We do not use individually identifiable health information to improve the Service or develop new features. Any product analytics or improvement work uses only aggregated, de-identified data where no individual can be reasonably re-identified.</li>
+            <li>We do not share your health information with your employer, insurer, or any healthcare provider unless you affirmatively export and transmit it yourself.</li>
           </ul>
-
-          <p><strong>Health information ("Consumer Health Data")</strong></p>
-          <ul className="list-disc pl-5 space-y-1 mt-1 mb-3">
-            <li>Lab results uploaded as PDFs, photos, or entered manually</li>
-            <li>Diagnosed medical conditions you report</li>
-            <li>Medications and dosages you report</li>
-            <li>Symptoms and severity ratings you report</li>
-            <li>Lifestyle data (sleep, stress, exercise, diet patterns)</li>
-            <li>Wellness plans, doctor prep documents, and other content generated from your data</li>
-          </ul>
-
-          <p><strong>Usage data</strong></p>
-          <ul className="list-disc pl-5 space-y-1 mt-1 mb-3">
-            <li>Pages visited, features used, error logs (with personal identifiers stripped)</li>
-            <li>Device type, browser, IP address (used for fraud prevention and abuse detection)</li>
-          </ul>
-
-          <p><strong>Payment information</strong></p>
-          <ul className="list-disc pl-5 space-y-1 mt-1">
-            <li>Processed by Stripe, Inc. We do NOT store your credit card number, security code (CVV), or full billing address.</li>
-            <li>We retain a Stripe customer reference ID and the last 4 digits of your card to display in receipts.</li>
-          </ul>
+          <p className="mt-2"><strong>Clarification — Product Improvement and De-Identified Data.</strong> "De-identified" means data that has been processed such that no individual can reasonably be re-identified, consistent with 45 CFR § 164.514 standards. We apply HIPAA de-identification standards voluntarily as a best practice. Individually identifiable health information is never used for product improvement, analytics development, or model training.</p>
+          <p className="mt-2"><strong>FTC Health Breach Notification Rule (16 CFR Part 318).</strong> CauseHealth processes personal health records as that term is defined in the FTC's Health Breach Notification Rule, as amended in 2024. In the event of a breach of unsecured individually identifiable health information, we are required to notify: (1) affected users without unreasonable delay and within 60 calendar days of discovery; (2) the Federal Trade Commission; and (3) prominent media outlets in any state where more than 500 residents are affected. We maintain a written incident response plan designed to meet all applicable notification timelines, including shorter state-law deadlines. Our internal target is 30 days.</p>
         </Section>
 
-        <Section title="3. How We Use Your Information">
-          <ul className="list-disc pl-5 space-y-2 mt-2">
-            <li><strong>To provide the Service.</strong> Your health data is used to generate personalized lab analysis, wellness plans, doctor prep documents, and AI chat responses.</li>
-            <li><strong>For AI processing.</strong> Your lab values, medications, conditions, and symptoms are sent to Anthropic's Claude API to generate analysis. This data is sent over encrypted (HTTPS/TLS) connections. <strong>Anthropic does not use your data to train their models when accessed via the API.</strong></li>
-            <li><strong>To improve the Service.</strong> We may analyze aggregated, de-identified usage patterns to improve features. We do NOT use your individually identifiable health data to train any AI model.</li>
-            <li><strong>To communicate with you.</strong> Account-related emails (password resets, billing receipts, breach notifications, terms updates).</li>
-            <li><strong>To prevent fraud, abuse, and security incidents.</strong></li>
-            <li><strong>To comply with legal obligations.</strong></li>
+        <Section title="5. How We Use Your Information">
+          <p>We use information we collect solely for the following purposes. We do not use your information for any purpose not listed below without your explicit prior consent.</p>
+          <ul className="list-disc pl-5 space-y-1 mt-2">
+            <li><strong>Service operation:</strong> create and authenticate your account, process payments, store your data, and generate your personalized Doctor Prep Document.</li>
+            <li><strong>AI output generation:</strong> we transmit a minimal, carefully scoped subset of your information to our AI sub-processor to generate output. This subset is limited to biomarker values, medications, supplements, conditions, symptoms, and relevant demographic factors. It expressly excludes your name, email address, account identifiers, payment information, and any information not directly needed for the analysis.</li>
+            <li><strong>Product improvement:</strong> we analyze aggregated and de-identified usage patterns, performance metrics, and error logs. Individually identifiable health data is excluded.</li>
+            <li><strong>Communications:</strong> service announcements, security alerts, billing notices, and — if you opt in — educational content. You may opt out of marketing communications at any time. Security and billing communications cannot be opted out of while your account is active.</li>
+            <li><strong>Legal compliance and rights protection:</strong> investigate fraud, enforce our Terms of Service, respond to lawful legal process, protect the safety of any person, and defend legal claims.</li>
           </ul>
+          <p className="mt-3"><strong>5.1 Data Minimization Commitment.</strong> We design our AI prompts and data pipelines to transmit the minimum information necessary to generate useful output. Before each AI call, our system programmatically strips identifying information (name, email, account ID, IP address, payment token) from the data payload.</p>
         </Section>
 
-        <Section title="4. Who We Share Your Information With">
-          <p>We share your information ONLY with the third-party service providers required to run CauseHealth, and only as necessary to provide the Service:</p>
-          <ul className="list-disc pl-5 space-y-2 mt-2">
-            <li><strong>Supabase, Inc.</strong> — Database and authentication provider. Stores your account and health data on encrypted infrastructure in the United States.</li>
-            <li><strong>Anthropic, PBC</strong> — AI provider. Receives your lab values, medications, conditions, and symptoms via API to generate plan analysis. Does not retain or use this data for training.</li>
-            <li><strong>Stripe, Inc.</strong> — Payment processor. Receives your payment details directly (we never see them).</li>
-            <li><strong>Vercel, Inc.</strong> — Hosting and content delivery. Routes traffic; does not access your stored health data.</li>
-          </ul>
-          <p className="mt-2">We do NOT share your information with:</p>
-          <ul className="list-disc pl-5 space-y-2 mt-2">
-            <li>Advertisers, data brokers, or marketing companies</li>
-            <li>Insurance companies or employers</li>
-            <li>Other healthcare providers (unless you explicitly export and share data yourself)</li>
-            <li>Government agencies (except as required by valid legal process)</li>
-          </ul>
-          <p className="mt-2"><strong>We do NOT sell your personal information or health data to anyone, for any reason. Ever.</strong></p>
+        <Section title="6. Sub-Processors and Third-Party Services">
+          <div className="overflow-x-auto mt-2">
+            <table className="min-w-full text-xs border border-clinical-stone/30">
+              <thead className="bg-clinical-stone/10">
+                <tr>
+                  <th className="border border-clinical-stone/30 px-2 py-1 text-left">Vendor</th>
+                  <th className="border border-clinical-stone/30 px-2 py-1 text-left">Role</th>
+                  <th className="border border-clinical-stone/30 px-2 py-1 text-left">Data Shared</th>
+                  <th className="border border-clinical-stone/30 px-2 py-1 text-left">AI Training?</th>
+                  <th className="border border-clinical-stone/30 px-2 py-1 text-left">Region</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td className="border border-clinical-stone/30 px-2 py-1">Supabase, Inc.</td><td className="border border-clinical-stone/30 px-2 py-1">Database, auth, storage, serverless compute</td><td className="border border-clinical-stone/30 px-2 py-1">Account, profile, health data, generated docs</td><td className="border border-clinical-stone/30 px-2 py-1">No — prohibited by contract</td><td className="border border-clinical-stone/30 px-2 py-1">United States</td></tr>
+                <tr><td className="border border-clinical-stone/30 px-2 py-1">Anthropic, PBC</td><td className="border border-clinical-stone/30 px-2 py-1">Generative AI (Claude API)</td><td className="border border-clinical-stone/30 px-2 py-1">Biomarker values, medications, conditions, symptoms, demographics only. No name, email, or payment data.</td><td className="border border-clinical-stone/30 px-2 py-1">No — API terms prohibit</td><td className="border border-clinical-stone/30 px-2 py-1">United States</td></tr>
+                <tr><td className="border border-clinical-stone/30 px-2 py-1">Stripe, Inc.</td><td className="border border-clinical-stone/30 px-2 py-1">Payment processing</td><td className="border border-clinical-stone/30 px-2 py-1">Email, name, billing ZIP, card token only</td><td className="border border-clinical-stone/30 px-2 py-1">No</td><td className="border border-clinical-stone/30 px-2 py-1">United States</td></tr>
+                <tr><td className="border border-clinical-stone/30 px-2 py-1">Vercel, Inc.</td><td className="border border-clinical-stone/30 px-2 py-1">Frontend hosting and edge delivery</td><td className="border border-clinical-stone/30 px-2 py-1">IP address, browser metadata, request logs</td><td className="border border-clinical-stone/30 px-2 py-1">No</td><td className="border border-clinical-stone/30 px-2 py-1">Global edge</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-2">We will update this table when we add or remove sub-processors. Material sub-processor changes that expand the categories of data shared will be announced with advance notice.</p>
         </Section>
 
-        <Section title="5. Consumer Health Data Privacy Policy (Washington MHMDA Compliance)">
-          <p>This section is provided in accordance with the Washington My Health My Data Act (RCW 19.373) and similar consumer-health-data laws in other states.</p>
-
-          <p className="mt-3"><strong>Categories of Consumer Health Data we collect:</strong></p>
-          <ul className="list-disc pl-5 space-y-1 mt-1 mb-3">
-            <li>Past, present, or future physical or mental health status</li>
-            <li>Health conditions and diagnoses you report</li>
-            <li>Medications and treatments you report</li>
-            <li>Lab values, biomarkers, and bodily measurements</li>
-            <li>Reproductive or sexual health information (only if you choose to disclose it via symptoms)</li>
-            <li>Health-related goals and lifestyle factors (sleep, exercise, diet, stress)</li>
-            <li>Information that we infer from any of the above (e.g., suspected conditions, multi-marker patterns)</li>
+        <Section title="7. How We Share Information">
+          <p>Beyond the sub-processors above, we share your information only:</p>
+          <ul className="list-disc pl-5 space-y-1 mt-2">
+            <li><strong>With you:</strong> through the Service interface, exports, and PDFs you generate.</li>
+            <li><strong>At your direction:</strong> when you generate and send a Doctor Prep Document or export to your clinician. The sharing decision and act are yours; we provide the export tool only.</li>
+            <li><strong>In a business transfer:</strong> if CauseHealth is acquired, merged, or enters bankruptcy, your information may transfer to a successor subject to this Privacy Policy. We will provide at least 30 days' advance written notice and the opportunity to delete your account.</li>
+            <li><strong>For legal compliance:</strong> to respond to a valid and legally enforceable subpoena, court order, or other lawful demand. We push back on overbroad or procedurally defective demands where we have grounds and notify you to the extent permitted by law.</li>
+            <li><strong>With your explicit consent:</strong> for any other purpose, only with your specific opt-in.</li>
           </ul>
-
-          <p><strong>Sources of Consumer Health Data:</strong></p>
-          <ul className="list-disc pl-5 space-y-1 mt-1 mb-3">
-            <li>Directly from you (lab uploads, onboarding answers, in-app entries)</li>
-            <li>Inferred or generated by our analysis engines based on your inputs</li>
-          </ul>
-
-          <p><strong>Categories with whom we share Consumer Health Data:</strong></p>
-          <ul className="list-disc pl-5 space-y-1 mt-1 mb-3">
-            <li>Service providers (Supabase, Anthropic, Stripe, Vercel — listed above) acting as our processors</li>
-            <li>No other categories</li>
-          </ul>
-
-          <p><strong>Purposes for collecting and sharing:</strong></p>
-          <ul className="list-disc pl-5 space-y-1 mt-1 mb-3">
-            <li>To provide the Service you requested (analyze your labs, generate wellness plans, store your data)</li>
-            <li>To process payment for the Service</li>
-            <li>To communicate with you about your account</li>
-            <li>To improve the Service through aggregated, de-identified analysis</li>
-            <li>To comply with legal obligations</li>
-          </ul>
-
-          <p><strong>Your rights regarding Consumer Health Data:</strong></p>
-          <ul className="list-disc pl-5 space-y-1 mt-1 mb-3">
-            <li><strong>Right to access:</strong> Request a copy of all Consumer Health Data we hold about you. Use the "Export All Data" button in Settings.</li>
-            <li><strong>Right to delete:</strong> Request that we delete your Consumer Health Data. Use the "Delete Account" button in Settings, or contact us at <a href="mailto:support@causehealth.app" className="text-primary-container hover:underline">support@causehealth.app</a>.</li>
-            <li><strong>Right to withdraw consent:</strong> You may withdraw consent for any specific processing at any time by contacting us at <a href="mailto:support@causehealth.app" className="text-primary-container hover:underline">support@causehealth.app</a>. Note: withdrawing consent for core processing means we can no longer provide the Service.</li>
-            <li><strong>Right to non-discrimination:</strong> We will not discriminate against you for exercising any of these rights.</li>
-            <li><strong>Right to appeal:</strong> If we deny any of these requests, you may appeal by emailing <a href="mailto:support@causehealth.app" className="text-primary-container hover:underline">support@causehealth.app</a>. We will respond within 45 days.</li>
-          </ul>
-
-          <p><strong>We do NOT sell Consumer Health Data.</strong> "Sale" includes any exchange of health data for monetary or other valuable consideration. We have never sold Consumer Health Data and have no plans to.</p>
-
-          <p className="mt-2"><strong>Geofencing notice:</strong> CauseHealth does not use geofencing to identify users in specific physical locations or to send health-related advertising based on location.</p>
+          <p className="mt-2">We do not sell personal information. We do not "share" personal information for cross-context behavioral advertising as those terms are defined under California law (Cal. Civ. Code § 1798.140). These prohibitions are absolute.</p>
         </Section>
 
-        <Section title="6. Your Privacy Rights (CCPA / CPRA — California)">
-          <p>If you are a California resident, you have the following rights under the California Consumer Privacy Act and California Privacy Rights Act:</p>
-          <ul className="list-disc pl-5 space-y-1 mt-1 mb-3">
-            <li>Right to know what personal information we collect, use, disclose</li>
-            <li>Right to delete your personal information</li>
-            <li>Right to correct inaccurate personal information</li>
-            <li>Right to opt out of "sale" or "sharing" of personal information (we do neither)</li>
-            <li>Right to limit use of sensitive personal information</li>
-            <li>Right to non-discrimination for exercising these rights</li>
+        <Section title="8. Data Retention">
+          <ul className="list-disc pl-5 space-y-1 mt-2">
+            <li><strong>Account and profile data:</strong> 30 days after account deletion from active systems; 90 days from backup systems.</li>
+            <li><strong>Lab data and generated documents:</strong> retained until you delete them or delete your account, then purged on the same schedule.</li>
+            <li><strong>Billing records:</strong> 7 years from the date of the transaction, to comply with tax and accounting law. Billing records are excepted from user-initiated deletion requests.</li>
+            <li><strong>Application logs and analytics:</strong> 90 days in identifiable form, after which logs are aggregated, de-identified, or deleted.</li>
+            <li><strong>Consent records:</strong> retained for the life of the account plus 7 years to support enforceability of your agreement to these Terms and the Privacy Policy. Consent records are excepted from user-initiated deletion requests.</li>
           </ul>
-          <p>To exercise these rights, use the data export and deletion tools in Settings, or email <a href="mailto:support@causehealth.app" className="text-primary-container hover:underline">support@causehealth.app</a>. We will respond within 45 days.</p>
+          <p className="mt-2">You may delete your account at any time from Settings → Account → Delete Account, or by emailing privacy@causehealth.com. Deletion is permanent and irreversible. We confirm deletion by email within 5 business days.</p>
         </Section>
 
-        <Section title="7. Your Privacy Rights (GDPR — European Economic Area)">
-          <p>If you are in the EEA, UK, or Switzerland, you have rights under the General Data Protection Regulation:</p>
-          <ul className="list-disc pl-5 space-y-1 mt-1 mb-3">
-            <li>Right of access</li>
-            <li>Right to rectification</li>
-            <li>Right to erasure ("right to be forgotten")</li>
-            <li>Right to restrict processing</li>
-            <li>Right to data portability</li>
-            <li>Right to object to processing</li>
-            <li>Right not to be subject to automated decision-making</li>
-            <li>Right to lodge a complaint with a supervisory authority</li>
+        <Section title="9. Security">
+          <ul className="list-disc pl-5 space-y-1 mt-2">
+            <li>TLS 1.2 or higher for all data in transit.</li>
+            <li>Encryption at rest for our primary database and file storage.</li>
+            <li>Row-level security policies that prevent any user from accessing another user's data.</li>
+            <li>Cryptographic password hashing (bcrypt or argon2). We never store plaintext passwords.</li>
+            <li>Principle-of-least-privilege access controls.</li>
+            <li>Audit logging for administrative actions.</li>
+            <li>Regular dependency and vulnerability scanning and patching.</li>
+            <li>Written incident response plan with defined notification timelines.</li>
           </ul>
-          <p>To exercise these rights, email <a href="mailto:support@causehealth.app" className="text-primary-container hover:underline">support@causehealth.app</a>.</p>
-          <p className="mt-2">Our legal basis for processing health data is your explicit consent (Article 9(2)(a) GDPR), provided when you accept these Terms at signup.</p>
+          <p className="mt-2">To report a security vulnerability, email <a href="mailto:security@causehealth.com" className="text-primary-container hover:underline">security@causehealth.com</a>. We will acknowledge reports within 2 business days.</p>
+          <p className="mt-2"><strong>Breach Notification.</strong> If we discover a breach of unsecured health information, we will notify affected users, the FTC, and applicable state regulators within the timeframes required by law. The FTC Health Breach Notification Rule (16 CFR Part 318) sets a 60-day maximum window. State laws may impose shorter deadlines (some require 30 days). We target 30 days as our internal standard.</p>
         </Section>
 
-        <Section title="8. Data Security">
-          <ul className="list-disc pl-5 space-y-2 mt-2">
-            <li>All data is encrypted in transit using TLS 1.2 or higher.</li>
-            <li>All data is encrypted at rest on Supabase infrastructure.</li>
-            <li>Access to production systems is restricted to authorized personnel only.</li>
-            <li>Passwords are hashed using industry-standard algorithms (bcrypt or stronger).</li>
-            <li>We do NOT log raw health data in error monitoring or analytics tools.</li>
+        <Section title="10. Your Privacy Rights">
+          <p>Depending on where you live, you may have some or all of the following rights. We honor all of these for all permitted U.S. users as a matter of policy:</p>
+          <ul className="list-disc pl-5 space-y-1 mt-2">
+            <li><strong>Access</strong> — request a copy of the personal information we hold about you.</li>
+            <li><strong>Correction</strong> — ask us to correct inaccurate personal information.</li>
+            <li><strong>Deletion</strong> — ask us to delete your personal information, subject to legal retention obligations.</li>
+            <li><strong>Portability</strong> — receive a machine-readable export of your personal information.</li>
+            <li><strong>Opt-out of sale/sharing for advertising</strong> — we do not sell or share for cross-context advertising; this right is honored by default.</li>
+            <li><strong>Limit use of sensitive information</strong> — we already limit use of your sensitive health information to Service operation only; this right is honored by default.</li>
+            <li><strong>Withdraw consent</strong> — withdraw any consent previously given.</li>
+            <li><strong>Non-discrimination</strong> — we will not deny service or charge different prices for exercising any privacy right.</li>
+            <li><strong>Appeal</strong> — if we deny your privacy request, you may appeal by contacting our privacy lead. We respond to appeals within 60 days.</li>
           </ul>
-          <p className="mt-2">No system is 100% secure. While we take strong precautions, we cannot guarantee absolute security of your data.</p>
+          <p className="mt-2">To submit a rights request, email <a href="mailto:privacy@causehealth.com" className="text-primary-container hover:underline">privacy@causehealth.com</a>. We may need to verify your identity. We respond within 45 days; we may extend by 45 more days for complex requests with written notice.</p>
+
+          <p className="mt-3"><strong>10.1 California, New York, Illinois, Washington — Not Permitted Users.</strong> The Service is not available to residents of California, New York, Illinois, or Washington State. Section 12 explains the geographic restrictions. The CCPA/CPRA, NY SHIELD, BIPA, and Washington My Health MY Data Act do not apply because residents of those jurisdictions are not permitted users.</p>
+
+          <p className="mt-3"><strong>10.2 State Privacy Laws That Do Apply.</strong> The following state laws may apply to permitted users:</p>
+          <div className="overflow-x-auto mt-2">
+            <table className="min-w-full text-xs border border-clinical-stone/30">
+              <thead className="bg-clinical-stone/10">
+                <tr>
+                  <th className="border border-clinical-stone/30 px-2 py-1 text-left">State Law</th>
+                  <th className="border border-clinical-stone/30 px-2 py-1 text-left">Applies To</th>
+                  <th className="border border-clinical-stone/30 px-2 py-1 text-left">Rights Honored</th>
+                  <th className="border border-clinical-stone/30 px-2 py-1 text-left">Sensitive Data Treatment</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td className="border border-clinical-stone/30 px-2 py-1">TX TDPSA</td><td className="border border-clinical-stone/30 px-2 py-1">All TX residents (no threshold)</td><td className="border border-clinical-stone/30 px-2 py-1">Access, correct, delete, portability, opt-out of sale/profiling, appeal</td><td className="border border-clinical-stone/30 px-2 py-1">Explicit consent required before processing sensitive health data</td></tr>
+                <tr><td className="border border-clinical-stone/30 px-2 py-1">VA VCDPA</td><td className="border border-clinical-stone/30 px-2 py-1">Above threshold</td><td className="border border-clinical-stone/30 px-2 py-1">Same as TX</td><td className="border border-clinical-stone/30 px-2 py-1">Consent required</td></tr>
+                <tr><td className="border border-clinical-stone/30 px-2 py-1">CO CPA</td><td className="border border-clinical-stone/30 px-2 py-1">Above threshold</td><td className="border border-clinical-stone/30 px-2 py-1">Same as TX; GPC honored</td><td className="border border-clinical-stone/30 px-2 py-1">Consent required</td></tr>
+                <tr><td className="border border-clinical-stone/30 px-2 py-1">CT CTDPA</td><td className="border border-clinical-stone/30 px-2 py-1">Above threshold</td><td className="border border-clinical-stone/30 px-2 py-1">Same as TX</td><td className="border border-clinical-stone/30 px-2 py-1">Consent required</td></tr>
+                <tr><td className="border border-clinical-stone/30 px-2 py-1">OR OCPA</td><td className="border border-clinical-stone/30 px-2 py-1">Above threshold</td><td className="border border-clinical-stone/30 px-2 py-1">Same as TX</td><td className="border border-clinical-stone/30 px-2 py-1">Health data is sensitive</td></tr>
+                <tr><td className="border border-clinical-stone/30 px-2 py-1">TX HB 4</td><td className="border border-clinical-stone/30 px-2 py-1">All TX residents</td><td className="border border-clinical-stone/30 px-2 py-1">See TDPSA</td><td className="border border-clinical-stone/30 px-2 py-1">Health data is sensitive</td></tr>
+                <tr><td className="border border-clinical-stone/30 px-2 py-1">NV SB 370</td><td className="border border-clinical-stone/30 px-2 py-1">NV residents using websites/apps</td><td className="border border-clinical-stone/30 px-2 py-1">Opt-out of sale</td><td className="border border-clinical-stone/30 px-2 py-1">Health data covered</td></tr>
+              </tbody>
+            </table>
+          </div>
         </Section>
 
-        <Section title="9. Data Retention">
-          <ul className="list-disc pl-5 space-y-2 mt-2">
-            <li>We retain your data for as long as your account is active.</li>
-            <li>If you delete your account, all your personal and health data is deleted from our active systems within 30 days.</li>
-            <li>Backups containing your data may persist for up to 90 additional days before being overwritten in normal backup rotation.</li>
-            <li>We may retain certain limited information (e.g., billing records) longer where required by law.</li>
+        <Section title="11. AI Disclosures and Data Minimization">
+          <p>CauseHealth uses a generative AI large language model (currently the Claude API, operated by Anthropic, PBC) to produce narrative interpretations of your bloodwork.</p>
+          <ul className="list-disc pl-5 space-y-1 mt-2">
+            <li><strong>AI involvement is mandatory for core features.</strong> The personalized Doctor Prep Document is generated by AI. These features cannot be used without AI involvement.</li>
+            <li><strong>Output is generated, not retrieved.</strong> The same inputs may produce different outputs across sessions.</li>
+            <li><strong>Output may be inaccurate.</strong> AI output may be incomplete, outdated, or wrong. We layer deterministic clinical rules and safety filters to reduce — not eliminate — this risk. All output should be treated as a starting point for discussion with a licensed clinician.</li>
+            <li><strong>Your data is not used for AI training.</strong> Anthropic is contractually prohibited from training on data submitted through the CauseHealth API integration.</li>
+            <li><strong>Strict data minimization on AI prompts.</strong> We transmit to Anthropic only biomarker values, medications, conditions, supplements, symptoms, and relevant demographic factors. Your name, email, account ID, IP address, and payment information are programmatically excluded from every AI prompt.</li>
+            <li><strong>Human oversight.</strong> AI output is reviewed by deterministic rule systems before delivery. Emergency alert conditions trigger mandatory warning language regardless of AI output.</li>
           </ul>
         </Section>
 
-        <Section title="10. Breach Notification">
-          <p>In the event of a security breach affecting your personal or health data, we will:</p>
-          <ul className="list-disc pl-5 space-y-2 mt-2">
-            <li>Notify affected users within 60 days (in compliance with the FTC Health Breach Notification Rule and applicable state laws).</li>
-            <li>Notify the Federal Trade Commission and applicable state attorneys general where required by law.</li>
-            <li>Provide details about what data was affected, what we are doing in response, and what you can do to protect yourself.</li>
+        <Section title="12. Geographic Restrictions — Blocked and Restricted Jurisdictions">
+          <p>The Service is available only to residents of certain U.S. states. The Service is <strong>not</strong> available to residents of:</p>
+          <ul className="list-disc pl-5 space-y-1 mt-2">
+            <li><strong>California</strong> — due to the California Consumer Legal Remedies Act, Unfair Competition Law, Consumer Privacy Rights Act, and related statutes that create private rights of action and one-way attorney fee-shifting in consumer litigation.</li>
+            <li><strong>New York</strong> — due to New York General Business Law § 349 (private right of action and mandatory attorney fees), the SHIELD Act, and the New York attorney general's enforcement posture in consumer health matters.</li>
+            <li><strong>Illinois</strong> — due to the Illinois Biometric Information Privacy Act (BIPA, 740 ILCS 14/1 et seq.) and the Illinois Consumer Fraud and Deceptive Business Practices Act.</li>
+            <li><strong>Washington State</strong> — due to the Washington My Health MY Data Act (SB 1155), which imposes the broadest non-HIPAA consumer health data obligations in the U.S., including a private right of action and triple damages for willful violations.</li>
+            <li><strong>EU / EEA / United Kingdom / Switzerland</strong> — the Service is not available internationally.</li>
           </ul>
+          <p className="mt-2"><strong>Technical Enforcement.</strong> We implement IP-based geolocation blocks and a mandatory self-certification at account registration. At registration, you must affirmatively represent that you are not a current resident of any blocked jurisdiction. If you are a resident of a blocked jurisdiction and circumvent these controls to access the Service, you do so in material breach of these Terms. We may terminate any account we determine is operated by a resident of a blocked jurisdiction and retain any subscription fees paid as liquidated damages for the breach.</p>
+          <p className="mt-2"><strong>Residency Defined.</strong> "Resident" means a person whose primary domicile is in the blocked jurisdiction at the time of account creation or at any time during an active subscription. Temporary physical presence in a blocked jurisdiction (e.g., travel) while domiciled elsewhere does not constitute residency.</p>
         </Section>
 
-        <Section title="11. Children's Privacy">
-          <p>CauseHealth is intended for adults 18 and older. We do not knowingly collect personal information from anyone under 18. If you believe a minor has used CauseHealth, please contact us at <a href="mailto:support@causehealth.app" className="text-primary-container hover:underline">support@causehealth.app</a> and we will delete the account.</p>
+        <Section title="13. Corporate Practice of Medicine and Regulatory Disclaimer">
+          <p>CauseHealth does not employ licensed physicians, nurses, or other healthcare professionals to provide clinical services through the Service. The Service does not constitute the practice of medicine, nursing, or any other licensed healthcare profession in any jurisdiction.</p>
+          <p className="mt-2">Output produced by the Service is generated by software and AI systems, not by licensed clinicians. CauseHealth is not subject to medical practice acts, state telehealth regulations, or the clinical oversight requirements applicable to healthcare providers. Nothing in the Service creates a physician-patient, nurse-patient, therapist-patient, or any other professional-patient relationship between you and CauseHealth or any of its personnel.</p>
         </Section>
 
-        <Section title="12. International Users">
-          <p>CauseHealth is operated from and hosted in the United States. If you access the Service from outside the U.S., your information will be transferred to and processed in the U.S. By using the Service, you consent to this transfer.</p>
+        <Section title="14. Changes to This Policy">
+          <p>We may update this Policy to reflect changes in our practices, technology, legal requirements, or sub-processors. Material changes — including any change to how we use health data, any new category of sub-processor, or any expansion of data sharing — will be announced by email and in-app notification at least 14 days before they take effect. Where required by law, we will obtain your renewed consent before applying material changes to information already collected. Non-material changes (clarifications, corrections, contact updates) may be made without advance notice.</p>
         </Section>
 
-        <Section title="13. Changes to This Privacy Policy">
-          <p>We may update this Privacy Policy from time to time. Material changes will be communicated by email at least 30 days before they take effect. The "Last updated" date at the top of this page shows when the policy was most recently revised.</p>
-        </Section>
-
-        <Section title="14. Contact Us">
-          <p>For privacy questions, data requests, or to exercise any of your rights:</p>
-          <p className="mt-2"><a href="mailto:support@causehealth.app" className="text-primary-container hover:underline">support@causehealth.app</a></p>
+        <Section title="15. Contact">
+          <ul className="list-disc pl-5 space-y-1 mt-2">
+            <li><strong>Email:</strong> <a href="mailto:privacy@causehealth.com" className="text-primary-container hover:underline">privacy@causehealth.com</a></li>
+            <li><strong>Security reports:</strong> <a href="mailto:security@causehealth.com" className="text-primary-container hover:underline">security@causehealth.com</a></li>
+            <li><strong>Mail:</strong> CauseHealth LLC, registered mailing address</li>
+            <li><strong>Data protection lead:</strong> Evan Gutman, Founder</li>
+          </ul>
+          <p className="mt-2">If you are not satisfied with our response, you may contact your state attorney general or applicable state privacy enforcement agency.</p>
         </Section>
       </div>
     </div>

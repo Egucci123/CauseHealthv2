@@ -80,7 +80,7 @@ export default function RequireOutputAck({ children, loadingFallback, onDismiss 
     queryFn: async () => {
       const { data, error } = await supabase
         .from('user_eligibility')
-        .select('output_ack_completed_at')
+        .select('output_ack_completed_at, clinician_name, clinician_practice')
         .eq('user_id', user!.id)
         .maybeSingle();
       if (error) throw error;
@@ -169,6 +169,8 @@ export default function RequireOutputAck({ children, loadingFallback, onDismiss 
       onComplete={handleComplete}
       onDismiss={onDismiss}
       submitting={submitting}
+      defaultClinicianName={eligibilityQ.data?.clinician_name ?? ''}
+      defaultClinicianPractice={eligibilityQ.data?.clinician_practice ?? ''}
     />
   );
 }

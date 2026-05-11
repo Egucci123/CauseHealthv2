@@ -59,6 +59,7 @@ const ALLOWED_TYPES = new Set<string>([
   'output_ack_liability_limited',
   'clinician_name_entered',
   'auto_renewal_disclosure',
+  'arbitration_optout',
 ]);
 
 // Consent types that, taken together at the same text_version, mark the
@@ -274,6 +275,15 @@ async function applyEligibilitySideEffects(
       if (name) patch.clinician_name = name;
       if (practice) patch.clinician_practice = practice;
       patch.clinician_name_entered_at = acceptedAt;
+      break;
+    }
+
+    case 'arbitration_optout': {
+      // User emailed legal@causehealth.com with subject "Arbitration
+      // Opt-Out" within their 30-day window. consent_log row is the
+      // legal record; mirror flags to user_eligibility for fast lookup.
+      patch.arbitration_opted_out = true;
+      patch.arbitration_optout_at = acceptedAt;
       break;
     }
 

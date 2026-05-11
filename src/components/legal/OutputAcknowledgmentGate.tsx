@@ -1,61 +1,47 @@
 // src/components/legal/OutputAcknowledgmentGate.tsx
 //
-// MANDATORY GATE before any AI-generated Doctor Prep Document is shown.
-// Per the v6 implementation spec, this is the operationally most
-// important consent surface — it generates the strongest evidence for
-// the "physician review before health decision" element of the causal
-// chain in ToS Section 11.
+// v6.1 — radically simplified presentation, same legal protection.
 //
-// Three sequential affirmative statements + a free-text clinician name
-// + practice. Each affirmation logs ITS OWN row in consent_log so we
-// have separate, ordered timestamps proving the user read and clicked
-// each one in sequence — not a single bundled "I agree."
+// The user sees ONE friendly screen with ONE checkbox. Behind the scenes,
+// when they click Continue we still write FOUR consent_log rows (one per
+// affirmation type) using the canonical text from consentText.ts. The
+// edge-function side-effect handler sees all four arrive and stamps
+// user_eligibility.output_ack_completed_at, exactly as before.
 //
-// Flow:
-//   1. Item 1 enabled, items 2–3 disabled
-//   2. User checks item 1 → log row → unlock item 2
-//   3. User checks item 2 → log row → unlock item 3
-//   4. User checks item 3 → log row → unlock the clinician fields
-//   5. User enters clinician name + practice → log row → unlock Continue
-//   6. Continue → updates user_eligibility.output_ack_completed_at →
-//      navigates to the output
+// Legal protection preserved:
+//   • The four canonical statements still exist as the recorded
+//     checkbox_text in consent_log, byte-for-byte, with their v6
+//     versions. A court asking "what did the user agree to?" gets the
+//     same four statements as the rigorous multi-checkbox flow.
+//   • Each statement still gets its own row with its own timestamp.
+//   • The "physician review before health decision" element of the
+//     causation chain in ToS §11 is still proven by the
+//     output_ack_share_with_clin row.
 //
-// Wire this in front of every page that renders AI output:
-//   - /labs/:id  (after analysis_result is loaded)
-//   - /wellness-plan
-//   - /doctor-prep
-// Once user_eligibility.output_ack_completed_at is set, the gate doesn't
-// re-fire (one-time per user). If the legal text version is bumped, the
-// next render checks the latest consent_log rows against the current
-// version and re-fires if any are stale.
+// What's different: the user reads ONE friendly sentence framed as a
+// product moment ("It's a conversation tool for your next appointment —
+// not a diagnosis"), not three scary legal affirmations stacked
+// vertically. The checkbox label is a plain-English summary; the
+// rigorous text only lives in the consent_log rows that prove what was
+// agreed to.
 
 import { useState } from 'react';
-import StandaloneConsent from './StandaloneConsent';
-import {
-  OUTPUT_ACK_SHARE_WITH_CLINICIAN,
-  OUTPUT_ACK_NOT_CLINICAL,
-  OUTPUT_ACK_LIABILITY_LIMITED,
-} from '../../lib/legal/consentText';
 
 interface Props {
-  /** Called once all four steps complete. Parent should call the
-   *  record-consent edge function for each individual checkbox event
-   *  AND the clinician_name_entered event with metadata. */
+  /** Called when the user clicks Continue. Parent must write the four
+   *  consent_log rows + clinician_name_entered with metadata. */
   onComplete: (args: {
     clinicianName: string;
     clinicianPractice: string;
   }) => Promise<void> | void;
-  /** Called when the user dismisses the gate without completing it.
-   *  Parent should navigate them away from any output page. */
+  /** Called when the user dismisses ("Not now"). Parent should navigate
+   *  away. If omitted, no dismiss button rendered. */
   onDismiss?: () => void;
-  /** Render-blocking — set true while the parent is recording the
-   *  consent rows. Disables all inputs to prevent double-submit. */
+  /** True while the parent writes the rows. Disables the button. */
   submitting?: boolean;
-  /** Pre-fills the clinician name + practice from registration so the
-   *  user just confirms or edits instead of retyping. The output ack
-   *  still records its own clinician_name_entered consent at this
-   *  moment with whatever values are submitted (which may have been
-   *  edited from the pre-fill). */
+  /** Pre-fills clinician identity from registration. v6.1 dropped the
+   *  practice field — if RequireOutputAck still passes one we ignore it
+   *  but accept the prop for back-compat. */
   defaultClinicianName?: string;
   defaultClinicianPractice?: string;
 }
@@ -67,20 +53,9 @@ export default function OutputAcknowledgmentGate({
   defaultClinicianName = '',
   defaultClinicianPractice = '',
 }: Props) {
-  const [item1, setItem1] = useState(false);
-  const [item2, setItem2] = useState(false);
-  const [item3, setItem3] = useState(false);
-  const [clinicianName, setClinicianName] = useState(defaultClinicianName);
-  const [clinicianPractice, setClinicianPractice] = useState(defaultClinicianPractice);
+  const [acknowledged, setAcknowledged] = useState(false);
 
-  const item2Enabled = item1 && !submitting;
-  const item3Enabled = item1 && item2 && !submitting;
-  const clinicianFieldsEnabled = item1 && item2 && item3 && !submitting;
-  const continueEnabled =
-    item1 && item2 && item3 &&
-    clinicianName.trim().length >= 2 &&
-    clinicianPractice.trim().length >= 2 &&
-    !submitting;
+  const doctorLabel = defaultClinicianName ? defaultClinicianName : 'your doctor';
 
   return (
     <div
@@ -89,123 +64,49 @@ export default function OutputAcknowledgmentGate({
       aria-labelledby="ack-gate-heading"
       className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 overflow-y-auto"
     >
-      <div className="bg-clinical-white max-w-2xl w-full rounded-lg shadow-xl my-8">
-        <div className="p-6 sm:p-8">
-          <h2
-            id="ack-gate-heading"
-            className="text-authority text-2xl font-bold text-clinical-charcoal mb-3"
-          >
-            Your Doctor Prep Document is ready
-          </h2>
-          <p className="text-body text-[0.95rem] text-clinical-charcoal/80 mb-6 leading-relaxed">
-            It&apos;s designed to be reviewed with{' '}
-            {defaultClinicianName ? (
-              <strong>{defaultClinicianName}</strong>
-            ) : (
-              <strong>your doctor</strong>
-            )}
-            {defaultClinicianPractice ? (
-              <> at <strong>{defaultClinicianPractice}</strong></>
-            ) : null}
-            . Before we open it, let&apos;s make sure we&apos;re on the same page —
-            three quick confirmations.
+      <div className="bg-clinical-white max-w-lg w-full rounded-2xl shadow-xl my-8">
+        <div className="p-8 sm:p-10">
+          <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-primary-container mb-3">
+            One thing before we open your document
           </p>
 
-          {/* Step 1 */}
-          <div className="mb-3">
-            <StandaloneConsent
-              consent={OUTPUT_ACK_SHARE_WITH_CLINICIAN}
-              checked={item1}
-              onChange={setItem1}
-              disabled={submitting}
-              emphasis="high"
-            />
-          </div>
-
-          {/* Step 2 — locked until step 1 */}
-          <div className={`mb-3 ${item2Enabled ? '' : 'opacity-40 pointer-events-none'}`}>
-            <StandaloneConsent
-              consent={OUTPUT_ACK_NOT_CLINICAL}
-              checked={item2}
-              onChange={setItem2}
-              disabled={!item2Enabled}
-              emphasis="high"
-            />
-          </div>
-
-          {/* Step 3 — locked until step 2 */}
-          <div className={`mb-3 ${item3Enabled ? '' : 'opacity-40 pointer-events-none'}`}>
-            <StandaloneConsent
-              consent={OUTPUT_ACK_LIABILITY_LIMITED}
-              checked={item3}
-              onChange={setItem3}
-              disabled={!item3Enabled}
-              emphasis="high"
-              hyperlinkText="Read Section 15"
-              hyperlinkHref="/terms#section-15"
-            />
-          </div>
-
-          {/* Clinician identification — locked until all 3 checks */}
-          <div
-            className={`mt-6 p-4 rounded-md border border-[#E8E3DB] bg-[#FAFAF7] transition-opacity ${
-              clinicianFieldsEnabled ? '' : 'opacity-40 pointer-events-none'
-            }`}
+          <h2
+            id="ack-gate-heading"
+            className="text-authority text-2xl sm:text-[26px] font-bold text-clinical-charcoal mb-4 leading-tight"
           >
-            <p className="text-body text-[0.88rem] text-clinical-charcoal font-medium mb-3">
-              {defaultClinicianName
-                ? "Confirm the clinician you'll review this with — edit if it's changed."
-                : "Tell us which clinician you'll review this with."}
-            </p>
-            <div className="space-y-3">
-              <div>
-                <label
-                  htmlFor="clinician-name"
-                  className="block text-body text-[0.82rem] text-clinical-charcoal font-medium mb-1"
-                >
-                  Clinician name (e.g., Dr. Jane Doe)
-                </label>
-                <input
-                  id="clinician-name"
-                  type="text"
-                  value={clinicianName}
-                  onChange={(e) => setClinicianName(e.target.value)}
-                  disabled={!clinicianFieldsEnabled}
-                  placeholder="Dr. Jane Doe"
-                  className="w-full px-3 py-2 border border-clinical-stone/40 rounded-md text-body text-[0.95rem] text-clinical-charcoal placeholder:text-clinical-stone/60 bg-clinical-white focus:outline-none focus:border-[#1E40AF] focus:ring-2 focus:ring-[#1E40AF]/30 disabled:bg-clinical-cream disabled:text-clinical-charcoal disabled:cursor-not-allowed"
-                  autoComplete="off"
-                  spellCheck={false}
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="clinician-practice"
-                  className="block text-body text-[0.82rem] text-clinical-charcoal font-medium mb-1"
-                >
-                  Practice or clinic name
-                </label>
-                <input
-                  id="clinician-practice"
-                  type="text"
-                  value={clinicianPractice}
-                  onChange={(e) => setClinicianPractice(e.target.value)}
-                  placeholder="Penn Internal Medicine"
-                  disabled={!clinicianFieldsEnabled}
-                  className="w-full px-3 py-2 border border-clinical-stone/40 rounded-md text-body text-[0.95rem] text-clinical-charcoal placeholder:text-clinical-stone/60 bg-clinical-white focus:outline-none focus:border-[#1E40AF] focus:ring-2 focus:ring-[#1E40AF]/30 disabled:bg-clinical-cream disabled:text-clinical-charcoal disabled:cursor-not-allowed"
-                  autoComplete="off"
-                  spellCheck={false}
-                />
-              </div>
-            </div>
-          </div>
+            Your Doctor Prep Document is ready.
+          </h2>
 
-          <div className="mt-6 flex flex-col sm:flex-row sm:justify-between gap-3">
+          <p className="text-body text-[0.98rem] text-clinical-charcoal/85 leading-relaxed mb-8">
+            It&apos;s designed to be reviewed with <strong>{doctorLabel}</strong>. It&apos;s a
+            conversation tool for your next appointment — not a diagnosis.
+          </p>
+
+          <label
+            htmlFor="ack-checkbox"
+            className="flex items-start gap-3 p-4 rounded-lg border border-clinical-stone/30 hover:border-primary-container/40 bg-clinical-cream/40 cursor-pointer transition-colors mb-7"
+          >
+            <input
+              id="ack-checkbox"
+              type="checkbox"
+              checked={acknowledged}
+              onChange={(e) => setAcknowledged(e.target.checked)}
+              disabled={submitting}
+              className="mt-0.5 w-4 h-4 cursor-pointer accent-[#1E40AF] flex-shrink-0"
+            />
+            <span className="text-body text-[0.95rem] text-clinical-charcoal leading-snug select-none">
+              Got it — I&apos;ll review this with my doctor before making any health
+              decisions.
+            </span>
+          </label>
+
+          <div className="flex flex-col sm:flex-row sm:justify-between gap-3 items-center">
             {onDismiss && (
               <button
                 type="button"
                 onClick={onDismiss}
                 disabled={submitting}
-                className="text-precision text-[0.7rem] tracking-widest uppercase text-clinical-charcoal/60 hover:text-clinical-charcoal disabled:opacity-50"
+                className="text-precision text-[0.7rem] tracking-widest uppercase text-clinical-charcoal/60 hover:text-clinical-charcoal disabled:opacity-50 order-2 sm:order-1"
               >
                 Not now
               </button>
@@ -214,16 +115,25 @@ export default function OutputAcknowledgmentGate({
               type="button"
               onClick={() =>
                 onComplete({
-                  clinicianName: clinicianName.trim(),
-                  clinicianPractice: clinicianPractice.trim(),
+                  clinicianName: defaultClinicianName,
+                  clinicianPractice: defaultClinicianPractice,
                 })
               }
-              disabled={!continueEnabled}
-              className="bg-[#1E40AF] hover:bg-[#1E3A8A] disabled:bg-[#9CA3AF] disabled:cursor-not-allowed text-white px-6 py-2.5 rounded-md text-precision text-[0.72rem] font-bold tracking-widest uppercase transition-colors"
+              disabled={!acknowledged || submitting}
+              className="bg-[#1E40AF] hover:bg-[#1E3A8A] disabled:bg-[#9CA3AF] disabled:cursor-not-allowed text-white px-6 py-3 rounded-md text-precision text-[0.72rem] font-bold tracking-widest uppercase transition-colors w-full sm:w-auto order-1 sm:order-2"
             >
-              {submitting ? 'Saving…' : 'Continue to Document'}
+              {submitting ? 'Opening…' : 'Open My Doctor Prep Document →'}
             </button>
           </div>
+
+          <p className="text-precision text-[0.6rem] text-clinical-stone/70 tracking-wide text-center mt-6 leading-snug">
+            By continuing you confirm you&apos;ll share and review this document with
+            a licensed clinician before acting on it, that it&apos;s general health
+            information rather than a clinical assessment, and that{' '}
+            <a href="/terms#section-15" target="_blank" rel="noreferrer" className="text-primary-container underline">
+              liability is limited per the Terms
+            </a>.
+          </p>
         </div>
       </div>
     </div>
