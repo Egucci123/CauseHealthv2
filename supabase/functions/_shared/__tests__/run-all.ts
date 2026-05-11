@@ -7,6 +7,7 @@
 const LAYERS = [
   { name:'Layer 1 — Marker name fuzz',        file:'./marker-fuzz.ts' },
   { name:'Layer 2 — Unit normalization fuzz', file:'./unit-fuzz.ts' },
+  { name:'Layer 3 — 100-female archetype audit', file:'./female-100-audit.ts' },
   { name:'Layer 5 — Golden snapshots',        file:'./snapshots.ts' },
   { name:'Layer 6 — Property-based fuzz',     file:'./fuzz.ts' },
 ];

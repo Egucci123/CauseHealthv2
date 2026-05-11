@@ -1,0 +1,61 @@
+{
+  "tests": [
+    {
+      "name": "Complete Blood Count (CBC) with Differential",
+      "icd10": "D64.9",
+      "priority": "high"
+    },
+    {
+      "name": "Lipid Panel",
+      "icd10": "E78.5",
+      "priority": "high"
+    },
+    {
+      "name": "Hemoglobin A1c",
+      "icd10": "R73.09",
+      "priority": "high"
+    },
+    {
+      "name": "Vitamin D (25-hydroxy)",
+      "icd10": "E55.9",
+      "priority": "high"
+    },
+    {
+      "name": "GGT (Gamma-Glutamyl Transferase)",
+      "icd10": "R74.0",
+      "priority": "high"
+    },
+    {
+      "name": "Thyroid Panel (TSH + Free T4 + Free T3)",
+      "icd10": "E03.9",
+      "priority": "high"
+    },
+    {
+      "name": "Lp(a) — Lipoprotein(a)",
+      "icd10": "E78.5",
+      "priority": "high"
+    },
+    {
+      "name": "Liver Ultrasound (NAFLD assessment)",
+      "icd10": "K76.9",
+      "priority": "high"
+    },
+    {
+      "name": "RBC Magnesium",
+      "icd10": "E83.42",
+      "priority": "moderate"
+    },
+    {
+      "name": "Testosterone Panel (Total T + Free T + Bioavailable T + SHBG + Estradiol + LH + FSH)",
+      "icd10": "E29.1",
+      "priority": "moderate"
+    }
+  ],
+  "conditions": [],
+  "supplements": [
+    "Milk Thistle (Silymarin)"
+  ],
+  "depletions": [],
+  "emergencyAlertCount": 0,
+  "expectedFindings": []
+}

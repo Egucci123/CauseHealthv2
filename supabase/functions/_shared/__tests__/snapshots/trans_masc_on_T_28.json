@@ -1,0 +1,52 @@
+{
+  "tests": [
+    {
+      "name": "Comprehensive Metabolic Panel (CMP)",
+      "icd10": "Z00.00",
+      "priority": "high"
+    },
+    {
+      "name": "Complete Blood Count (CBC) with Differential",
+      "icd10": "D64.9",
+      "priority": "high"
+    },
+    {
+      "name": "Lipid Panel",
+      "icd10": "E78.5",
+      "priority": "high"
+    },
+    {
+      "name": "Hemoglobin A1c",
+      "icd10": "R73.09",
+      "priority": "high"
+    },
+    {
+      "name": "Vitamin D (25-hydroxy)",
+      "icd10": "E55.9",
+      "priority": "high"
+    },
+    {
+      "name": "Thyroid Panel (TSH + Free T4 + Free T3)",
+      "icd10": "E03.9",
+      "priority": "high"
+    },
+    {
+      "name": "Lp(a) — Lipoprotein(a)",
+      "icd10": "E78.5",
+      "priority": "high"
+    },
+    {
+      "name": "RBC Magnesium",
+      "icd10": "E83.42",
+      "priority": "moderate"
+    }
+  ],
+  "conditions": [],
+  "supplements": [
+    "Zinc Picolinate",
+    "Omega-3 (EPA/DHA)"
+  ],
+  "depletions": [],
+  "emergencyAlertCount": 0,
+  "expectedFindings": []
+}

@@ -655,27 +655,39 @@ export const TEST_INDICATIONS: TestIndication[] = [
     ],
   },
 
-  // ── Male bone-health workup — DEXA for high-risk older males ─────
+  // ── Universal bone-health workup — DEXA for high-risk patients ───
   //
-  // USPSTF: men ≥70 universal. Earlier if risk factors: family hx
-  // osteoporosis, low T, glucocorticoid use, prior fragility fracture.
+  // USPSTF: women ≥65 universal, men ≥70 universal. Earlier for either
+  // sex with diagnosed osteoporosis, fragility fracture, chronic
+  // steroid use, hypogonadism, low BMI, IBD, hyperparathyroidism.
+  // Made sex-neutral 2026-05-12-13 after female audit showed diagnosed
+  // osteoporosis female with fragility fx wasn't firing DEXA.
   {
-    id: 'dexa_male_high_risk',
+    id: 'dexa_high_risk_universal',
     triggers: [
-      { kind: 'sex', is: 'male' },
       { kind: 'any', of: [
+        // Path A — risk-factor-driven (any age ≥50)
         { kind: 'all', of: [
           { kind: 'age_min', value: 50 },
           { kind: 'any', of: [
-            { kind: 'condition_match', pattern: /\b(osteoporo\w*|osteopen\w*|fragility fracture|low.?T|hypogonad\w*)/i },
-            { kind: 'meds_match', pattern: /\b(prednisone|prednisolone|methylprednisolone|dexamethasone|hydrocortisone)/i },
+            { kind: 'condition_match', pattern: /\b(osteoporo\w*|osteopen\w*|fragility fracture|hip fracture|vertebral.*fracture|low.?T|hypogonad\w*|ibd|crohn|colitis|hyperparathyroid)/i },
+            { kind: 'meds_match', pattern: /\b(prednisone|prednisolone|methylprednisolone|dexamethasone|hydrocortisone|anastrozole|letrozole|exemestane)/i },
           ]},
         ]},
-        { kind: 'age_min', value: 70 },
+        // Path B — female ≥65 universal (USPSTF)
+        { kind: 'all', of: [
+          { kind: 'sex', is: 'female' },
+          { kind: 'age_min', value: 65 },
+        ]},
+        // Path C — male ≥70 universal (USPSTF)
+        { kind: 'all', of: [
+          { kind: 'sex', is: 'male' },
+          { kind: 'age_min', value: 70 },
+        ]},
       ]},
     ],
     tests: [
-      { key: 'dexa_female_65_or_risk', whyShort: 'Adult male ≥50 with family hx osteoporosis, low T, or chronic steroids — DEXA per USPSTF / NOF risk-based screening', trigger: 'c' },
+      { key: 'dexa_female_65_or_risk', whyShort: 'High-risk bone density screen — diagnosed osteoporosis / fragility fracture / chronic steroid / aromatase inhibitor / age-based USPSTF screen', trigger: 'b' },
     ],
   },
 

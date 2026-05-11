@@ -1,0 +1,80 @@
+{
+  "tests": [
+    {
+      "name": "Complete Blood Count (CBC) with Differential",
+      "icd10": "D64.9",
+      "priority": "high"
+    },
+    {
+      "name": "Lipid Panel",
+      "icd10": "E78.5",
+      "priority": "high"
+    },
+    {
+      "name": "Hemoglobin A1c",
+      "icd10": "R73.09",
+      "priority": "high"
+    },
+    {
+      "name": "High-Sensitivity C-Reactive Protein (hs-CRP)",
+      "icd10": "R74.0",
+      "priority": "high"
+    },
+    {
+      "name": "Vitamin D (25-hydroxy)",
+      "icd10": "E55.9",
+      "priority": "high"
+    },
+    {
+      "name": "Iron Panel (Iron, TIBC, Ferritin, Transferrin Saturation)",
+      "icd10": "D64.9",
+      "priority": "high"
+    },
+    {
+      "name": "Thyroid Panel (TSH + Free T4 + Free T3)",
+      "icd10": "E03.9",
+      "priority": "high"
+    },
+    {
+      "name": "Lp(a) — Lipoprotein(a)",
+      "icd10": "E78.5",
+      "priority": "high"
+    },
+    {
+      "name": "RBC Magnesium",
+      "icd10": "E83.42",
+      "priority": "moderate"
+    },
+    {
+      "name": "Mammogram",
+      "icd10": "Z12.31",
+      "priority": "moderate"
+    },
+    {
+      "name": "Cervical Cancer Screening (Pap smear, with HPV co-test if ≥30)",
+      "icd10": "Z12.4",
+      "priority": "moderate"
+    },
+    {
+      "name": "Thyroid Antibodies (TPO + Tg) — female baseline",
+      "icd10": "Z13.29",
+      "priority": "moderate"
+    }
+  ],
+  "conditions": [
+    {
+      "name": "Hypercalcemia + PTH pattern — rule out primary hyperparathyroidism",
+      "icd10": "E21.0",
+      "confidence": "high"
+    }
+  ],
+  "supplements": [
+    "Methylated B-Complex",
+    "CoQ10 (Ubiquinol)",
+    "Magnesium Glycinate",
+    "Omega-3 (EPA/DHA)"
+  ],
+  "depletions": [],
+  "emergencyAlertCount": 0,
+  "expectedFindings": []
+}

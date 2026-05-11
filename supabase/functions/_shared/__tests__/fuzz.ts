@@ -230,7 +230,10 @@ const INVARIANTS: Array<{ name: string; check: Invariant }> = [
 ];
 
 // ── RUNNER ──────────────────────────────────────────────────────────
-const N = 1000;
+// N can be overridden via --n=<count> CLI arg. Default 100,000 for
+// deep coverage; pass --n=1000 for fast iteration during development.
+const nArg = Deno.args.find(a => a.startsWith('--n='));
+const N = nArg ? parseInt(nArg.slice(4), 10) : 100_000;
 const seed = 42;
 const rng = mulberry32(seed);
 

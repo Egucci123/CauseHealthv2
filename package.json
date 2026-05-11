@@ -10,11 +10,14 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test:synthetics": "deno run -A supabase/functions/_shared/__tests__/run-all.ts",
+    "test:synthetics:quick": "deno run -A supabase/functions/_shared/__tests__/marker-fuzz.ts && deno run -A supabase/functions/_shared/__tests__/unit-fuzz.ts && deno run -A supabase/functions/_shared/__tests__/snapshots.ts && deno run -A supabase/functions/_shared/__tests__/fuzz.ts --n=1000",
     "test:fuzz": "deno run -A supabase/functions/_shared/__tests__/fuzz.ts",
+    "test:fuzz:quick": "deno run -A supabase/functions/_shared/__tests__/fuzz.ts --n=1000",
     "test:snapshots": "deno run -A supabase/functions/_shared/__tests__/snapshots.ts",
     "test:snapshots:update": "deno run -A supabase/functions/_shared/__tests__/snapshots.ts --update",
     "test:markers": "deno run -A supabase/functions/_shared/__tests__/marker-fuzz.ts",
-    "test:units": "deno run -A supabase/functions/_shared/__tests__/unit-fuzz.ts"
+    "test:units": "deno run -A supabase/functions/_shared/__tests__/unit-fuzz.ts",
+    "test:female-100": "deno run -A supabase/functions/_shared/__tests__/female-100-audit.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
