@@ -33,7 +33,13 @@ const schema = z.object({
     { message: 'You must be 18 or older to use CauseHealth.' }
   ),
   sex: z.string().min(1, 'Required — drives hormone + CBC ranges'),
-  pregnancyStatus: z.string().optional(),
+  // Constrained to match the OnboardingState union. Female users must
+  // pick a real value; the refine() below enforces presence. '' is
+  // allowed during initial mount before the user picks.
+  pregnancyStatus: z.enum([
+    '', 'pregnant', 'trying', 'breastfeeding', 'not_pregnant',
+    'prefer_not_to_say', 'not_applicable',
+  ]).optional(),
   heightFt: z.string().optional(),
   heightIn: z.string().optional(),
   weightLbs: z.string().optional(),
