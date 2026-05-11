@@ -833,6 +833,57 @@ const RULES: BackstopRule[] = [
     },
   },
 
+  // ── Cortisol elevation → adrenal screen (universal) ────────────────────
+  //
+  // AM serum cortisol above the lab's upper reference range warrants a
+  // proper rule-out: HPA-axis dysregulation, oral / inhaled / topical
+  // corticosteroid use, exogenous estrogen (raises cortisol-binding
+  // globulin), chronic stress / sleep deprivation, and — much less
+  // commonly — Cushing's syndrome. The point isn't to diagnose Cushing's
+  // from a single AM cortisol; the point is to give the patient a clear
+  // structured workup to bring to their PCP.
+  //
+  // We skip the rule if the user is on chronic oral steroid (medClass
+  // 'steroid_oral') — that already explains the elevation.
+  // Universal across every user with high AM cortisol.
+  {
+    key: 'adrenal_cortisol_screen',
+    alreadyRaisedIf: [/cushing|adrenal\s+hyper|hpa.*dysreg|hpa\s+axis/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const cort = mark(ctx.labValues, [/cortisol\s*-?\s*am|^cortisol$|morning\s+cortisol/i]);
+      if (!cort) return null;
+      if (cort.flag !== 'high' && cort.flag !== 'critical_high') return null;
+
+      // If user is on chronic oral steroid, the elevation has a known
+      // explanation — skip the workup rule.
+      if (/\b(prednisone|methylpredniso|hydrocortisone|dexamethasone)\b/i.test(ctx.medsLower)) return null;
+
+      // Confidence scales with magnitude: critical_high → high, normal
+      // high flag → moderate
+      const confidence: 'high' | 'moderate' = cort.flag === 'critical_high' || cort.value > 25 ? 'high' : 'moderate';
+
+      const question = `My morning cortisol is ${cort.value} µg/dL — can we set up the rule-out workup? A repeat AM cortisol, a late-night salivary cortisol, and either a 24-hour urinary free cortisol or low-dose dexamethasone suppression test would tell us if this is real or just stress / timing / medication.`;
+
+      return {
+        name: 'Adrenal / Cortisol Workup',
+        category: 'endocrine',
+        confidence,
+        evidence: `AM cortisol ${cort.value} µg/dL — above the lab's upper reference. Common reversible causes (stress, sleep deprivation, exogenous estrogen, draw-time variability) should be ruled out before pursuing Cushing's screen, but the workup is the same first step.`,
+        confirmatory_tests: [
+          'Repeat AM cortisol (drawn 6:30–8:30 AM, after stable sleep)',
+          'Late-night salivary cortisol',
+          '24-hour urinary free cortisol — OR — Low-dose dexamethasone suppression test',
+          'ACTH (paired with cortisol)',
+          'Medication review (corticosteroids / topical / inhaled / hormonal contraception)',
+        ],
+        icd10: 'E27.0',
+        what_to_ask_doctor: question,
+        source: 'deterministic',
+      };
+    },
+  },
+
   // ── Hyperprolactinemia workup (universal, pregnancy-aware) ─────────────
   //
   // Fires when prolactin is above the lab reference range. Branches the
