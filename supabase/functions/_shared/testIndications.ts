@@ -567,12 +567,62 @@ export const TEST_INDICATIONS: TestIndication[] = [
     tests: [{ key: 'pcos_panel', whyShort: 'PCOS-specific pattern (hyperandrogenism or cycle irregularity + insulin signal) — workup catches androgen excess + insulin-resistance link', trigger: 'e' }],
   },
 
-  // ── Prolactin / pituitary workup — symptom-driven ─────────────────
+  // ── Prolactin / pituitary workup — MALE symptom-driven ───────────
+  //
+  // Male hyperprolactinemia presents differently than female: classic
+  // triad is gynecomastia + low libido / ED + (sometimes) galactorrhea.
+  // Visual changes / new headaches add suspicion of macroprolactinoma
+  // (men often present later, with bigger tumors). NO β-hCG (male).
+  {
+    id: 'prolactin_workup_male_symptom_driven',
+    triggers: [
+      { kind: 'sex', is: 'male' },
+      { kind: 'age_min', value: 12 },
+      { kind: 'any', of: [
+        { kind: 'symptom_match', pattern: /\b(gynecomastia|breast tissue|man boobs)/i },
+        { kind: 'symptom_match', pattern: /\b(galactorr\w*|nipple discharge|breast discharge)/i },
+        { kind: 'symptom_match', pattern: /\b(visual change\w*|vision change\w*|peripheral vision|tunnel vision|bitemporal)/i },
+        { kind: 'all', of: [
+          { kind: 'flag_true', flag: 'hasLowLibido' },
+          { kind: 'symptom_match', pattern: /\b(headache\w*|migraine\w*)/i },
+        ]},
+      ]},
+    ],
+    tests: [
+      { key: 'prolactin', whyShort: 'Gynecomastia / galactorrhea / visual changes / low-libido + headache — rule out male hyperprolactinemia / macroprolactinoma', trigger: 'b' },
+      { key: 'thyroid_panel', whyShort: 'Primary hypothyroidism is a reversible cause of elevated prolactin — rule out before pituitary imaging', trigger: 'c' },
+    ],
+  },
+
+  // ── Male bone-health workup — DEXA for high-risk older males ─────
+  //
+  // USPSTF: men ≥70 universal. Earlier if risk factors: family hx
+  // osteoporosis, low T, glucocorticoid use, prior fragility fracture.
+  {
+    id: 'dexa_male_high_risk',
+    triggers: [
+      { kind: 'sex', is: 'male' },
+      { kind: 'any', of: [
+        { kind: 'all', of: [
+          { kind: 'age_min', value: 50 },
+          { kind: 'any', of: [
+            { kind: 'condition_match', pattern: /\b(osteoporo\w*|osteopen\w*|fragility fracture|low.?T|hypogonad\w*)/i },
+            { kind: 'meds_match', pattern: /\b(prednisone|prednisolone|methylprednisolone|dexamethasone|hydrocortisone)/i },
+          ]},
+        ]},
+        { kind: 'age_min', value: 70 },
+      ]},
+    ],
+    tests: [
+      { key: 'dexa_female_65_or_risk', whyShort: 'Adult male ≥50 with family hx osteoporosis, low T, or chronic steroids — DEXA per USPSTF / NOF risk-based screening', trigger: 'c' },
+    ],
+  },
+
+  // ── Prolactin / pituitary workup — FEMALE symptom-driven ─────────
   //
   // Classic galactorrhea, visual changes, or amenorrhea with new
   // headaches → rule out hyperprolactinemia / pituitary adenoma.
-  // β-hCG first (pregnancy), then prolactin + TSH. Universal female
-  // rule; men with galactorrhea/gynecomastia handled separately.
+  // β-hCG first (pregnancy), then prolactin + TSH.
   {
     id: 'prolactin_workup_symptom_driven',
     triggers: [
