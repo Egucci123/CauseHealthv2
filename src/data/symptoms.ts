@@ -13,7 +13,7 @@ export const SYMPTOM_CATEGORIES: SymptomCategory[] = [
   },
   {
     id: 'hair_skin', label: 'Hair, Skin & Nails', icon: 'face',
-    symptoms: ['Diffuse hair thinning', 'Receding hairline', 'Patchy hair loss', 'Hair loss — no family history', 'Dry brittle hair', 'Dry skin', 'Acne', 'Brittle nails', 'Nail ridging', 'Slow wound healing', 'Rashes', 'Eczema'],
+    symptoms: ['Diffuse hair thinning', 'Receding hairline', 'Patchy hair loss', 'Hair loss — no family history', 'Dry brittle hair', 'Dry skin', 'Acne', 'Hirsutism — excess facial or body hair', 'Brittle nails', 'Nail ridging', 'Slow wound healing', 'Rashes', 'Eczema'],
   },
   {
     id: 'muscle_joint', label: 'Muscle & Joints', icon: 'accessibility',
@@ -25,11 +25,11 @@ export const SYMPTOM_CATEGORIES: SymptomCategory[] = [
   },
   {
     id: 'brain', label: 'Brain & Mental', icon: 'psychology',
-    symptoms: ['Brain fog', 'Poor memory', 'Difficulty concentrating', 'Word-finding difficulty', 'Mental slowness', 'Depression', 'Anxiety', 'Mood swings', 'Irritability', 'Low motivation'],
+    symptoms: ['Brain fog', 'Poor memory', 'Difficulty concentrating', 'Word-finding difficulty', 'Mental slowness', 'Depression', 'Anxiety', 'Mood swings', 'Irritability', 'Low motivation', 'New or worsening headaches', 'Migraines', 'Visual changes — vision changes'],
   },
   {
     id: 'hormones', label: 'Hormones & Mood', icon: 'monitor_heart',
-    symptoms: ['Low libido', 'Irregular periods', 'Heavy periods', 'PMS', 'Hot flashes', 'Night sweats', 'Mood swings', 'Low testosterone symptoms', 'Weight gain — hormonal pattern', 'Fertility concerns'],
+    symptoms: ['Low libido', 'Irregular periods', 'Amenorrhea — no period 3+ months', 'Heavy periods', 'PMS', 'Hot flashes', 'Night sweats', 'Galactorrhea — breast or nipple discharge', 'Mood swings', 'Low testosterone symptoms', 'Erectile dysfunction', 'Gynecomastia — male breast tissue', 'Weight gain — hormonal pattern', 'Fertility concerns — infertility'],
   },
   {
     id: 'sleep', label: 'Sleep', icon: 'bedtime',

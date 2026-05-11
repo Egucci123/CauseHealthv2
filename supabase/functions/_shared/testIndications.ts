@@ -555,7 +555,7 @@ export const TEST_INDICATIONS: TestIndication[] = [
         { kind: 'symptom_match', pattern: /\b(hirsut\w*|excess hair|acne)/i },
         // Path C — irregular cycles + insulin-resistance signal
         { kind: 'all', of: [
-          { kind: 'symptom_match', pattern: /\b(irregular cycle\w*|missed period\w*|amenorrhea)/i },
+          { kind: 'symptom_match', pattern: /\b(irregular cycle\w*|irregular period\w*|missed period\w*|amenorrhea)/i },
           { kind: 'any', of: [
             { kind: 'flag_true', flag: 'hasWeightIssues' },
             { kind: 'lab_value_between', marker: /\b(a1c|hba1c)/i, min: 5.4, max: 6.4 },
@@ -658,7 +658,7 @@ export const TEST_INDICATIONS: TestIndication[] = [
       { kind: 'age_max', value: 40 },
       { kind: 'any', of: [
         { kind: 'symptom_match', pattern: /\b(hot flash\w*|night sweat\w*|vasomotor)/i },
-        { kind: 'symptom_match', pattern: /\b(amenorrhea|missed period\w*|absent period\w*)/i },
+        { kind: 'symptom_match', pattern: /\b(amenorrhea|missed period\w*|absent period\w*|irregular period\w*)/i },
       ]},
     ],
     tests: [
@@ -678,9 +678,9 @@ export const TEST_INDICATIONS: TestIndication[] = [
       { kind: 'age_max', value: 55 },
       { kind: 'any', of: [
         { kind: 'symptom_match', pattern: /\b(hot flash\w*|night sweat\w*|vasomotor)/i },
-        { kind: 'symptom_match', pattern: /\b(insomnia|sleep disrupt\w*|night wak\w*)/i },
+        { kind: 'symptom_match', pattern: /\b(insomnia|sleep disrupt\w*|night wak\w*|waking during night|unrefreshing sleep|difficulty falling asleep)/i },
         { kind: 'symptom_match', pattern: /\b(mood swing\w*|irritab\w*)/i },
-        { kind: 'symptom_match', pattern: /\b(irregular cycle\w*|cycle chang\w*|skipped period\w*)/i },
+        { kind: 'symptom_match', pattern: /\b(irregular cycle\w*|irregular period\w*|cycle chang\w*|skipped period\w*)/i },
       ]},
     ],
     tests: [
@@ -697,7 +697,7 @@ export const TEST_INDICATIONS: TestIndication[] = [
       { kind: 'age_min', value: 32 },
       { kind: 'age_max', value: 42 },
       { kind: 'any', of: [
-        { kind: 'symptom_match',   pattern: /\b(infertil\w*|trying to conceive|ttc|cannot conceive)/i },
+        { kind: 'symptom_match',   pattern: /\b(infertil\w*|fertility concerns?|trying to conceive|ttc|cannot conceive)/i },
         { kind: 'condition_match', pattern: /\b(infertil\w*|subfertil\w*)/i },
       ]},
     ],
