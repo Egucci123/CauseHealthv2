@@ -6,6 +6,17 @@ import { useAuthStore } from '../../store/authStore';
 
 const GOALS = ['Weight Management', 'Energy Optimization', 'Autoimmune Support', 'Gut Health', 'Hormonal Balance', 'Cardiovascular Health', 'Cognitive Performance', 'Longevity', 'Athletic Recovery', 'Stress & Anxiety', 'Sleep Quality', 'Blood Sugar Control'];
 
+// Pregnancy status options shown to biological-female users. Order
+// matches the onboarding Step 1 dropdown so the experience is
+// consistent across surfaces.
+const PREGNANCY_OPTIONS: { value: string; label: string }[] = [
+  { value: 'not_pregnant',       label: 'Not pregnant, not trying' },
+  { value: 'pregnant',           label: 'Currently pregnant' },
+  { value: 'trying',             label: 'Trying to conceive (or could be pregnant)' },
+  { value: 'breastfeeding',      label: 'Breastfeeding / postpartum' },
+  { value: 'prefer_not_to_say',  label: 'Prefer not to say' },
+];
+
 export const ProfileSettings = () => {
   const { data: profile} = useProfile();
   const update = useUpdateProfile();
@@ -13,17 +24,40 @@ export const ProfileSettings = () => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [dob, setDob] = useState('');
+  const [pregnancyStatus, setPregnancyStatus] = useState('');
   const [goals, setGoals] = useState<string[]>([]);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    if (profile) { setFirstName(profile.first_name ?? ''); setLastName(profile.last_name ?? ''); setDob(profile.date_of_birth ?? ''); setGoals(profile.primary_goals ?? []); }
+    if (profile) {
+      setFirstName(profile.first_name ?? '');
+      setLastName(profile.last_name ?? '');
+      setDob(profile.date_of_birth ?? '');
+      setPregnancyStatus(profile.pregnancy_status ?? '');
+      setGoals(profile.primary_goals ?? []);
+    }
   }, [profile]);
 
   const toggleGoal = (g: string) => setGoals(p => p.includes(g) ? p.filter(x => x !== g) : [...p, g]);
 
+  const isFemale = (profile?.sex ?? '').toString().toLowerCase() === 'female';
+
   const handleSave = async () => {
-    await update.mutateAsync({ first_name: firstName, last_name: lastName, date_of_birth: dob || null, primary_goals: goals });
+    // Only write pregnancy_status when the user can answer it — female
+    // users only. The DB trigger derives is_pregnant from this column,
+    // so saving here automatically updates the rule-engine input on the
+    // next lab analysis (clinical_facts_cache is keyed on a hash that
+    // includes is_pregnant, so the cache invalidates correctly).
+    const updates: Record<string, unknown> = {
+      first_name: firstName,
+      last_name: lastName,
+      date_of_birth: dob || null,
+      primary_goals: goals,
+    };
+    if (isFemale && pregnancyStatus) {
+      updates.pregnancy_status = pregnancyStatus;
+    }
+    await update.mutateAsync(updates);
     setSaved(true); setTimeout(() => setSaved(false), 3000);
   };
 
@@ -40,7 +74,32 @@ export const ProfileSettings = () => {
         <div><label className="text-precision text-[0.65rem] uppercase tracking-widest text-clinical-stone block mb-1.5">Last Name</label><input type="text" value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Last name" className="w-full bg-clinical-cream rounded-lg px-3 py-2.5 text-body text-sm text-clinical-charcoal focus:outline-none focus:ring-1 focus:ring-primary-container/30 placeholder:text-clinical-stone/30" /></div>
       </div>
 
-      <div className="mb-6 border-b border-outline-variant/10 pb-6"><label className="text-precision text-[0.65rem] uppercase tracking-widest text-clinical-stone block mb-1.5">Date of Birth</label><input type="date" value={dob} onChange={e => setDob(e.target.value)} className="w-full bg-clinical-cream rounded-lg px-3 py-2.5 text-body text-sm text-clinical-charcoal focus:outline-none focus:ring-1 focus:ring-primary-container/30" /></div>
+      <div className="mb-5"><label className="text-precision text-[0.65rem] uppercase tracking-widest text-clinical-stone block mb-1.5">Date of Birth</label><input type="date" value={dob} onChange={e => setDob(e.target.value)} className="w-full bg-clinical-cream rounded-lg px-3 py-2.5 text-body text-sm text-clinical-charcoal focus:outline-none focus:ring-1 focus:ring-primary-container/30" /></div>
+
+      {/* Pregnancy status — biological-female users only. Drives the
+          β-hCG-first ordering, pregnancy-safe supplement filters, and
+          hormone-panel interpretation. Saving here updates is_pregnant
+          via the DB trigger; the next lab analysis flows through the
+          new rule-engine state automatically. */}
+      {isFemale && (
+        <div className="mb-6 border-b border-outline-variant/10 pb-6">
+          <label className="text-precision text-[0.65rem] uppercase tracking-widest text-clinical-stone block mb-1.5">Pregnancy Status</label>
+          <select
+            value={pregnancyStatus}
+            onChange={e => setPregnancyStatus(e.target.value)}
+            className="w-full bg-clinical-cream rounded-lg px-3 py-2.5 text-body text-sm text-clinical-charcoal focus:outline-none focus:ring-1 focus:ring-primary-container/30"
+          >
+            <option value="">Select…</option>
+            {PREGNANCY_OPTIONS.map(o => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+          <p className="text-precision text-[0.6rem] text-clinical-stone/70 mt-2 leading-relaxed">
+            Drives hormone-panel interpretation and keeps supplement recommendations pregnancy-safe. Update anytime; your next analysis will reflect the change.
+          </p>
+        </div>
+      )}
+      {!isFemale && <div className="mb-6 border-b border-outline-variant/10 pb-6" />}
 
       <div className="mb-6"><label className="text-precision text-[0.65rem] uppercase tracking-widest text-clinical-stone block mb-3">Health Goals</label>
         <div className="flex flex-wrap gap-2">{GOALS.map(g => <button key={g} onClick={() => toggleGoal(g)} className={`text-precision text-[0.65rem] uppercase tracking-wider px-3 py-1.5 transition-colors ${goals.includes(g) ? 'bg-primary-container text-white' : 'bg-clinical-cream text-clinical-stone hover:bg-[#E8E3DB]'}`} style={{ borderRadius: '2px' }}>{g}</button>)}</div>
