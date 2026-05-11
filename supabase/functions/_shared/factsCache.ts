@@ -168,7 +168,13 @@ import { buildPlan, type ClinicalFacts, type PatientInput } from './buildPlan.ts
 // medication monitoring, lipid patterns, hepatic patterns, metabolic
 // syndrome, anemia subtyping, PTH workups, hormonal baselines, PCOS,
 // fasting insulin, and early-Hashimoto's grey zone.
-export const RULE_LIBRARY_VERSION = '2026-05-12-1';
+// 2026-05-12-2: Outlier prose builder refactored to data-driven registry.
+// proseRules.ts's buildOutlierProse function had a 100-line if/else chain
+// mapping marker class → prose. Now OUTLIER_PROSE_RULES is a 12-row table;
+// the function iterates the table and falls back to a universal
+// above/below/watch generic for unknown markers. Adding prose for a new
+// marker class = ADD A ROW.
+export const RULE_LIBRARY_VERSION = '2026-05-12-2';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;

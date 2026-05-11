@@ -130,115 +130,211 @@ function buildConditionProse(c: SuspectedConditionFact): CanonicalCondition {
 // ──────────────────────────────────────────────────────────────────────
 // LAB OUTLIER ONE-LINERS — same wording on every surface
 // ──────────────────────────────────────────────────────────────────────
+// ──────────────────────────────────────────────────────────────────────
+// OUTLIER PROSE REGISTRY — one row per marker class. Adding coverage
+// for a new marker = ADD A ROW. The matcher in buildOutlierProse iterates
+// these in order; first match wins.
+//
+// Universal generic fallback at the end ensures every outlier — even
+// unknown markers — gets a sensible above/below/watch one-liner.
+// ──────────────────────────────────────────────────────────────────────
+
+interface OutlierProseRule {
+  /** Marker-name regex. First matching rule wins. */
+  marker: RegExp;
+  /** Optional flag gate (only fire for these flag states). */
+  flags?: string[];
+  /** Builds the prose pair. Receives the outlier, returns oneLiner +
+   *  what-it-means. Severity branching (e.g., ALT >70 = "2× limit")
+   *  lives inside build() — this is appropriate because it's
+   *  marker-specific clinical nuance. */
+  build: (o: LabOutlierFact) => { oneLiner: string; meaning: string };
+}
+
+const OUTLIER_PROSE_RULES: OutlierProseRule[] = [
+  {
+    marker: /^alt|sgpt|alanine/i,
+    build: (o) => {
+      const u = o.unit || '';
+      if (o.flag === 'critical_high' || (o.flag === 'high' && o.value >= 70)) {
+        return {
+          oneLiner: `ALT ${o.value} ${u} is more than 2× the upper reference limit.`,
+          meaning: `Liver enzymes this high usually mean hepatic stress — fatty liver, medication side effect, or active inflammation. Imaging + GGT clarify the cause.`,
+        };
+      }
+      return {
+        oneLiner: `ALT ${o.value} ${u} is above the lab's normal range.`,
+        meaning: `Mild ALT elevation usually reflects metabolic strain, fatty infiltration, or medication effect. Recheck at 12 weeks tracks the trajectory.`,
+      };
+    },
+  },
+  {
+    marker: /^ast|sgot|aspartate/i,
+    build: (o) => ({
+      oneLiner: `AST ${o.value} ${o.unit || ''} is above the lab's normal range.`,
+      meaning: `AST elevation alongside ALT supports hepatic origin. The AST/ALT ratio helps distinguish causes — most non-alcoholic patterns stay <1.`,
+    }),
+  },
+  {
+    marker: /triglyc/i,
+    build: (o) => {
+      const u = o.unit || '';
+      if (o.value >= 500) {
+        return {
+          oneLiner: `Triglycerides ${o.value} ${u} are in the very-high range.`,
+          meaning: `Triglycerides above 500 raise pancreatitis risk and need aggressive control. Omega-3, dietary change, and possible medication are first-line.`,
+        };
+      }
+      if (o.value >= 200) {
+        return {
+          oneLiner: `Triglycerides ${o.value} ${u} are above goal.`,
+          meaning: `Triglycerides this high usually mean insulin resistance is brewing. Omega-3 + diet + sleep typically drop them 30-40% in 12 weeks.`,
+        };
+      }
+      return {
+        oneLiner: `Triglycerides ${o.value} ${u} are mildly elevated.`,
+        meaning: `Borderline triglycerides usually respond to omega-3 + cutting refined carbs.`,
+      };
+    },
+  },
+  {
+    marker: /^ldl|ldl-c/i,
+    build: (o) => ({
+      oneLiner: `LDL ${o.value} ${o.unit || ''} is above the goal range.`,
+      meaning: `LDL elevation drives cardiovascular plaque buildup over years. ApoB + Lp(a) refine the actual risk picture beyond the bare LDL number.`,
+    }),
+  },
+  {
+    marker: /^hdl/i,
+    flags: ['low', 'critical_low'],
+    build: (o) => ({
+      oneLiner: `HDL ${o.value} ${o.unit || ''} is below the goal range.`,
+      meaning: `Low HDL is part of the metabolic-syndrome pattern. Resistance training and omega-3 typically lift it within 12-16 weeks.`,
+    }),
+  },
+  {
+    marker: /vitamin d|25.?hydroxy/i,
+    build: (o) => {
+      const u = o.unit || '';
+      if (o.value < 20) {
+        return {
+          oneLiner: `Vitamin D ${o.value} ${u} is severely deficient.`,
+          meaning: `Severe deficiency drives fatigue, mood, immune function, and bone health. D3 4000 IU/day typically raises levels 10-15 ng/mL in 12 weeks.`,
+        };
+      }
+      return {
+        oneLiner: `Vitamin D ${o.value} ${u} is in the in-range low end.`,
+        meaning: `In-range-low vitamin D contributes to fatigue, mood, and immune dysregulation. D3 4000 IU/day with breakfast typically restores in 12 weeks.`,
+      };
+    },
+  },
+  {
+    marker: /a1c|hba1c/i,
+    build: (o) => {
+      if (o.value >= 6.5) {
+        return {
+          oneLiner: `A1c ${o.value}% is in the diabetic range.`,
+          meaning: `A1c at this level suggests sustained glucose elevation. Repeat draw confirms; lifestyle + medication options follow.`,
+        };
+      }
+      if (o.value >= 5.7) {
+        return {
+          oneLiner: `A1c ${o.value}% is in the prediabetic range.`,
+          meaning: `Prediabetic A1c is reversible in most cases with lifestyle intervention. Fasting insulin + HOMA-IR identify the underlying driver.`,
+        };
+      }
+      if (o.value >= 5.4) {
+        return {
+          oneLiner: `A1c ${o.value}% is at the upper edge of normal.`,
+          meaning: `Watch-tier A1c suggests glucose handling is starting to drift. Early intervention here usually prevents progression to prediabetes.`,
+        };
+      }
+      return {
+        oneLiner: `A1c ${o.value}% is within range.`,
+        meaning: `A1c in the normal range — track at next retest.`,
+      };
+    },
+  },
+  {
+    marker: /glucose|fasting glucose/i,
+    build: (o) => ({
+      oneLiner: `Glucose ${o.value} ${o.unit || ''} is ${o.flag === 'high' ? 'above' : 'in the upper part of'} the normal range.`,
+      meaning: `Fasting glucose drift often appears before A1c does. Pair with fasting insulin for the full insulin-resistance picture.`,
+    }),
+  },
+  {
+    marker: /^rbc|red blood|hematocrit|^hct|hemoglobin\b(?!\s*a1c)|\bhgb\b/i,
+    build: (o) => ({
+      oneLiner: `${o.marker} ${o.value} ${o.unit || ''} is above the normal range.`,
+      meaning: `Elevated red-cell markers can mean dehydration (concentrating the blood), nocturnal low oxygen, or a primary blood disorder — workup distinguishes them.`,
+    }),
+  },
+  {
+    marker: /ferritin/i,
+    flags: ['low', 'critical_low'],
+    build: (o) => ({
+      oneLiner: `Ferritin ${o.value} ${o.unit || ''} is in the in-range low end.`,
+      meaning: `Low ferritin often drives fatigue, hair shedding, and restless legs before hemoglobin drops. Iron repletion + cause workup are next.`,
+    }),
+  },
+  {
+    marker: /hs[\s-]?crp|c[\s-]?reactive/i,
+    build: (o) => {
+      const u = o.unit || '';
+      if (o.value > 3.0) {
+        return {
+          oneLiner: `hs-CRP ${o.value} ${u} is in the high cardiovascular-risk range.`,
+          meaning: `Sustained high-sensitivity CRP signals systemic inflammation — independently raises CV risk and amplifies metabolic concerns.`,
+        };
+      }
+      return {
+        oneLiner: `hs-CRP ${o.value} ${u} is mildly elevated.`,
+        meaning: `Low-grade inflammation usually responds to omega-3, sleep, and lower refined-carb intake within 8-12 weeks.`,
+      };
+    },
+  },
+  {
+    marker: /albumin/i,
+    flags: ['high', 'critical_high'],
+    build: (o) => ({
+      oneLiner: `Albumin ${o.value} ${o.unit || ''} is above the normal range.`,
+      meaning: `Albumin doesn't rise physiologically — when it reads high, the most likely explanation is plasma concentration from dehydration.`,
+    }),
+  },
+];
+
 function buildOutlierProse(o: LabOutlierFact): CanonicalOutlier {
-  const flag = o.flag;
   const m = o.marker;
   const v = o.value;
   const u = o.unit || '';
 
-  // Universal templates per (marker family, flag).
-  let oneLiner: string;
-  let meaning: string;
-
-  if (/^alt|sgpt|alanine/i.test(m)) {
-    if (flag === 'critical_high' || (flag === 'high' && v >= 70)) {
-      oneLiner = `ALT ${v} ${u} is more than 2× the upper reference limit.`;
-      meaning = `Liver enzymes this high usually mean hepatic stress — fatty liver, medication side effect, or active inflammation. Imaging + GGT clarify the cause.`;
-    } else {
-      oneLiner = `ALT ${v} ${u} is above the lab's normal range.`;
-      meaning = `Mild ALT elevation usually reflects metabolic strain, fatty infiltration, or medication effect. Recheck at 12 weeks tracks the trajectory.`;
-    }
-  } else if (/^ast|sgot|aspartate/i.test(m)) {
-    oneLiner = `AST ${v} ${u} is above the lab's normal range.`;
-    meaning = `AST elevation alongside ALT supports hepatic origin. The AST/ALT ratio helps distinguish causes — most non-alcoholic patterns stay <1.`;
-  } else if (/triglyc/i.test(m)) {
-    if (v >= 500) {
-      oneLiner = `Triglycerides ${v} ${u} are in the very-high range.`;
-      meaning = `Triglycerides above 500 raise pancreatitis risk and need aggressive control. Omega-3, dietary change, and possible medication are first-line.`;
-    } else if (v >= 200) {
-      oneLiner = `Triglycerides ${v} ${u} are above goal.`;
-      meaning = `Triglycerides this high usually mean insulin resistance is brewing. Omega-3 + diet + sleep typically drop them 30-40% in 12 weeks.`;
-    } else {
-      oneLiner = `Triglycerides ${v} ${u} are mildly elevated.`;
-      meaning = `Borderline triglycerides usually respond to omega-3 + cutting refined carbs.`;
-    }
-  } else if (/^ldl|ldl-c/i.test(m)) {
-    oneLiner = `LDL ${v} ${u} is above the goal range.`;
-    meaning = `LDL elevation drives cardiovascular plaque buildup over years. ApoB + Lp(a) refine the actual risk picture beyond the bare LDL number.`;
-  } else if (/^hdl/i.test(m) && (flag === 'low' || flag === 'critical_low')) {
-    oneLiner = `HDL ${v} ${u} is below the goal range.`;
-    meaning = `Low HDL is part of the metabolic-syndrome pattern. Resistance training and omega-3 typically lift it within 12-16 weeks.`;
-  } else if (/vitamin d|25.?hydroxy/i.test(m)) {
-    if (v < 20) {
-      oneLiner = `Vitamin D ${v} ${u} is severely deficient.`;
-      meaning = `Severe deficiency drives fatigue, mood, immune function, and bone health. D3 4000 IU/day typically raises levels 10-15 ng/mL in 12 weeks.`;
-    } else {
-      oneLiner = `Vitamin D ${v} ${u} is in the in-range low end.`;
-      meaning = `In-range-low vitamin D contributes to fatigue, mood, and immune dysregulation. D3 4000 IU/day with breakfast typically restores in 12 weeks.`;
-    }
-  } else if (/a1c|hba1c/i.test(m)) {
-    if (v >= 6.5) {
-      oneLiner = `A1c ${v}% is in the diabetic range.`;
-      meaning = `A1c at this level suggests sustained glucose elevation. Repeat draw confirms; lifestyle + medication options follow.`;
-    } else if (v >= 5.7) {
-      oneLiner = `A1c ${v}% is in the prediabetic range.`;
-      meaning = `Prediabetic A1c is reversible in most cases with lifestyle intervention. Fasting insulin + HOMA-IR identify the underlying driver.`;
-    } else if (v >= 5.4) {
-      oneLiner = `A1c ${v}% is at the upper edge of normal.`;
-      meaning = `Watch-tier A1c suggests glucose handling is starting to drift. Early intervention here usually prevents progression to prediabetes.`;
-    } else {
-      oneLiner = `A1c ${v}% is within range.`;
-      meaning = `A1c in the normal range — track at next retest.`;
-    }
-  } else if (/glucose|fasting glucose/i.test(m)) {
-    oneLiner = `Glucose ${v} ${u} is ${flag === 'high' ? 'above' : 'in the upper part of'} the normal range.`;
-    meaning = `Fasting glucose drift often appears before A1c does. Pair with fasting insulin for the full insulin-resistance picture.`;
-  } else if (/^rbc|red blood/i.test(m) || /hematocrit|^hct/i.test(m) || /hemoglobin\b(?!\s*a1c)/i.test(m) || /\bhgb\b/i.test(m)) {
-    oneLiner = `${m} ${v} ${u} is above the normal range.`;
-    meaning = `Elevated red-cell markers can mean dehydration (concentrating the blood), nocturnal low oxygen, or a primary blood disorder — workup distinguishes them.`;
-  } else if (/ferritin/i.test(m) && (flag === 'low' || flag === 'critical_low')) {
-    oneLiner = `Ferritin ${v} ${u} is in the in-range low end.`;
-    meaning = `Low ferritin often drives fatigue, hair shedding, and restless legs before hemoglobin drops. Iron repletion + cause workup are next.`;
-  } else if (/hs[\s-]?crp|c[\s-]?reactive/i.test(m)) {
-    if (v > 3.0) {
-      oneLiner = `hs-CRP ${v} ${u} is in the high cardiovascular-risk range.`;
-      meaning = `Sustained high-sensitivity CRP signals systemic inflammation — independently raises CV risk and amplifies metabolic concerns.`;
-    } else {
-      oneLiner = `hs-CRP ${v} ${u} is mildly elevated.`;
-      meaning = `Low-grade inflammation usually responds to omega-3, sleep, and lower refined-carb intake within 8-12 weeks.`;
-    }
-  } else if (/albumin/i.test(m) && flag === 'high') {
-    oneLiner = `Albumin ${v} ${u} is above the normal range.`;
-    meaning = `Albumin doesn't rise physiologically — when it reads high, the most likely explanation is plasma concentration from dehydration.`;
-  } else {
-    // Universal fallback. Works for any marker.
-    //
-    // BUG-FIX (2026-05-10): the previous fallback treated any flag that
-    // didn't contain "high" as "below the normal range" — which mislabeled
-    // 'watch' values (within standard range but in the educational watch
-    // tier) as below-range. Symptom: TSH 2.22 (upper-normal-watch) showed
-    // as both "below the normal range" (here) and "upper-normal" (in
-    // priority_findings) on the same page.
-    //
-    // Now distinguishes three flag classes:
-    //   • critical_high / high  → "above the lab's normal range"
-    //   • critical_low / low    → "below the lab's normal range"
-    //   • watch                  → "within the standard range but in the
-    //                              watch tier" (no above/below claim)
-    if (flag === 'critical_high' || flag === 'high') {
-      oneLiner = `${m} ${v} ${u} is above the lab's normal range.`;
-      meaning = `${m} above-range. Discuss with your PCP; pair with a retest at 12 weeks if the cause is correctable.`;
-    } else if (flag === 'critical_low' || flag === 'low') {
-      oneLiner = `${m} ${v} ${u} is below the lab's normal range.`;
-      meaning = `${m} below-range. Discuss with your PCP; pair with a retest at 12 weeks if the cause is correctable.`;
-    } else {
-      // 'watch' or anything else — within standard range but flagged.
-      oneLiner = `${m} ${v} ${u} is within the standard reference range but in our educational watch tier.`;
-      meaning = `Watch-tier ${m}. Not out of range — just a value worth tracking and discussing with your PCP at your next visit.`;
-    }
+  // Try registry rules in order. First match wins.
+  for (const rule of OUTLIER_PROSE_RULES) {
+    if (!rule.marker.test(m)) continue;
+    if (rule.flags && !rule.flags.includes(o.flag)) continue;
+    const { oneLiner, meaning } = rule.build(o);
+    return { marker: m, flag: o.flag, one_liner: oneLiner.slice(0, 160), what_it_means: meaning.slice(0, 240) };
   }
 
-  return { marker: m, flag, one_liner: oneLiner.slice(0, 160), what_it_means: meaning.slice(0, 240) };
+  // Universal generic fallback. Works for any marker.
+  // Distinguishes three flag classes:
+  //   • critical_high / high  → "above the lab's normal range"
+  //   • critical_low / low    → "below the lab's normal range"
+  //   • watch                  → "within the standard range but in the
+  //                              watch tier" (no above/below claim)
+  let oneLiner: string;
+  let meaning: string;
+  if (o.flag === 'critical_high' || o.flag === 'high') {
+    oneLiner = `${m} ${v} ${u} is above the lab's normal range.`;
+    meaning = `${m} above-range. Discuss with your PCP; pair with a retest at 12 weeks if the cause is correctable.`;
+  } else if (o.flag === 'critical_low' || o.flag === 'low') {
+    oneLiner = `${m} ${v} ${u} is below the lab's normal range.`;
+    meaning = `${m} below-range. Discuss with your PCP; pair with a retest at 12 weeks if the cause is correctable.`;
+  } else {
+    oneLiner = `${m} ${v} ${u} is within the standard reference range but in our educational watch tier.`;
+    meaning = `Watch-tier ${m}. Not out of range — just a value worth tracking and discussing with your PCP at your next visit.`;
+  }
+  return { marker: m, flag: o.flag, one_liner: oneLiner.slice(0, 160), what_it_means: meaning.slice(0, 240) };
 }
 
 // ──────────────────────────────────────────────────────────────────────
