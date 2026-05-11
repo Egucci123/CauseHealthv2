@@ -38,10 +38,10 @@ export const ArbitrationConsentScreen = ({ stepLabel, onAccepted }: Props) => (
           You have <strong>30 days from creating your account</strong> to opt
           out of arbitration by emailing{' '}
           <a
-            href="mailto:legal@causehealth.app?subject=Arbitration%20Opt-Out"
+            href="mailto:support@causehealth.app?subject=Arbitration%20Opt-Out"
             className="text-primary-container underline hover:text-primary-container/80"
           >
-            legal@causehealth.app
+            support@causehealth.app
           </a>{' '}
           with the subject line &quot;Arbitration Opt-Out.&quot; If you opt out,
           your other rights under the Terms remain in full force.

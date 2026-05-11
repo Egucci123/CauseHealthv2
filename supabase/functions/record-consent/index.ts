@@ -279,7 +279,7 @@ async function applyEligibilitySideEffects(
     }
 
     case 'arbitration_optout': {
-      // User emailed legal@causehealth.app with subject "Arbitration
+      // User emailed support@causehealth.app with subject "Arbitration
       // Opt-Out" within their 30-day window. consent_log row is the
       // legal record; mirror flags to user_eligibility for fast lookup.
       patch.arbitration_opted_out = true;
