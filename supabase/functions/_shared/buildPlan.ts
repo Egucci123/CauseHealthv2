@@ -208,13 +208,25 @@ export function buildPlan(input: PatientInput): ClinicalFacts {
   });
 
   // 5. Supplement candidates (depletions + lab outliers → recommendations)
+  //
+  // SEVERITY GATING: symptom-driven supplement rules use the FILTERED
+  // severeSymptomsLower string (severity >= 3 only). A user who marked
+  // joint pain at severity 1 doesn't need a curcumin recommendation; a
+  // user who marked it at severity 5 does. Mid-tier threshold (3 of 5)
+  // matches the established symptomTestMap.minSeverity default of 4 of
+  // 10. The 'symptomsLower' field stays unfiltered for other consumers.
+  const severeSymptomsLower = input.symptomsList
+    .filter(s => (s.severity ?? 0) >= 3)
+    .map(s => `${s.name} (${s.severity}/5)`)
+    .join(' ')
+    .toLowerCase();
   const supplementCandidates = buildSupplementCandidates({
     age: input.age,
     sex: sexNormalized,
     depletions,
     outliers,
     conditionsLower: input.conditionsLower,
-    symptomsLower: input.symptomsLower,
+    symptomsLower: severeSymptomsLower,
     supplementsLower: input.supplementsLower,
     isPregnant: input.isPregnant,
     hasShellfishAllergy: input.hasShellfishAllergy,
