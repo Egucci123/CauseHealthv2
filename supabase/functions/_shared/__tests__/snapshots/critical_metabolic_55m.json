@@ -1,8 +1,18 @@
 {
   "tests": [
     {
+      "name": "Comprehensive Metabolic Panel (CMP)",
+      "icd10": "Z00.00",
+      "priority": "high"
+    },
+    {
       "name": "Complete Blood Count (CBC) with Differential",
       "icd10": "D64.9",
+      "priority": "high"
+    },
+    {
+      "name": "Lipid Panel",
+      "icd10": "E78.5",
       "priority": "high"
     },
     {

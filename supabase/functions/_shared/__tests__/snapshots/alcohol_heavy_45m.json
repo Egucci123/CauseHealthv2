@@ -11,6 +11,11 @@
       "priority": "high"
     },
     {
+      "name": "Lipid Panel",
+      "icd10": "E78.5",
+      "priority": "high"
+    },
+    {
       "name": "Hemoglobin A1c",
       "icd10": "R73.09",
       "priority": "high"
@@ -83,11 +88,6 @@
     {
       "name": "PSA (Prostate-Specific Antigen)",
       "icd10": "Z12.5",
-      "priority": "moderate"
-    },
-    {
-      "name": "Testosterone Panel (Total T + Free T + Bioavailable T + SHBG + Estradiol + LH + FSH)",
-      "icd10": "E29.1",
       "priority": "moderate"
     }
   ],

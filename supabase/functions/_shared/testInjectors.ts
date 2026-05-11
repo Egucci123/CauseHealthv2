@@ -91,13 +91,41 @@ export function buildContextFlags(ctx: InjectionContext) {
     b12DrawnHealthy: drawnHealthy(/vitamin b.?12|^b12|cobalamin/i),
     folateDrawnHealthy: drawnHealthy(/folate/i),
     vitDDrawnHealthy: drawnHealthy(/25.?hydroxy.*vitamin d|vitamin d.*25/i),
-    cmpDrawn: drawn(/^bun:|^creatinine|^sodium|^potassium|^chloride|^calcium\b|^bilirubin|alanine.*amino|aspartate.*amino|alkaline phosphatase/i),
+    // CMP requires at least 3 of the 14 canonical components AND must
+    // include at least one electrolyte (Na/K/Cl). A single Creatinine
+    // or single Bilirubin does NOT constitute a real CMP — those
+    // patients should still get the full CMP recommendation. Same
+    // pattern as the CBC fix (2026-05-12-6). Fixed 2026-05-12-16.
+    cmpDrawn: (() => {
+      const components = [
+        /^bun\b/i, /^creatinine\b/i, /^sodium\b/i, /^potassium\b/i,
+        /^chloride\b/i, /^co2\b|^bicarbonate\b/i, /^glucose\b/i,
+        /^calcium\b/i, /^total\s*protein\b/i, /^albumin\b/i,
+        /^bilirubin\b|^total\s*bilirubin\b/i, /alanine.*amino|\balt\b/i,
+        /aspartate.*amino|\bast\b/i, /alkaline\s*phosphatase|\balp\b/i,
+      ];
+      const electrolytes = [/^sodium\b/i, /^potassium\b/i, /^chloride\b/i];
+      const drawnCount = components.filter(re => drawn(re)).length;
+      const electrolyteDrawn = electrolytes.some(re => drawn(re));
+      return drawnCount >= 3 && electrolyteDrawn;
+    })(),
     // CBC requires BOTH WBC AND Platelets to be considered drawn. A
     // standalone Hgb/Hct (common in pregnancy or anemia-only screening)
     // does NOT constitute a real CBC — those scenarios should still
     // trigger the full CBC recommendation. (2026-05-12-6 fix.)
     cbcDrawn: drawn(/^wbc\b|white blood cell/i) && drawn(/^platelets?\b|\bplt\b/i),
-    lipidDrawn: drawn(/cholesterol|triglyceride|ldl|hdl|vldl/i),
+    // Lipid Panel requires AT LEAST 3 of: Total Cholesterol, LDL, HDL,
+    // Triglycerides. A single LDL or single TG isn't a real lipid panel.
+    // Same pattern as CBC/CMP fixes. Fixed 2026-05-12-16.
+    lipidDrawn: (() => {
+      const parts = [
+        /total\s*cholesterol|^cholesterol\b/i,
+        /\bldl\b/i,
+        /\bhdl\b/i,
+        /triglyceride/i,
+      ];
+      return parts.filter(re => drawn(re)).length >= 3;
+    })(),
     a1cDrawn: drawn(/hemoglobin a1c|hba1c|^a1c/i),
     hsCrpDrawn: drawn(/hs[\s-]?crp|c[\s-]?reactive/i),
     hsCrpDrawnHealthy: drawnHealthy(/hs[\s-]?crp|c[\s-]?reactive/i),

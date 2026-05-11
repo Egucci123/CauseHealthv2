@@ -11,6 +11,11 @@
       "priority": "high"
     },
     {
+      "name": "Lipid Panel",
+      "icd10": "E78.5",
+      "priority": "high"
+    },
+    {
       "name": "Hemoglobin A1c",
       "icd10": "R73.09",
       "priority": "high"
