@@ -792,9 +792,21 @@ export const INDICATIONS: Indication[] = [
 
   // ── Conditions ─────────────────────────────────────────────────────
   {
+    // IBD (UC / Crohn) — the standard IBD supplement stack. Diagnosed
+    // patients deserve the full GI-axis support, not just L-Glutamine.
+    // Universal across both diseases (UC + Crohn share core mechanisms).
+    // Critical priority — IBD is an active chronic disease driving real
+    // morbidity; supplements should not be cap-cut by lipid-pattern stack.
     id: 'ibd',
-    triggers: [{ kind: 'condition', pattern: /\b(uc|ulcerative colitis|crohn|ibd)\b/i }],
-    supplements: [{ key: 'l_glutamine', priority: 'high', sourcedFrom: 'disease_mechanism' }],
+    triggers: [{ kind: 'condition', pattern: /\b(uc|ulcerative colitis|crohn|ibd|inflammatory bowel)\b/i }],
+    supplements: [
+      { key: 'l_glutamine',      priority: 'critical', sourcedFrom: 'disease_mechanism', whyShort: 'Primary enterocyte fuel — supports mucosal repair in IBD remission' },
+      { key: 'probiotic',        priority: 'critical', sourcedFrom: 'disease_mechanism', whyShort: 'Multi-strain probiotic — IBD-microbiome support; VSL#3-style formulations have UC remission evidence' },
+      { key: 'curcumin',         priority: 'critical', sourcedFrom: 'disease_mechanism', whyShort: 'Curcumin reduces colonic inflammation in mild-moderate UC trials' },
+      { key: 'vit_d3_4000',      priority: 'high',     sourcedFrom: 'disease_mechanism', whyShort: 'IBD patients have 60% deficiency rate; Vit D modulates Th17/Treg balance' },
+      { key: 'omega3_2000',      priority: 'high',     sourcedFrom: 'disease_mechanism', whyShort: 'EPA/DHA reduce mucosal prostaglandin synthesis' },
+      { key: 'vit_b12_methyl',   priority: 'moderate', sourcedFrom: 'disease_mechanism', whyShort: 'Terminal-ileum disease + biologic use → B12 malabsorption risk' },
+    ],
   },
   {
     id: 'pcos',
@@ -1092,7 +1104,42 @@ export function evaluateIndications(
     return sa - sb;
   });
 
-  return out.slice(0, topN);
+  // CATEGORY DIVERSIFIER (Evan audit, 2026-05-12-15):
+  // Without this, a patient with multiple active patterns in one
+  // category (e.g., lipid-drift + NAFLD + IR all → liver_metabolic
+  // supplements) sees the top-6 dominated by that category, while
+  // genuinely-needed supplements in other categories (gut healing
+  // for IBD patient, etc.) get cap-cut.
+  //
+  // Rule: in the top-N, no single category may exceed MAX_PER_CATEGORY
+  // unless filling the rest of the slots is impossible. Pass 1 picks
+  // up to MAX_PER_CATEGORY from each category in priority order. Pass 2
+  // backfills any remaining slots from the leftovers.
+  const MAX_PER_CATEGORY = Math.max(1, Math.floor(topN / 2)); // 3 of 6
+  const balanced: SupplementCandidate[] = [];
+  const categoryCount: Record<string, number> = {};
+  const leftovers: SupplementCandidate[] = [];
+
+  // Pass 1 — respect category cap
+  for (const c of out) {
+    const cat = c.category ?? 'unspecified';
+    if ((categoryCount[cat] ?? 0) < MAX_PER_CATEGORY) {
+      balanced.push(c);
+      categoryCount[cat] = (categoryCount[cat] ?? 0) + 1;
+      if (balanced.length >= topN) break;
+    } else {
+      leftovers.push(c);
+    }
+  }
+  // Pass 2 — backfill remaining slots from leftovers
+  if (balanced.length < topN) {
+    for (const c of leftovers) {
+      balanced.push(c);
+      if (balanced.length >= topN) break;
+    }
+  }
+
+  return balanced;
 }
 
 // ──────────────────────────────────────────────────────────────────────
