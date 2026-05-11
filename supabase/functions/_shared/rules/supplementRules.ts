@@ -699,6 +699,179 @@ export function buildSupplementCandidates(input: Input): SupplementCandidate[] {
     // Skip iodine for safety; addressed by Doctor Prep test orders instead.
   }
 
+  // PMS / cramps / breast tenderness (female-only, pregnancy-gated)
+  if (input.sex === 'female' && /(pms|premenstrual|cramps|painful period|breast tender|cyclical mood)/i.test(input.symptomsLower)) {
+    if (!seen.has('mg_glycinate')) {
+      push({
+        emoji: '💊', nutrient: 'Magnesium Glycinate', form: 'Capsule',
+        dose: '300 mg/day', timing: 'Evening',
+        whyShort: 'PMS / cramp reduction',
+        why: 'Magnesium 300 mg/day reduced PMS severity and dysmenorrhea pain in placebo-controlled trials (Walker 1998, Quaranta 2007). Pregnancy-safe at this dose.',
+        category: 'sleep_stress', priority: 'moderate', sourcedFrom: 'symptom_pattern',
+        alternatives: [],
+      });
+    }
+    push({
+      emoji: '💊', nutrient: 'Vitamin B6 (P5P)', form: 'Capsule',
+      dose: '50 mg/day', timing: 'Morning with food',
+      whyShort: 'PMS mood + bloating',
+      why: 'B6 50 mg/day improved PMS mood and breast tenderness in meta-analysis (Wyatt 1999). P5P is the active form, no conversion needed.',
+      category: 'nutrient_repletion', priority: 'moderate', sourcedFrom: 'symptom_pattern',
+      alternatives: [],
+    });
+    push({
+      emoji: '🌿', nutrient: 'Vitex (Chasteberry)', form: 'Standardized extract',
+      dose: '20–40 mg/day', timing: 'Morning, daily for 3+ months',
+      whyShort: 'PMS / luteal-phase support',
+      why: 'Vitex (Vitex agnus-castus) reduced PMS symptom scores 50%+ vs placebo (Schellenberg 2001). Takes 2–3 cycles for full effect. Pregnancy-contraindicated.',
+      category: 'condition_therapy', priority: 'moderate', sourcedFrom: 'symptom_pattern',
+      alternatives: [],
+    });
+  }
+
+  // Hot flashes / night sweats (female-only, pregnancy-gated for botanicals)
+  if (input.sex === 'female' && /(hot flash|night sweat|vasomotor)/i.test(input.symptomsLower)) {
+    push({
+      emoji: '🌿', nutrient: 'Black Cohosh', form: 'Standardized extract',
+      dose: '40 mg/day', timing: 'Morning with food',
+      whyShort: 'Hot-flash frequency reduction',
+      why: 'Black cohosh 40 mg/day reduced hot-flash frequency 26% vs placebo (Wuttke 2003 meta-analysis). Pregnancy- and breastfeeding-contraindicated.',
+      category: 'condition_therapy', priority: 'moderate', sourcedFrom: 'symptom_pattern',
+      alternatives: [
+        { name: 'Sage extract', form: 'Capsule', note: 'Alternative botanical for night sweats; less studied.' },
+      ],
+    });
+    push({
+      emoji: '💊', nutrient: 'Vitamin E', form: 'Mixed tocopherols softgel',
+      dose: '400 IU/day', timing: 'With largest meal',
+      whyShort: 'Mild hot-flash reduction',
+      why: 'Vitamin E 400 IU/day modestly reduced hot-flash frequency in menopause trials (Ziaei 2007). Pregnancy-safe at this dose.',
+      category: 'nutrient_repletion', priority: 'moderate', sourcedFrom: 'symptom_pattern',
+      alternatives: [],
+    });
+  }
+
+  // Acne (any sex; adds hormonal-acne support for female)
+  if (/(acne|breakouts|pimples|cystic acne)/i.test(input.symptomsLower)) {
+    push({
+      emoji: '💊', nutrient: 'Zinc Picolinate', form: 'Capsule',
+      dose: '30 mg/day', timing: 'Evening with food',
+      whyShort: 'Acne severity reduction',
+      why: 'Zinc 30 mg/day matched moderate-dose antibiotics for inflammatory acne in head-to-head trials (Dreno 2001); supports skin barrier and reduces sebum production.',
+      category: 'nutrient_repletion', priority: 'moderate', sourcedFrom: 'symptom_pattern',
+      alternatives: [],
+    });
+    if (!seen.has('omega3') && !input.hasShellfishAllergy) {
+      push({
+        emoji: '🐟', nutrient: 'Omega-3 (EPA/DHA)', form: 'Triglyceride-form softgel',
+        dose: '1500 mg/day', timing: 'With largest meal',
+        whyShort: 'Anti-inflammatory for acne',
+        why: 'Omega-3 reduces inflammatory acne lesions vs placebo (Jung 2014); modulates skin prostaglandin balance.',
+        category: 'inflammation_cardio', priority: 'moderate', sourcedFrom: 'symptom_pattern',
+        alternatives: [
+          { name: 'Algal omega-3', form: 'Softgel', note: 'For shellfish/fish allergy.' },
+        ],
+      });
+    }
+    // Female-specific hormonal acne support — DIM (preg-gated for safety)
+    if (input.sex === 'female') {
+      push({
+        emoji: '🌿', nutrient: 'DIM (Diindolylmethane)', form: 'Capsule',
+        dose: '100 mg/day', timing: 'Morning with food',
+        whyShort: 'Estrogen-metabolism support for hormonal acne',
+        why: 'DIM shifts estrogen metabolism toward the 2-hydroxylation pathway and is used clinically for hormonal acne. Pregnancy-contraindicated.',
+        category: 'condition_therapy', priority: 'moderate', sourcedFrom: 'symptom_pattern',
+        alternatives: [],
+      });
+    }
+  }
+
+  // Bloating / gas / heaviness after meals
+  if (/(bloat|\bgas\b|heavy after meal|distended|abdominal distention)/i.test(input.symptomsLower)) {
+    push({
+      emoji: '💊', nutrient: 'Digestive Enzymes (full-spectrum)', form: 'Capsule',
+      dose: '1 capsule per meal', timing: 'With each main meal',
+      whyShort: 'Improve digestion + reduce bloating',
+      why: 'Broad-spectrum digestive enzymes (amylase, lipase, protease + DPP-IV) reduce post-prandial bloating in functional-dyspepsia trials. Generally well tolerated.',
+      category: 'gut_healing', priority: 'moderate', sourcedFrom: 'symptom_pattern',
+      alternatives: [
+        { name: 'Betaine HCl', form: 'Capsule', note: 'For low-stomach-acid bloating; not for users on PPIs or with ulcer history.' },
+      ],
+    });
+    push({
+      emoji: '🌿', nutrient: 'Ginger Root Extract', form: 'Capsule',
+      dose: '500 mg twice daily', timing: 'With meals',
+      whyShort: 'Gastric motility + nausea support',
+      why: 'Ginger accelerates gastric emptying and reduces bloating + nausea in functional-dyspepsia and IBS trials. Pregnancy-safe at this dose.',
+      category: 'gut_healing', priority: 'moderate', sourcedFrom: 'symptom_pattern',
+      alternatives: [],
+    });
+  }
+
+  // Acid reflux / heartburn / GERD-like
+  if (/(reflux|heartburn|gerd|acid regurg|throat burn)/i.test(input.symptomsLower)) {
+    push({
+      emoji: '🌿', nutrient: 'DGL (Deglycyrrhizinated Licorice)', form: 'Chewable tablet',
+      dose: '380 mg, 15 min before meals', timing: '2–3 times daily before meals',
+      whyShort: 'Mucosal protection for reflux',
+      why: 'DGL supports esophageal and gastric mucosal protection without the blood-pressure risk of full licorice. Used clinically as an adjunct to acid-suppression.',
+      category: 'gut_healing', priority: 'moderate', sourcedFrom: 'symptom_pattern',
+      alternatives: [
+        { name: 'Slippery Elm', form: 'Capsule', note: 'Mucilaginous fiber — soothes mucosa.' },
+      ],
+    });
+    push({
+      emoji: '💊', nutrient: 'Melatonin', form: 'Sublingual tablet',
+      dose: '3 mg at bedtime', timing: 'Nightly, 30 min before bed',
+      whyShort: 'Reduce nocturnal acid reflux',
+      why: 'Melatonin reduced GERD symptom scores in head-to-head trials with omeprazole (Pereira 2006). Pregnancy-safe at this dose.',
+      category: 'gut_healing', priority: 'moderate', sourcedFrom: 'symptom_pattern',
+      alternatives: [],
+    });
+  }
+
+  // Low libido (any sex)
+  if (/(low libido|low sex drive|sexual dysfunction|loss of interest in sex)/i.test(input.symptomsLower)) {
+    push({
+      emoji: '🌿', nutrient: 'Maca (Lepidium meyenii)', form: 'Powder or capsule',
+      dose: '1500–3000 mg/day', timing: 'Morning',
+      whyShort: 'Libido + sexual function support',
+      why: 'Maca improved subjective libido in placebo-controlled trials across both sexes (Shin 2010). Generally well tolerated; pregnancy data limited so pregnancy-cautious.',
+      category: 'condition_therapy', priority: 'moderate', sourcedFrom: 'symptom_pattern',
+      alternatives: [],
+    });
+  }
+
+  // Allergies / hives / seasonal rhinitis
+  if (/(allergies|seasonal allerg|hives|hay fever|rhinitis|allergic)/i.test(input.symptomsLower)) {
+    push({
+      emoji: '💊', nutrient: 'Quercetin', form: 'Capsule',
+      dose: '500 mg twice daily', timing: 'With meals',
+      whyShort: 'Mast-cell stabilization',
+      why: 'Quercetin stabilizes mast cells and reduces histamine release; used clinically for allergy support. Pregnancy data limited — use cautiously.',
+      category: 'inflammation_cardio', priority: 'moderate', sourcedFrom: 'symptom_pattern',
+      alternatives: [
+        { name: 'Stinging Nettle', form: 'Capsule', note: 'Alternative natural antihistamine.' },
+      ],
+    });
+  }
+
+  // Frequent infections / always sick
+  if (/(frequent infection|sick often|always sick|low immun|catch.*cold)/i.test(input.symptomsLower)) {
+    if (!seen.has('vit_d3_4000')) {
+      push(vitaminDCandidate('symptom_pattern',
+        'Frequent infections — vitamin D supports immune function; deficiency strongly associated with respiratory infection frequency.'));
+    }
+    push({
+      emoji: '💊', nutrient: 'Zinc Picolinate', form: 'Capsule',
+      dose: '15 mg/day', timing: 'Evening with food',
+      whyShort: 'Immune-function support',
+      why: 'Zinc is a cofactor for >300 enzymes including those critical for T-cell function. Daily 15 mg shortens cold duration in supplementation trials.',
+      category: 'nutrient_repletion', priority: 'moderate', sourcedFrom: 'symptom_pattern',
+      alternatives: [],
+    });
+  }
+
   // Stress / burnout / overwhelm → adaptogen (pregnancy-gated)
   if (/(stress|burnout|overwhelm|anxious thoughts)/i.test(input.symptomsLower) && !seen.has('ashwagandha')) {
     push({
@@ -736,7 +909,7 @@ export function buildSupplementCandidates(input: Input): SupplementCandidate[] {
     // uterine-contraction risk, hormonal-axis effects unsafe in
     // pregnancy, or unstudied safety profiles.
     if (input.isPregnant) {
-      const pregContra = /(kava|comfrey|ashwagandha|berberine|black cohosh|dong quai|saw palmetto|red\s+yeast\s+rice|monacolin|bergamot|niacin|nicotinic\s+acid|high.?dose\s+vitamin\s+a|retinol)/i;
+      const pregContra = /(kava|comfrey|ashwagandha|berberine|black cohosh|dong quai|saw palmetto|red\s+yeast\s+rice|monacolin|bergamot|niacin|nicotinic\s+acid|high.?dose\s+vitamin\s+a|retinol|chasteberry|vitex|\bdim\b|diindolylmethane|sage|maca|quercetin)/i;
       if (pregContra.test(c.nutrient)) return false;
     }
     return true;

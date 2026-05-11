@@ -115,7 +115,7 @@ import { buildPlan, type ClinicalFacts, type PatientInput } from './buildPlan.ts
 // 2026-05-11-2: Expected-findings suppressor for known conditions
 //   (Gilbert → bilirubin, CKD → eGFR, T1D/T2D → A1c)
 // 2026-05-11-1: Sex-gate on hormonal-axis system-drift patterns
-export const RULE_LIBRARY_VERSION = '2026-05-11-8';
+export const RULE_LIBRARY_VERSION = '2026-05-11-9';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
