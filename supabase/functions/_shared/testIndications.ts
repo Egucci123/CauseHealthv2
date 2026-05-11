@@ -774,6 +774,46 @@ export const TEST_INDICATIONS: TestIndication[] = [
     tests: [{ key: 'fasting_insulin_homa_ir', whyShort: 'Weight resistance reported — fasting insulin catches hyperinsulinemia driving the resistance', trigger: 'c' }],
   },
 
+  // ── IBD-concern workup — chronic GI + malabsorption signal ───────
+  //
+  // Chronic diarrhea or loose stools with one or more red flags
+  // (weight loss, low ferritin, low albumin, persistent abdominal
+  // pain ≥ moderate) → fecal calprotectin is the key IBD vs IBS
+  // discriminator. Universal across both sexes.
+  {
+    id: 'fecal_calprotectin_ibd_concern',
+    triggers: [
+      { kind: 'symptom_match', pattern: /\b(diarrhea|loose stool\w*)/i },
+      { kind: 'any', of: [
+        { kind: 'symptom_match', pattern: /\b(unexplained weight loss|weight loss)/i },
+        { kind: 'symptom_match', pattern: /\b(abdominal pain)/i },
+        { kind: 'lab_value_op', marker: /^ferritin/i, op: '<', value: 30 },
+        { kind: 'lab_value_op', marker: /^albumin/i, op: '<', value: 3.5 },
+      ]},
+    ],
+    tests: [{ key: 'fecal_calprotectin', whyShort: 'Chronic diarrhea + weight loss / low ferritin / low albumin / abdominal pain — fecal calprotectin is the key IBD-vs-IBS discriminator (<50 = IBS; >250 = active IBD)', trigger: 'b' }],
+  },
+
+  // ── Autonomic / POTS workup — long-COVID-style cluster ───────────
+  //
+  // Heart palpitations + dizziness on standing + (exercise
+  // intolerance OR brain fog) → autonomic dysfunction / POTS.
+  // First-line clinical workup is orthostatic vitals + 12-lead EKG.
+  // No lab can rule out POTS but EKG rules out arrhythmia.
+  {
+    id: 'autonomic_pots_workup',
+    triggers: [
+      { kind: 'symptom_match', pattern: /\b(heart palpitation\w*|palpitation\w*)/i },
+      { kind: 'symptom_match', pattern: /\b(dizziness on standing|orthostatic|lightheaded)/i },
+      { kind: 'any', of: [
+        { kind: 'symptom_match', pattern: /\b(reduced exercise tolerance|exercise intolerance)/i },
+        { kind: 'flag_true', flag: 'hasFatigue' },
+        { kind: 'symptom_match', pattern: /\bbrain fog\b/i },
+      ]},
+    ],
+    tests: [{ key: 'ekg_if_dose_high', whyShort: 'Palpitations + dizziness on standing + exercise intolerance — 12-lead EKG rules out arrhythmia; orthostatic vitals + tilt-table workup if EKG normal (POTS / dysautonomia / long-COVID pattern)', trigger: 'b' }],
+  },
+
   // ── Hashimoto early grey-zone (TSH 2.5–10 with sx) ────────────────
   {
     id: 'thyroid_antibodies_early_grey_zone',
