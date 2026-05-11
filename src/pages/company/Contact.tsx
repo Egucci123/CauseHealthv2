@@ -1,17 +1,16 @@
 // src/pages/company/Contact.tsx
 //
-// Two-inbox contact surface:
-//   • support@causehealth.app — bugs, ideas, billing, account, general
-//   • legal@causehealth.app   — arbitration opt-out, legal notices,
-//                               disputes (referenced in ToS §9)
+// Single visible inbox: support@causehealth.app. Everything users need
+// in-app routes here.
 //
-// Both forward to founder Gmail via Cloudflare Email Routing. The split
-// exists for legal hygiene (the arbitration confirmation email and ToS
-// direct opt-outs to legal@) and operational clarity.
+// legal@causehealth.app exists and is referenced in the ToS Section 9
+// and the post-signup arbitration confirmation email — those are the
+// two places users learn about the opt-out path. We deliberately do NOT
+// surface legal@ on the Contact page: one shot at opt-out per the email,
+// no extra prompts.
 //
 // Context-aware layout: signed-in users get the in-app AppShell so the
 // route doesn't pull them out of the app and force re-login on return.
-// Signed-out visitors get the marketing LandingNav + LandingFooter.
 
 import { LandingNav } from '../../components/landing/LandingNav';
 import { LandingFooter } from '../../components/landing/LandingFooter';
@@ -48,13 +47,6 @@ const REASONS: { emoji: string; title: string; body: string; cta: string; href: 
     href: 'mailto:support@causehealth.app?subject=Question',
   },
   {
-    emoji: '⚖️',
-    title: 'Legal or arbitration opt-out?',
-    body: 'For arbitration opt-out within 30 days of signup (Terms §9), legal notices, or anything dispute-related — email our legal address with the right subject line.',
-    cta: 'legal@causehealth.app',
-    href: 'mailto:legal@causehealth.app?subject=Arbitration%20Opt-Out',
-  },
-  {
     emoji: '🔐',
     title: 'Security report?',
     body: "Found a vulnerability? Please email us with reproduction steps. We'll acknowledge within 2 business days.",
@@ -77,32 +69,18 @@ const ContactBody = ({ inApp }: { inApp: boolean }) => (
       Real humans answer. We try to respond within 24 hours, often the same day.
     </p>
 
-    {/* Two-inbox summary card */}
-    <div className="bg-clinical-white rounded-[14px] border border-outline-variant/15 p-6 mb-10 grid grid-cols-1 sm:grid-cols-2 gap-6">
-      <div>
-        <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-clinical-stone mb-2">General</p>
-        <a
-          href="mailto:support@causehealth.app"
-          className="text-authority text-lg text-clinical-charcoal font-bold hover:text-primary-container break-all"
-        >
-          support@causehealth.app
-        </a>
-        <p className="text-body text-clinical-stone text-sm mt-2 leading-relaxed">
-          Bugs, ideas, billing, account, security reports, partnerships, anything else.
-        </p>
-      </div>
-      <div>
-        <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-clinical-stone mb-2">Legal &amp; disputes</p>
-        <a
-          href="mailto:legal@causehealth.app"
-          className="text-authority text-lg text-clinical-charcoal font-bold hover:text-primary-container break-all"
-        >
-          legal@causehealth.app
-        </a>
-        <p className="text-body text-clinical-stone text-sm mt-2 leading-relaxed">
-          Arbitration opt-out (subject: <em>Arbitration Opt-Out</em>), legal notices, disputes.
-        </p>
-      </div>
+    {/* Single inbox call-out — keep it simple. */}
+    <div className="bg-clinical-white rounded-[14px] border border-outline-variant/15 p-6 mb-10">
+      <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-clinical-stone mb-2">Email us</p>
+      <a
+        href="mailto:support@causehealth.app"
+        className="text-authority text-xl text-clinical-charcoal font-bold hover:text-primary-container break-all"
+      >
+        support@causehealth.app
+      </a>
+      <p className="text-body text-clinical-stone text-sm mt-2 leading-relaxed">
+        Bugs, ideas, billing, account, security reports, partnerships — everything.
+      </p>
     </div>
 
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -130,8 +108,6 @@ const ContactBody = ({ inApp }: { inApp: boolean }) => (
 );
 
 export const Contact = () => {
-  // Authed users get the in-app shell so the More-menu tap doesn't yank
-  // them out of the app and force a re-login on the way back.
   const user = useAuthStore((s) => s.user);
 
   if (user) {
