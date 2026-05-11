@@ -1,9 +1,18 @@
 // src/pages/company/Contact.tsx
+//
+// Two-inbox contact surface:
+//   • support@causehealth.app — bugs, ideas, billing, account, general
+//   • legal@causehealth.app   — arbitration opt-out, legal notices,
+//                               disputes (referenced in ToS §9)
+//
+// Both forward to founder Gmail via Cloudflare Email Routing. The split
+// exists for legal hygiene (the arbitration confirmation email and ToS
+// direct opt-outs to legal@) and operational clarity (so legal email
+// triage doesn't get buried in feature requests).
+
 import { LandingNav } from '../../components/landing/LandingNav';
 import { LandingFooter } from '../../components/landing/LandingFooter';
 
-// Single inbox for everything: support@causehealth.app. Subject line
-// pre-filled per category so triage stays easy on Evan's end.
 const REASONS: { emoji: string; title: string; body: string; cta: string; href: string }[] = [
   {
     emoji: '🐛',
@@ -28,10 +37,24 @@ const REASONS: { emoji: string; title: string; body: string; cta: string; href: 
   },
   {
     emoji: '🩺',
-    title: 'Question about your account or labs?',
+    title: 'Account, billing, or how-to?',
     body: "We're educational only — we can't give medical advice. For urgent matters call your doctor or 911. For account, billing, or how-to questions, email us.",
     cta: 'support@causehealth.app',
     href: 'mailto:support@causehealth.app?subject=Question',
+  },
+  {
+    emoji: '⚖️',
+    title: 'Legal or arbitration opt-out?',
+    body: 'For arbitration opt-out within 30 days of signup (Terms §9), legal notices, or anything dispute-related — email our legal address with the right subject line.',
+    cta: 'legal@causehealth.app',
+    href: 'mailto:legal@causehealth.app?subject=Arbitration%20Opt-Out',
+  },
+  {
+    emoji: '🔐',
+    title: 'Security report?',
+    body: "Found a vulnerability? Please email us with reproduction steps. We'll acknowledge within 2 business days.",
+    cta: 'support@causehealth.app',
+    href: 'mailto:support@causehealth.app?subject=Security%20report',
   },
 ];
 
@@ -43,9 +66,37 @@ export const Contact = () => (
       <h1 className="text-authority text-4xl md:text-5xl text-clinical-charcoal font-bold mb-6 leading-tight">
         Tell us what you need.
       </h1>
-      <p className="text-body text-clinical-stone text-lg max-w-2xl mb-12">
+      <p className="text-body text-clinical-stone text-lg max-w-2xl mb-10">
         Real humans answer. We try to respond within 24 hours, often the same day.
       </p>
+
+      {/* Two-inbox summary card — direct mailto for users who already know what they want */}
+      <div className="bg-clinical-white rounded-[14px] border border-outline-variant/15 p-6 mb-10 grid grid-cols-1 sm:grid-cols-2 gap-6">
+        <div>
+          <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-clinical-stone mb-2">General</p>
+          <a
+            href="mailto:support@causehealth.app"
+            className="text-authority text-lg text-clinical-charcoal font-bold hover:text-primary-container"
+          >
+            support@causehealth.app
+          </a>
+          <p className="text-body text-clinical-stone text-sm mt-2 leading-relaxed">
+            Bugs, ideas, billing, account, security reports, partnerships, anything else.
+          </p>
+        </div>
+        <div>
+          <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-clinical-stone mb-2">Legal &amp; disputes</p>
+          <a
+            href="mailto:legal@causehealth.app"
+            className="text-authority text-lg text-clinical-charcoal font-bold hover:text-primary-container"
+          >
+            legal@causehealth.app
+          </a>
+          <p className="text-body text-clinical-stone text-sm mt-2 leading-relaxed">
+            Arbitration opt-out (subject: <em>Arbitration Opt-Out</em>), legal notices, disputes.
+          </p>
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {REASONS.map((r) => (
@@ -63,6 +114,11 @@ export const Contact = () => (
           </a>
         ))}
       </div>
+
+      <p className="text-precision text-[0.62rem] text-clinical-stone/70 mt-10 italic leading-relaxed max-w-2xl">
+        CauseHealth is a wellness and health-information service. We do not diagnose, treat, or prescribe.
+        For medical emergencies call 911. For urgent health questions, contact your doctor.
+      </p>
     </main>
     <LandingFooter />
   </div>

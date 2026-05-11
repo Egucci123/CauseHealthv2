@@ -31,6 +31,7 @@ const PRIMARY_ITEMS: NavItem[] = [
 // AI Coach intentionally NOT here — it's the floating button on every page.
 const MORE_ITEMS: NavItem[] = [
   { label: 'Glossary',      icon: 'menu_book',      path: '/glossary' },
+  { label: 'Contact',       icon: 'mail',           path: '/contact' },
   { label: 'Settings',      icon: 'settings',       path: '/settings' },
 ];
 
