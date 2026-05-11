@@ -8,7 +8,13 @@
     "prebuild": "node scripts/write-version.js",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:synthetics": "deno run -A supabase/functions/_shared/__tests__/run-all.ts",
+    "test:fuzz": "deno run -A supabase/functions/_shared/__tests__/fuzz.ts",
+    "test:snapshots": "deno run -A supabase/functions/_shared/__tests__/snapshots.ts",
+    "test:snapshots:update": "deno run -A supabase/functions/_shared/__tests__/snapshots.ts --update",
+    "test:markers": "deno run -A supabase/functions/_shared/__tests__/marker-fuzz.ts",
+    "test:units": "deno run -A supabase/functions/_shared/__tests__/unit-fuzz.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
