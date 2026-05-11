@@ -152,7 +152,14 @@ import { buildPlan, type ClinicalFacts, type PatientInput } from './buildPlan.ts
 //      and qualifiers; substring-containment catches "TSH" inside
 //      "Thyroid Panel". Then sort by priority and cap at 18 so the PCP
 //      gets an actionable list, not a wall.
-export const RULE_LIBRARY_VERSION = '2026-05-11-15';
+// 2026-05-11-16: Supplement engine refactor — data-driven registry.
+// supplementRules.ts went from 35+ hand-coded if-statements to a thin
+// wrapper around supplementIndications.ts (INDICATIONS table + one
+// evaluateIndications() function). Adding coverage for a new pattern =
+// ADD ONE ROW. No engine modification. Universal across every user.
+// Same outputs as before (verified by inspection); now extensible by
+// data instead of code.
+export const RULE_LIBRARY_VERSION = '2026-05-11-16';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
