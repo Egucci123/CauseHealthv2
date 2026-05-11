@@ -897,6 +897,41 @@ export function buildSupplementCandidates(input: Input): SupplementCandidate[] {
     });
   }
 
+  // ── Universal foundational baseline (backstop) ─────────────────────
+  //
+  // Fires ONLY when no lab/depletion/condition/symptom rules produced
+  // a candidate. This is the "healthy adult opens the app for the first
+  // time and everything is fine" case — without this, they'd see an
+  // empty supplement page.
+  //
+  // Three universally-evidence-supported, dose-conservative, pregnancy-
+  // safe supplements that virtually every adult benefits from at these
+  // doses. Sourced from peer-reviewed adult-baseline literature, not
+  // from disease/symptom matching — so they rank LOWEST and are
+  // naturally pushed out for users with actual findings.
+  if (out.length === 0) {
+    push(vitaminDCandidate('symptom_pattern',
+      'Baseline support — most US adults have suboptimal vitamin D status; 1000 IU/day with annual retest is a conservative starting point.'));
+    push({
+      emoji: '🐟', nutrient: 'Omega-3 (EPA/DHA)', form: 'Triglyceride-form softgel',
+      dose: '1000 mg/day', timing: 'With largest meal',
+      whyShort: 'Baseline anti-inflammatory support',
+      why: 'Omega-3 supplementation supports cardiovascular and cognitive health at population scale; 1000 mg/day is a safe maintenance dose for adults without specific lipid abnormalities.',
+      category: 'inflammation_cardio', priority: 'moderate', sourcedFrom: 'symptom_pattern',
+      alternatives: [
+        { name: 'Algal omega-3', form: 'Softgel', note: 'For shellfish/fish allergy or vegan preference.' },
+      ],
+    });
+    push({
+      emoji: '💊', nutrient: 'Magnesium Glycinate', form: 'Capsule',
+      dose: '200 mg/day', timing: 'Evening',
+      whyShort: 'Baseline magnesium support',
+      why: 'Population intake data consistently shows magnesium below the RDA; glycinate is gentle and supports sleep, stress, and muscle function at maintenance doses.',
+      category: 'sleep_stress', priority: 'moderate', sourcedFrom: 'symptom_pattern',
+      alternatives: [],
+    });
+  }
+
   // ── Final filters: allergy / pregnancy ─────────────────────────────
   const filtered = out.filter(c => {
     // Shellfish/fish allergy → drop fish oil (algal alt remains)

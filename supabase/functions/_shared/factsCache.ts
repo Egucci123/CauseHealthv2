@@ -134,7 +134,13 @@ import { buildPlan, type ClinicalFacts, type PatientInput } from './buildPlan.ts
 // Symptom-driven supplement rules now use unfiltered symptomsLower
 // (selection is the signal). narrative.ts prompt also updated to drop
 // the severity threshold note.
-export const RULE_LIBRARY_VERSION = '2026-05-11-13';
+// 2026-05-11-14: Universal foundational baseline supplement stack.
+// Fires ONLY when no other supplement rule produced a candidate. Three
+// evidence-supported pregnancy-safe baseline items (Vit D 1000 IU,
+// Omega-3 1000 mg, Mg glycinate 200 mg) so a "healthy adult, nothing
+// flagged" user never opens an empty supplement page. Naturally pushed
+// out by the priority-sort cap for users with actual findings.
+export const RULE_LIBRARY_VERSION = '2026-05-11-14';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
