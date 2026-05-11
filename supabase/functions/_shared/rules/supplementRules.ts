@@ -516,12 +516,17 @@ export function buildSupplementCandidates(input: Input): SupplementCandidate[] {
         alternatives: [],
       });
     }
-    if (!seen.has('coq10_ubiquinol')) {
+    // CoQ10: tightened gate. Endogenous synthesis declines from age 40
+    // onward, and statin users get it from the depletion path. Firing
+    // CoQ10 on every "fatigue" report (e.g., a 27-year-old) is over-
+    // recommendation — B-complex, iron repletion, and thyroid support
+    // are higher-leverage at that age. Universal gate: age >= 40.
+    if ((input.age ?? 0) >= 40 && !seen.has('coq10_ubiquinol')) {
       push({
         emoji: '💊', nutrient: 'CoQ10 (Ubiquinol)', form: 'Softgel',
         dose: '100 mg/day', timing: 'With breakfast (with fat)',
-        whyShort: 'Mitochondrial energy production',
-        why: 'CoQ10 is the rate-limiting electron carrier in the mitochondrial respiratory chain — supplementation supports cellular energy in fatigue.',
+        whyShort: 'Age-related mitochondrial support',
+        why: 'Endogenous CoQ10 synthesis declines from age 40 onward; supplementation supports cellular energy in patients with fatigue + age-driven mitochondrial decline.',
         category: 'nutrient_repletion', priority: 'moderate', sourcedFrom: 'symptom_pattern',
         alternatives: [],
       });

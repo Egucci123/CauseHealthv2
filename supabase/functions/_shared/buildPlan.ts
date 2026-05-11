@@ -233,17 +233,38 @@ export function buildPlan(input: PatientInput): ClinicalFacts {
   // hemochromatosis, etc.) ships with its own confirmatory_tests array
   // — plain-English strings the rule authored. Previously these only
   // surfaced under the condition card and never reached the main
-  // tests_to_request list the patient hands to their PCP. Result:
-  // Marisa's 'Hyperprolactinemia Workup' card listed β-hCG, repeat
-  // prolactin, etc. but her main test list had none of them.
+  // tests_to_request list the patient hands to their PCP.
   //
-  // Universal fix: append each condition's confirmatory_tests as
-  // TestOrder entries. Dedup by lowercase name so we don't double-list
-  // anything already in the canonical test list. The new entries are
-  // tagged source=condition_workup so consumers can filter / style
-  // them if they want, but by default they merge into one cohesive
-  // list.
-  const existingTestNames = new Set(tests.map(t => t.name.toLowerCase()));
+  // SMART DEDUP (universal): a naive lowercase-exact match double-lists
+  // things like "TSH" and "Thyroid Panel (TSH + Free T4 + Free T3)" or
+  // "Medication review (dopamine antagonists)" and "Medication review
+  // (corticosteroids)". The normalized check below strips parentheticals
+  // and common qualifiers, then drops any condition-driven test whose
+  // normalized name is already covered by a canonical test (or by an
+  // earlier-added condition-driven test).
+  //
+  // Result for Marisa: 29 raw merge items → ~13 unique tests, not 10
+  // copies of "TSH"-flavored entries.
+  const normalizeTestName = (s: string): string =>
+    s.toLowerCase()
+      .replace(/\([^)]*\)/g, ' ')           // strip parentheticals
+      .replace(/\b(fasting|repeat|am|morning|late[\s-]?night|lab[\s-]?based)\b/gi, ' ')
+      .replace(/[^a-z0-9]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  const isCoveredByExisting = (norm: string, existing: Set<string>): boolean => {
+    if (!norm) return true; // empty name → already covered (skip)
+    if (existing.has(norm)) return true;
+    // Substring containment: "tsh" is covered by "thyroid panel tsh free t4 free t3".
+    // Only apply for short names to avoid false positives on long phrases.
+    if (norm.length < 30) {
+      for (const e of existing) {
+        if (e.length > norm.length && e.includes(norm)) return true;
+      }
+    }
+    return false;
+  };
+  const existingTestNorms = new Set<string>(tests.map(t => normalizeTestName(t.name)));
   const conditionDrivenTests: TestOrder[] = [];
   for (const cond of conditions) {
     if (!Array.isArray(cond.confirmatory_tests)) continue;
@@ -259,11 +280,11 @@ export function buildPlan(input: PatientInput): ClinicalFacts {
         : (ct as any)?.why ?? `Confirmatory workup for ${cond.name}.`;
       const trimmed = String(name).trim();
       if (!trimmed) continue;
-      const lower = trimmed.toLowerCase();
-      if (existingTestNames.has(lower)) continue;
-      existingTestNames.add(lower);
+      const norm = normalizeTestName(trimmed);
+      if (isCoveredByExisting(norm, existingTestNorms)) continue;
+      existingTestNorms.add(norm);
       conditionDrivenTests.push({
-        key: `cond_workup__${cond.key}__${lower.replace(/[^a-z0-9]+/g, '_').slice(0, 40)}`,
+        key: `cond_workup__${cond.key}__${norm.replace(/\s+/g, '_').slice(0, 40)}`,
         name: trimmed,
         icd10: cond.icd10 ?? null,
         priority: cond.confidence === 'high' ? 'high' : 'moderate',
@@ -274,9 +295,37 @@ export function buildPlan(input: PatientInput): ClinicalFacts {
       } as any);
     }
   }
-  // Merge — condition-workup tests follow the canonical baseline so the
-  // PCP gets baseline → diagnosis-driven → workup in order.
-  const allTests: TestOrder[] = [...tests, ...conditionDrivenTests];
+
+  // Final test list: canonical baseline tests + dedup'd condition-workup
+  // tests, then cap. Universal cap stops the list from ballooning to 25+
+  // entries when multiple conditions all want the same workup.
+  //
+  // Cap at TEST_LIST_TOP_N. Sort key prioritizes:
+  //   1. urgent / critical priority first
+  //   2. high before moderate
+  //   3. canonical tests before condition_workup entries (since canonical
+  //      go through testInjectors which is comprehensive and pre-deduped)
+  //   4. preserve input order within ties
+  const TEST_LIST_TOP_N = 18;
+  const TEST_PRIORITY_RANK: Record<string, number> = {
+    urgent: 0, critical: 0, a: 0,
+    high: 1, b: 1,
+    moderate: 2, c: 2,
+    low: 3, d: 3, e: 3,
+  };
+  const merged = [...tests, ...conditionDrivenTests];
+  // Stable sort by (priority, isCanonical) — preserve input order otherwise.
+  const indexed = merged.map((t, i) => ({ t, i }));
+  indexed.sort((a, b) => {
+    const pa = TEST_PRIORITY_RANK[String((a.t as any).priority ?? 'moderate').toLowerCase()] ?? 5;
+    const pb = TEST_PRIORITY_RANK[String((b.t as any).priority ?? 'moderate').toLowerCase()] ?? 5;
+    if (pa !== pb) return pa - pb;
+    const ca = (a.t as any).sourcedFrom === 'condition_workup' ? 1 : 0;
+    const cb = (b.t as any).sourcedFrom === 'condition_workup' ? 1 : 0;
+    if (ca !== cb) return ca - cb;
+    return a.i - b.i;
+  });
+  const allTests: TestOrder[] = indexed.slice(0, TEST_LIST_TOP_N).map(x => x.t);
 
   // 6. Goal targets (From here / To here)
   const goalTargets = buildGoalTargets({

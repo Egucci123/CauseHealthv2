@@ -140,7 +140,19 @@ import { buildPlan, type ClinicalFacts, type PatientInput } from './buildPlan.ts
 // Omega-3 1000 mg, Mg glycinate 200 mg) so a "healthy adult, nothing
 // flagged" user never opens an empty supplement page. Naturally pushed
 // out by the priority-sort cap for users with actual findings.
-export const RULE_LIBRARY_VERSION = '2026-05-11-14';
+// 2026-05-11-15: Two universal corrections from real-output review:
+//   1. CoQ10 fatigue rule now gates on age >= 40 (matches the
+//      mitochondrial-decline literature). Statin users still get it via
+//      the depletion path. A 27-year-old reporting fatigue gets B-complex
+//      first, not CoQ10.
+//   2. Smart test-list dedup + 18-cap. Naive lowercase-exact dedup
+//      double-listed "TSH" + "Thyroid Panel (TSH + Free T4 + Free T3)"
+//      and "Medication review (dopamine)" + "Medication review
+//      (corticosteroids)". Normalized matching strips parentheticals
+//      and qualifiers; substring-containment catches "TSH" inside
+//      "Thyroid Panel". Then sort by priority and cap at 18 so the PCP
+//      gets an actionable list, not a wall.
+export const RULE_LIBRARY_VERSION = '2026-05-11-15';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
