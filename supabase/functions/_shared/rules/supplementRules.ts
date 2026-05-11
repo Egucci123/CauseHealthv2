@@ -897,8 +897,8 @@ export function buildSupplementCandidates(input: Input): SupplementCandidate[] {
     });
   }
 
-  // ── Final filters: allergy / pregnancy / dedup ──────────────────────
-  return out.filter(c => {
+  // ── Final filters: allergy / pregnancy ─────────────────────────────
+  const filtered = out.filter(c => {
     // Shellfish/fish allergy → drop fish oil (algal alt remains)
     if (input.hasShellfishAllergy && /omega-?3|fish oil/i.test(c.nutrient) && !/algal|algae|vegan/i.test(c.nutrient)) return false;
 
@@ -914,6 +914,43 @@ export function buildSupplementCandidates(input: Input): SupplementCandidate[] {
     }
     return true;
   });
+
+  // ── Top-6 selection by clinical relevance ──────────────────────────
+  // Rule library generates everything it CAN justify; this step picks the
+  // 6 most clinically relevant for the user. Universal sort key:
+  //   1. priority: critical (0) > high (1) > moderate (2)
+  //   2. source:   medication_depletion (0) > lab_finding (1) >
+  //                disease_mechanism (2) > symptom_pattern (3)
+  //
+  // Rationale for the source ordering:
+  //   • depletion-driven supplements close an active drug-induced gap →
+  //     highest leverage
+  //   • lab-driven supplements address a specifically-flagged biomarker
+  //     → direct response to data
+  //   • condition-driven supplements address an active diagnosis →
+  //     standard of care
+  //   • symptom-driven supplements address user-reported symptoms →
+  //     useful but secondary to the above
+  //
+  // Cap at 6 so the wellness plan reads as a focused stack, not a wall.
+  // Adjust SUPPLEMENT_TOP_N to change the cap globally.
+  const SUPPLEMENT_TOP_N = 6;
+  const PRIORITY_RANK: Record<string, number> = { critical: 0, high: 1, moderate: 2 };
+  const SOURCE_RANK: Record<string, number> = {
+    medication_depletion: 0,
+    lab_finding: 1,
+    disease_mechanism: 2,
+    symptom_pattern: 3,
+  };
+  filtered.sort((a, b) => {
+    const pa = PRIORITY_RANK[a.priority] ?? 9;
+    const pb = PRIORITY_RANK[b.priority] ?? 9;
+    if (pa !== pb) return pa - pb;
+    const sa = SOURCE_RANK[a.sourcedFrom] ?? 9;
+    const sb = SOURCE_RANK[b.sourcedFrom] ?? 9;
+    return sa - sb;
+  });
+  return filtered.slice(0, SUPPLEMENT_TOP_N);
 }
 
 function vitaminDCandidate(sourcedFrom: SupplementCandidate['sourcedFrom'], why: string): SupplementCandidate {

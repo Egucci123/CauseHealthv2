@@ -115,13 +115,26 @@ import { buildPlan, type ClinicalFacts, type PatientInput } from './buildPlan.ts
 // 2026-05-11-2: Expected-findings suppressor for known conditions
 //   (Gilbert → bilirubin, CKD → eGFR, T1D/T2D → A1c)
 // 2026-05-11-1: Sex-gate on hormonal-axis system-drift patterns
+// 2026-05-11-13: Two universal corrections from the user's Marisa re-audit:
+//   1. Supplement engine generates everything it can justify, then sorts
+//      by (priority, source) and caps at top 6. Previously a 10-supplement
+//      stack was too noisy. The cap lives in supplementRules.ts; bumping
+//      SUPPLEMENT_TOP_N changes it globally.
+//   2. Condition-workup tests (the confirmatory_tests array on each
+//      suspected-condition rule — hyperprolactinemia, adrenal screen,
+//      hemochromatosis, etc.) now MERGE into facts.tests. Previously
+//      they lived only on the condition card and never reached the
+//      patient's main "tests to ask PCP" list. Universal fix in
+//      buildPlan.ts after conditions are computed. Dedup by lowercase
+//      name so we never double-list a canonical test.
+//
 // 2026-05-11-12: Revert Fix 6's severity-based supplement gating —
 // the in-app symptom picker has no severity slider; every selected
 // symptom is auto-stamped severity 5. Filtering at >= 3 was dead code.
 // Symptom-driven supplement rules now use unfiltered symptomsLower
 // (selection is the signal). narrative.ts prompt also updated to drop
 // the severity threshold note.
-export const RULE_LIBRARY_VERSION = '2026-05-11-12';
+export const RULE_LIBRARY_VERSION = '2026-05-11-13';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;

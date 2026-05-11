@@ -227,6 +227,57 @@ export function buildPlan(input: PatientInput): ClinicalFacts {
     hasSulfaAllergy: input.hasSulfaAllergy,
   });
 
+  // 5.5  Merge condition workup tests into the main test list
+  //
+  // Each suspected-condition rule (hyperprolactinemia, adrenal cortisol,
+  // hemochromatosis, etc.) ships with its own confirmatory_tests array
+  // — plain-English strings the rule authored. Previously these only
+  // surfaced under the condition card and never reached the main
+  // tests_to_request list the patient hands to their PCP. Result:
+  // Marisa's 'Hyperprolactinemia Workup' card listed β-hCG, repeat
+  // prolactin, etc. but her main test list had none of them.
+  //
+  // Universal fix: append each condition's confirmatory_tests as
+  // TestOrder entries. Dedup by lowercase name so we don't double-list
+  // anything already in the canonical test list. The new entries are
+  // tagged source=condition_workup so consumers can filter / style
+  // them if they want, but by default they merge into one cohesive
+  // list.
+  const existingTestNames = new Set(tests.map(t => t.name.toLowerCase()));
+  const conditionDrivenTests: TestOrder[] = [];
+  for (const cond of conditions) {
+    if (!Array.isArray(cond.confirmatory_tests)) continue;
+    for (const ct of cond.confirmatory_tests) {
+      // Confirmatory tests come in two shapes depending on whether the
+      // condition was enriched via testCatchesRegistry: either a plain
+      // string OR an object { test, why }. Tolerate both.
+      const name = typeof ct === 'string'
+        ? ct
+        : (ct as any)?.test ?? '';
+      const why = typeof ct === 'string'
+        ? `Confirmatory workup for ${cond.name}.`
+        : (ct as any)?.why ?? `Confirmatory workup for ${cond.name}.`;
+      const trimmed = String(name).trim();
+      if (!trimmed) continue;
+      const lower = trimmed.toLowerCase();
+      if (existingTestNames.has(lower)) continue;
+      existingTestNames.add(lower);
+      conditionDrivenTests.push({
+        key: `cond_workup__${cond.key}__${lower.replace(/[^a-z0-9]+/g, '_').slice(0, 40)}`,
+        name: trimmed,
+        icd10: cond.icd10 ?? null,
+        priority: cond.confidence === 'high' ? 'high' : 'moderate',
+        specialist: 'pcp',
+        whyShort: `Workup for ${cond.name.toLowerCase()}`,
+        why,
+        sourcedFrom: 'condition_workup',
+      } as any);
+    }
+  }
+  // Merge — condition-workup tests follow the canonical baseline so the
+  // PCP gets baseline → diagnosis-driven → workup in order.
+  const allTests: TestOrder[] = [...tests, ...conditionDrivenTests];
+
   // 6. Goal targets (From here / To here)
   const goalTargets = buildGoalTargets({
     outliers,
@@ -258,7 +309,7 @@ export function buildPlan(input: PatientInput): ClinicalFacts {
     supplementsLower: input.supplementsLower,
     conditionsLower: input.conditionsLower,
     symptomsLower: input.symptomsLower,
-    tests,
+    tests: allTests,
   });
 
   // 10. Suboptimal range flags (in lab-normal but outside age/sex-optimal)
@@ -275,7 +326,7 @@ export function buildPlan(input: PatientInput): ClinicalFacts {
   });
 
   // 11. Citations — tied to which tests are ordered
-  const citations = buildCitationsForTests(tests);
+  const citations = buildCitationsForTests(allTests);
 
   // 12. Mode classification (treatment vs optimization)
   const isOptimizationMode = isOptimization(outliers, conditions);
@@ -292,7 +343,7 @@ export function buildPlan(input: PatientInput): ClinicalFacts {
       symptoms: input.symptomsList, supplementsTaking: input.supplementsList,
     },
     labs: { raw: input.labs, outliers },
-    tests, conditions, depletions, supplementCandidates,
+    tests: allTests, conditions, depletions, supplementCandidates,
     riskCalculators, emergencyAlerts, crisisAlert, prepInstructions,
     suboptimalFlags, goalTargets,
     symptomsAddressed: [], // placeholder — real value computed next
@@ -342,7 +393,7 @@ export function buildPlan(input: PatientInput): ClinicalFacts {
       supplementsTaking: input.supplementsList,
     },
     labs: { raw: input.labs, outliers },
-    tests,
+    tests: allTests,
     conditions,
     depletions,
     supplementCandidates,
@@ -369,7 +420,7 @@ export function buildPlan(input: PatientInput): ClinicalFacts {
         symptoms: input.symptomsList, supplementsTaking: input.supplementsList,
       },
       labs: { raw: input.labs, outliers },
-      tests, conditions, depletions, supplementCandidates,
+      tests: allTests, conditions, depletions, supplementCandidates,
       riskCalculators, emergencyAlerts, crisisAlert, prepInstructions,
       suboptimalFlags, goalTargets, symptomsAddressed,
       citations, isOptimizationMode,
