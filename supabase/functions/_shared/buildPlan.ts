@@ -515,6 +515,29 @@ export function buildPlan(input: PatientInput): ClinicalFacts {
     rationale: e.rationale,
   }));
 
+  // CROSS-SURFACE CONTRADICTION FIX (Marisa audit, 2026-05-12-14):
+  // After expectedFindings is computed, RE-RANK outliers so markers
+  // whose elevation/depression is fully explained by a known condition
+  // (e.g., Bilirubin in Gilbert syndrome, A1c in diabetes) drop to
+  // the bottom of the priority list. This prevents the headline AI
+  // and downstream prose from picking an "expected" outlier as the
+  // patient's main concern.
+  //
+  // We don't remove them entirely — they remain visible in lab tables
+  // — but their severityRank drops to 1 so they no longer beat any
+  // genuinely-actionable outlier in any sort.
+  const expectedMarkerSet = new Set(
+    expectedFindings.map(e => e.marker.toLowerCase().trim())
+  );
+  if (expectedMarkerSet.size > 0) {
+    for (const o of outliers) {
+      if (expectedMarkerSet.has(o.marker.toLowerCase().trim())) {
+        o.severityRank = 1; // demoted; expected per condition
+      }
+    }
+    outliers.sort((a, b) => b.severityRank - a.severityRank);
+  }
+
   return {
     patient: {
       age: input.age,
