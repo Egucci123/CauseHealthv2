@@ -93,14 +93,16 @@ import { buildPlan, type ClinicalFacts, type PatientInput } from './buildPlan.ts
 // derives the flag from value + standard_flag + standard_low/high +
 // current rules per request. All three v2 normalize functions now
 // call it via pickFlag(l, ctx) instead of trusting the stored flag.
-// 2026-05-11-1: Sex-gate on hormonal-axis system-drift patterns. The
-// male_hormone and female_hormone systems share most markers (LH, FSH,
-// Prolactin, Estradiol, Testosterone, SHBG); without a gate, both fire
-// on the same patient. Marisa Sirkin (27F) audit revealed the failure
-// mode — a "Male hormonal axis — critical" card on a female user.
-// Gate: system fires only when sys.sexGate === patient.sex; unknown sex
-// disqualifies both gated systems.
-export const RULE_LIBRARY_VERSION = '2026-05-11-1';
+// 2026-05-11-2: Expected-findings suppressor. Markers whose flag is
+// explained by a known active condition (Gilbert syndrome → bilirubin,
+// CKD → eGFR, diagnosed T1D/T2D → A1c) flow through facts.expectedFindings
+// and every prompt is instructed to acknowledge rather than alarm.
+// Marisa Sirkin (27F, Gilbert syndrome) audit surfaced the Wellness Plan
+// saying "Bilirubin 1.8 needs attention" while Doctor Prep correctly
+// said "expected with Gilbert syndrome." Single source of truth fixes it.
+//
+// 2026-05-11-1: Sex-gate on hormonal-axis system-drift patterns.
+export const RULE_LIBRARY_VERSION = '2026-05-11-2';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;

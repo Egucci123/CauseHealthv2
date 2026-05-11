@@ -27,6 +27,7 @@ import { detectSuboptimalValues, type OptimalFlag } from './optimalRanges.ts';
 import { GUIDELINE_CITATIONS } from './canonical.ts';
 import { buildSymptomsAddressed, type SymptomAddressed } from './rules/symptomRules.ts';
 import { buildCanonicalProse, type CanonicalProseBundle } from './rules/proseRules.ts';
+import { computeExpectedFindings } from './expectedFindings.ts';
 
 // ──────────────────────────────────────────────────────────────────────
 // LAB VALUE — canonical normalized lab row (every rule consumes this).
@@ -136,6 +137,24 @@ export interface ClinicalFacts {
   // these strings; never replaces them. Single source of cross-surface
   // wording truth.
   canonicalProse: CanonicalProseBundle;
+
+  // Expected findings — markers whose flag is explained by a known
+  // active condition (e.g. Gilbert syndrome → bilirubin elevation).
+  // Every downstream prompt is instructed: "When a marker appears in
+  // EXPECTED_FINDINGS, do not alarm. Reference the source condition.
+  // Do not recommend testing or supplements against that marker alone."
+  // Single source of truth that prevents the Wellness-Plan-says-attention /
+  // Doctor-Prep-says-expected contradiction the Marisa audit surfaced.
+  expectedFindings: Array<{
+    /** Stable rule id, e.g. 'gilbert_bilirubin'. */
+    key: string;
+    /** Exact marker name. */
+    marker: string;
+    /** The active condition that explains the value. */
+    conditionLabel: string;
+    /** Plain-English explanation. */
+    rationale: string;
+  }>;
 }
 
 export interface LabOutlierFact {
@@ -268,9 +287,31 @@ export function buildPlan(input: PatientInput): ClinicalFacts {
     suboptimalFlags, goalTargets,
     symptomsAddressed: [], // placeholder — real value computed next
     citations: [], isOptimizationMode,
+    expectedFindings: [], // placeholder — real value computed after this
     canonicalProse: { conditions: [], outliers: [], supplements: [], goals: [], alerts: [] }, // populated in final return
   };
   const symptomsAddressed = buildSymptomsAddressed(factsForSymptoms);
+
+  // Expected findings — markers whose flag is explained by a known
+  // active condition. Computed deterministically once here and surfaced
+  // to every prompt to prevent cross-surface contradictions on patients
+  // with conditions like Gilbert syndrome / CKD / diagnosed diabetes.
+  const expectedFindings = computeExpectedFindings({
+    conditionsLower: input.conditionsLower,
+    labValues: input.labs.map(l => ({
+      marker_name: String(l.marker ?? ''),
+      value: l.value,
+      unit: l.unit,
+      standard_high: (l as any).standard_high ?? null,
+      standard_low: (l as any).standard_low ?? null,
+      optimal_flag: l.flag ?? null,
+    })),
+  }).map(e => ({
+    key: e.key,
+    marker: e.marker,
+    conditionLabel: e.conditionLabel,
+    rationale: e.rationale,
+  }));
 
   return {
     patient: {
@@ -299,6 +340,7 @@ export function buildPlan(input: PatientInput): ClinicalFacts {
     symptomsAddressed,
     citations,
     isOptimizationMode,
+    expectedFindings,
     // Canonical prose computed last so it has access to every other field.
     canonicalProse: buildCanonicalProse({
       // Re-use the same in-construction object; canonicalProse only reads
@@ -316,6 +358,7 @@ export function buildPlan(input: PatientInput): ClinicalFacts {
       riskCalculators, emergencyAlerts, crisisAlert, prepInstructions,
       suboptimalFlags, goalTargets, symptomsAddressed,
       citations, isOptimizationMode,
+      expectedFindings,
       canonicalProse: { conditions: [], outliers: [], supplements: [], goals: [], alerts: [] },
     }),
   };

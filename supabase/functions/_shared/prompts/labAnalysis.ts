@@ -170,11 +170,23 @@ export function buildLabAnalysisUserMessage(facts: ClinicalFacts): string {
     goal_targets: facts.goalTargets,
     is_optimization_mode: facts.isOptimizationMode,
     canonical_prose: facts.canonicalProse,
+    // Markers whose flag is expected because of a known active condition
+    // (e.g. Gilbert syndrome → elevated bilirubin). Surface explicitly so
+    // the AI never alarms the user about a known, benign pattern.
+    expected_findings: facts.expectedFindings,
   };
 
   return `FACTS (deterministic — do not invent or contradict):
 
 ${JSON.stringify(payload, null, 2)}
+
+EXPECTED-FINDING RULE (universal, applies to all surfaces):
+When a marker appears in EXPECTED_FINDINGS, do NOT alarm the user.
+Reference the source condition (e.g. "Bilirubin 1.8 is expected with your
+Gilbert syndrome"). Do NOT recommend supplements, follow-up tests, or
+lifestyle changes specifically targeting that marker — it is expected
+for this patient. The marker can still appear in the outlier list, but
+its interpretation field must reference the explaining condition.
 
 WRITE the patient-facing lab analysis. Use the submit_lab_analysis tool.`;
 }

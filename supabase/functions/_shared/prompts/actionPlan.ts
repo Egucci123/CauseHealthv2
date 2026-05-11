@@ -138,11 +138,23 @@ export function buildActionPlanUserMessage(facts: ClinicalFacts): string {
     risk_calculators: facts.riskCalculators,
     goal_targets: facts.goalTargets,
     is_optimization_mode: facts.isOptimizationMode,
+    // Markers whose flag is expected because of a known active condition.
+    // The headline / immediate_actions / 90-day plan MUST NOT call these
+    // out as needing attention. They are known and benign for this patient.
+    expected_findings: facts.expectedFindings,
   };
 
   return `FACTS (deterministic — reference test names by exact "name" field, do not invent):
 
 ${JSON.stringify(payload, null, 2)}
+
+EXPECTED-FINDING RULE (universal):
+When a marker appears in EXPECTED_FINDINGS, do NOT headline it as "needs
+attention." Do NOT include it in immediate_actions or 90-day priorities.
+If you reference it anywhere in plan prose, reference the explaining
+condition (e.g. "Your bilirubin remains in the expected range for your
+Gilbert syndrome"). The whole wellness plan must read as if this marker
+is already accounted for — because it is.
 
 WRITE today_actions and action_plan. Use the submit_action_plan tool.`;
 }

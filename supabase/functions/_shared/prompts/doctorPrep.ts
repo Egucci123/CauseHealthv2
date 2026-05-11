@@ -176,11 +176,22 @@ export function buildDoctorPrepUserMessage(facts: ClinicalFacts): string {
     prep_instructions: facts.prepInstructions,
     is_optimization_mode: facts.isOptimizationMode,
     canonical_prose: facts.canonicalProse,
+    // Markers whose flag is expected because of a known active condition.
+    // The doctor prep MUST acknowledge these as expected rather than
+    // alarming or recommending a workup specifically against them.
+    expected_findings: facts.expectedFindings,
   };
 
   return `FACTS (deterministic — do not invent or contradict):
 
 ${JSON.stringify(payload, null, 2)}
+
+EXPECTED-FINDING RULE (universal):
+When a marker appears in EXPECTED_FINDINGS, the prep document MUST note
+the value, attribute it to the explaining condition (use the rationale
+text verbatim or close), and NOT include it in tests-to-request or
+patterns-to-discuss as a standalone item. The receiving physician needs
+to see we recognized the explaining condition rather than missed it.
 
 WRITE the doctor-facing prep document. Use the submit_doctor_prep tool.`;
 }
