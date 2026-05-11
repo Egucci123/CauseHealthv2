@@ -263,6 +263,33 @@ export function buildSupplementCandidates(input: Input): SupplementCandidate[] {
       });
     }
 
+    // ── Isolated thyroid antibody elevation (TPO / TgAb) ───────────────
+    // Hashimoto's can fire even with normal TSH — antibody positivity
+    // precedes overt dysfunction by years. Selenium has the strongest
+    // evidence for lowering TPO antibodies; vitamin D supports tolerance.
+    // Universal — fires on any user with positive TPO or TgAb regardless
+    // of TSH state.
+    if (/tpo|thyroid peroxidase|thyroglobulin antibod/i.test(o.marker) && (o.flag === 'high' || o.flag === 'critical_high' || (o.flag === 'watch' && o.value >= 35))) {
+      if (!seen.has('selenium_selenomethionine')) {
+        push({
+          emoji: '💊', nutrient: 'Selenium (selenomethionine)', form: 'Capsule',
+          dose: '200 mcg/day', timing: 'Morning with food',
+          whyShort: 'Lower thyroid antibodies',
+          why: `${o.marker} ${o.value} — selenium 200 mcg/day lowered TPO antibodies 21–40% across RCTs (Toulis 2010 meta-analysis). Conservative dose well under the 400 mcg upper limit.`,
+          category: 'nutrient_repletion', priority: 'high', sourcedFrom: 'lab_finding',
+          alternatives: [
+            { name: 'Brazil nuts', form: 'Whole food', note: '1–2 nuts/day delivers ~70–160 mcg selenium naturally.' },
+          ],
+        });
+      }
+      // Vit D — autoimmune-tolerance support; fires only if not already
+      // added by the vit-D pathway or alreadyOptimalFilter.
+      if (!seen.has('vit_d3_4000')) {
+        push(vitaminDCandidate('lab_finding',
+          `${o.marker} positive — vitamin D status correlates inversely with thyroid antibody titers; D3 4000 IU/day with 12-week recheck supports immune tolerance.`));
+      }
+    }
+
     // Free T3 low → same support + tyrosine precursor
     if (/free\s*t3|^t3,?\s*free/i.test(o.marker) && (o.flag === 'low' || o.flag === 'critical_low' || (o.flag === 'watch' && o.value < 3.0))) {
       push({
