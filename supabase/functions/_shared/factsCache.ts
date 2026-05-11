@@ -159,7 +159,16 @@ import { buildPlan, type ClinicalFacts, type PatientInput } from './buildPlan.ts
 // ADD ONE ROW. No engine modification. Universal across every user.
 // Same outputs as before (verified by inspection); now extensible by
 // data instead of code.
-export const RULE_LIBRARY_VERSION = '2026-05-11-16';
+// 2026-05-12-1: testInjectors.ts refactored to data-driven registry.
+// All test-ordering decisions now live in TEST_INDICATIONS in
+// ./testIndications.ts. testInjectors.ts owns only fact-extraction
+// (buildContextFlags) + thin wrapper adapters. Adding a new test
+// pattern = ADD ONE ROW to TEST_INDICATIONS. No engine modification.
+// 47 rows cover universal adult baseline, conditions, age/sex screens,
+// medication monitoring, lipid patterns, hepatic patterns, metabolic
+// syndrome, anemia subtyping, PTH workups, hormonal baselines, PCOS,
+// fasting insulin, and early-Hashimoto's grey zone.
+export const RULE_LIBRARY_VERSION = '2026-05-12-1';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
