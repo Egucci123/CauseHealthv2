@@ -91,7 +91,11 @@ export function buildContextFlags(ctx: InjectionContext) {
     folateDrawnHealthy: drawnHealthy(/folate/i),
     vitDDrawnHealthy: drawnHealthy(/25.?hydroxy.*vitamin d|vitamin d.*25/i),
     cmpDrawn: drawn(/^bun:|^creatinine|^sodium|^potassium|^chloride|^calcium\b|^bilirubin|alanine.*amino|aspartate.*amino|alkaline phosphatase/i),
-    cbcDrawn: drawn(/^wbc|^rbc:|hemoglobin\b(?!\s*a1c)|hematocrit|^mcv|^mch:|^mchc|^rdw|^platelets/i),
+    // CBC requires BOTH WBC AND Platelets to be considered drawn. A
+    // standalone Hgb/Hct (common in pregnancy or anemia-only screening)
+    // does NOT constitute a real CBC — those scenarios should still
+    // trigger the full CBC recommendation. (2026-05-12-6 fix.)
+    cbcDrawn: drawn(/^wbc\b|white blood cell/i) && drawn(/^platelets?\b|\bplt\b/i),
     lipidDrawn: drawn(/cholesterol|triglyceride|ldl|hdl|vldl/i),
     a1cDrawn: drawn(/hemoglobin a1c|hba1c|^a1c/i),
     hsCrpDrawn: drawn(/hs[\s-]?crp|c[\s-]?reactive/i),
