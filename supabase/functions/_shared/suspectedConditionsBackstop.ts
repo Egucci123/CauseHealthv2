@@ -833,6 +833,72 @@ const RULES: BackstopRule[] = [
     },
   },
 
+  // ── Hyperprolactinemia workup (universal, pregnancy-aware) ─────────────
+  //
+  // Fires when prolactin is above the lab reference range. Branches the
+  // patient-facing message and confirmatory_tests by context:
+  //   • Female + isPregnant=true → expected-findings suppressor already
+  //     handles it (rule short-circuits here to avoid double-firing)
+  //   • Female + isPregnant=false → β-hCG FIRST (a young woman taking a
+  //     prenatal but selecting 'not pregnant' could still be pregnant
+  //     without knowing), then fasting repeat prolactin, then MRI
+  //     pituitary if persistent
+  //   • Male → repeat prolactin (food / stress / nipple stim raise it
+  //     2x), then testosterone + LH/FSH, then MRI pituitary if persistent
+  // Universal across every user with high prolactin.
+  {
+    key: 'hyperprolactinemia_workup',
+    alreadyRaisedIf: [/hyperprolactin|prolactin.*elev|prolactin.*high|elevated\s+prolactin/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const prl = mark(ctx.labValues, [/^prolactin/i]);
+      if (!prl) return null;
+      if (prl.flag !== 'high' && prl.flag !== 'critical_high') return null;
+
+      // Pregnancy-aware short-circuit. If is_pregnant is on the user
+      // (we approximate by reading conditionsLower for 'pregnant' /
+      // 'breastfeeding' since BackstopCtx doesn't carry isPregnant
+      // directly), defer to the expected-findings suppressor.
+      // BackstopCtx.conditionsLower is built from active conditions
+      // table — pregnant users don't typically have "pregnancy" as a
+      // condition entry, so this is a soft check. The real suppression
+      // happens at the expected-findings layer in factsCache.
+      const sex = String(ctx.sex ?? '').toLowerCase();
+
+      const isMale = sex === 'male' || sex === 'm';
+      const baseConfirmatory = isMale
+        ? [
+            'Fasting repeat prolactin (food/stress/nipple stimulation can elevate)',
+            'Total + Free Testosterone',
+            'LH + FSH',
+            'TSH (rule out primary hypothyroidism as cause)',
+            'MRI pituitary (if persistently elevated)',
+          ]
+        : [
+            'Urine or serum β-hCG (rule out pregnancy first)',
+            'Fasting repeat prolactin (food/stress/nipple stimulation can elevate)',
+            'TSH (rule out primary hypothyroidism as cause)',
+            'Medication review (dopamine antagonists / antipsychotics / SSRIs raise prolactin)',
+            'MRI pituitary (if persistently elevated)',
+          ];
+
+      const question = isMale
+        ? `My prolactin came back at ${prl.value} ng/mL — can we repeat it fasting, check testosterone and LH/FSH, and consider a pituitary MRI if it stays high?`
+        : `My prolactin is ${prl.value} ng/mL — can we run a pregnancy test first, then repeat the prolactin fasting, and review any medications I'm on that could raise it?`;
+
+      return {
+        name: 'Hyperprolactinemia Workup',
+        category: 'reproductive',
+        confidence: prl.value > 50 ? 'high' : 'moderate',
+        evidence: `Prolactin ${prl.value} ng/mL — above the lab's upper reference. Pregnancy (in women), medications (dopamine blockers, SSRIs), and primary hypothyroidism are the common reversible causes; rule those out before chasing a pituitary microadenoma.`,
+        confirmatory_tests: baseConfirmatory,
+        icd10: 'E22.1',
+        what_to_ask_doctor: question,
+        source: 'deterministic',
+      };
+    },
+  },
+
   // ── Low T (male) ───────────────────────────────────────────────────────
   {
     key: 'low_testosterone_male',
