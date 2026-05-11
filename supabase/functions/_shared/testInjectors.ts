@@ -33,6 +33,7 @@ export interface InjectionContext {
   symptomsLower: string;
   labsLower: string;
   medsLower: string;
+  isPregnant?: boolean;
 }
 
 export interface InjectedTest {
@@ -115,6 +116,7 @@ export function buildContextFlags(ctx: InjectionContext) {
     freeTestosteroneDrawn: drawn(/free testosterone/i),
     testosteroneFullDrawn: drawn(/free testosterone/i) && drawn(/shbg/i),
     isMenstruatingFemale: sex === 'female' && age >= 12 && age <= 55,
+    isPregnant: ctx.isPregnant === true || /\bpregnan(?:t|cy)\b/i.test(c),
 
     // ── Conditions (delegated to canonical registry) ────────────────
     hasIBD: hasCondition(c, 'ibd'),

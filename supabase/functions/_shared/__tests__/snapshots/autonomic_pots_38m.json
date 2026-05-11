@@ -21,11 +21,6 @@
       "priority": "high"
     },
     {
-      "name": "High-Sensitivity C-Reactive Protein (hs-CRP)",
-      "icd10": "R74.0",
-      "priority": "high"
-    },
-    {
       "name": "Vitamin D (25-hydroxy)",
       "icd10": "E55.9",
       "priority": "high"
@@ -36,18 +31,8 @@
       "priority": "high"
     },
     {
-      "name": "Folate Workup (Serum + RBC Folate)",
-      "icd10": "D52.9",
-      "priority": "high"
-    },
-    {
       "name": "Iron Panel (Iron, TIBC, Ferritin, Transferrin Saturation)",
       "icd10": "D64.9",
-      "priority": "high"
-    },
-    {
-      "name": "GGT (Gamma-Glutamyl Transferase)",
-      "icd10": "R74.0",
       "priority": "high"
     },
     {

@@ -188,6 +188,7 @@ export function buildPlan(input: PatientInput): ClinicalFacts {
     symptomsLower: input.symptomsLower,
     labsLower: input.labsLower,
     medsLower: input.medsLower,
+    isPregnant: !!input.isPregnant,
   });
 
   // 3. Suspected conditions (deterministic pattern matchers, high confidence)

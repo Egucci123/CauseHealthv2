@@ -392,6 +392,62 @@ export const MED_CLASSES: MedClassDef[] = [
     requiresTest: ['uric_acid', 'liver_panel'],
     impliesConditions: ['gout'],
   },
+
+  // ── Anticonvulsants — CYP-inducing → Vit D / folate / Vit K depletion
+  {
+    key: 'anticonvulsant',
+    label: 'Anticonvulsant (Vit D / folate depleter)',
+    aliases: [
+      /phenytoin/i, /dilantin/i,
+      /carbamazepine/i, /tegretol/i,
+      /phenobarbital/i,
+      /valproate|valproic/i, /depakote/i, /depakene/i,
+      /primidone/i, /mysoline/i,
+      /oxcarbazepine/i, /trileptal/i,
+      /topiramate/i, /topamax/i,
+      /lamotrigine/i, /lamictal/i,
+      /levetiracetam/i, /keppra/i,
+    ],
+    requiresTest: ['vit_d_25oh', 'folate_workup'],
+  },
+
+  // ── Levodopa / carbidopa — Parkinson therapy → B6 interaction
+  {
+    key: 'levodopa',
+    label: 'Levodopa / Carbidopa-Levodopa (avoid B6 supplementation)',
+    aliases: [/levodopa/i, /carbidopa/i, /sinemet/i, /rytary/i, /duopa/i],
+    impliesConditions: ['parkinson_disease'],
+  },
+
+  // ── Digoxin — narrow therapeutic index, Mg/K-sensitive toxicity
+  {
+    key: 'digoxin',
+    label: 'Digoxin (Mg/K toxicity amplifier)',
+    aliases: [/digoxin/i, /lanoxin/i, /digitek/i],
+    requiresTest: ['cmp', 'rbc_magnesium'],
+  },
+
+  // ── Long-term antibiotics — microbiome / B-vitamin depletion
+  {
+    key: 'antibiotic_long_term',
+    label: 'Long-term antibiotic (microbiome / B-vitamin depleter)',
+    aliases: [
+      /\bdoxycycline\b.*(?:long|chronic|prolonged|months|year)/i,
+      /\bminocycline\b/i,
+      /\bazithromycin\b.*(?:3x\/week|MWF|prophylax|long)/i,
+      /\bnitrofurantoin\b/i,
+      /\btrimethoprim\b.*prophylax/i,
+      /\btmp[-\s]?smx\b.*prophylax/i,
+    ],
+  },
+
+  // ── Bile-acid sequestrants — fat-soluble vitamin malabsorption
+  {
+    key: 'bile_acid_sequestrant',
+    label: 'Bile-acid sequestrant (fat-soluble vitamin malabsorption)',
+    aliases: [/cholestyramine/i, /questran/i, /colesevelam/i, /welchol/i, /colestipol/i, /colestid/i],
+    requiresTest: ['vit_d_25oh'],
+  },
 ];
 
 const BY_KEY = new Map<string, MedClassDef>(MED_CLASSES.map(m => [m.key, m]));

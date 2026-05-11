@@ -510,6 +510,205 @@ const RULES: BackstopRule[] = [
     },
   },
 
+  // ── Hemochromatosis — iron overload ───────────────────────────────────
+  //
+  // Ferritin > 300 ng/mL (males) or > 200 (females) + transferrin
+  // saturation > 45% is the classic screening pattern. Genetic
+  // confirmation via HFE testing. Catches the most-missed treatable
+  // genetic disease in adults — 1 in 200 NW European descent carry
+  // homozygous C282Y. Untreated → cirrhosis, diabetes, cardiomyopathy.
+  {
+    key: 'hemochromatosis',
+    alreadyRaisedIf: [/hemochromatos|iron overload|hfe/i],
+    skipIfDx: ['hemochromatosis'],
+    detect: (ctx) => {
+      const ferritin = mark(ctx.labValues, [/^ferritin/i]);
+      const transSat = mark(ctx.labValues, [/transferrin\s*saturation|tsat|iron\s*sat/i]);
+      const iron = mark(ctx.labValues, [/^iron\b/i]);
+      if (!ferritin) return null;
+      const isFemale = ctx.sex === 'female';
+      const ferritinHigh = ferritin.value > (isFemale ? 200 : 300);
+      const tsatHigh = transSat && transSat.value > 45;
+      const ironHigh = iron && iron.value > 175;
+      if (!ferritinHigh) return null;
+      // High confidence if BOTH ferritin elevated AND TSat > 45
+      const isHigh = (ferritinHigh && tsatHigh) || (ferritinHigh && ferritin.value > 500);
+      return {
+        name: 'Iron overload pattern — rule out hemochromatosis',
+        category: 'endocrine',
+        confidence: isHigh ? 'high' : 'moderate',
+        evidence: `Ferritin ${ferritin.value} ng/mL is above the standard ${isFemale ? '200' : '300'} threshold${tsatHigh ? ` + transferrin saturation ${transSat!.value}% (>45)` : ''}${ironHigh ? ` + serum iron ${iron!.value} µg/dL` : ''}. This is the classic hemochromatosis screening pattern — 1 in 200 people of NW European descent carry the homozygous C282Y mutation. Untreated iron overload drives cirrhosis, diabetes, and cardiomyopathy by midlife.`,
+        confirmatory_tests: ['HFE Genetic Testing (C282Y / H63D)', 'Repeat Ferritin + Transferrin Saturation (fasting)', 'Liver Panel + ALT/AST', 'Hepatic MRI (R2*) if ferritin > 1000 or LFTs abnormal'],
+        icd10: 'E83.110',
+        what_to_ask_doctor: "My ferritin is elevated and the transferrin saturation pattern looks like iron overload. Can we run HFE genetic testing for hemochromatosis and a fasting repeat to confirm? If positive, therapeutic phlebotomy is highly effective when caught early.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Cushing syndrome — endogenous cortisol excess ─────────────────────
+  //
+  // AM cortisol elevated + classic body changes (central obesity,
+  // moon face, buffalo hump, purple striae) OR uncontrolled HTN + DM
+  // + osteoporosis cluster. Adrenal tumor, pituitary tumor, ectopic
+  // ACTH, or exogenous steroid (rule out FIRST).
+  {
+    key: 'cushing_syndrome_workup',
+    alreadyRaisedIf: [/cushing/i],
+    skipIfDx: ['cushing'],
+    detect: (ctx) => {
+      const cortisol = mark(ctx.labValues, [/cortisol/i]);
+      const onSteroid = /prednisone|prednisolone|methylprednisolone|dexamethasone|hydrocortisone/i.test(ctx.medsLower);
+      if (onSteroid) return null; // exogenous — different workup
+      if (!cortisol || cortisol.value < 23) return null;
+      const sx = ctx.symptomsLower ?? '';
+      const cushingSx: string[] = [];
+      if (/weight gain|central obes|moon face|buffalo/i.test(sx)) cushingSx.push('central body changes');
+      if (/purple|stretch mark|striae/i.test(sx)) cushingSx.push('striae');
+      if (/easy brui/i.test(sx)) cushingSx.push('easy bruising');
+      if (/muscle weakness/i.test(sx)) cushingSx.push('proximal muscle weakness');
+      const conds = ctx.conditionsLower ?? '';
+      const cushingConds: string[] = [];
+      if (/hypertension|htn/i.test(conds)) cushingConds.push('HTN');
+      if (/diabetes/i.test(conds)) cushingConds.push('diabetes');
+      if (/osteoporo/i.test(conds)) cushingConds.push('osteoporosis');
+      const clusterStrong = cushingSx.length >= 2 || (cushingSx.length >= 1 && cushingConds.length >= 2);
+      return {
+        name: 'Cortisol excess — rule out Cushing syndrome',
+        category: 'endocrine',
+        confidence: clusterStrong ? 'high' : 'moderate',
+        evidence: `AM cortisol ${cortisol.value} µg/dL is above the standard reference${cushingSx.length ? `, with classic Cushing features (${cushingSx.join(', ')})` : ''}${cushingConds.length ? ` and the HTN/DM/osteoporosis cluster (${cushingConds.join(', ')})` : ''}. Common reversible causes — sleep deprivation, recent stress, draw-time variability, exogenous estrogen — should be ruled out first, then formal Cushing screening.`,
+        confirmatory_tests: ['24-hour Urinary Free Cortisol (×2)', 'Late-night Salivary Cortisol (×2)', 'Low-dose Dexamethasone Suppression Test (1 mg overnight)', 'ACTH (paired with cortisol)', 'Pituitary MRI if ACTH-dependent confirmed'],
+        icd10: 'E24.9',
+        what_to_ask_doctor: "My morning cortisol is elevated. Can we set up a Cushing screen — 24-hour urinary free cortisol, late-night salivary cortisol, and a low-dose dexamethasone suppression test? Two of those positive would confirm cortisol excess and we'd then check ACTH to find the source.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Primary aldosteronism (Conn syndrome) — HTN + low K ──────────────
+  //
+  // Pattern: hypokalemia (K < 3.5) + HTN, especially treatment-resistant
+  // or young-onset. Most common SECONDARY cause of HTN — present in 5-10%
+  // of all HTN, 20% of resistant HTN. Treatable with MR antagonist or
+  // adrenalectomy.
+  {
+    key: 'primary_aldosteronism',
+    alreadyRaisedIf: [/aldosteron|conn syndrome/i],
+    skipIfDx: ['primary_aldosteronism'],
+    detect: (ctx) => {
+      const k = mark(ctx.labValues, [/^potassium/i, /\bk\+?\b/i]);
+      const hasHtn = /hypertension|htn|high blood pressure/i.test(ctx.conditionsLower ?? '') ||
+                    /high blood pressure/i.test(ctx.symptomsLower ?? '');
+      const onMultipleAntihtn = (ctx.medsLower ?? '').match(/\b(lisinopril|losartan|amlodipine|metoprolol|hydrochlorothiazide|atenolol|valsartan|carvedilol|nifedipine|enalapril|olmesartan)\b/gi);
+      const onThreePlus = onMultipleAntihtn && onMultipleAntihtn.length >= 3;
+      const kLow = k && k.value < 3.5;
+      if (!hasHtn) return null;
+      if (!kLow && !onThreePlus) return null;
+      return {
+        name: 'Hypertension workup — rule out primary aldosteronism',
+        category: 'endocrine',
+        confidence: (kLow && onThreePlus) ? 'high' : 'moderate',
+        evidence: `${kLow ? `Potassium ${k!.value} mEq/L (low) ` : ''}${kLow && onThreePlus ? '+ ' : ''}${onThreePlus ? `on ${onMultipleAntihtn!.length} antihypertensives ` : ''}with established HTN. Primary aldosteronism is present in 5-10% of all HTN and 20% of treatment-resistant HTN — most missed treatable HTN cause. Worth the screen; treatment (spironolactone or adrenalectomy) often normalizes BP.`,
+        confirmatory_tests: ['Aldosterone-to-Renin Ratio (ARR) — morning fasting', 'Plasma Aldosterone Concentration', 'Plasma Renin Activity', 'Adrenal CT if ARR confirms', 'Adrenal vein sampling if unilateral source suspected'],
+        icd10: 'E26.9',
+        what_to_ask_doctor: "My potassium is low and I'm on multiple BP meds. Can we run an aldosterone-to-renin ratio to screen for primary aldosteronism? It's the most-missed treatable cause of HTN — if positive, spironolactone often normalizes things.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Pheochromocytoma — paroxysmal HTN + adrenergic symptoms ──────────
+  {
+    key: 'pheochromocytoma_workup',
+    alreadyRaisedIf: [/pheochromocyt|paraganglioma/i],
+    skipIfDx: ['pheochromocytoma'],
+    detect: (ctx) => {
+      const sx = ctx.symptomsLower ?? '';
+      const hasHtn = /hypertension|htn|high blood pressure/i.test(ctx.conditionsLower ?? '') ||
+                    /high blood pressure/i.test(sx);
+      // Classic triad: episodic palpitations + sweating + headache + HTN
+      const hasPalpitations = /heart palpitation|palpitation/i.test(sx);
+      const hasSweating = /sweat|diaphoresis/i.test(sx);
+      const hasHeadaches = /headache|migraine/i.test(sx);
+      const hasAnxiety = /anxiety/i.test(sx);
+      const tetradCount = [hasPalpitations, hasSweating, hasHeadaches, hasAnxiety].filter(Boolean).length;
+      if (!hasHtn || tetradCount < 2) return null;
+      return {
+        name: 'Adrenergic crisis pattern — rule out pheochromocytoma',
+        category: 'endocrine',
+        confidence: tetradCount >= 3 ? 'high' : 'moderate',
+        evidence: `HTN with the classic adrenergic cluster (${[hasPalpitations && 'palpitations', hasSweating && 'sweating', hasHeadaches && 'headaches', hasAnxiety && 'anxiety'].filter(Boolean).join(', ')}). Pheochromocytoma is rare (0.1-0.6% of HTN) but catastrophic if missed — hypertensive crisis during anesthesia/surgery is the classic killer. Once-in-lifetime screen worth doing in any patient with this cluster.`,
+        confirmatory_tests: ['24-hour Urinary Fractionated Metanephrines (×2)', 'Plasma Free Metanephrines (alternate)', 'Adrenal CT/MRI if biochemistry positive', 'MIBG scan if extra-adrenal suspected'],
+        icd10: 'E27.5',
+        what_to_ask_doctor: "I'm having episodic palpitations + sweating + headaches with my high blood pressure. Can we run 24-hour urinary fractionated metanephrines (or plasma free metanephrines) to rule out pheochromocytoma? It's rare but dangerous to miss if I ever need surgery.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Primary hyperparathyroidism — Ca + PTH pattern ──────────────────
+  {
+    key: 'primary_hyperparathyroidism',
+    alreadyRaisedIf: [/hyperparathyroid/i],
+    skipIfDx: ['hyperparathyroidism'],
+    detect: (ctx) => {
+      const ca = mark(ctx.labValues, [/^calcium\b/i, /^total calcium/i]);
+      const pth = mark(ctx.labValues, [/^pth\b/i, /parathyroid hormone/i]);
+      const ionizedCa = mark(ctx.labValues, [/ionized calcium/i]);
+      const phos = mark(ctx.labValues, [/phosphor/i]);
+      const caHigh = (ca && ca.value > 10.5) || (ionizedCa && ionizedCa.value > 5.4);
+      if (!caHigh) return null;
+      // PTH inappropriately normal or elevated in the face of hypercalcemia
+      const pthInappropriate = pth && pth.value > 30;       // any non-suppressed
+      const phosLow = phos && phos.value < 2.5;
+      return {
+        name: 'Hypercalcemia + PTH pattern — rule out primary hyperparathyroidism',
+        category: 'endocrine',
+        confidence: (pthInappropriate || phosLow) ? 'high' : 'moderate',
+        evidence: `Calcium ${ca ? ca.value : ionizedCa!.value} ${ca ? 'mg/dL' : 'mg/dL (ionized)'} elevated${pthInappropriate ? ` with PTH ${pth!.value} pg/mL (inappropriately not-suppressed)` : ''}${phosLow ? ` and phosphorus ${phos!.value} mg/dL (low — supports primary HPT)` : ''}. Primary hyperparathyroidism is the most common cause of asymptomatic hypercalcemia — adenoma in 85% of cases, often cured by parathyroidectomy. Untreated → osteoporosis, kidney stones, fatigue, depression.`,
+        confirmatory_tests: ['Repeat Ca + Ionized Ca + Albumin (3 sets minimum)', 'PTH (Intact)', '24-hour Urine Calcium', 'Vitamin D 25-OH (rule out vit-D-deficiency-driven secondary HPT first)', 'DEXA Scan', 'Renal Ultrasound (rule out stones)'],
+        icd10: 'E21.0',
+        what_to_ask_doctor: "My calcium is elevated. Can we draw a PTH and 24-hour urine calcium to evaluate for primary hyperparathyroidism? If PTH is inappropriately non-suppressed, that's diagnostic and treatment is usually surgical and curative.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Addison disease / primary adrenal insufficiency ───────────────────
+  {
+    key: 'adrenal_insufficiency',
+    alreadyRaisedIf: [/addison|adrenal insufficien/i],
+    skipIfDx: ['addisons_disease', 'adrenal_insufficiency'],
+    detect: (ctx) => {
+      const na = mark(ctx.labValues, [/^sodium/i, /\bna\b/i]);
+      const k = mark(ctx.labValues, [/^potassium/i, /\bk\+?\b/i]);
+      const cortisol = mark(ctx.labValues, [/cortisol/i]);
+      const naLow = na && na.value < 135;
+      const kHigh = k && k.value > 5.1;
+      const cortisolLow = cortisol && cortisol.value < 5;
+      // Need at least 2 of (low Na, high K, low cortisol) OR cortisol < 3
+      const flagCount = [naLow, kHigh, cortisolLow].filter(Boolean).length;
+      if (flagCount < 2 && !(cortisol && cortisol.value < 3)) return null;
+      const sx = ctx.symptomsLower ?? '';
+      const sxMatch: string[] = [];
+      if (/fatigue|tired|exhaust|weak/i.test(sx)) sxMatch.push('fatigue/weakness');
+      if (/weight loss/i.test(sx)) sxMatch.push('weight loss');
+      if (/nausea|abdominal pain/i.test(sx)) sxMatch.push('GI symptoms');
+      if (/dizziness on standing/i.test(sx)) sxMatch.push('orthostatic dizziness');
+      return {
+        name: 'Adrenal insufficiency pattern — rule out Addison disease',
+        category: 'endocrine',
+        confidence: (cortisol && cortisol.value < 3) || flagCount >= 3 ? 'high' : 'moderate',
+        evidence: `${naLow ? `Sodium ${na!.value} (low) ` : ''}${kHigh ? `+ potassium ${k!.value} (high) ` : ''}${cortisolLow ? `+ AM cortisol ${cortisol!.value} µg/dL (low)` : ''}${sxMatch.length ? ` with classic Addison symptoms (${sxMatch.join(', ')})` : ''}. This electrolyte + cortisol pattern is the classic primary adrenal insufficiency signature. Untreated Addison crisis is life-threatening — needs urgent workup.`,
+        confirmatory_tests: ['ACTH Stimulation Test (cosyntropin 250 µg, cortisol at 0 + 30 + 60 min)', 'ACTH (Plasma)', '21-hydroxylase Antibodies (autoimmune Addison)', 'Renin + Aldosterone', 'Adrenal CT if antibodies negative'],
+        icd10: 'E27.1',
+        what_to_ask_doctor: "I have a pattern that could fit adrenal insufficiency — low sodium, high potassium, and/or low morning cortisol. Can we do an ACTH stimulation test urgently? If cortisol fails to rise, that's diagnostic for Addison and treatment is straightforward (hydrocortisone + fludrocortisone replacement).",
+        source: 'deterministic',
+      };
+    },
+  },
+
   // ── Hyperthyroidism / rule-out Graves disease ─────────────────────────
   //
   // TSH below the lab's lower reference (typically 0.4) is suspicious
@@ -1334,6 +1533,8 @@ const SYSTEM_NAMED_RULE_DEDUP: Record<string, string[]> = {
   lipid:               ['ldl_high_for_age', 'particle_pattern_atherogenic', 'inflammation_cv_amplifier'],
   thyroid:             ['hashimoto_or_hypothyroid', 'subclinical_hypothyroidism', 'hyperthyroidism_rule_out_graves'],
   iron_hematology:     ['iron_deficiency_anemia', 'hemoconcentration_dehydration', 'b12_deficiency', 'hemochromatosis', 'early_hypochromic_pattern'],
+  adrenal:             ['cushing_syndrome_workup', 'adrenal_insufficiency', 'primary_aldosteronism', 'pheochromocytoma_workup'],
+  parathyroid_calcium: ['primary_hyperparathyroidism'],
   inflammation:        ['inflammation_cv_amplifier', 'pmr_age_50plus'],
   b_vitamin:           ['b12_deficiency'],
   male_hormone:        ['low_t_male'],

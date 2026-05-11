@@ -91,6 +91,40 @@ const DEPLETION_RULES: Rule[] = [
   // universal across MTX users regardless of indication (IBD, psoriasis,
   // RA, ectopic, etc.).
   { medClass: 'methotrexate', nutrient: 'Folate', mechanism: 'Methotrexate directly inhibits dihydrofolate reductase. Folate co-supplementation (typically 1 mg/day or weekly 5 mg) reduces side effects and is standard of care alongside MTX.', monitoringTest: 'folate_workup', severity: 'high' },
+
+  // ── PPIs → calcium (added to the existing B12/Mg coverage)
+  { medClass: 'ppi', nutrient: 'Calcium', mechanism: 'PPIs reduce gastric acid → impaired ionized calcium absorption. Linked to increased hip-fracture risk on long-term use (FDA warning 2010).', monitoringTest: 'ionized_calcium', severity: 'moderate' },
+
+  // ── Beta blockers → CoQ10 + melatonin
+  { medClass: 'beta_blocker', nutrient: 'CoQ10', mechanism: 'Beta blockers (especially propranolol, metoprolol) inhibit CoQ10-dependent enzymes — exacerbates fatigue + exercise intolerance on chronic use.', monitoringTest: null, severity: 'moderate' },
+  { medClass: 'beta_blocker', nutrient: 'Melatonin', mechanism: 'Beta blockers suppress nocturnal melatonin synthesis → contributes to the insomnia/vivid-dream side effects commonly reported.', monitoringTest: null, severity: 'low' },
+
+  // ── Anticonvulsants → vitamin D, K, folate, B6
+  { medClass: 'anticonvulsant', nutrient: 'Vitamin D', mechanism: 'Phenytoin, carbamazepine, phenobarbital, valproate induce hepatic CYP enzymes that catabolize 25-OH-D faster — accelerated bone loss documented within 12 months.', monitoringTest: 'vit_d_25oh', severity: 'high' },
+  { medClass: 'anticonvulsant', nutrient: 'Folate', mechanism: 'Long-term anticonvulsants lower serum folate; relevant for any patient of reproductive age (NTD prevention).', monitoringTest: 'folate_workup', severity: 'high' },
+  { medClass: 'anticonvulsant', nutrient: 'Vitamin K', mechanism: 'CYP-inducing anticonvulsants accelerate Vit K catabolism — relevant for newborns of treated mothers + bone health long-term.', monitoringTest: null, severity: 'moderate' },
+
+  // ── Levodopa / carbidopa → vitamin B6 + iron
+  { medClass: 'levodopa', nutrient: 'Vitamin B6', mechanism: 'B6 accelerates peripheral decarboxylation of levodopa — high B6 intake REDUCES drug efficacy. Patients should avoid B6 supplementation while on levodopa.', monitoringTest: null, severity: 'moderate' },
+
+  // ── Digoxin → magnesium + potassium (toxicity amplifier)
+  { medClass: 'digoxin', nutrient: 'Magnesium', mechanism: 'Hypomagnesemia dramatically amplifies digoxin toxicity (arrhythmia risk). Mg + K must be monitored aggressively.', monitoringTest: 'rbc_magnesium', severity: 'high' },
+  { medClass: 'digoxin', nutrient: 'Potassium', mechanism: 'Hypokalemia amplifies digoxin toxicity — common combo with concurrent diuretic therapy.', monitoringTest: 'cmp', severity: 'high' },
+
+  // ── ACE inhibitors / ARBs → zinc
+  { medClass: 'ace_inhibitor', nutrient: 'Zinc', mechanism: 'ACE inhibitors chelate zinc — long-term use linked to depressed serum zinc + altered taste/dysgeusia side effect.', monitoringTest: null, severity: 'low' },
+
+  // ── Long-term antibiotics → microbiome / B vitamins
+  { medClass: 'antibiotic_long_term', nutrient: 'B-Complex (microbiome-derived)', mechanism: 'Prolonged antibiotic exposure depletes gut flora that synthesize B vitamins (especially B12, biotin, K2). Probiotic restoration + B-complex during/after recommended.', monitoringTest: null, severity: 'moderate' },
+
+  // ── SGLT2 inhibitors → volume + magnesium
+  { medClass: 'sglt2', nutrient: 'Magnesium', mechanism: 'SGLT2 inhibitors (empagliflozin, dapagliflozin) cause modest Mg wasting via osmotic diuresis. Monitor on long-term use.', monitoringTest: 'rbc_magnesium', severity: 'low' },
+
+  // ── Bile-acid sequestrants → fat-soluble vitamins
+  { medClass: 'bile_acid_sequestrant', nutrient: 'Fat-soluble vitamins (A, D, E, K)', mechanism: 'Cholestyramine / colesevelam bind bile salts → impaired fat-soluble vitamin absorption. Take other meds 1 hr before or 4 hr after.', monitoringTest: 'vit_d_25oh', severity: 'moderate' },
+
+  // ── Allopurinol → no major depletion but iron interaction
+  { medClass: 'allopurinol', nutrient: 'Iron absorption alteration', mechanism: 'Allopurinol can increase iron absorption slightly + alter uric acid handling; relevant for patients with concurrent hemochromatosis risk.', monitoringTest: 'iron_panel', severity: 'low' },
 ];
 
 export function buildDepletionList(input: Input): DepletionFact[] {

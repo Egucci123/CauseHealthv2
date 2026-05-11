@@ -127,8 +127,19 @@ export const TEST_INDICATIONS: TestIndication[] = [
     triggers: [
       { kind: 'age_min', value: 18 },
       { kind: 'flag_false', flag: 'hsCrpDrawnHealthy' },
+      // Signal-gated: only fire on cardiovascular risk, autoimmune, or
+      // metabolic signal — not as a universal screen. USPSTF says
+      // insufficient evidence for general-population screening.
+      { kind: 'any', of: [
+        { kind: 'age_min', value: 40 },
+        { kind: 'condition_match', pattern: /\b(diabetes|hypertension|cad|coronary|stroke|tia|autoimmune|lupus|rheumatoid|psoriasis|ibd|crohn|colitis|family history.*coronary|family history.*cardiac)/i },
+        { kind: 'flag_true', flag: 'ldlHigh' },
+        { kind: 'flag_true', flag: 'tgHigh' },
+        { kind: 'flag_true', flag: 'glucoseWatch' },
+        { kind: 'flag_true', flag: 'hasJointSymptoms' },
+      ]},
     ],
-    tests: [{ key: 'hs_crp', whyShort: 'Systemic inflammation baseline — CV + metabolic risk amplifier', trigger: 'd' }],
+    tests: [{ key: 'hs_crp', whyShort: 'CV / metabolic / autoimmune signal — hs-CRP captures inflammation that amplifies risk', trigger: 'd' }],
   },
   {
     id: 'baseline_vit_d',
@@ -140,8 +151,22 @@ export const TEST_INDICATIONS: TestIndication[] = [
     triggers: [
       { kind: 'age_min', value: 18 },
       { kind: 'flag_false', flag: 'b12DrawnHealthy' },
+      // Signal-gated: only fire without an explicit B12 depleter med
+      // when there's a real signal — vegan, age ≥65, macrocytic MCV,
+      // tingling/neuropathy, fatigue cluster, IBD/celiac/malabsorption.
+      // Asymptomatic young adults no longer get B12 workup by default.
+      { kind: 'any', of: [
+        { kind: 'age_min', value: 65 },
+        { kind: 'condition_match', pattern: /\b(vegan|vegetarian|ibd|crohn|colitis|celiac|gastric bypass|atrophic gastritis|pernicious anemia)/i },
+        { kind: 'flag_true', flag: 'macrocytic' },
+        { kind: 'symptom_match', pattern: /\b(tingling|numbness|neuropathy|muscle twitching)/i },
+        { kind: 'all', of: [
+          { kind: 'flag_true', flag: 'hasFatigue' },
+          { kind: 'symptom_match', pattern: /\bbrain fog\b/i },
+        ]},
+      ]},
     ],
-    tests: [{ key: 'vit_b12_workup', whyShort: 'Tissue B12 status (Serum B12 + MMA + Homocysteine) — catches functional deficiency', trigger: 'd' }],
+    tests: [{ key: 'vit_b12_workup', whyShort: 'Age / diet / GI / macrocytic / fatigue+brain-fog signal — Serum B12 + MMA + Homocysteine catches functional deficiency the basic test misses', trigger: 'd' }],
   },
   {
     id: 'baseline_b12_workup_with_depleter',
@@ -160,8 +185,19 @@ export const TEST_INDICATIONS: TestIndication[] = [
     triggers: [
       { kind: 'age_min', value: 18 },
       { kind: 'flag_false', flag: 'folateDrawnHealthy' },
+      // Signal-gated: macrocytic, alcohol use, GI malabsorption, anti-
+      // epileptics, methotrexate (caught upstream), or pregnancy planning.
+      { kind: 'any', of: [
+        { kind: 'flag_true', flag: 'macrocytic' },
+        { kind: 'condition_match', pattern: /\b(alcohol use|alcoholism|ibd|crohn|colitis|celiac|sprue|epilepsy|seizure)/i },
+        { kind: 'meds_match', pattern: /\b(phenytoin|carbamazepine|valproate|valproic|primidone|methotrexate|sulfasalazine|trimethoprim)/i },
+        { kind: 'all', of: [
+          { kind: 'sex', is: 'female' },
+          { kind: 'symptom_match', pattern: /\bfertility concerns?|trying to conceive\b/i },
+        ]},
+      ]},
     ],
-    tests: [{ key: 'folate_workup', whyShort: 'Tissue folate status (Serum + RBC) — covers mesalamine/methotrexate depletion', trigger: 'd' }],
+    tests: [{ key: 'folate_workup', whyShort: 'Macrocytic / alcohol / GI malabsorption / anti-epileptic / TTC signal — Serum + RBC folate', trigger: 'd' }],
   },
   {
     id: 'baseline_folate_workup_with_depleter',
@@ -179,16 +215,41 @@ export const TEST_INDICATIONS: TestIndication[] = [
     triggers: [
       { kind: 'age_min', value: 18 },
       { kind: 'flag_false', flag: 'ironPanelDrawnHealthy' },
+      // Signal-gated: every menstruating female, plus signal-based for
+      // both sexes (fatigue, hair loss, restless legs, IBD/celiac,
+      // microcytic, vegan/vegetarian, age ≥65 for occult-loss screen).
+      { kind: 'any', of: [
+        { kind: 'all', of: [
+          { kind: 'sex', is: 'female' },
+          { kind: 'age_min', value: 18 },
+          { kind: 'age_max', value: 55 },
+        ]},
+        { kind: 'flag_true', flag: 'hasFatigue' },
+        { kind: 'flag_true', flag: 'hasHairLoss' },
+        { kind: 'flag_true', flag: 'microcytic' },
+        { kind: 'symptom_match', pattern: /\brestless legs\b/i },
+        { kind: 'condition_match', pattern: /\b(ibd|crohn|colitis|celiac|vegan|vegetarian|gastric bypass)/i },
+        { kind: 'age_min', value: 65 },
+      ]},
     ],
-    tests: [{ key: 'iron_panel', whyShort: 'Iron stores + transport — fatigue, hair loss, restless legs driver before Hgb drops', trigger: 'd' }],
+    tests: [{ key: 'iron_panel', whyShort: 'Menstruating female / fatigue / hair loss / restless legs / GI malabsorption / age 65+ — iron stores + transport', trigger: 'd' }],
   },
   {
     id: 'baseline_ggt',
     triggers: [
       { kind: 'age_min', value: 18 },
       { kind: 'flag_false', flag: 'ggtDrawn' },
+      // Signal-gated: any liver-enzyme abnormality, alcohol concern,
+      // statin user (rhabdo monitoring), known NAFLD, or BMI ≥30.
+      { kind: 'any', of: [
+        { kind: 'flag_true', flag: 'altElevated' },
+        { kind: 'flag_true', flag: 'astElevated' },
+        { kind: 'flag_true', flag: 'bilirubinElevated' },
+        { kind: 'flag_true', flag: 'onStatin' },
+        { kind: 'condition_match', pattern: /\b(alcohol use|alcoholism|nafld|fatty liver|hepatitis|cirrhos)/i },
+      ]},
     ],
-    tests: [{ key: 'ggt', whyShort: 'Sensitive liver/biliary marker — anchor for ALT/AST', trigger: 'd' }],
+    tests: [{ key: 'ggt', whyShort: 'Liver enzyme abnormal / statin / NAFLD / alcohol signal — GGT anchors the hepatic workup', trigger: 'd' }],
   },
   {
     id: 'baseline_thyroid_no_full',
@@ -772,6 +833,48 @@ export const TEST_INDICATIONS: TestIndication[] = [
       { kind: 'flag_true',  flag: 'hasWeightIssues' },
     ],
     tests: [{ key: 'fasting_insulin_homa_ir', whyShort: 'Weight resistance reported — fasting insulin catches hyperinsulinemia driving the resistance', trigger: 'c' }],
+  },
+
+  // ── PREGNANCY-SPECIFIC CARE ──────────────────────────────────────
+  //
+  // Universal coverage for any pregnant user. These rules supplement
+  // (not replace) the standard prenatal workup ordered by OB/GYN.
+  // Engine signals these for the doctor-prep document so users can
+  // verify their OB ordered them.
+  {
+    id: 'prenatal_panel_baseline',
+    triggers: [
+      { kind: 'sex', is: 'female' },
+      { kind: 'flag_true', flag: 'isPregnant' },
+    ],
+    tests: [
+      { key: 'cbc', whyShort: 'Prenatal anemia screen — universal in every trimester', trigger: 'b' },
+      { key: 'iron_panel', whyShort: 'Pregnancy iron requirements increase 3× — ferritin baseline + ongoing monitoring', trigger: 'b' },
+      { key: 'thyroid_panel', whyShort: 'Pregnancy alters thyroid binding globulin — TSH target <2.5 in first trimester, <3.0 thereafter', trigger: 'b' },
+      { key: 'vit_d_25oh', whyShort: 'Vitamin D status — fetal bone development + maternal preeclampsia risk', trigger: 'c' },
+    ],
+  },
+  {
+    id: 'gdm_screening_24_28w',
+    // Gestational diabetes screening — universal at 24-28 weeks per ACOG.
+    // We can't compute gestational age, so fire for any pregnant user
+    // and let the OB time the actual draw. The recommendation surfaces.
+    triggers: [
+      { kind: 'sex', is: 'female' },
+      { kind: 'flag_true', flag: 'isPregnant' },
+    ],
+    tests: [{ key: 'hba1c', whyShort: 'Gestational diabetes screen — 1-hour 50g glucose challenge at 24-28w per ACOG (universal in every pregnancy)', trigger: 'b' }],
+  },
+  {
+    id: 'preeclampsia_surveillance',
+    triggers: [
+      { kind: 'sex', is: 'female' },
+      { kind: 'flag_true', flag: 'isPregnant' },
+    ],
+    tests: [
+      { key: 'uacr', whyShort: 'Proteinuria surveillance — preeclampsia screen at every prenatal visit', trigger: 'b' },
+      { key: 'cmp', whyShort: 'CMP for liver enzymes (HELLP) + creatinine + uric acid — preeclampsia workup', trigger: 'b' },
+    ],
   },
 
   // ── IBD-concern workup — chronic GI + malabsorption signal ───────

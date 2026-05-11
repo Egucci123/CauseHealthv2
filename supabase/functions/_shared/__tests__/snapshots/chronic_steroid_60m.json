@@ -31,23 +31,8 @@
       "priority": "high"
     },
     {
-      "name": "B12 Workup (Serum B12 + MMA + Homocysteine)",
-      "icd10": "E53.8",
-      "priority": "high"
-    },
-    {
       "name": "Folate Workup (Serum + RBC Folate)",
       "icd10": "D52.9",
-      "priority": "high"
-    },
-    {
-      "name": "Iron Panel (Iron, TIBC, Ferritin, Transferrin Saturation)",
-      "icd10": "D64.9",
-      "priority": "high"
-    },
-    {
-      "name": "GGT (Gamma-Glutamyl Transferase)",
-      "icd10": "R74.0",
       "priority": "high"
     },
     {
@@ -88,6 +73,11 @@
     {
       "name": "DEXA Scan (Bone Density)",
       "icd10": "Z13.820",
+      "priority": "moderate"
+    },
+    {
+      "name": "Testosterone Panel (Total T + Free T + Bioavailable T + SHBG + Estradiol + LH + FSH)",
+      "icd10": "E29.1",
       "priority": "moderate"
     }
   ],
