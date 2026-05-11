@@ -110,11 +110,36 @@ export function buildContextFlags(ctx: InjectionContext) {
       const electrolyteDrawn = electrolytes.some(re => drawn(re));
       return drawnCount >= 3 && electrolyteDrawn;
     })(),
+    // CMP drawn AND every component reads healthy. If any abnormal,
+    // baseline rule re-fires so the PCP follow-up surfaces the panel.
+    cmpDrawnHealthy: (() => {
+      const components = [
+        /^bun\b/i, /^creatinine\b/i, /^sodium\b/i, /^potassium\b/i,
+        /^chloride\b/i, /^co2\b|^bicarbonate\b/i, /^glucose\b/i,
+        /^calcium\b/i, /^total\s*protein\b/i, /^albumin\b/i,
+        /^bilirubin\b|^total\s*bilirubin\b/i, /alanine.*amino|\balt\b/i,
+        /aspartate.*amino|\bast\b/i, /alkaline\s*phosphatase|\balp\b/i,
+      ];
+      const drawnComps = components.filter(re => drawn(re));
+      if (drawnComps.length < 3) return false;
+      return drawnComps.every(re => drawnHealthy(re));
+    })(),
     // CBC requires BOTH WBC AND Platelets to be considered drawn. A
     // standalone Hgb/Hct (common in pregnancy or anemia-only screening)
     // does NOT constitute a real CBC — those scenarios should still
     // trigger the full CBC recommendation. (2026-05-12-6 fix.)
     cbcDrawn: drawn(/^wbc\b|white blood cell/i) && drawn(/^platelets?\b|\bplt\b/i),
+    // CBC drawn AND every component reads healthy. Re-fires baseline
+    // if any CBC component abnormal (anemia / leukocytosis / etc).
+    cbcDrawnHealthy: (() => {
+      const components = [
+        /^wbc\b|white blood cell/i, /^platelets?\b|\bplt\b/i,
+        /hemoglobin\b(?!\s*a1c)/i, /hematocrit|\bhct\b/i, /^mcv\b/i,
+      ];
+      const drawnComps = components.filter(re => drawn(re));
+      if (drawnComps.length < 3) return false;
+      return drawnComps.every(re => drawnHealthy(re));
+    })(),
     // Lipid Panel requires AT LEAST 3 of: Total Cholesterol, LDL, HDL,
     // Triglycerides. A single LDL or single TG isn't a real lipid panel.
     // Same pattern as CBC/CMP fixes. Fixed 2026-05-12-16.
@@ -127,7 +152,20 @@ export function buildContextFlags(ctx: InjectionContext) {
       ];
       return parts.filter(re => drawn(re)).length >= 3;
     })(),
+    // Lipid Panel drawn AND every component reads healthy. Re-fires
+    // baseline if ANY lipid marker abnormal — PCP must follow up on
+    // elevated LDL / TG / low HDL.
+    lipidDrawnHealthy: (() => {
+      const parts = [
+        /total\s*cholesterol|^cholesterol\b/i,
+        /\bldl\b/i, /\bhdl\b/i, /triglyceride/i,
+      ];
+      const drawnParts = parts.filter(re => drawn(re));
+      if (drawnParts.length < 3) return false;
+      return drawnParts.every(re => drawnHealthy(re));
+    })(),
     a1cDrawn: drawn(/hemoglobin a1c|hba1c|^a1c/i),
+    a1cDrawnHealthy: drawnHealthy(/hemoglobin a1c|hba1c|^a1c/i),
     hsCrpDrawn: drawn(/hs[\s-]?crp|c[\s-]?reactive/i),
     hsCrpDrawnHealthy: drawnHealthy(/hs[\s-]?crp|c[\s-]?reactive/i),
     ironPanelDrawn: drawn(/ferritin|tibc|transferrin|iron sat|^iron\b/i),

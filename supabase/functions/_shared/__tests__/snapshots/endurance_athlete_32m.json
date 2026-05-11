@@ -46,11 +46,6 @@
       "priority": "high"
     },
     {
-      "name": "GGT (Gamma-Glutamyl Transferase)",
-      "icd10": "R74.0",
-      "priority": "high"
-    },
-    {
       "name": "Liver Ultrasound (NAFLD assessment)",
       "icd10": "K76.9",
       "priority": "high"

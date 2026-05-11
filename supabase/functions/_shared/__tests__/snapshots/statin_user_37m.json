@@ -46,11 +46,6 @@
       "priority": "high"
     },
     {
-      "name": "GGT (Gamma-Glutamyl Transferase)",
-      "icd10": "R74.0",
-      "priority": "high"
-    },
-    {
       "name": "RBC Magnesium",
       "icd10": "E83.42",
       "priority": "moderate"

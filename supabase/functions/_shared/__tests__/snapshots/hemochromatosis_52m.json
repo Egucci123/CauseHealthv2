@@ -41,13 +41,18 @@
       "priority": "high"
     },
     {
-      "name": "Lp(a) — Lipoprotein(a)",
-      "icd10": "E78.5",
+      "name": "High-Sensitivity C-Reactive Protein (hs-CRP)",
+      "icd10": "R74.0",
       "priority": "high"
     },
     {
-      "name": "High-Sensitivity C-Reactive Protein (hs-CRP)",
+      "name": "GGT (Gamma-Glutamyl Transferase)",
       "icd10": "R74.0",
+      "priority": "high"
+    },
+    {
+      "name": "Lp(a) — Lipoprotein(a)",
+      "icd10": "E78.5",
       "priority": "high"
     },
     {
@@ -58,11 +63,6 @@
     {
       "name": "Folate Workup (Serum + RBC Folate)",
       "icd10": "D52.9",
-      "priority": "high"
-    },
-    {
-      "name": "GGT (Gamma-Glutamyl Transferase)",
-      "icd10": "R74.0",
       "priority": "high"
     },
     {

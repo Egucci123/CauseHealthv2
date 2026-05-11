@@ -16,6 +16,11 @@
       "priority": "high"
     },
     {
+      "name": "Hemoglobin A1c",
+      "icd10": "R73.09",
+      "priority": "high"
+    },
+    {
       "name": "Thyroid Panel (TSH + Free T4 + Free T3)",
       "icd10": "E03.9",
       "priority": "high"

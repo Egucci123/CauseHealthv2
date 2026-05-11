@@ -11,6 +11,16 @@
       "priority": "high"
     },
     {
+      "name": "Lipid Panel",
+      "icd10": "E78.5",
+      "priority": "high"
+    },
+    {
+      "name": "Hemoglobin A1c",
+      "icd10": "R73.09",
+      "priority": "high"
+    },
+    {
       "name": "Thyroid Panel (TSH + Free T4 + Free T3)",
       "icd10": "E03.9",
       "priority": "high"
@@ -31,11 +41,6 @@
       "priority": "high"
     },
     {
-      "name": "Lp(a) — Lipoprotein(a)",
-      "icd10": "E78.5",
-      "priority": "high"
-    },
-    {
       "name": "High-Sensitivity C-Reactive Protein (hs-CRP)",
       "icd10": "R74.0",
       "priority": "high"
@@ -43,6 +48,11 @@
     {
       "name": "GGT (Gamma-Glutamyl Transferase)",
       "icd10": "R74.0",
+      "priority": "high"
+    },
+    {
+      "name": "Lp(a) — Lipoprotein(a)",
+      "icd10": "E78.5",
       "priority": "high"
     },
     {

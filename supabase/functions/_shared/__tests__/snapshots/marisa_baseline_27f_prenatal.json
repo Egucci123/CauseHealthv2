@@ -46,11 +46,6 @@
       "priority": "high"
     },
     {
-      "name": "GGT (Gamma-Glutamyl Transferase)",
-      "icd10": "R74.0",
-      "priority": "high"
-    },
-    {
       "name": "Urine Albumin/Creatinine Ratio (UACR)",
       "icd10": "R80.9",
       "priority": "high"

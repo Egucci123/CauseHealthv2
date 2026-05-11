@@ -21,6 +21,11 @@
       "priority": "high"
     },
     {
+      "name": "Thyroid Panel (TSH + Free T4 + Free T3)",
+      "icd10": "E03.9",
+      "priority": "high"
+    },
+    {
       "name": "Vitamin D (25-hydroxy)",
       "icd10": "E55.9",
       "priority": "high"
