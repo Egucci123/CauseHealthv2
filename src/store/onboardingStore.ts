@@ -114,6 +114,12 @@ export interface OnboardingState {
   heightIn:    string;
   weightLbs:   string;
   locationState: string;
+  // Pregnancy status — explicit user attestation at Step 1. Tri-state +
+  // breastfeeding + opt-out. Drives the pregnancy-safe rule branches in
+  // the analysis pipeline. UI only prompts when sex === 'female'; male
+  // users get 'not_applicable' stamped automatically. See migration
+  // 20260511_pregnancy_status for the column + derivation trigger.
+  pregnancyStatus: '' | 'pregnant' | 'trying' | 'breastfeeding' | 'not_pregnant' | 'prefer_not_to_say' | 'not_applicable';
   conditions:    AddedCondition[];
   noConditions:  boolean;          // explicit "I have no diagnosed conditions" confirmation
   familyHistory: FamilyHistory;
@@ -174,6 +180,7 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
   currentStep: 1, totalSteps: 6, loading: false,
   firstName: '', lastName: '', dateOfBirth: '', sex: '',
   heightFt: '', heightIn: '', weightLbs: '', locationState: '',
+  pregnancyStatus: '',
   conditions: [], noConditions: false,
   familyHistory: { heartDisease: false, diabetes: false, autoimmune: false, cancer: false, earlyDeath: false, highCholesterol: false },
   noFamilyHistory: false,
@@ -461,6 +468,15 @@ async function autoSaveToDB() {
     if (state.lastName) profileData.last_name = state.lastName;
     if (state.dateOfBirth) profileData.date_of_birth = state.dateOfBirth;
     if (state.sex) profileData.sex = state.sex;
+    // Pregnancy status: write whatever the user selected. Male users get
+    // 'not_applicable' stamped (UI doesn't prompt them). The DB trigger
+    // sync_is_pregnant_from_status() derives the is_pregnant boolean the
+    // rule engine reads — we do not write is_pregnant directly.
+    if (state.pregnancyStatus) {
+      profileData.pregnancy_status = state.pregnancyStatus;
+    } else if (state.sex && state.sex.toLowerCase().startsWith('m')) {
+      profileData.pregnancy_status = 'not_applicable';
+    }
     if (heightCm) profileData.height_cm = heightCm;
     if (weightKg) profileData.weight_kg = weightKg;
     if (state.primaryGoals && state.primaryGoals.length > 0) profileData.primary_goals = state.primaryGoals;
