@@ -21,11 +21,21 @@ import { supabase } from './supabase';
 /** Bumped any time the legal text materially changes. Existing users with
  *  consent for an older version are re-prompted on next login.
  *
+ *  CRITICAL: this MUST match the canonical-text version constant in
+ *  src/lib/legal/consentText.ts (currently v6 = '2026-05-10-1'). When the
+ *  two drift, the gate writes consents under one version and reads them
+ *  under another — the user lands in an infinite "please consent" loop
+ *  because getMissingConsents never finds the rows it just wrote.
+ *
  *  v6 (2026-05-09-1): Geo-blocked CA/NY/IL/WA + EU/UK/CH; added
  *  state-residency self-cert, EU geoblock self-cert, established-clinician
  *  attestation, and standalone arbitration + class-action waiver per Berman
- *  v. Freedom Financial. Materially changed legal text → forces re-prompt. */
-export const CONSENT_POLICY_VERSION = '2026-05-09-1';
+ *  v. Freedom Financial.
+ *
+ *  v6.1 (2026-05-10-1): ToS renumbered (arbitration §17 → §9, liability
+ *  §15 → §8). Canonical text strings updated to match new section numbers.
+ *  Bumped here too to keep gate read/write aligned. */
+export const CONSENT_POLICY_VERSION = '2026-05-10-1';
 
 export type ConsentType =
   // v1 legacy
