@@ -52,6 +52,7 @@ export type Trigger =
   | { kind: 'lab_value_op'; marker: RegExp; op: '<' | '>' | '<=' | '>='; value: number }
   | { kind: 'tg_hdl_ratio_gte'; value: number }
   | { kind: 'any'; of: Trigger[] }
+  | { kind: 'all'; of: Trigger[] }
   | { kind: 'not'; t: Trigger };
 
 // Tier letter used by the legacy whyLong prefix `(trigger) whyShort`.
@@ -532,18 +533,152 @@ export const TEST_INDICATIONS: TestIndication[] = [
     tests: [{ key: 'testosterone_panel_male', whyShort: 'Comprehensive male hormonal baseline — Total + Free + Bioavailable + SHBG + Estradiol + LH + FSH', trigger: 'd' }],
   },
 
-  // ── PCOS panel — adult female with pattern ─────────────────────────
+  // ── PCOS panel — adult female with PCOS-specific pattern ──────────
+  //
+  // Tightened 2026-05-12-5: amenorrhea / missed period / infertility
+  // alone NO LONGER trigger PCOS (those signals are better-served by
+  // the dedicated prolactin / POI / ovarian-reserve workups below).
+  // PCOS panel now requires a true PCOS-specific marker:
+  //   • Named condition (PCOS / polycystic ovary)
+  //   • Hyperandrogenism signal (acne + hirsutism / excess hair)
+  //   • Irregular cycles PAIRED WITH an insulin-resistance signal
+  //     (weight resistance, A1c 5.4–6.4, BMI ≥27, or stated PCOS workup)
   {
     id: 'pcos_panel_female_pattern',
     triggers: [
       { kind: 'sex', is: 'female' },
       { kind: 'age_min', value: 18 },
       { kind: 'any', of: [
-        { kind: 'symptom_match',   pattern: /\b(irregular cycle|amenorrhea|missed period|acne|hirsut|excess hair|infertility|polycystic)/i },
+        // Path A — already-named condition
         { kind: 'condition_match', pattern: /\b(pcos|polycystic ovary)\b/i },
+        // Path B — true hyperandrogenism (acne + hirsutism)
+        { kind: 'symptom_match', pattern: /\b(hirsut\w*|excess hair|acne)/i },
+        // Path C — irregular cycles + insulin-resistance signal
+        { kind: 'all', of: [
+          { kind: 'symptom_match', pattern: /\b(irregular cycle\w*|missed period\w*|amenorrhea)/i },
+          { kind: 'any', of: [
+            { kind: 'flag_true', flag: 'hasWeightIssues' },
+            { kind: 'lab_value_between', marker: /\b(a1c|hba1c)/i, min: 5.4, max: 6.4 },
+            { kind: 'tg_hdl_ratio_gte', value: 3 },
+          ]},
+        ]},
       ]},
     ],
-    tests: [{ key: 'pcos_panel', whyShort: 'Cycle / acne / hirsutism / infertility cluster — PCOS workup catches androgen excess + insulin-resistance link', trigger: 'e' }],
+    tests: [{ key: 'pcos_panel', whyShort: 'PCOS-specific pattern (hyperandrogenism or cycle irregularity + insulin signal) — workup catches androgen excess + insulin-resistance link', trigger: 'e' }],
+  },
+
+  // ── Prolactin / pituitary workup — symptom-driven ─────────────────
+  //
+  // Classic galactorrhea, visual changes, or amenorrhea with new
+  // headaches → rule out hyperprolactinemia / pituitary adenoma.
+  // β-hCG first (pregnancy), then prolactin + TSH. Universal female
+  // rule; men with galactorrhea/gynecomastia handled separately.
+  {
+    id: 'prolactin_workup_symptom_driven',
+    triggers: [
+      { kind: 'sex', is: 'female' },
+      { kind: 'age_min', value: 12 },
+      { kind: 'any', of: [
+        { kind: 'symptom_match', pattern: /\b(galactorr\w*|nipple discharge|breast discharge)/i },
+        { kind: 'symptom_match', pattern: /\b(visual change\w*|vision change\w*|peripheral vision|tunnel vision|bitemporal)/i },
+        { kind: 'all', of: [
+          { kind: 'symptom_match', pattern: /\b(amenorrhea|missed period\w*|absent period\w*|no period\w*)/i },
+          { kind: 'symptom_match', pattern: /\b(headache\w*|migraine\w*)/i },
+        ]},
+      ]},
+    ],
+    tests: [
+      { key: 'beta_hcg_pregnancy_rule_out', whyShort: 'Rule out pregnancy first — most common cause of secondary amenorrhea / elevated prolactin', trigger: 'a' },
+      { key: 'prolactin', whyShort: 'Galactorrhea / visual changes / amenorrhea + headache cluster — rule out hyperprolactinemia / pituitary adenoma', trigger: 'b' },
+      { key: 'thyroid_panel', whyShort: 'Primary hypothyroidism is a common reversible cause of elevated prolactin — rule out before pituitary imaging', trigger: 'c' },
+    ],
+  },
+
+  // ── Premature Ovarian Insufficiency (POI) workup — under 40 ──────
+  //
+  // Female 18–40 with menopausal-spectrum symptoms (hot flashes,
+  // night sweats) or amenorrhea ≥3 months → FSH + estradiol + AMH.
+  // POI affects ~1% of women and missed diagnosis has serious bone /
+  // cardiac / cognitive consequences.
+  {
+    id: 'poi_workup_under_40',
+    triggers: [
+      { kind: 'sex', is: 'female' },
+      { kind: 'age_min', value: 18 },
+      { kind: 'age_max', value: 40 },
+      { kind: 'any', of: [
+        { kind: 'symptom_match', pattern: /\b(hot flash\w*|night sweat\w*|vasomotor)/i },
+        { kind: 'symptom_match', pattern: /\b(amenorrhea|missed period\w*|absent period\w*)/i },
+      ]},
+    ],
+    tests: [
+      { key: 'lh_fsh', whyShort: 'POI workup under 40 — elevated FSH (>25–40 mIU/mL) on two draws 4+ weeks apart confirms ovarian insufficiency', trigger: 'b' },
+      { key: 'estradiol_progesterone_testosterone', whyShort: 'Low estradiol (<50 pg/mL) with elevated FSH supports POI diagnosis', trigger: 'b' },
+      { key: 'amh_reproductive_age', whyShort: 'Very low AMH supports diminished ovarian reserve in POI workup', trigger: 'c' },
+      { key: 'prolactin', whyShort: 'Rule out hyperprolactinemia as cause of secondary amenorrhea before pursuing POI', trigger: 'c' },
+    ],
+  },
+
+  // ── Perimenopause panel — 40–55F with vasomotor / cycle changes ──
+  {
+    id: 'perimenopause_panel_40_55',
+    triggers: [
+      { kind: 'sex', is: 'female' },
+      { kind: 'age_min', value: 40 },
+      { kind: 'age_max', value: 55 },
+      { kind: 'any', of: [
+        { kind: 'symptom_match', pattern: /\b(hot flash\w*|night sweat\w*|vasomotor)/i },
+        { kind: 'symptom_match', pattern: /\b(insomnia|sleep disrupt\w*|night wak\w*)/i },
+        { kind: 'symptom_match', pattern: /\b(mood swing\w*|irritab\w*)/i },
+        { kind: 'symptom_match', pattern: /\b(irregular cycle\w*|cycle chang\w*|skipped period\w*)/i },
+      ]},
+    ],
+    tests: [
+      { key: 'lh_fsh', whyShort: 'Perimenopause anchor — FSH trending upward across cycles (less reliable in peri but standard workup)', trigger: 'c' },
+      { key: 'estradiol_progesterone_testosterone', whyShort: 'Estradiol + progesterone trends help characterize where in transition you are', trigger: 'c' },
+    ],
+  },
+
+  // ── Ovarian reserve (AMH) — 32–42F with infertility concern ──────
+  {
+    id: 'ovarian_reserve_amh_32_42',
+    triggers: [
+      { kind: 'sex', is: 'female' },
+      { kind: 'age_min', value: 32 },
+      { kind: 'age_max', value: 42 },
+      { kind: 'any', of: [
+        { kind: 'symptom_match',   pattern: /\b(infertil\w*|trying to conceive|ttc|cannot conceive)/i },
+        { kind: 'condition_match', pattern: /\b(infertil\w*|subfertil\w*)/i },
+      ]},
+    ],
+    tests: [
+      { key: 'amh_reproductive_age', whyShort: 'Age 32–42 + infertility concern — AMH is the most accurate ovarian-reserve marker, draw any cycle day', trigger: 'b' },
+      { key: 'lh_fsh', whyShort: 'Day-3 FSH + LH anchor ovarian reserve workup alongside AMH', trigger: 'c' },
+      { key: 'estradiol_progesterone_testosterone', whyShort: 'Day-3 estradiol contextualizes FSH (high E2 can mask elevated FSH)', trigger: 'c' },
+    ],
+  },
+
+  // ── Female androgen / HSDD panel — low libido + fatigue cluster ──
+  //
+  // Adult female with low libido + fatigue (with or without low mood)
+  // and NO PCOS-pattern → rule out female androgen deficiency / HSDD.
+  // PCOS-pattern users get the dedicated PCOS panel (which is more
+  // comprehensive); this rule is for the non-PCOS phenotype.
+  {
+    id: 'female_androgen_panel_low_libido',
+    triggers: [
+      { kind: 'sex', is: 'female' },
+      { kind: 'age_min', value: 18 },
+      { kind: 'age_max', value: 55 },
+      { kind: 'flag_true', flag: 'hasLowLibido' },
+      { kind: 'flag_true', flag: 'hasFatigue' },
+      { kind: 'not', t: { kind: 'symptom_match', pattern: /\b(hirsut\w*|excess hair|acne)/i } },
+      { kind: 'not', t: { kind: 'condition_match', pattern: /\b(pcos|polycystic ovary)\b/i } },
+    ],
+    tests: [
+      { key: 'female_androgen_panel', whyShort: 'Low libido + fatigue without PCOS-pattern — rule out female androgen deficiency / HSDD; Total T, Free T, SHBG, DHEA-S characterize axis', trigger: 'c' },
+      { key: 'prolactin', whyShort: 'Hyperprolactinemia is a reversible cause of low libido + fatigue', trigger: 'c' },
+    ],
   },
 
   // ── Fasting insulin + HOMA-IR on early metabolic pattern ──────────
