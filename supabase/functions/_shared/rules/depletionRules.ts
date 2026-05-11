@@ -72,6 +72,25 @@ const DEPLETION_RULES: Rule[] = [
 
   // GLP-1 agonists → B12 (lower stomach acid + slowed gastric emptying)
   { medClass: 'glp1', nutrient: 'Vitamin B12', mechanism: 'GLP-1 agonists slow gastric emptying + may reduce B12 absorption over months of use.', monitoringTest: 'vit_b12_workup', severity: 'low' },
+
+  // ── Hormonal contraception → folate, B6, B12, magnesium, zinc, CoQ10
+  // Well-documented OCP depletions (Palmery 2013, Wynn 1975, McArthur 1992).
+  // Fires for combined OCPs, progestin-only, patch, ring, implant, and
+  // hormonal IUDs. Universal across every female user reporting any
+  // hormonal contraceptive in their med list.
+  { medClass: 'hormonal_contraceptive', nutrient: 'Folate', mechanism: 'Hormonal contraceptives lower serum + RBC folate by 20–40%. Particularly important for any user considering pregnancy in the next 12 months.', monitoringTest: 'folate_workup', severity: 'high' },
+  { medClass: 'hormonal_contraceptive', nutrient: 'Vitamin B6', mechanism: 'Estrogen-based contraceptives compete with B6 for the same enzymatic pathways, driving functional deficiency that contributes to mood symptoms.', monitoringTest: null, severity: 'moderate' },
+  { medClass: 'hormonal_contraceptive', nutrient: 'Vitamin B12', mechanism: 'OCP use lowers serum B12 alongside folate. Effect is reversible on discontinuation but matters during use.', monitoringTest: 'vit_b12_workup', severity: 'moderate' },
+  { medClass: 'hormonal_contraceptive', nutrient: 'Magnesium', mechanism: 'Estrogen alters magnesium handling; long-term OCP users trend toward functional Mg deficiency that contributes to cramps and headaches.', monitoringTest: 'rbc_magnesium', severity: 'moderate' },
+  { medClass: 'hormonal_contraceptive', nutrient: 'Zinc', mechanism: 'Lower serum zinc has been documented in OCP users; relevant for skin, immune function, and hair health.', monitoringTest: null, severity: 'low' },
+  { medClass: 'hormonal_contraceptive', nutrient: 'CoQ10', mechanism: 'OCP use lowers serum CoQ10 in supplementation trials; relevant for energy and cardiovascular protection.', monitoringTest: null, severity: 'low' },
+
+  // ── Methotrexate → folate
+  // Direct folate antagonist. Folate co-prescription is standard of care
+  // in rheumatology to reduce MTX side-effects, but the depletion is
+  // universal across MTX users regardless of indication (IBD, psoriasis,
+  // RA, ectopic, etc.).
+  { medClass: 'methotrexate', nutrient: 'Folate', mechanism: 'Methotrexate directly inhibits dihydrofolate reductase. Folate co-supplementation (typically 1 mg/day or weekly 5 mg) reduces side effects and is standard of care alongside MTX.', monitoringTest: 'folate_workup', severity: 'high' },
 ];
 
 export function buildDepletionList(input: Input): DepletionFact[] {

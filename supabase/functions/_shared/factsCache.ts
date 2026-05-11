@@ -93,20 +93,20 @@ import { buildPlan, type ClinicalFacts, type PatientInput } from './buildPlan.ts
 // derives the flag from value + standard_flag + standard_low/high +
 // current rules per request. All three v2 normalize functions now
 // call it via pickFlag(l, ctx) instead of trusting the stored flag.
+// 2026-05-11-6: Universal coverage fix #1 — hormonal contraception +
+// methotrexate depletion rules. ~30% of female users on OCPs were
+// getting zero depletion-driven supplements because OCPs had no
+// medication-alias entry. Added comprehensive alias regex (combined
+// pills, progestin-only, ring, patch, implant, hormonal IUDs) +
+// depletion rules for folate, B6, B12, magnesium, zinc, CoQ10.
+// Methotrexate added as a dedicated class (kept separate from
+// hepatotoxic_other) so folate-antagonism specifically fires.
+//
 // 2026-05-11-5: Universal supplement-rule expansion. Previously fired
-// for only 7 patterns (statin->CoQ10, low B12/folate/Mg/D/ferritin, high
-// TG, high CRP, IBD, insomnia, high ALT). Marisa Sirkin's wellness plan
-// came back with ZERO supplements because her flagged markers (TSH 3.02
-// watch, AM cortisol 21.3, severe symptoms) matched no rule. Expanded to
-// universal: thyroid drift, cortisol elevation, lipid panel (HDL/LDL/
-// ApoB), glycemic drift (A1c/glucose), homocysteine, AST, uric acid,
-// PCOS, Hashimoto's, T2D, hypertension, anxiety/depression diagnoses,
-// fatigue / brain fog / mood / anxiety / sleep / bowel / joint pain /
-// headaches / hair loss / stress symptoms. Every supplement is dose-
-// conservative and either pregnancy-safe or pregnancy-gated in the
-// final filter. Filter widened to include red yeast rice, high-dose
-// niacin, bergamot, ashwagandha, berberine — same list of regulatory-
-// concern items.
+// for only 7 patterns. Expanded to ~25 covering thyroid drift, cortisol
+// elevation, lipid panel, glycemic drift, homocysteine, AST, uric acid,
+// PCOS, Hashimoto, T2D, hypertension, anxiety, plus symptom-driven
+// (fatigue/brain fog/mood/sleep/bowel/joints/headaches/hair/stress).
 //
 // 2026-05-11-4: AI prompt polish (severity scale, evidence grounding,
 //   disjoint patterns, sharp tell_doctor)
@@ -115,7 +115,7 @@ import { buildPlan, type ClinicalFacts, type PatientInput } from './buildPlan.ts
 // 2026-05-11-2: Expected-findings suppressor for known conditions
 //   (Gilbert → bilirubin, CKD → eGFR, T1D/T2D → A1c)
 // 2026-05-11-1: Sex-gate on hormonal-axis system-drift patterns
-export const RULE_LIBRARY_VERSION = '2026-05-11-5';
+export const RULE_LIBRARY_VERSION = '2026-05-11-6';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;

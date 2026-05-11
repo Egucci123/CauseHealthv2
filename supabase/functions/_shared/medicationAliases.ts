@@ -287,6 +287,41 @@ export const MED_CLASSES: MedClassDef[] = [
     requiresTest: ['testosterone_total_free', 'cbc', 'estradiol_male', 'lipid_panel', 'psa_if_male_45'],
     impliesConditions: ['low_testosterone_male'],
   },
+  // ── Hormonal contraception ────────────────────────────────────────────
+  // Universal class — combined OCPs, progestin-only pills, patch, ring,
+  // implant, hormonal IUDs. Drives depletion rules for folate, B6, B12,
+  // magnesium, zinc, CoQ10 (well-documented OCP depletions, Palmery
+  // 2013 et al). Add brand/generic aliases liberally so any user typing
+  // their pill name gets caught.
+  {
+    key: 'hormonal_contraceptive',
+    label: 'Hormonal contraceptive (pill / patch / ring / implant / hormonal IUD)',
+    aliases: [
+      // Generic / class names
+      /ethinyl\s*estradiol/i,
+      /drospirenone/i, /levonorgestrel/i, /norethindrone/i, /norgestrel/i,
+      /norgestimate/i, /desogestrel/i, /etonogestrel/i, /medroxyprogesterone\s*acetate/i,
+      /\bbirth\s*control\b/i, /\boral\s*contracep/i, /\bocp\b/i, /\bbcp\b/i,
+      /combined\s*oral\s*contraceptive/i, /\bmini\s*pill\b/i, /progestin[\s-]?only/i,
+      // Common brand names (combined pills)
+      /\byasmin\b/i, /\byaz\b/i, /\bgianvi\b/i,
+      /\bloestrin\b/i, /\bjunel\b/i, /\bmicrogestin\b/i,
+      /\bortho[\s-]?tri[\s-]?cyclen\b/i, /\btri[\s-]?nessa\b/i, /\bsprintec\b/i,
+      /\bortho[\s-]?cyclen\b/i, /\bmononessa\b/i,
+      /\baviane\b/i, /\blevora\b/i, /\bportia\b/i, /\bnordette\b/i,
+      /\baltavera\b/i, /\bkurvelo\b/i, /\bamethia\b/i, /\bcaziant\b/i,
+      /\bnatazia\b/i, /\bquasense\b/i, /\bseasonale\b/i, /\bseasonique\b/i,
+      /\bnuvaring\b/i, /\bxulane\b/i, /\bortho\s*evra\b/i,
+      // Progestin-only / implant / hormonal IUD
+      /\bnexplanon\b/i, /\bimplanon\b/i,
+      /\bmirena\b/i, /\bkyleena\b/i, /\bskyla\b/i, /\bliletta\b/i,
+      /\bdepo[\s-]?provera\b/i, /\bdepo[\s-]?subq/i,
+      /\bcamila\b/i, /\bmicronor\b/i, /\bjolivette\b/i, /\bnora[\s-]?be\b/i,
+    ],
+    // Common monitoring tests when on hormonal contraception
+    requiresTest: ['folate_workup', 'vit_b12_workup', 'rbc_magnesium'],
+  },
+
   {
     key: 'hrt_estrogen',
     label: 'HRT (estrogen / estradiol)',
@@ -299,6 +334,21 @@ export const MED_CLASSES: MedClassDef[] = [
     label: 'HRT (progesterone)',
     aliases: [/progesterone/i, /\bprometrium\b/i, /\bcrinone\b/i, /\bendometrin\b/i, /medroxyprogesterone/i, /\bprovera\b/i],
     impliesConditions: ['menopause_postmenopause'],
+  },
+
+  // ── Methotrexate — folate antagonist (dedicated class) ─────────────────
+  // Kept as its own class (alongside the hepatotoxic bundle below) because
+  // the universal depletion rule for methotrexate → folate is well
+  // established and benefits from a clean med-class match. Methotrexate
+  // is also a teratogen — pregnant users would have separate clinical
+  // gating (the rule library does not recommend MTX, just acknowledges
+  // its depletion when present).
+  {
+    key: 'methotrexate',
+    label: 'Methotrexate',
+    aliases: [/methotrexate/i, /\bmtx\b/i, /\botrexup\b/i, /\brasuvo\b/i, /\btrexall\b/i],
+    requiresTest: ['folate_workup', 'liver_panel', 'cbc'],
+    empiricalSupp: ['methylfolate_5mthf'],
   },
 
   // ── Other hepatotoxic / nephrotoxic ─────────────────────────────────────
