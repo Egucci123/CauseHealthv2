@@ -133,11 +133,6 @@
       "confidence": "high"
     },
     {
-      "name": "Hepatic stress pattern — rule out alcohol-related or NAFLD",
-      "icd10": "K76.9",
-      "confidence": "high"
-    },
-    {
       "name": "B12 Deficiency / Pernicious Anemia",
       "icd10": "D51.0",
       "confidence": "high"

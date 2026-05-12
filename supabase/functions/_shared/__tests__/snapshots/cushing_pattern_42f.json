@@ -131,11 +131,6 @@
       "name": "Cortisol excess — rule out Cushing syndrome",
       "icd10": "E24.9",
       "confidence": "high"
-    },
-    {
-      "name": "Adrenal / Cortisol Workup",
-      "icd10": "E27.0",
-      "confidence": "high"
     }
   ],
   "supplements": [

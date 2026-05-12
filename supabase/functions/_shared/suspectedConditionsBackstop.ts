@@ -1569,7 +1569,17 @@ export function runSuspectedConditionsBackstop(input: {
   // specific confirmatory workups and ICD-10 codes.
   for (const rule of RULES) {
     if (rule.skipIfDx.some(k => hasCondition(input.conditionsLower, k))) continue;
+    // alreadyRaisedIf checks BOTH AI-emitted names AND deterministic
+    // rule outputs that already fired this run. Without the second
+    // check, two rules with overlapping coverage (e.g., hemochromatosis
+    // + hereditary_hemochromatosis, both ICD E83.110) both fire and
+    // produce duplicate condition cards. Fixed 2026-05-12-26.
+    const priorNames = out.map(o => o.name.toLowerCase());
+    const priorKeys = out.map(o => o.key?.toLowerCase()).filter(Boolean) as string[];
     if (rule.alreadyRaisedIf.some(re => aiNames.some(n => re.test(n)))) continue;
+    if (rule.alreadyRaisedIf.some(re => priorNames.some(n => re.test(n)))) continue;
+    // Also suppress if a prior rule shares the same ICD-10 within this run
+    // (catches cases where alreadyRaisedIf regex doesn't catch the synonym).
     const entry = rule.detect({
       age: input.age,
       sex: input.sex,
@@ -1579,7 +1589,10 @@ export function runSuspectedConditionsBackstop(input: {
       labValues: input.labValues,
       aiSuspectedNamesLower: aiNames,
     });
-    if (entry) out.push({ ...entry, key: rule.key });
+    if (!entry) continue;
+    // ICD-10 dedup — same ICD already fired this run = skip.
+    if (entry.icd10 && out.some(o => o.icd10 === entry.icd10)) continue;
+    out.push({ ...entry, key: rule.key });
   }
 
   // Phase 2 — universal system-drift detector. Runs once across all

@@ -126,11 +126,6 @@
       "name": "Iron overload pattern — rule out hemochromatosis",
       "icd10": "E83.110",
       "confidence": "high"
-    },
-    {
-      "name": "Hereditary Hemochromatosis (rule-out)",
-      "icd10": "E83.110",
-      "confidence": "high"
     }
   ],
   "supplements": [

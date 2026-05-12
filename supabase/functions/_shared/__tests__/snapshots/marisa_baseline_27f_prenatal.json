@@ -103,11 +103,6 @@
       "confidence": "moderate"
     },
     {
-      "name": "Adrenal / Cortisol Workup",
-      "icd10": "E27.0",
-      "confidence": "moderate"
-    },
-    {
       "name": "Hyperprolactinemia Workup",
       "icd10": "E22.1",
       "confidence": "high"
