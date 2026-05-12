@@ -91,7 +91,18 @@
       "priority": "moderate"
     }
   ],
-  "conditions": [],
+  "conditions": [
+    {
+      "name": "CKD pattern — chronic kidney disease workup",
+      "icd10": "N18.9",
+      "confidence": "moderate"
+    },
+    {
+      "name": "Hypercholesterolemia pattern — atherogenic lipid panel",
+      "icd10": "E78.0",
+      "confidence": "high"
+    }
+  ],
   "supplements": [
     "Omega-3 (EPA/DHA, high-dose)",
     "Red Yeast Rice (with CoQ10)",

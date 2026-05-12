@@ -91,6 +91,11 @@
       "name": "Insulin resistance with plaque-forming dyslipidemia (metabolic syndrome precursor)",
       "icd10": "E88.81",
       "confidence": "high"
+    },
+    {
+      "name": "Hypercholesterolemia pattern — atherogenic lipid panel",
+      "icd10": "E78.0",
+      "confidence": "moderate"
     }
   ],
   "supplements": [

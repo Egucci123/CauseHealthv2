@@ -61,7 +61,13 @@
       "priority": "moderate"
     }
   ],
-  "conditions": [],
+  "conditions": [
+    {
+      "name": "CKD pattern — chronic kidney disease workup",
+      "icd10": "N18.9",
+      "confidence": "moderate"
+    }
+  ],
   "supplements": [
     "Milk Thistle (Silymarin)"
   ],

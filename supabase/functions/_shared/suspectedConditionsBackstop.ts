@@ -1342,6 +1342,81 @@ const RULES: BackstopRule[] = [
     },
   },
 
+  // ── Chronic Kidney Disease (CKD) — eGFR/Creatinine drift ──────────────
+  //
+  // eGFR <60 OR creatinine elevated → CKD pattern. Universal across
+  // sexes. Stage classification: G1 ≥90, G2 60-89, G3a 45-59, G3b 30-44,
+  // G4 15-29, G5 <15. Most missed treatable CV / mortality risk in
+  // older adults — early CKD detection prevents dialysis trajectory.
+  {
+    key: 'ckd_pattern',
+    alreadyRaisedIf: [/ckd|chronic kidney|nephro|esrd|dialys/i],
+    skipIfDx: ['ckd', 'chronic_kidney_disease', 'esrd'],
+    detect: (ctx) => {
+      const creat = mark(ctx.labValues, [/^creatinine\b/i]);
+      const egfr = mark(ctx.labValues, [/\begfr\b|estimated.?glomerular/i]);
+      const bun = mark(ctx.labValues, [/^bun\b|urea nitrogen/i]);
+      const creatHigh = creat && creat.value > 1.3;
+      const egfrLow = egfr && egfr.value < 60;
+      const bunHigh = bun && bun.value > 25;
+      if (!creatHigh && !egfrLow) return null;
+      const stage = egfr
+        ? (egfr.value >= 60 ? 'G2 (mild)' : egfr.value >= 45 ? 'G3a (moderate)' :
+           egfr.value >= 30 ? 'G3b (moderate-severe)' : egfr.value >= 15 ? 'G4 (severe)' : 'G5 (kidney failure)')
+        : 'unstaged';
+      const isHigh = egfr ? egfr.value < 45 : (creat ? creat.value > 1.8 : false);
+      const ev: string[] = [];
+      if (egfr) ev.push(`eGFR ${egfr.value} mL/min (CKD stage ${stage})`);
+      if (creat) ev.push(`Creatinine ${creat.value} mg/dL`);
+      if (bunHigh) ev.push(`BUN ${bun.value}`);
+      return {
+        name: 'CKD pattern — chronic kidney disease workup',
+        category: 'kidney',
+        confidence: isHigh ? 'high' : 'moderate',
+        evidence: `${ev.join(', ')}. Kidney filtration is reduced from normal. Most-missed treatable CV / mortality risk in adults — early CKD detection guides ACE/ARB therapy and prevents dialysis trajectory.`,
+        confirmatory_tests: ['Cystatin-C based eGFR (more accurate than creatinine in muscle-low patients)', 'UACR (urine albumin/creatinine ratio)', 'Repeat eGFR in 3 months to confirm chronic vs acute', 'Renal Ultrasound', 'PTH + Vitamin D + Phosphorus (CKD-mineral-bone workup if eGFR <45)'],
+        icd10: 'N18.9',
+        what_to_ask_doctor: "My eGFR is reduced. Can we run a Cystatin-C eGFR and UACR to confirm CKD, then repeat in 3 months to confirm it's chronic? If confirmed, an ACE inhibitor or SGLT2 inhibitor protects the kidney long-term.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Hypercholesterolemia / atherogenic lipid pattern (universal) ──────
+  //
+  // LDL >130, Total Cholesterol >240, or ApoB >100 → atherogenic lipid
+  // pattern worth confirming. Fires across all ages including >50 where
+  // the FH rule doesn't apply. Universal CV-risk-screening pattern.
+  {
+    key: 'hypercholesterolemia_pattern',
+    alreadyRaisedIf: [/familial hypercholesterol|\bfh\b|hypercholesterolemia|hyperlipidemia/i],
+    skipIfDx: ['familial_hypercholesterolemia', 'hyperlipidemia'],
+    detect: (ctx) => {
+      const ldl = mark(ctx.labValues, [/^ldl\b(?! p)/i, /ldl chol/i]);
+      const tc = mark(ctx.labValues, [/total cholesterol|^cholesterol\b/i]);
+      const apob = mark(ctx.labValues, [/apolipoprotein b|\bapob\b|apo b/i]);
+      const ldlHigh = ldl && ldl.value > 130;
+      const tcHigh = tc && tc.value > 240;
+      const apobHigh = apob && apob.value > 100;
+      if (!ldlHigh && !tcHigh && !apobHigh) return null;
+      const ev: string[] = [];
+      if (ldl) ev.push(`LDL ${ldl.value}`);
+      if (tc) ev.push(`Total Cholesterol ${tc.value}`);
+      if (apob) ev.push(`ApoB ${apob.value}`);
+      const isHigh = (ldl && ldl.value > 160) || (apob && apob.value > 120) || (tc && tc.value > 270);
+      return {
+        name: 'Hypercholesterolemia pattern — atherogenic lipid panel',
+        category: 'cardiovascular',
+        confidence: isHigh ? 'high' : 'moderate',
+        evidence: `${ev.join(', ')}. LDL ≥130 / Total Chol ≥240 / ApoB ≥100 puts you in the atherogenic-lipid zone. The right question isn't only "how high?" — it's "how many particles, and are any genetic?" That's what ApoB and Lp(a) answer.`,
+        confirmatory_tests: ['ApoB (atherogenic particle count)', 'Lp(a) — once-in-lifetime genetic marker', 'LDL-Particle Number (NMR)', 'hs-CRP (inflammation amplifier)', 'Coronary Artery Calcium (CAC) score', 'Family history of premature CV disease'],
+        icd10: 'E78.0',
+        what_to_ask_doctor: "My LDL or Total Cholesterol or ApoB is above the standard threshold. Can we run ApoB (particle count) and once-in-lifetime Lp(a), and consider a Coronary Calcium Score? Those tell me what my actual atherogenic-particle risk looks like instead of just the LDL number.",
+        source: 'deterministic',
+      };
+    },
+  },
+
   // ── Familial Hypercholesterolemia rule-out ─────────────────────────────
   {
     key: 'familial_hypercholesterolemia',
@@ -1528,9 +1603,9 @@ export function runSuspectedConditionsBackstop(input: {
  *  Universal: the system-drift detector itself doesn't need to change. */
 const SYSTEM_NAMED_RULE_DEDUP: Record<string, string[]> = {
   liver:               ['nafld', 'hepatic_stress_pattern'],
-  kidney:              [],
+  kidney:              ['ckd_pattern'],
   glucose_metabolism:  ['t2d_range', 'prediabetes_range', 'insulin_resistance_dyslipidemia'],
-  lipid:               ['ldl_high_for_age', 'particle_pattern_atherogenic', 'inflammation_cv_amplifier'],
+  lipid:               ['ldl_high_for_age', 'particle_pattern_atherogenic', 'inflammation_cv_amplifier', 'hypercholesterolemia_pattern', 'familial_hypercholesterolemia'],
   thyroid:             ['hashimoto_or_hypothyroid', 'subclinical_hypothyroidism', 'hyperthyroidism_rule_out_graves'],
   iron_hematology:     ['iron_deficiency_anemia', 'hemoconcentration_dehydration', 'b12_deficiency', 'hemochromatosis', 'early_hypochromic_pattern'],
   adrenal:             ['cushing_syndrome_workup', 'adrenal_insufficiency', 'primary_aldosteronism', 'pheochromocytoma_workup'],
