@@ -66,11 +66,6 @@
       "priority": "high"
     },
     {
-      "name": "DEXA Scan (Bone Density)",
-      "icd10": "Z13.820",
-      "priority": "high"
-    },
-    {
       "name": "Urine Albumin/Creatinine Ratio (UACR)",
       "icd10": "R80.9",
       "priority": "high"
@@ -86,8 +81,48 @@
       "priority": "high"
     },
     {
+      "name": "DEXA Scan (Bone Density)",
+      "icd10": "Z13.820",
+      "priority": "high"
+    },
+    {
       "name": "RBC Magnesium",
       "icd10": "E83.42",
+      "priority": "moderate"
+    },
+    {
+      "name": "Fasting Insulin + HOMA-IR",
+      "icd10": "R73.09",
+      "priority": "moderate"
+    },
+    {
+      "name": "Urine Albumin/Creatinine Ratio (UACR)",
+      "icd10": "R80.9",
+      "priority": "moderate"
+    },
+    {
+      "name": "Homocysteine",
+      "icd10": "E72.11",
+      "priority": "moderate"
+    },
+    {
+      "name": "AM Cortisol (baseline stress / HPA axis)",
+      "icd10": "R45.7",
+      "priority": "moderate"
+    },
+    {
+      "name": "PTH (Parathyroid Hormone)",
+      "icd10": "E55.9",
+      "priority": "moderate"
+    },
+    {
+      "name": "PSA (Prostate-Specific Antigen)",
+      "icd10": "Z12.5",
+      "priority": "moderate"
+    },
+    {
+      "name": "Creatine Kinase (CK)",
+      "icd10": "M62.82",
       "priority": "moderate"
     }
   ],

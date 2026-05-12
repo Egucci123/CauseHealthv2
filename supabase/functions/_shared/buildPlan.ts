@@ -390,23 +390,37 @@ export function buildPlan(input: PatientInput): ClinicalFacts {
   // Cap at TEST_LIST_TOP_N. Sort key prioritizes:
   //   1. urgent / critical priority first
   //   2. high before moderate
-  //   3. canonical tests before condition_workup entries (since canonical
-  //      go through testInjectors which is comprehensive and pre-deduped)
-  //   4. preserve input order within ties
-  const TEST_LIST_TOP_N = 18;
+  //   3. baseline tier before pattern tier within same priority
+  //   4. canonical tests before condition_workup entries
+  //   5. preserve input order within ties
+  //
+  // Bumped 18 → 25 in -20 so comprehensive baseline (HIV, Hep C, Colon,
+  // Insulin, UACR, Homocysteine, AAA US, AM Cortisol added) isn't
+  // cap-cut for older adults with risk patterns also firing.
+  const TEST_LIST_TOP_N = 25;
   const TEST_PRIORITY_RANK: Record<string, number> = {
     urgent: 0, critical: 0, a: 0,
     high: 1, b: 1,
     moderate: 2, c: 2,
     low: 3, d: 3, e: 3,
   };
+  const TIER_RANK: Record<string, number> = {
+    baseline: 0,      // standard of care — never cap-cut if possible
+    preventive: 1,
+    pattern: 2,
+    specialist: 3,
+    imaging: 4,
+  };
   const merged = [...tests, ...conditionDrivenTests];
-  // Stable sort by (priority, isCanonical) — preserve input order otherwise.
+  // Stable sort by (priority, tier, isCanonical) — preserve input order otherwise.
   const indexed = merged.map((t, i) => ({ t, i }));
   indexed.sort((a, b) => {
     const pa = TEST_PRIORITY_RANK[String((a.t as any).priority ?? 'moderate').toLowerCase()] ?? 5;
     const pb = TEST_PRIORITY_RANK[String((b.t as any).priority ?? 'moderate').toLowerCase()] ?? 5;
     if (pa !== pb) return pa - pb;
+    const ta = TIER_RANK[String((a.t as any).tier ?? 'pattern').toLowerCase()] ?? 9;
+    const tb = TIER_RANK[String((b.t as any).tier ?? 'pattern').toLowerCase()] ?? 9;
+    if (ta !== tb) return ta - tb;
     const ca = (a.t as any).sourcedFrom === 'condition_workup' ? 1 : 0;
     const cb = (b.t as any).sourcedFrom === 'condition_workup' ? 1 : 0;
     if (ca !== cb) return ca - cb;

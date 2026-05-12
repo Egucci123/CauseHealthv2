@@ -140,7 +140,7 @@ const INVARIANTS: Array<{ name: string; check: Invariant }> = [
   { name:'supplementCandidates is array', check:(_,p)=> Array.isArray(p.supplementCandidates) ? null : 'supps not array' },
 
   // Counts within bounds
-  { name:'test count ≤ 18', check:(_,p)=> p.tests.length <= 18 ? null : `tests=${p.tests.length}` },
+  { name:'test count ≤ 25', check:(_,p)=> p.tests.length <= 25 ? null : `tests=${p.tests.length}` },
   { name:'supplement count ≤ 6', check:(_,p)=> p.supplementCandidates.length <= 6 ? null : `supps=${p.supplementCandidates.length}` },
 
   // Field integrity

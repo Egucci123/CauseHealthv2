@@ -36,6 +36,16 @@
       "priority": "high"
     },
     {
+      "name": "Hepatitis C Antibody Screen (one-time)",
+      "icd10": "Z11.59",
+      "priority": "high"
+    },
+    {
+      "name": "Colorectal Cancer Screening (Colonoscopy / Cologuard / FIT)",
+      "icd10": "Z12.11",
+      "priority": "high"
+    },
+    {
       "name": "ApoB (Apolipoprotein B)",
       "icd10": "E78.5",
       "priority": "high"
@@ -76,18 +86,43 @@
       "priority": "moderate"
     },
     {
+      "name": "Fasting Insulin + HOMA-IR",
+      "icd10": "R73.09",
+      "priority": "moderate"
+    },
+    {
+      "name": "Urine Albumin/Creatinine Ratio (UACR)",
+      "icd10": "R80.9",
+      "priority": "moderate"
+    },
+    {
+      "name": "Homocysteine",
+      "icd10": "E72.11",
+      "priority": "moderate"
+    },
+    {
+      "name": "AM Cortisol (baseline stress / HPA axis)",
+      "icd10": "R45.7",
+      "priority": "moderate"
+    },
+    {
       "name": "Thyroid Antibodies (TPO + Tg) — female baseline",
       "icd10": "Z13.29",
       "priority": "moderate"
     },
     {
-      "name": "Mammogram",
-      "icd10": "Z12.31",
+      "name": "CTX (C-telopeptide) Bone Resorption Marker",
+      "icd10": "M81.0",
       "priority": "moderate"
     },
     {
-      "name": "CTX (C-telopeptide) Bone Resorption Marker",
-      "icd10": "M81.0",
+      "name": "PTH (Parathyroid Hormone)",
+      "icd10": "E55.9",
+      "priority": "moderate"
+    },
+    {
+      "name": "Ionized Calcium",
+      "icd10": "E83.59",
       "priority": "moderate"
     }
   ],

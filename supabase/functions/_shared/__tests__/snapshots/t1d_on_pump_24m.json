@@ -36,6 +36,16 @@
       "priority": "high"
     },
     {
+      "name": "Hepatitis C Antibody Screen (one-time)",
+      "icd10": "Z11.59",
+      "priority": "high"
+    },
+    {
+      "name": "HIV Screen (one-time)",
+      "icd10": "Z11.4",
+      "priority": "high"
+    },
+    {
       "name": "Lp(a) — Lipoprotein(a)",
       "icd10": "E78.5",
       "priority": "high"
@@ -53,6 +63,11 @@
     {
       "name": "RBC Magnesium",
       "icd10": "E83.42",
+      "priority": "moderate"
+    },
+    {
+      "name": "Urine Albumin/Creatinine Ratio (UACR)",
+      "icd10": "R80.9",
       "priority": "moderate"
     },
     {

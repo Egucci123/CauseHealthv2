@@ -34,10 +34,21 @@ export const BASELINE_MALE: TestIndication[] = [
     tests: [{ key: 'psa_if_male_45', whyShort: 'Black men or family hx prostate cancer — start PSA at 45 per USPSTF / ACS', trigger: 'd' }],
   },
 
-  // ── Future male-specific additions (testosterone baseline, etc.)
-  //
+  // ── Abdominal Aortic Aneurysm Ultrasound (USPSTF B grade) ────────────
+  // One-time screening for men 65-75 who ever smoked. USPSTF B grade.
+  // ACA $0 covered. We don't have a smoker flag yet — fire universally
+  // for 65-75 with caveat that smokers benefit most.
+  {
+    id: 'baseline_aaa_male_65_75',
+    triggers: [
+      { kind: 'sex', is: 'male' },
+      { kind: 'age_min', value: 65 },
+      { kind: 'age_max', value: 75 },
+    ],
+    tests: [{ key: 'aaa_ultrasound', whyShort: 'Adult male 65-75 — USPSTF B grade one-time AAA ultrasound, especially if ever-smoker. ACA $0 covered.', trigger: 'd' }],
+  },
+
   // NOTE: Universal Testosterone Panel for every adult male is debated.
-  // Endocrine Society recommends only with symptoms (not universal screen).
-  // We keep T panel symptom-driven via the pattern layer (low-libido,
-  // erectile dysfunction, fatigue clusters) rather than as baseline.
+  // Endocrine Society recommends only with symptoms. We keep T panel
+  // symptom-driven via the pattern layer rather than as baseline.
 ];

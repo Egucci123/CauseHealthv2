@@ -64,6 +64,58 @@ export const BASELINE_SHARED: TestIndication[] = [
     tests: [{ key: 'rbc_magnesium', whyShort: 'Intracellular Mg — sleep, muscle, glucose handling, cardiac rhythm', trigger: 'e' }],
   },
 
+  // ── UNIVERSAL PREVENTIVE SCREENING (USPSTF A/B — ACA $0 covered) ────
+  // Every PCP will order these without pushback. ACA mandates $0
+  // coverage. Once-in-lifetime tests stay suppressed once drawn.
+
+  {
+    id: 'baseline_hep_c_one_time',
+    triggers: [
+      { kind: 'age_min', value: 18 },
+      { kind: 'age_max', value: 79 },
+    ],
+    tests: [{ key: 'hepatitis_c_one_time', whyShort: 'USPSTF B grade — universal one-time screening 18-79; ACA $0 covered. Adult HCV prevalence ~1% silently undiagnosed.', trigger: 'd' }],
+  },
+  {
+    id: 'baseline_hiv_one_time',
+    triggers: [
+      { kind: 'age_min', value: 15 },
+      { kind: 'age_max', value: 65 },
+    ],
+    tests: [{ key: 'hiv_one_time', whyShort: 'USPSTF A grade — universal one-time screening 15-65; ACA $0 covered. Catches asymptomatic infection.', trigger: 'd' }],
+  },
+  {
+    id: 'baseline_colorectal_45_75',
+    triggers: [
+      { kind: 'age_min', value: 45 },
+      { kind: 'age_max', value: 75 },
+    ],
+    tests: [{ key: 'colorectal_screening', whyShort: 'USPSTF B grade — Colonoscopy 10y / FIT annual / Cologuard every 3y starting age 45. ACA $0 covered.', trigger: 'd' }],
+  },
+
+  // ── METABOLIC + KIDNEY BASELINE (every adult, retest annually) ──────
+  // Functional medicine standard, mainstream PCPs increasingly adopting.
+  {
+    id: 'baseline_fasting_insulin_universal',
+    triggers: [{ kind: 'age_min', value: 25 }],
+    tests: [{ key: 'fasting_insulin_universal', whyShort: 'Fasting insulin + HOMA-IR — catches insulin resistance 5-10 years before A1c shifts; tracks lifestyle response 4-6 weeks faster than A1c.', trigger: 'd' }],
+  },
+  {
+    id: 'baseline_uacr_universal',
+    triggers: [{ kind: 'age_min', value: 18 }],
+    tests: [{ key: 'uacr_universal', whyShort: 'UACR baseline — earliest hypertensive/diabetic kidney damage marker; precedes creatinine rise by years.', trigger: 'd' }],
+  },
+  {
+    id: 'baseline_homocysteine_age30',
+    triggers: [{ kind: 'age_min', value: 30 }],
+    tests: [{ key: 'homocysteine', whyShort: 'Homocysteine — CV risk + methylation marker. Elevated in B12/folate/B6 functional deficiency; independent CV risk factor.', trigger: 'd' }],
+  },
+  {
+    id: 'baseline_cortisol_am_age30',
+    triggers: [{ kind: 'age_min', value: 30 }],
+    tests: [{ key: 'cortisol_am_baseline', whyShort: 'AM cortisol baseline — captures HPA-axis tone; foundation for fatigue / stress / sleep / weight workup.', trigger: 'e' }],
+  },
+
   // ── CARDIOVASCULAR DEEPENING ────────────────────────────────────────
   // ApoB at 30+, hs-CRP and GGT at 40+. These move with diet/lifestyle
   // — retest annually to track.
