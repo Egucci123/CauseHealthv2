@@ -606,8 +606,14 @@ function mergeIntoFinalPlan(args: {
       timing: c.timing,
       why_short: c.whyShort,
       why: c.why,
-      practical_note: note?.practical_note ?? '',
-      evidence_note: note?.evidence_note ?? '',
+      // 2026-05-12-43: ENGINE WINS for practical + evidence notes.
+      // The canned per-supplement notes in SUPPLEMENT_BASE (rich
+      // clinical text — "Take with fattiest meal — CoQ10 is fat-soluble
+      // absorption drops 50% on empty stomach…") were being overridden
+      // by the AI-stack fallback's generic "Take as directed" text.
+      // Engine string always wins; AI only fills in when engine is empty.
+      practical_note: (c as any).practicalNote ?? note?.practical_note ?? '',
+      evidence_note: (c as any).evidenceNote ?? note?.evidence_note ?? '',
       category: c.category,
       priority: c.priority,
       sourced_from: c.sourcedFrom,
