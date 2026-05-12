@@ -24,13 +24,17 @@ import { format } from 'date-fns';
 import OutputAcknowledgmentGate from '../../components/legal/OutputAcknowledgmentGate';
 import { useOutputAck } from '../../lib/legal/useOutputAck';
 
-type TabKey = 'today' | 'eat' | 'move' | 'take';
+type TabKey = 'lifestyle' | 'eat' | 'move' | 'take';
 
+// 2026-05-12: 'today' tab renamed to 'lifestyle'. The 3-action-card
+// framing was tied to a 12-week subscription concept that doesn't fit
+// the one-time-prep product. The Lifestyle tab now shows the full
+// Diet/Sleep/Exercise/Stress dropdown straight from the engine.
 const TABS: { key: TabKey; label: string; shortLabel?: string; icon: string }[] = [
-  { key: 'today', label: 'Today',         icon: 'today' },
-  { key: 'eat',   label: 'Food Playbook', shortLabel: 'Food', icon: 'restaurant' },
-  { key: 'move',  label: 'Move',          icon: 'directions_run' },
-  { key: 'take',  label: 'Take',          icon: 'medication' },
+  { key: 'lifestyle', label: 'Lifestyle',     icon: 'self_improvement' },
+  { key: 'eat',       label: 'Food Playbook', shortLabel: 'Food', icon: 'restaurant' },
+  { key: 'move',      label: 'Move',          icon: 'directions_run' },
+  { key: 'take',      label: 'Take',          icon: 'medication' },
 ];
 
 const todayKey = () => new Date().toISOString().slice(0, 10);
@@ -151,6 +155,30 @@ function weekCompletion(history: ProgressHistory): { done: number; total: number
   return { done, total: dow + 1 };
 }
 
+// 2026-05-12: Lifestyle tab — replaces the old "Today" 3-action card flow.
+// Renders the engine's Diet / Sleep / Exercise / Stress interventions
+// straight from facts.lifestyleInterventions (deterministic). No timeline,
+// no streak counter, no milestone framing. Just the engine's curated
+// daily lifestyle changes grouped by category.
+const LifestyleTab = ({ plan }: { plan: any }) => {
+  return (
+    <div className="space-y-4">
+      <div className="bg-clinical-cream/40 rounded-[10px] p-4 border-l-[3px] border-primary-container">
+        <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-clinical-stone mb-1">
+          Lifestyle Changes
+        </p>
+        <p className="text-body text-clinical-charcoal text-sm leading-relaxed">
+          Daily lifestyle changes tied to your specific markers and patterns. Tap each category to see the
+          interventions ranked by priority — pick what fits your week and stack from there.
+        </p>
+      </div>
+      <LifestyleInterventions
+        interventions={plan.lifestyle_interventions ?? { diet: [], sleep: [], exercise: [], stress: [] }}
+      />
+    </div>
+  );
+};
+
 const TodayTab = ({ plan, uid }: { plan: any; uid: string }) => {
   const actions = (plan.today_actions ?? []).slice(0, 3);
   const key = `today_progress_${uid}`;
@@ -258,6 +286,11 @@ const TodayTab = ({ plan, uid }: { plan: any; uid: string }) => {
     </div>
   );
 };
+// 2026-05-12-48: TodayTab and MILESTONES_INLINE are dead code after the
+// switch to LifestyleTab as the default first tab. Kept as defined so we
+// can restore the streak/check-off behavior if a future surface wants it.
+void TodayTab;
+void MILESTONES_INLINE;
 
 // ── Eat Tab ────────────────────────────────────────────────────────────────────
 // Static set of trusted outbound recipe sites — same for every user. We don't
@@ -639,7 +672,7 @@ export const WellnessPlanPage = () => {
   const { generate, generating } = useGenerateWellnessPlan();
   const { data: latestDraw } = useLatestLabDraw();
   const { data: latestValues } = useLatestLabValues();
-  const [tab, setTab] = useState<TabKey>('today');
+  const [tab, setTab] = useState<TabKey>('lifestyle');
   // v6 output-acknowledgment gate. Plan body is gated on completion.
   const ack = useOutputAck();
 
@@ -929,7 +962,7 @@ export const WellnessPlanPage = () => {
               exit={{ opacity: 0, y: -4 }}
               transition={{ duration: 0.18 }}
             >
-              {tab === 'today' && <TodayTab plan={plan} uid={user?.id ?? 'anon'} />}
+              {tab === 'lifestyle' && <LifestyleTab plan={plan} />}
               {tab === 'eat' && <EatTab plan={plan} />}
               {tab === 'move' && <MoveTab plan={plan} />}
               {tab === 'take' && <TakeTab plan={plan} />}
@@ -942,15 +975,9 @@ export const WellnessPlanPage = () => {
               3. Symptoms (bottom — context, not action)
               The "Tests to ask for" retest list lives near the top of the page,
               right under the headline, since it's the next concrete step. */}
-          <FolderSection
-            icon="restaurant"
-            title="Lifestyle Interventions"
-            countLabel="categories"
-            count={4}
-            explanation="Diet, sleep, exercise, and stress strategies targeting your specific lab patterns."
-          >
-            <LifestyleInterventions interventions={plan.lifestyle_interventions ?? { diet: [], sleep: [], exercise: [], stress: [] }} />
-          </FolderSection>
+          {/* 2026-05-12: Lifestyle Interventions moved up into the
+              "Lifestyle" tab (was "Today"). No longer rendered as a
+              FolderSection below — would be duplicate. */}
 
           <FolderSection
             icon="event"
