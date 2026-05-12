@@ -24,6 +24,17 @@ export interface EngineDepletion {
   monitoring_test: string | null;
   clinical_effects: string[];
   recommended_supplement_key?: string;
+  /** 2026-05-12-38: embedded canonical supplement details — populated
+   *  from SUPPLEMENT_BASE so the Medications tab doesn't depend on the
+   *  per-user supplement_stack (which is cap-filtered). */
+  recommended_supplement?: {
+    nutrient: string;
+    dose: string;
+    form: string;
+    timing: string;
+    why_short: string;
+    practical_note: string;
+  } | null;
 }
 
 export interface EngineAlternative {

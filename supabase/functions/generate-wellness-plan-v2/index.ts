@@ -53,6 +53,7 @@ import {
 } from '../_shared/prompts/actionPlan.ts';
 import { applyAllergyFilters } from '../_shared/safetyNet.ts';
 import { runMedicationAlternativesEngine } from '../_shared/medicationAlternativesEngine.ts';
+import { SUPPLEMENT_BASE } from '../_shared/rules/supplementIndications.ts';
 import { CAUSEHEALTH_CONSTITUTION, CAUSEHEALTH_CONSTITUTION_SHORT } from '../_shared/prompts/_constitution.ts';
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!;
@@ -793,16 +794,34 @@ function mergeIntoFinalPlan(args: {
     // not just the 16 hardcoded in the client data file. Each entry
     // carries clinical_effects + a supplement_key the UI can resolve
     // against plan.supplement_stack for dose/form/timing details.
-    medication_depletions: facts.depletions.map(d => ({
-      medication: d.medsMatched.join(' / '),
-      med_class: d.medClass,
-      nutrient: d.nutrient,
-      mechanism: d.mechanism,
-      severity: d.severity,
-      monitoring_test: d.monitoringTest,
-      clinical_effects: d.clinicalEffects ?? [],
-      recommended_supplement_key: d.recommendedSupplementKey,
-    })),
+    medication_depletions: facts.depletions.map(d => {
+      // 2026-05-12-38: embed the supplement details (dose/form/timing/
+      // practical note) directly so the Medications tab UI doesn't have
+      // to look them up in the per-user supplement_stack (which is
+      // cap-filtered to top-N and may not include the depletion-repletion
+      // supplement). The SUPPLEMENT_BASE registry is universal and has
+      // canonical data for every supplement key.
+      const base = d.recommendedSupplementKey ? (SUPPLEMENT_BASE as any)[d.recommendedSupplementKey] : undefined;
+      return {
+        medication: d.medsMatched.join(' / '),
+        med_class: d.medClass,
+        nutrient: d.nutrient,
+        mechanism: d.mechanism,
+        severity: d.severity,
+        monitoring_test: d.monitoringTest,
+        clinical_effects: d.clinicalEffects ?? [],
+        recommended_supplement_key: d.recommendedSupplementKey,
+        // Embedded supplement details — universal canonical values
+        recommended_supplement: base ? {
+          nutrient: base.nutrient,
+          dose: base.dose,
+          form: base.form,
+          timing: base.timing,
+          why_short: base.defaultWhyShort,
+          practical_note: base.practicalNote ?? '',
+        } : null,
+      };
+    }),
     // 2026-05-12-35: deterministic medication alternatives — engine output
     // (signal-driven, 11 rules). Frontend Medications tab consumes this
     // directly so the entire med UI is engine-sourced, not client-data.

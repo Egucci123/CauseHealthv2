@@ -24,6 +24,7 @@ import {
 } from '../_shared/prompts/doctorPrep.ts';
 import { CAUSEHEALTH_CONSTITUTION, CAUSEHEALTH_CONSTITUTION_SHORT } from '../_shared/prompts/_constitution.ts';
 import { runMedicationAlternativesEngine } from '../_shared/medicationAlternativesEngine.ts';
+import { SUPPLEMENT_BASE } from '../_shared/rules/supplementIndications.ts';
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -368,16 +369,27 @@ function mergeIntoDoctorPrepOutput(args: {
   // 2026-05-12-35: enriched depletion data for the Medications tab.
   // Mirror the wellness plan's medication_depletions shape so any UI
   // consuming either surface gets identical, universal data.
-  const medication_depletions = facts.depletions.map((d: any) => ({
-    medication: d.medsMatched.join(' / '),
-    med_class: d.medClass,
-    nutrient: d.nutrient,
-    mechanism: d.mechanism,
-    severity: d.severity,
-    monitoring_test: d.monitoringTest,
-    clinical_effects: d.clinicalEffects ?? [],
-    recommended_supplement_key: d.recommendedSupplementKey,
-  }));
+  const medication_depletions = facts.depletions.map((d: any) => {
+    const base = d.recommendedSupplementKey ? (SUPPLEMENT_BASE as any)[d.recommendedSupplementKey] : undefined;
+    return {
+      medication: d.medsMatched.join(' / '),
+      med_class: d.medClass,
+      nutrient: d.nutrient,
+      mechanism: d.mechanism,
+      severity: d.severity,
+      monitoring_test: d.monitoringTest,
+      clinical_effects: d.clinicalEffects ?? [],
+      recommended_supplement_key: d.recommendedSupplementKey,
+      recommended_supplement: base ? {
+        nutrient: base.nutrient,
+        dose: base.dose,
+        form: base.form,
+        timing: base.timing,
+        why_short: base.defaultWhyShort,
+        practical_note: base.practicalNote ?? '',
+      } : null,
+    };
+  });
 
   // lab_summary — deterministic from outliers
   const lab_summary = {

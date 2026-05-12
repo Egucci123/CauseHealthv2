@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { DepletionEntry } from '../../data/medicationDepletions';
 import { useEngineDepletions, lookupDepletions, lookupAlternatives, type EngineDepletion } from '../../hooks/useEngineDepletions';
-import { useWellnessPlan } from '../../hooks/useWellnessPlan';
 
 // 2026-05-12-35: ENGINE-ONLY DATA SOURCE.
 // The deterministic backend engine (35 drug classes, 314 brand/generic
@@ -13,23 +12,21 @@ import { useWellnessPlan } from '../../hooks/useWellnessPlan';
 // data" state. This guarantees zero drift between what the engine knows
 // and what the UI renders.
 
-// 2026-05-12-35: Map an engine depletion (35-class universal coverage)
-// to the rich DepletionEntry shape the UI already renders. Looks up
-// dose/form/timing from the latest wellness plan's supplement_stack
-// using the engine's recommended_supplement_key. Falls back to neutral
-// text when fields aren't available.
-function engineToDepletionEntry(
-  d: EngineDepletion,
-  suppByKey: Map<string, any>,
-): DepletionEntry {
-  const supp = d.recommended_supplement_key ? suppByKey.get(d.recommended_supplement_key) : undefined;
+// 2026-05-12-38: Map an engine depletion to the UI's DepletionEntry shape.
+// Reads dose/form/timing directly from the EMBEDDED recommended_supplement
+// (which the backend pulls from SUPPLEMENT_BASE — universal canonical
+// data). No dependency on the user's filtered supplement_stack.
+function engineToDepletionEntry(d: EngineDepletion): DepletionEntry {
+  const supp = d.recommended_supplement;
   const sevMap: Record<string, DepletionEntry['severity']> = { high: 'critical', moderate: 'significant', low: 'moderate' };
   return {
     nutrient: d.nutrient,
     severity: sevMap[d.severity] ?? 'moderate',
     mechanism: d.mechanism,
     clinical_effects: d.clinical_effects ?? [],
-    intervention: supp ? `Supplement with ${supp.nutrient}` : 'Discuss with your doctor whether repletion is right for you.',
+    intervention: supp
+      ? `${supp.nutrient}${supp.practical_note ? ` — ${supp.practical_note}` : ''}`
+      : 'Discuss with your doctor whether repletion is right for you.',
     dose: supp?.dose ?? '—',
     form: supp?.form ?? '—',
     timing: supp?.timing ?? '—',
@@ -103,21 +100,15 @@ export const MedicationCard = ({ medication, index }: MedicationCardProps) => {
   // if the engine doesn't recognize this med, the UI shows "No data
   // yet" instead of stale hardcoded content.
   const { data: engineMap } = useEngineDepletions();
-  const { data: wellnessPlan } = useWellnessPlan();
   const engineDeps = lookupDepletions(engineMap, medication.name);
   const medClass = engineDeps[0]?.med_class;
   const engineAlts = lookupAlternatives(engineMap, medication.name, medClass);
-
-  const suppByKey = new Map<string, any>();
-  for (const s of ((wellnessPlan as any)?.supplement_stack ?? [])) {
-    if ((s as any).key) suppByKey.set((s as any).key, s);
-  }
 
   const profile = engineDeps.length > 0 ? {
     genericName: medication.name,
     brandNames: [] as string[],
     drugClass: medClass ?? '',
-    depletions: engineDeps.map(d => engineToDepletionEntry(d, suppByKey)),
+    depletions: engineDeps.map(d => engineToDepletionEntry(d)),
     interactions: [] as string[],
     notes: undefined as string | undefined,
   } : null;
