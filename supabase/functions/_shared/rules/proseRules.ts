@@ -120,7 +120,7 @@ function buildConditionProse(c: SuspectedConditionFact): CanonicalCondition {
     ?? `Confirmatory tests + your PCP's interpretation guide next steps.`;
   return {
     key: c.key,
-    one_liner: oneLiner.slice(0, 140),
+    one_liner: oneLiner, // 2026-05-12-45 no truncation
     evidence_sentence: c.evidence,
     patient_question: c.what_to_ask_doctor,
     next_step_sentence: nextStep,
@@ -313,7 +313,8 @@ function buildOutlierProse(o: LabOutlierFact): CanonicalOutlier {
     if (!rule.marker.test(m)) continue;
     if (rule.flags && !rule.flags.includes(o.flag)) continue;
     const { oneLiner, meaning } = rule.build(o);
-    return { marker: m, flag: o.flag, one_liner: oneLiner.slice(0, 160), what_it_means: meaning.slice(0, 240) };
+    // 2026-05-12-45 no truncation — engine strings are clinically complete
+    return { marker: m, flag: o.flag, one_liner: oneLiner, what_it_means: meaning };
   }
 
   // Universal generic fallback. Works for any marker.
@@ -334,16 +335,18 @@ function buildOutlierProse(o: LabOutlierFact): CanonicalOutlier {
     oneLiner = `${m} ${v} ${u} is within the standard reference range but in our educational watch tier.`;
     meaning = `Watch-tier ${m}. Not out of range — just a value worth tracking and discussing with your PCP at your next visit.`;
   }
-  return { marker: m, flag: o.flag, one_liner: oneLiner.slice(0, 160), what_it_means: meaning.slice(0, 240) };
+  // 2026-05-12-45 no truncation
+  return { marker: m, flag: o.flag, one_liner: oneLiner, what_it_means: meaning };
 }
 
 // ──────────────────────────────────────────────────────────────────────
 // SUPPLEMENT ONE-LINERS — same on every surface
 // ──────────────────────────────────────────────────────────────────────
 function buildSupplementProse(s: SupplementCandidate): CanonicalSupplement {
+  // 2026-05-12-45 no truncation
   return {
     key: s.key,
-    one_liner: `${s.nutrient} ${s.dose} (${s.timing.toLowerCase()}) — ${s.whyShort.toLowerCase()}.`.slice(0, 200),
+    one_liner: `${s.nutrient} ${s.dose} (${s.timing.toLowerCase()}) — ${s.whyShort.toLowerCase()}.`,
   };
 }
 

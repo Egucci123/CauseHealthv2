@@ -589,10 +589,10 @@ export function buildExecutiveSummary(facts: ClinicalFacts): string[] {
     if (bullets.some(b => b.toLowerCase().includes(o.marker.toLowerCase()))) continue;
     bullets.push(`${o.marker} ${o.value} ${o.unit} (${o.flag}) — ${o.interpretation ?? 'discuss with PCP'}`);
   }
-  // Depletions of note
+  // Depletions of note — 2026-05-12-45 no mechanism truncation
   const highDepl = facts.depletions.filter(d => d.severity === 'high').slice(0, 1);
   for (const d of highDepl) {
-    bullets.push(`${d.medClass} → ${d.nutrient} depletion: ${d.mechanism.slice(0, 80)}`);
+    bullets.push(`${d.medClass} → ${d.nutrient} depletion: ${d.mechanism}`);
   }
   return bullets.slice(0, 5);
 }
@@ -667,7 +667,10 @@ export function buildHpi(facts: ClinicalFacts): string {
     ? ` Pattern fits ${topCondition.name.toLowerCase()}.`
     : '';
 
-  return (opener + labLine + sxLine + patternLine).slice(0, 360);
+  // 2026-05-12-45: no HPI truncation. Deterministic template can't
+  // exceed reasonable length naturally (max 4 outliers + 4 symptoms +
+  // condition list = ~500-600 chars worst case for poly-pharmacy patient).
+  return opener + labLine + sxLine + patternLine;
 }
 
 /** Patient-voice questions — each tied to a specific finding in FACTS.
@@ -690,7 +693,7 @@ export function buildQuestionsToAsk(
     out.push({
       emoji: emojiForCondition(c.name),
       question: q,
-      why: c.evidence.slice(0, 160),
+      why: c.evidence, // 2026-05-12-45 no truncation — full evidence string
     });
     if (out.length >= 8) break;
   }
@@ -716,7 +719,7 @@ export function buildQuestionsToAsk(
     out.push({
       emoji: '💊',
       question: `Can we check ${d.nutrient} since I'm on ${d.medsMatched[0] ?? d.medClass}?`,
-      why: d.mechanism.slice(0, 160),
+      why: d.mechanism, // 2026-05-12-45 no truncation — full mechanism string
     });
   }
   return out;
@@ -732,7 +735,8 @@ export function buildDiscussionPoints(facts: ClinicalFacts): string[] {
       typeof t === 'string' ? t : (t?.test ?? ''),
     ).filter(Boolean);
     const testsClause = tests.length > 0 ? ` Tests to discuss: ${tests.join(', ')}.` : '';
-    out.push(`${c.name}. ${c.evidence.split('.')[0]}.${testsClause}`.slice(0, 200));
+    // 2026-05-12-45 no truncation. Use full first sentence of evidence.
+    out.push(`${c.name}. ${c.evidence.split('.')[0]}.${testsClause}`);
   }
   // 2. Critical outliers
   const criticalOutliers = facts.labs.outliers.filter(o => o.flag.startsWith('critical')).slice(0, 2);
