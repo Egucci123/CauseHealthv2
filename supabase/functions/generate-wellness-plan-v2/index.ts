@@ -533,6 +533,33 @@ function fixPhase1Verbs(actions: string[]): string[] {
  * patient gets it on Day 1. Phase-2 "Continue all Phase 1 supplements"
  * statements then become accurate.
  */
+/**
+ * 2026-05-12-47: Phase 2 dedup against Phase 1.
+ * After ensurePhase1CriticalSupplements injects critical/high supplements
+ * into Phase 1, scan Phase 2 actions and drop any "Add [supplement]"
+ * line whose supplement name appears in Phase 1. Prevents the duplicate
+ * Omega-3 / Milk Thistle / Vit D3 in both phases bug.
+ *
+ * Match logic: extract the first lowercase word after "Add" / "Start"
+ * in each Phase 2 line, then check if that token appears in Phase 1's
+ * combined text. Loose enough to catch "Omega-3" matching either form.
+ */
+function dedupPhase2AgainstPhase1(phase2: string[], phase1: string[]): string[] {
+  const p1Lower = phase1.join(' ').toLowerCase();
+  return phase2.filter(line => {
+    // Match the supplement name after "Add" or "Start" verb.
+    const m = line.match(/^[^a-z]*(?:add|start)\s+([a-z][a-z0-9-]*)/i);
+    if (!m) return true;                                  // not a supplement action — keep
+    const supp = m[1].toLowerCase();
+    if (supp.length < 3) return true;                     // too short to dedup safely
+    // Skip generic verbs that follow Add (resistance / zone-2 / daily / etc).
+    const generics = ['resistance', 'zone', 'daily', 'cardio', '2x', '3x', 'training', 'fiber'];
+    if (generics.includes(supp)) return true;
+    // If supp name appears in Phase 1 actions, drop from Phase 2.
+    return !p1Lower.includes(supp);
+  });
+}
+
 function ensurePhase1CriticalSupplements(
   phase1Actions: string[],
   candidates: Array<{ nutrient: string; dose: string; timing: string; priority: string; sourced_from?: string; sourcedFrom?: string; emoji: string }>,
@@ -776,7 +803,20 @@ function mergeIntoFinalPlan(args: {
               filteredStack,
             ),
           },
-          phase_2: { ...action.action_plan.phase_2, actions: Array.isArray(action.action_plan.phase_2?.actions) ? action.action_plan.phase_2.actions : [] },
+          // 2026-05-12-47: Phase 2 dedup — drop any "Add [supplement]"
+          // action when the same supplement was already injected into
+          // Phase 1 by ensurePhase1CriticalSupplements. Prevents the
+          // "Omega-3 appears in Phase 1 AND Phase 2" duplication bug.
+          phase_2: {
+            ...action.action_plan.phase_2,
+            actions: dedupPhase2AgainstPhase1(
+              Array.isArray(action.action_plan.phase_2?.actions) ? action.action_plan.phase_2.actions : [],
+              ensurePhase1CriticalSupplements(
+                fixPhase1Verbs(Array.isArray(action.action_plan.phase_1?.actions) ? action.action_plan.phase_1.actions : []),
+                filteredStack,
+              ),
+            ),
+          },
           phase_3: { ...action.action_plan.phase_3, actions: Array.isArray(action.action_plan.phase_3?.actions) ? action.action_plan.phase_3.actions : [] },
         }
       : { phase_1: { name: '', focus: '', actions: [] }, phase_2: { name: '', focus: '', actions: [] }, phase_3: { name: '', focus: '', actions: [] } },
