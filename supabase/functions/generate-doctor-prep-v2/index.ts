@@ -23,6 +23,7 @@ import {
   type DoctorPrepOutput,
 } from '../_shared/prompts/doctorPrep.ts';
 import { CAUSEHEALTH_CONSTITUTION, CAUSEHEALTH_CONSTITUTION_SHORT } from '../_shared/prompts/_constitution.ts';
+import { runMedicationAlternativesEngine } from '../_shared/medicationAlternativesEngine.ts';
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -399,7 +400,19 @@ function mergeIntoDoctorPrepOutput(args: {
     discussion_points: ai.discussion_points,
     patient_questions: ai.patient_questions,
     functional_medicine_note: ai.functional_medicine_note,
-    medication_alternatives: [], // future enhancement; v1 had this AI-driven, defer to AI later
+    // 2026-05-12-35: deterministic medication alternatives from the
+    // signal-driven engine (11 rules covering statins, metformin, PPI,
+    // levothyroxine, SSRI, beta blocker, NSAID, GLP-1, anticonvulsant).
+    // Replaces the old empty array + future-AI-call plan.
+    medication_alternatives: runMedicationAlternativesEngine({
+      medsLower: facts.patient.meds.join(' ').toLowerCase(),
+      conditionsLower: facts.patient.conditions.join(' ').toLowerCase(),
+      labValues: facts.labs.raw.map((l: any) => ({
+        marker_name: l.marker, value: l.value, unit: l.unit,
+        optimal_flag: l.flag, standard_flag: l.flag,
+      })),
+      symptomsLower: facts.patient.symptoms.map((s: any) => s.name.toLowerCase()).join(' '),
+    }),
 
     // Deterministic extras (v2 unique)
     medication_depletions, // enriched per-med depletion data for the Medications tab

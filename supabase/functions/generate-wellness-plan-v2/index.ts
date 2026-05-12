@@ -52,6 +52,7 @@ import {
   type ActionPlanOutput,
 } from '../_shared/prompts/actionPlan.ts';
 import { applyAllergyFilters } from '../_shared/safetyNet.ts';
+import { runMedicationAlternativesEngine } from '../_shared/medicationAlternativesEngine.ts';
 import { CAUSEHEALTH_CONSTITUTION, CAUSEHEALTH_CONSTITUTION_SHORT } from '../_shared/prompts/_constitution.ts';
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!;
@@ -787,6 +788,18 @@ function mergeIntoFinalPlan(args: {
       clinical_effects: d.clinicalEffects ?? [],
       recommended_supplement_key: d.recommendedSupplementKey,
     })),
+    // 2026-05-12-35: deterministic medication alternatives — engine output
+    // (signal-driven, 11 rules). Frontend Medications tab consumes this
+    // directly so the entire med UI is engine-sourced, not client-data.
+    medication_alternatives: runMedicationAlternativesEngine({
+      medsLower: facts.patient.meds.join(' ').toLowerCase(),
+      conditionsLower: facts.patient.conditions.join(' ').toLowerCase(),
+      labValues: facts.labs.raw.map((l: any) => ({
+        marker_name: l.marker, value: l.value, unit: l.unit,
+        optimal_flag: l.flag, standard_flag: l.flag,
+      })),
+      symptomsLower: facts.patient.symptoms.map((s: any) => s.name.toLowerCase()).join(' '),
+    }),
 
     // Safety
     emergency_alerts: facts.emergencyAlerts,

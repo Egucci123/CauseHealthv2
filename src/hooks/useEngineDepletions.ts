@@ -26,6 +26,13 @@ export interface EngineDepletion {
   recommended_supplement_key?: string;
 }
 
+export interface EngineAlternative {
+  current_medication: string;
+  reason_to_consider: string;
+  pharmaceutical_alternatives: Array<{ name: string; reason: string }>;
+  natural_alternatives: Array<{ name: string; reason: string }>;
+}
+
 export interface EngineDepletionMap {
   /** All depletions for a user's medication name (case-insensitive lookup). */
   byMedName: Map<string, EngineDepletion[]>;
@@ -34,9 +41,13 @@ export interface EngineDepletionMap {
   byMedClass: Map<string, EngineDepletion[]>;
   /** Flat list — for diagnostics. */
   all: EngineDepletion[];
+  /** Medication alternatives — engine output keyed by current_medication
+   *  (lowercased). Empty when no alternatives engine rule fired. */
+  alternativesByMed: Map<string, EngineAlternative[]>;
+  alternativesAll: EngineAlternative[];
 }
 
-function buildMap(deps: EngineDepletion[]): EngineDepletionMap {
+function buildMap(deps: EngineDepletion[], alts: EngineAlternative[]): EngineDepletionMap {
   const byMedName = new Map<string, EngineDepletion[]>();
   const byMedClass = new Map<string, EngineDepletion[]>();
   for (const d of deps) {
@@ -54,7 +65,15 @@ function buildMap(deps: EngineDepletion[]): EngineDepletionMap {
       byMedClass.set(cls, arr);
     }
   }
-  return { byMedName, byMedClass, all: deps };
+  const alternativesByMed = new Map<string, EngineAlternative[]>();
+  for (const a of alts) {
+    const key = String(a.current_medication ?? '').toLowerCase().trim();
+    if (!key) continue;
+    const arr = alternativesByMed.get(key) ?? [];
+    arr.push(a);
+    alternativesByMed.set(key, arr);
+  }
+  return { byMedName, byMedClass, all: deps, alternativesByMed, alternativesAll: alts };
 }
 
 export function useEngineDepletions() {
@@ -75,7 +94,13 @@ export function useEngineDepletions() {
         .limit(1)
         .maybeSingle();
       const wpDeps = (wp?.plan_data as any)?.medication_depletions;
-      if (Array.isArray(wpDeps) && wpDeps.length > 0) return buildMap(wpDeps as EngineDepletion[]);
+      const wpAlts = (wp?.plan_data as any)?.medication_alternatives;
+      if (Array.isArray(wpDeps) && wpDeps.length > 0) {
+        return buildMap(
+          wpDeps as EngineDepletion[],
+          (Array.isArray(wpAlts) ? wpAlts : []) as EngineAlternative[],
+        );
+      }
 
       // 2) Fallback to the doctor-prep document.
       const { data: dp } = await supabase
@@ -86,10 +111,16 @@ export function useEngineDepletions() {
         .limit(1)
         .maybeSingle();
       const dpDeps = (dp?.document_data as any)?.medication_depletions;
-      if (Array.isArray(dpDeps) && dpDeps.length > 0) return buildMap(dpDeps as EngineDepletion[]);
+      const dpAlts = (dp?.document_data as any)?.medication_alternatives;
+      if (Array.isArray(dpDeps) && dpDeps.length > 0) {
+        return buildMap(
+          dpDeps as EngineDepletion[],
+          (Array.isArray(dpAlts) ? dpAlts : []) as EngineAlternative[],
+        );
+      }
 
       // 3) Nothing generated yet — return empty map.
-      return buildMap([]);
+      return buildMap([], []);
     },
     staleTime: 60_000,
   });
@@ -111,4 +142,25 @@ export function lookupDepletions(
     String(d.medication ?? '').toLowerCase().includes(key),
   );
   return fuzzy;
+}
+
+/** Given a user's medication name + the engine's depletion classification,
+ *  return any "consider switching" alternatives the engine flagged. Matches
+ *  the current_medication string the engine emits (e.g. "Atorvastatin",
+ *  "Metformin", "PPI", "GLP-1 receptor agonist"). */
+export function lookupAlternatives(
+  map: EngineDepletionMap | undefined,
+  medName: string,
+  medClass: string | undefined,
+): EngineAlternative[] {
+  if (!map) return [];
+  const name = medName.toLowerCase().trim();
+  const cls = (medClass ?? '').toLowerCase().trim();
+  const matches: EngineAlternative[] = [];
+  for (const a of map.alternativesAll) {
+    const cur = String(a.current_medication ?? '').toLowerCase();
+    if (cur.includes(name) || name.includes(cur)) { matches.push(a); continue; }
+    if (cls && (cur.includes(cls) || cls.includes(cur))) matches.push(a);
+  }
+  return matches;
 }

@@ -1,10 +1,17 @@
 // src/components/medications/MedicationCard.tsx
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getDepletionProfile, type DepletionEntry } from '../../data/medicationDepletions';
-import { getAlternatives } from '../../data/medicationAlternatives';
-import { useEngineDepletions, lookupDepletions, type EngineDepletion } from '../../hooks/useEngineDepletions';
+import type { DepletionEntry } from '../../data/medicationDepletions';
+import { useEngineDepletions, lookupDepletions, lookupAlternatives, type EngineDepletion } from '../../hooks/useEngineDepletions';
 import { useWellnessPlan } from '../../hooks/useWellnessPlan';
+
+// 2026-05-12-35: ENGINE-ONLY DATA SOURCE.
+// The deterministic backend engine (35 drug classes, 314 brand/generic
+// names, 54 depletion rules, 11 alternatives rules) is the single source
+// of truth for the Medications tab. No client-side hardcoded fallback —
+// if the engine doesn't recognize a med, the card shows a clean "no
+// data" state. This guarantees zero drift between what the engine knows
+// and what the UI renders.
 
 // 2026-05-12-35: Map an engine depletion (35-class universal coverage)
 // to the rich DepletionEntry shape the UI already renders. Looks up
@@ -91,29 +98,37 @@ function altTypeCfg(t: string) {
 export const MedicationCard = ({ medication, index }: MedicationCardProps) => {
   const [open, setOpen] = useState(true);
   const [altsOpen, setAltsOpen] = useState(false);
-  const clientProfile = getDepletionProfile(medication.name);
-  const alternatives = getAlternatives(medication.name);
 
-  // 2026-05-12-35: Pull universal depletion coverage from the engine.
-  // If the engine recognizes this med (314 brand/generic names covered),
-  // build a profile from its output. Falls back to clientProfile (16
-  // hardcoded entries) only when the engine doesn't know the med.
+  // Engine is the SINGLE SOURCE OF TRUTH. No client-data fallback —
+  // if the engine doesn't recognize this med, the UI shows "No data
+  // yet" instead of stale hardcoded content.
   const { data: engineMap } = useEngineDepletions();
   const { data: wellnessPlan } = useWellnessPlan();
   const engineDeps = lookupDepletions(engineMap, medication.name);
+  const medClass = engineDeps[0]?.med_class;
+  const engineAlts = lookupAlternatives(engineMap, medication.name, medClass);
+
   const suppByKey = new Map<string, any>();
-  for (const s of (wellnessPlan?.supplement_stack ?? [])) {
+  for (const s of ((wellnessPlan as any)?.supplement_stack ?? [])) {
     if ((s as any).key) suppByKey.set((s as any).key, s);
   }
-  const engineProfile = engineDeps.length > 0 ? {
+
+  const profile = engineDeps.length > 0 ? {
     genericName: medication.name,
-    brandNames: [],
-    drugClass: engineDeps[0].med_class,
+    brandNames: [] as string[],
+    drugClass: medClass ?? '',
     depletions: engineDeps.map(d => engineToDepletionEntry(d, suppByKey)),
     interactions: [] as string[],
     notes: undefined as string | undefined,
   } : null;
-  const profile = engineProfile ?? clientProfile;
+
+  // Flatten engine alternatives into the flat UI shape (name/type/reason).
+  // Pharmaceutical + natural lists come from the engine; lifestyle entries
+  // appear when an engine rule includes them in natural_alternatives.
+  const alternatives = engineAlts.flatMap(a => [
+    ...a.pharmaceutical_alternatives.map(p => ({ name: p.name, type: 'pharmaceutical' as const, reason: p.reason })),
+    ...a.natural_alternatives.map(n => ({ name: n.name, type: 'natural' as const, reason: n.reason })),
+  ]);
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.07 }}
@@ -190,8 +205,8 @@ export const MedicationCard = ({ medication, index }: MedicationCardProps) => {
                                         <span className="text-precision text-[0.7rem] font-bold px-1.5 py-0.5 tracking-widest" style={{ borderRadius: '2px', backgroundColor: `${cfg.color}15`, color: cfg.color }}>{cfg.label}</span>
                                       </div>
                                       <p className="text-body text-clinical-stone text-xs leading-relaxed">{alt.reason}</p>
-                                      {alt.caution && (
-                                        <p className="text-body text-[#C94F4F] text-xs leading-relaxed mt-1.5 italic">⚠ {alt.caution}</p>
+                                      {(alt as any).caution && (
+                                        <p className="text-body text-[#C94F4F] text-xs leading-relaxed mt-1.5 italic">⚠ {(alt as any).caution}</p>
                                       )}
                                     </div>
                                   </div>
