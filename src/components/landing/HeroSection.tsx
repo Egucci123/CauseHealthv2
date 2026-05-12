@@ -155,31 +155,35 @@ export const HeroSection = () => (
           <div className="inline-flex items-center gap-2 mb-6">
             <div className="w-4 h-px bg-primary-container" />
             <span className="text-precision text-[0.68rem] text-primary-container tracking-widest uppercase font-bold">
-              Bloodwork analysis · Early detection · Doctor prep
+              Bloodwork analysis · PCP prep · Medication-aware
             </span>
           </div>
 
           <h1 className="text-authority font-bold text-clinical-charcoal leading-tight mb-2">
-            <span className="text-5xl md:text-6xl block">Bloodwork answers</span>
+            <span className="text-5xl md:text-6xl block">The bloodwork analysis</span>
             <span className="text-5xl md:text-6xl block">your doctor doesn't</span>
           </h1>
           <h2 className="text-authority text-4xl md:text-5xl font-bold text-primary-container leading-tight mb-8">
-            have time to give —<br />for $19.
+            have time to give you —<br />for $19.
           </h2>
 
           <p className="text-body text-clinical-stone text-lg leading-relaxed mb-4 max-w-lg">
-            Upload your bloodwork. CauseHealth surfaces the patterns a 12-minute visit doesn't have time for:
-            <strong className="text-clinical-charcoal"> medication-nutrient depletions, atherogenic lipid shifts, thyroid-axis
-            patterns, prediabetic markers</strong> — worth bringing to your doctor before they become a problem.
+            Your PCP gets 15 minutes. You leave with half your questions unasked and 60+ markers you don't understand.
+            CauseHealth fills the gap: upload your labs, get back a <strong className="text-clinical-charcoal">printable
+            doctor-prep document</strong> that turns your next visit into a focused conversation.
           </p>
           <p className="text-body text-clinical-stone text-base leading-relaxed mb-4 max-w-lg">
-            You walk out with a printable <strong className="text-clinical-charcoal">Doctor Prep PDF</strong> (with ICD-10
-            reference codes for your provider), a <strong className="text-clinical-charcoal">90-day plan</strong> with
-            evidence-based supplements + dietary pattern, a list of <strong className="text-clinical-charcoal">tests worth
-            asking your doctor about</strong>, and an AI assistant that knows your specific labs.
+            You walk in with: <strong className="text-clinical-charcoal">specific tests to request</strong> (with ICD-10
+            codes for insurance coverage), the <strong className="text-clinical-charcoal">nutrient depletions every one of
+            your medications is silently causing</strong>, <strong className="text-clinical-charcoal">evidence-based
+            questions</strong> to ask, a <strong className="text-clinical-charcoal">12-week action plan</strong>, and the
+            patterns a rushed visit will miss — early lipid drift, thyroid-axis signals, prediabetic markers, drug-induced
+            depletions worth catching before they become a problem.
           </p>
           <p className="text-body text-clinical-stone text-xs italic leading-relaxed mb-4 max-w-lg">
-            Educational analysis, not medical advice. CauseHealth does not diagnose, treat, or prescribe.
+            Engine-driven, lab-gated, medically conservative. Never recommends iron, calcium, or therapeutic-dose
+            supplements without measured deficiency. Educational analysis, not medical advice — we don't diagnose, treat,
+            or prescribe. Your PCP does.
           </p>
           <p className="text-body text-clinical-stone text-base leading-relaxed mb-10 max-w-lg">
             <strong className="text-clinical-charcoal">$19 per analysis.</strong> No subscription. Pay once, own it forever.
@@ -211,9 +215,9 @@ export const HeroSection = () => (
 
           <div className="flex flex-wrap gap-3 mt-10">
             <DetectionCounter />
-            <StatPill label="Early-detection pattern engine" delay={1.0} />
-            <StatPill label="Medication depletion mapping" delay={1.2} />
-            <StatPill label="ICD-10 coded doctor prep" delay={1.4} />
+            <StatPill label="314 drugs · 35 depletion classes covered" delay={1.0} />
+            <StatPill label="ICD-10 coded doctor prep" delay={1.2} />
+            <StatPill label="Lab-gated supplement engine" delay={1.4} />
           </div>
         </motion.div>
 
