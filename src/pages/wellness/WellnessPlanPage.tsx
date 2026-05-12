@@ -196,26 +196,12 @@ const TodayTab = ({ plan, uid }: { plan: any; uid: string }) => {
 
   return (
     <div className="space-y-4">
-      {/* Week milestone strip — same as dashboard TodayCard */}
-      {planWeek && nextMilestone && (
-        <div className="bg-clinical-cream/40 rounded-[10px] p-3">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-clinical-stone">
-              Week {planWeek.week} of 12
-            </span>
-            <span className="text-precision text-[0.6rem] text-clinical-stone">
-              Next milestone in {nextMilestone.daysUntil} day{nextMilestone.daysUntil === 1 ? '' : 's'}
-            </span>
-          </div>
-          <div className="h-1.5 rounded-full bg-clinical-stone/15 overflow-hidden mb-2">
-            <div className="h-full bg-primary-container transition-all" style={{ width: `${(planWeek.week / 12) * 100}%` }} />
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-base leading-none">{nextMilestone.emoji}</span>
-            <span className="text-precision text-[0.65rem] text-clinical-charcoal">{nextMilestone.label}</span>
-          </div>
-        </div>
-      )}
+      {/* 2026-05-12: removed week-milestone progress strip. CauseHealth is
+          a one-time-per-lab-cycle product (no subscription, no ongoing
+          schedule), so "Week N of 12" + "next milestone in N days"
+          framing felt off. The 3 actions below are presented as
+          lifestyle interventions to do today — not subscription
+          milestones. */}
 
       {/* Habit streak + week summary — appears once user has any check-off history */}
       {(streak > 0 || week.done > 0) && (
@@ -241,7 +227,14 @@ const TodayTab = ({ plan, uid }: { plan: any; uid: string }) => {
         </div>
       )}
 
-      <p className="text-body text-clinical-stone text-sm">3 things. Start with one. Check it off.</p>
+      <div className="bg-clinical-cream/40 rounded-[10px] p-4 border-l-[3px] border-primary-container">
+        <p className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-clinical-stone mb-1">
+          Lifestyle Interventions · Today
+        </p>
+        <p className="text-body text-clinical-charcoal text-sm leading-relaxed">
+          Three small actions tied to your specific markers + patterns. Do them daily — check them off when done.
+        </p>
+      </div>
       {actions.map((a: any, i: number) => {
         const isDone = done.includes(i);
         return (

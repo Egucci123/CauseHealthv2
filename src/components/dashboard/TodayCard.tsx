@@ -157,26 +157,12 @@ export const TodayCard = () => {
             </div>
           </Link>
         ) : (
-          <div className="bg-clinical-cream/40 rounded-[10px] p-3">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-precision text-[0.6rem] font-bold tracking-widest uppercase text-clinical-stone">
-                Week {planTimeline.week} of 12
-              </span>
-              <span className="text-precision text-[0.6rem] text-clinical-stone">
-                Next milestone in {planTimeline.daysUntilMilestone} day{planTimeline.daysUntilMilestone === 1 ? '' : 's'}
-              </span>
-            </div>
-            <div className="h-1.5 rounded-full bg-clinical-stone/15 overflow-hidden mb-2">
-              <div
-                className="h-full bg-primary-container transition-all"
-                style={{ width: `${(planTimeline.week / 12) * 100}%` }}
-              />
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-base leading-none">{planTimeline.nextMilestone.emoji}</span>
-              <span className="text-precision text-[0.65rem] text-clinical-charcoal">{planTimeline.nextMilestone.label}</span>
-            </div>
-          </div>
+          // 2026-05-12: removed week-milestone strip from the dashboard
+          // Today card too. CauseHealth is a one-time prep tool, not a
+          // subscription program — the "Week N of 12" countdown framing
+          // didn't fit. The 3 lifestyle interventions below are what
+          // matters; do them daily, check them off, that's it.
+          null
         )
       )}
 
