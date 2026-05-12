@@ -662,10 +662,16 @@ function mergeIntoFinalPlan(args: {
       name: c.name,
       category: c.category,
       confidence: c.confidence,
-      evidence: prose?.evidence ?? c.evidence,
+      // 2026-05-12-35: ENGINE WINS. Previously we used the AI narrative's
+      // condition_prose.evidence (maxLength 150 in the tool schema) which
+      // was truncating engine strings mid-sentence ("All your blood numb",
+      // "Pattern says you", "ALT" cut off). The engine produces full,
+      // clinically complete strings. The AI version adds no value and
+      // forces truncation. Use AI only if engine string is empty.
+      evidence: (c.evidence && c.evidence.trim()) ? c.evidence : prose?.evidence,
       confirmatory_tests: annotatedConfirmatory,
       icd10: c.icd10,
-      what_to_ask_doctor: prose?.what_to_ask_doctor ?? c.what_to_ask_doctor,
+      what_to_ask_doctor: (c.what_to_ask_doctor && c.what_to_ask_doctor.trim()) ? c.what_to_ask_doctor : prose?.what_to_ask_doctor,
     };
   });
 
