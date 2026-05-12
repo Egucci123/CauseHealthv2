@@ -1178,18 +1178,39 @@ export function evaluateIndications(
   // unless filling the rest of the slots is impossible. Pass 1 picks
   // up to MAX_PER_CATEGORY from each category in priority order. Pass 2
   // backfills any remaining slots from the leftovers.
-  const MAX_PER_CATEGORY = Math.max(1, Math.floor(topN / 2)); // 3 of 6
+  const MAX_PER_CATEGORY = Math.max(1, Math.floor(topN / 2)); // 4 of 8
   const balanced: SupplementCandidate[] = [];
   const categoryCount: Record<string, number> = {};
   const leftovers: SupplementCandidate[] = [];
 
-  // Pass 1 — respect category cap
+  // PASS 0 — ESSENTIAL REPLETION RESERVE (Evan audit, 2026-05-12-30):
+  // Lab-finding supplements in the nutrient_repletion category are 1:1
+  // with a deficiency marker — if Vit D is low, the answer is Vit D3;
+  // if Ferritin is low, the answer is Iron; if B12 is low, the answer
+  // is B12. NOTHING else in the stack repletes that specific deficiency.
+  // These supplements get guaranteed slots before the category diversifier
+  // runs, so they cannot be cap-cut by disease/medication supplements
+  // (which crowd out repletion in multi-pattern users — edgemech case).
+  // Universal: applies to every user with a flagged deficiency outlier.
+  const reservedKeys = new Set<string>();
   for (const c of out) {
+    if (c.category === 'nutrient_repletion' && c.sourcedFrom === 'lab_finding') {
+      if (reservedKeys.has(c.key)) continue;
+      balanced.push(c);
+      reservedKeys.add(c.key);
+      categoryCount[c.category] = (categoryCount[c.category] ?? 0) + 1;
+      if (balanced.length >= topN) break;
+    }
+  }
+
+  // Pass 1 — respect category cap, skip already-reserved
+  for (const c of out) {
+    if (reservedKeys.has(c.key)) continue;
+    if (balanced.length >= topN) break;
     const cat = c.category ?? 'unspecified';
     if ((categoryCount[cat] ?? 0) < MAX_PER_CATEGORY) {
       balanced.push(c);
       categoryCount[cat] = (categoryCount[cat] ?? 0) + 1;
-      if (balanced.length >= topN) break;
     } else {
       leftovers.push(c);
     }
@@ -1197,6 +1218,7 @@ export function evaluateIndications(
   // Pass 2 — backfill remaining slots from leftovers
   if (balanced.length < topN) {
     for (const c of leftovers) {
+      if (reservedKeys.has(c.key)) continue;
       balanced.push(c);
       if (balanced.length >= topN) break;
     }
