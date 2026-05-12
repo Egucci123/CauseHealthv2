@@ -168,7 +168,7 @@ export const HeroSection = () => (
           </h2>
 
           <p className="text-body text-clinical-stone text-lg leading-relaxed mb-4 max-w-lg">
-            Your PCP gets 15 minutes. You leave with half your questions unasked and 60+ markers you don't understand.
+            Your PCP gets 12 minutes. You leave with half your questions unasked and 60+ markers you don't understand.
             CauseHealth fills the gap: upload your labs, get back a <strong className="text-clinical-charcoal">printable
             doctor-prep document</strong> that turns your next visit into a focused conversation.
           </p>
