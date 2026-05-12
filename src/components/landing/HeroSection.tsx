@@ -155,35 +155,35 @@ export const HeroSection = () => (
           <div className="inline-flex items-center gap-2 mb-6">
             <div className="w-4 h-px bg-primary-container" />
             <span className="text-precision text-[0.68rem] text-primary-container tracking-widest uppercase font-bold">
-              Bloodwork analysis · PCP prep · Medication-aware
+              Bloodwork prep · PCP-focused · Medication-aware
             </span>
           </div>
 
           <h1 className="text-authority font-bold text-clinical-charcoal leading-tight mb-2">
-            <span className="text-5xl md:text-6xl block">The bloodwork analysis</span>
-            <span className="text-5xl md:text-6xl block">your doctor doesn't</span>
+            <span className="text-5xl md:text-6xl block">Walk into your</span>
+            <span className="text-5xl md:text-6xl block">doctor visit prepared</span>
           </h1>
           <h2 className="text-authority text-4xl md:text-5xl font-bold text-primary-container leading-tight mb-8">
-            have time to give you —<br />for $19.
+            — for $19.
           </h2>
 
           <p className="text-body text-clinical-stone text-lg leading-relaxed mb-4 max-w-lg">
-            Your PCP gets 12 minutes. You leave with half your questions unasked and 60+ markers you don't understand.
-            CauseHealth fills the gap: upload your labs, get back a <strong className="text-clinical-charcoal">printable
-            doctor-prep document</strong> that turns your next visit into a focused conversation.
+            Your PCP visit is 12 minutes. You probably leave with half your questions unasked and 60+ markers you don't
+            understand. CauseHealth is the <strong className="text-clinical-charcoal">patient-side prep tool</strong>:
+            upload your bloodwork, get back a printable document that helps you make every minute count.
           </p>
           <p className="text-body text-clinical-stone text-base leading-relaxed mb-4 max-w-lg">
-            You walk in with: <strong className="text-clinical-charcoal">specific tests to request</strong> (with ICD-10
-            codes for insurance coverage), the <strong className="text-clinical-charcoal">nutrient depletions every one of
-            your medications is silently causing</strong>, <strong className="text-clinical-charcoal">evidence-based
-            questions</strong> to ask, a <strong className="text-clinical-charcoal">12-week action plan</strong>, and the
-            patterns a rushed visit will miss — early lipid drift, thyroid-axis signals, prediabetic markers, drug-induced
-            depletions worth catching before they become a problem.
+            You bring to your visit: <strong className="text-clinical-charcoal">specific tests to ask your doctor about</strong>
+            (with ICD-10 reference codes for insurance), the <strong className="text-clinical-charcoal">nutrient depletions
+            commonly associated with your medications</strong>, <strong className="text-clinical-charcoal">questions worth
+            raising</strong>, a <strong className="text-clinical-charcoal">12-week lifestyle plan</strong> for the spaces
+            between visits, and the patterns in your labs worth a conversation — early lipid drift, thyroid-axis signals,
+            prediabetic markers, drug-nutrient interactions to monitor.
           </p>
           <p className="text-body text-clinical-stone text-xs italic leading-relaxed mb-4 max-w-lg">
-            Engine-driven, lab-gated, medically conservative. Never recommends iron, calcium, or therapeutic-dose
-            supplements without measured deficiency. Educational analysis, not medical advice — we don't diagnose, treat,
-            or prescribe. Your PCP does.
+            CauseHealth surfaces patterns from your bloodwork for you to discuss with your doctor. We do not diagnose,
+            treat, or prescribe — your PCP does. Engine-driven, lab-gated, medically conservative: never recommends iron,
+            calcium, or therapeutic-dose supplements without measured deficiency.
           </p>
           <p className="text-body text-clinical-stone text-base leading-relaxed mb-10 max-w-lg">
             <strong className="text-clinical-charcoal">$19 per analysis.</strong> No subscription. Pay once, own it forever.

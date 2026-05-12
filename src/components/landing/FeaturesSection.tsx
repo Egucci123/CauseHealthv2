@@ -324,8 +324,8 @@ const FEATURES = [
   },
   {
     label: 'Biological + Cardiometabolic Age',
-    title: 'Two numbers your\nlab will never give you.',
-    body: 'Biological Age uses Levine\'s peer-reviewed PhenoAge algorithm — 9 markers that predict mortality risk. But PhenoAge skips lipids and liver enzymes. So we built Cardiometabolic Age — a CauseHealth composite of the metabolic markers PhenoAge misses. Two numbers, two stories. Most apps give you one because the other might tell on them.',
+    title: 'Two ways to look\nat your biological age.',
+    body: 'Biological Age uses Levine\'s peer-reviewed PhenoAge algorithm — 9 markers that correlate with mortality risk in research populations. PhenoAge focuses on inflammation, metabolic, and kidney markers; it doesn\'t weight lipids and liver enzymes. So we also calculate Cardiometabolic Age — a CauseHealth composite of those metabolic markers. Two numbers, two complementary lenses on the same labs.',
     visual: <BioAgeVisual />,
     flip: true,
   },

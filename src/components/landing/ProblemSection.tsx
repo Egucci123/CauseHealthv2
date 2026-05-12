@@ -6,14 +6,14 @@ const PROBLEMS = [
   {
     icon: 'troubleshoot',
     title: 'Your labs say normal.\nYou feel terrible.',
-    body: 'Standard lab ranges are built from sick populations. "Normal" includes everyone who walked into a testing center — not the healthy threshold you should be at. Your Vitamin D at 24 ng/mL is flagged normal. The optimal range is 50–70. Your doctor never mentioned it.',
+    body: 'Standard lab ranges are built from broad reference populations — "in range" can still mean a value worth a conversation. Vitamin D at 24 ng/mL might be flagged in range while sitting well below the functional optimal of 50-70. CauseHealth surfaces these in-range-but-suboptimal patterns so you can bring them up at your next visit.',
     accent: '#C94F4F',
     label: 'The Range Problem',
   },
   {
     icon: 'medication',
     title: 'Your medication is\ncausing your symptoms.',
-    body: 'Atorvastatin depletes CoQ10. Mesalamine depletes folate and B12. Metformin depletes B12. PPIs deplete magnesium, zinc, and iron. These are documented, clinical depletions — and almost no one is ever told. Your muscle pain, hair loss, and fatigue may have a drug on your prescription list as the root cause.',
+    body: 'Atorvastatin is associated with CoQ10 depletion. Mesalamine and methotrexate can affect folate status. Metformin and PPIs can affect B12 absorption. These are documented drug-nutrient interactions worth monitoring — CauseHealth surfaces them and adds the appropriate workup tests to your doctor-prep document so you can discuss whether testing is right for you.',
     accent: '#E8922A',
     label: 'The Depletion Problem',
   },
