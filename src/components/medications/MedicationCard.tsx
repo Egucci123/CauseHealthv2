@@ -19,14 +19,21 @@ import { useEngineDepletions, lookupDepletions, lookupAlternatives, type EngineD
 function engineToDepletionEntry(d: EngineDepletion): DepletionEntry {
   const supp = d.recommended_supplement;
   const sevMap: Record<string, DepletionEntry['severity']> = { high: 'critical', moderate: 'significant', low: 'moderate' };
+  // 2026-05-12-42: depletion-driven supplementation is LAB-FIRST.
+  // The doctor-prep test list automatically adds the monitoring test
+  // (e.g. Folate Workup, B12 Workup, RBC Magnesium). The card surfaces
+  // the supplement that WOULD be appropriate post-confirmation —
+  // framed as "test first, then supplement if low" rather than "take
+  // this now."
+  const testHint = d.monitoring_test ? ` — already added to your test sheet` : '';
   return {
     nutrient: d.nutrient,
     severity: sevMap[d.severity] ?? 'moderate',
     mechanism: d.mechanism,
     clinical_effects: d.clinical_effects ?? [],
     intervention: supp
-      ? `${supp.nutrient}${supp.practical_note ? ` — ${supp.practical_note}` : ''}`
-      : 'Discuss with your doctor whether repletion is right for you.',
+      ? `Order the test first${testHint}. If low, ${supp.nutrient} is the standard repletion.`
+      : `Discuss with your doctor whether repletion is right for you${testHint}.`,
     dose: supp?.dose ?? '—',
     form: supp?.form ?? '—',
     timing: supp?.timing ?? '—',

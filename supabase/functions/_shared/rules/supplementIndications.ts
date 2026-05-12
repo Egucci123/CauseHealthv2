@@ -864,28 +864,23 @@ export const INDICATIONS: Indication[] = [
     ],
   },
 
-  // Empirical folate repletion for folate-depleting medications. Standard
-  // of care for methotrexate; reasonable consideration for 5-ASA + OCP +
-  // anticonvulsant users — but ONLY if a folate test is also ordered.
-  {
-    id: 'mesalamine_empirical_folate',
-    triggers: [{ kind: 'medication', medClass: 'mesalamine_5asa' }],
-    supplements: [{ key: 'methylfolate', priority: 'high', sourcedFrom: 'medication_depletion', whyShort: '5-ASA blocks folate absorption — empirical methylfolate' }],
-  },
+  // 2026-05-12-42 — depletion-driven supplements are LAB-GATED ONLY.
+  // The new architecture: every medication-driven depletion auto-adds a
+  // monitoring test to the doctor-prep test list (see buildPlan.ts). The
+  // counter-supplement only fires AFTER the lab confirms a measurable
+  // deficiency. This eliminates empirical supplementation risk (Vit D
+  // accumulation, iron overload, masking-B12-deficiency via empirical
+  // folate, etc.).
+  //
+  // STANDARD-OF-CARE EXCEPTION: methotrexate + folate co-supplementation.
+  // This is the established rheumatology standard — folic acid (or folinic
+  // acid) is co-prescribed with MTX from day 1 to prevent toxicity. Not
+  // a "treat-empirically" decision; it's pharmacologically required.
+  // Every other drug class waits for lab confirmation.
   {
     id: 'methotrexate_empirical_folate',
     triggers: [{ kind: 'medication', medClass: 'methotrexate' }],
     supplements: [{ key: 'methylfolate', priority: 'critical', sourcedFrom: 'medication_depletion', whyShort: 'Methotrexate is a folate antagonist — folate co-supplementation is standard of care' }],
-  },
-  {
-    id: 'ocp_empirical_folate',
-    triggers: [{ kind: 'medication', medClass: 'hormonal_contraceptive' }],
-    supplements: [{ key: 'methylfolate', priority: 'moderate', sourcedFrom: 'medication_depletion', whyShort: 'OCPs lower folate 20-40% — relevant for any user considering pregnancy' }],
-  },
-  {
-    id: 'anticonvulsant_empirical_folate',
-    triggers: [{ kind: 'medication', medClass: 'anticonvulsant' }],
-    supplements: [{ key: 'methylfolate', priority: 'high', sourcedFrom: 'medication_depletion', whyShort: 'Enzyme-inducing anticonvulsants lower folate — NTD risk for women of reproductive age' }],
   },
 
   // ── Conditions ─────────────────────────────────────────────────────

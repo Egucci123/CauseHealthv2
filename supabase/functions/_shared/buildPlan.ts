@@ -16,6 +16,7 @@
 // rules file is unit-testable in isolation.
 
 import { buildTestList, type TestOrder } from './rules/testRules.ts';
+import { getRetest, specialistForKey } from './retestRegistry.ts';
 import { buildConditionList, type SuspectedConditionFact } from './rules/conditionRules.ts';
 import { buildDepletionList, type DepletionFact } from './rules/depletionRules.ts';
 import { buildSupplementCandidates, type SupplementCandidate } from './rules/supplementRules.ts';
@@ -436,6 +437,40 @@ export function buildPlan(input: PatientInput): ClinicalFacts {
   // list. They're displayed inside the condition card by the UI.
   const conditionDrivenTests: TestOrder[] = [];
 
+  // ─────────────────────────────────────────────────────────────────────
+  // 2026-05-12-42 — AUTO-TEST FROM DEPLETIONS
+  // Every medication depletion with a monitoringTest key gets that test
+  // injected into the PCP test list automatically. This is the new
+  // safety architecture: the supplement only fires AFTER the lab
+  // confirms a measurable deficiency, but the lab ORDER is added
+  // immediately so the patient can get tested. Eliminates empirical
+  // supplementation risk while making sure the right workup happens.
+  // ─────────────────────────────────────────────────────────────────────
+  const depletionDrivenTests: TestOrder[] = [];
+  const existingTestKeys = new Set(tests.map(t => t.key));
+  for (const d of depletions) {
+    if (!d.monitoringTest) continue;
+    if (existingTestKeys.has(d.monitoringTest)) continue;
+    const def = getRetest(d.monitoringTest);
+    if (!def) continue; // unknown key — skip silently
+    const triggerLetter: 'a' | 'b' | 'c' | 'd' | 'e' = 'b';
+    depletionDrivenTests.push({
+      key: d.monitoringTest,
+      name: (def as any).canonical ?? (def as any).name ?? d.monitoringTest,
+      whyShort: `On ${d.medsMatched[0] ?? d.medClass} — confirm ${d.nutrient} status before supplementing`,
+      whyLong: `(b) Medication depletion screen — ${d.medClass} depletes ${d.nutrient}. Confirm before supplementing.`,
+      trigger: triggerLetter,
+      icd10: (def as any).icd10 ?? 'Z79.899',
+      icd10Description: (def as any).icd10Description ?? 'Long-term drug therapy',
+      priority: d.severity === 'high' ? 'high' : 'moderate',
+      specialist: specialistForKey(d.monitoringTest),
+      insuranceNote: (def as any).insuranceNote ?? 'Covered when on long-term medication that depletes this nutrient.',
+      emoji: (def as any).emoji ?? '🧪',
+      tier: 'pattern',
+    });
+    existingTestKeys.add(d.monitoringTest);
+  }
+
   // Final test list: canonical baseline tests + dedup'd condition-workup
   // tests, then cap. Universal cap stops the list from ballooning to 25+
   // entries when multiple conditions all want the same workup.
@@ -464,7 +499,7 @@ export function buildPlan(input: PatientInput): ClinicalFacts {
     specialist: 3,
     imaging: 4,
   };
-  const merged = [...tests, ...conditionDrivenTests];
+  const merged = [...tests, ...conditionDrivenTests, ...depletionDrivenTests];
   // Stable sort by (priority, tier, isCanonical) — preserve input order otherwise.
   const indexed = merged.map((t, i) => ({ t, i }));
   indexed.sort((a, b) => {
