@@ -186,6 +186,19 @@ const altCases: AltCase[] = [
   { label: 'SSRI + B6 low (20)', meds: ['Sertraline'], labs: [{ marker_name: 'Vitamin B6', value: 20 }], symptoms: '', expectMed: 'SSRI' },
   { label: 'beta blocker + chronic fatigue', meds: ['Metoprolol'], labs: [], symptoms: 'chronic fatigue and exercise intolerance', expectMed: 'Beta blocker' },
   { label: 'beta blocker + no symptoms', meds: ['Metoprolol'], labs: [], symptoms: '', expectMed: null },
+  // ── New rules (2026-05-12-34) ────────────────────────────────────
+  // NSAID
+  { label: 'NSAID chronic (long-term ibuprofen)', meds: ['Ibuprofen 600mg daily for years'], labs: [], symptoms: '', expectMed: 'NSAID' },
+  { label: 'NSAID + elevated creatinine', meds: ['Naproxen'], labs: [{ marker_name: 'Creatinine', value: 1.5 }], symptoms: '', expectMed: 'NSAID' },
+  { label: 'NSAID + GI symptoms', meds: ['Diclofenac'], labs: [], symptoms: 'stomach pain and heartburn', expectMed: 'NSAID' },
+  { label: 'NSAID single use, no triggers', meds: ['Ibuprofen'], labs: [], symptoms: '', expectMed: null },
+  // GLP-1
+  { label: 'GLP-1 + severe persistent nausea', meds: ['Semaglutide'], labs: [], symptoms: 'severe nausea, persistent vomiting, cannot tolerate', expectMed: 'GLP-1 receptor agonist' },
+  { label: 'GLP-1 no GI symptoms', meds: ['Semaglutide'], labs: [], symptoms: '', expectMed: null },
+  // Anticonvulsant
+  { label: 'Phenytoin + Vit D 22 + osteopenia', meds: ['Phenytoin 300mg'], labs: [{ marker_name: 'Vitamin D', value: 22 }], symptoms: 'osteopenia diagnosed', expectMed: 'Anticonvulsant (enzyme-inducing)' },
+  { label: 'Phenytoin + Vit D normal', meds: ['Phenytoin'], labs: [{ marker_name: 'Vitamin D', value: 45 }], symptoms: 'osteopenia diagnosed', expectMed: null },
+  { label: 'Phenytoin + Vit D low, no bone risk', meds: ['Phenytoin'], labs: [{ marker_name: 'Vitamin D', value: 22 }], symptoms: '', expectMed: null },
 ];
 
 let altPass = 0;

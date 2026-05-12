@@ -411,6 +411,30 @@ export const MED_CLASSES: MedClassDef[] = [
     requiresTest: ['vit_d_25oh', 'folate_workup'],
   },
 
+  // ── NSAIDs (chronic) — universal coverage. Tag a NSAID-long-term class
+  // for chronic users (kidney + GI + cardiovascular risk drives the
+  // alternatives engine's "consider topical / acetaminophen" rule).
+  // Includes both prescription NSAIDs and OTC names typed in the meds list.
+  {
+    key: 'nsaid_chronic',
+    label: 'NSAID (chronic use — GI / renal / CV risk)',
+    aliases: [
+      /\bibuprofen\b/i, /\badvil\b/i, /\bmotrin\b/i,
+      /\bnaproxen\b/i, /\baleve\b/i, /\bnaprosyn\b/i,
+      /\bdiclofenac\b/i, /\bvoltaren\b/i, /\bcambia\b/i,
+      /\bcelecoxib\b/i, /\bcelebrex\b/i,
+      /\bmeloxicam\b/i, /\bmobic\b/i,
+      /\bketorolac\b/i, /\btoradol\b/i,
+      /\bindomethacin\b/i, /\bindocin\b/i,
+      /\betodolac\b/i,
+      /\boxaprozin\b/i, /\bdaypro\b/i,
+      /\bketoprofen\b/i,
+      /\bnabumetone\b/i,
+      /\bnsaid\b/i,
+    ],
+    requiresTest: ['cmp', 'uacr'],
+  },
+
   // ── Levodopa / carbidopa — Parkinson therapy → B6 interaction
   {
     key: 'levodopa',

@@ -254,6 +254,118 @@ const RULES: Rule[] = [
       };
     },
   },
+
+  // ────────────────────────────────────────────────────────────────────
+  // UNIVERSAL EXPANSION — 2026-05-12-34
+  // Three additional rules covering high-prevalence drug classes with
+  // clear lab/symptom triggers. Discipline: each requires an objective
+  // signal (lab value, ICD code, OR app-reported symptom). Never fires
+  // on drug name alone.
+  // ────────────────────────────────────────────────────────────────────
+
+  // ── Chronic NSAID → topical / acetaminophen / boswellia ────────────
+  // Fires on long-term NSAID use OR (NSAID + elevated creatinine) OR
+  // (NSAID + GI symptoms). Conservative — all NSAID brand/generic
+  // names recognized via the NSAID class regex.
+  {
+    key: 'nsaid_chronic_renal_or_gi',
+    detect: (ctx) => {
+      const onNSAID = takesMed(ctx, [
+        /ibuprofen|advil|motrin/i,
+        /naproxen|aleve|naprosyn/i,
+        /diclofenac|voltaren|cambia/i,
+        /celecoxib|celebrex/i,
+        /meloxicam|mobic/i,
+        /ketorolac|toradol|indomethacin|indocin|etodolac|oxaprozin|daypro|ketoprofen|nabumetone/i,
+      ]);
+      if (!onNSAID) return null;
+      const chronic = /chronic|long.?term|daily for|for years|for \d+\s*(year|month)|years|months on|prophylax/i.test(ctx.medsLower + ' ' + ctx.symptomsLower + ' ' + ctx.conditionsLower);
+      const creat = lab(ctx, [/^creatinine\b/i]);
+      const egfr  = lab(ctx, [/\begfr\b/i]);
+      const renal = (creat && creat.value > 1.3) || (egfr && egfr.value < 60);
+      const giSx  = /heartburn|reflux|stomach pain|gi bleed|black stool|melena|ulcer/i.test(ctx.symptomsLower + ' ' + ctx.conditionsLower);
+      if (!chronic && !renal && !giSx) return null;
+      const findings: string[] = [];
+      if (chronic) findings.push('long-term use');
+      if (renal) findings.push(`renal signal (${creat ? `Cr ${creat.value}` : `eGFR ${egfr!.value}`})`);
+      if (giSx) findings.push('GI symptoms reported');
+      return {
+        current_medication: 'NSAID',
+        reason_to_consider: `${findings.join(' + ')} on NSAID. Chronic systemic NSAIDs carry GI bleeding + renal + cardiovascular risk that compounds with duration. For most musculoskeletal pain, topical NSAIDs reach the target tissue at <10% of the systemic dose, and acetaminophen / botanicals can substitute or reduce systemic NSAID exposure.`,
+        pharmaceutical_alternatives: [
+          { name: 'Topical diclofenac gel (Voltaren Gel)', reason: 'Same active ingredient, ~10x lower systemic absorption. First-line for knee / hand osteoarthritis per ACR guidelines.' },
+          { name: 'Acetaminophen 1g three times daily', reason: 'No GI / renal / CV risk at this dose. Useful baseline analgesic; combined with topical NSAID for breakthrough.' },
+          { name: 'Duloxetine (if chronic musculoskeletal / neuropathic pain)', reason: 'SNRI with strong evidence for chronic musculoskeletal pain when NSAIDs are contraindicated.' },
+        ],
+        natural_alternatives: [
+          { name: 'Boswellia serrata 100-300 mg/day', reason: 'Anti-inflammatory leukotriene-pathway inhibitor; ~30-50% pain reduction in osteoarthritis trials. No GI / renal effects.' },
+          { name: 'Turmeric (curcumin Meriva or BCM-95) 500 mg 2x/day + omega-3 EPA/DHA 2g', reason: 'Combined anti-inflammatory effect; meta-analyses show non-inferior to ibuprofen for osteoarthritis pain at 12 weeks.' },
+        ],
+      };
+    },
+  },
+
+  // ── GLP-1 + severe persistent GI side effects → SGLT2 swap ─────────
+  // Fires only on REPORTED severe GI symptoms. GLP-1 efficacy is high,
+  // so SGLT2 is suggested as a "consider" — not a replacement.
+  {
+    key: 'glp1_severe_gi',
+    detect: (ctx) => {
+      if (!takesMed(ctx, [/semaglutide|ozempic|wegovy|rybelsus/i, /tirzepatide|mounjaro|zepbound/i, /liraglutide|victoza|saxenda/i, /dulaglutide|trulicity/i, /exenatide|byetta|bydureon/i])) return null;
+      const severeGi = /severe nausea|persistent vomiting|cannot tolerate|stopping due to.*(?:nausea|gi|stomach)|gi side effect|bad nausea/i.test(ctx.symptomsLower);
+      if (!severeGi) return null;
+      return {
+        current_medication: 'GLP-1 receptor agonist',
+        reason_to_consider: `Severe / persistent GI side effects on GLP-1 therapy. About 15-20% of GLP-1 users discontinue for tolerability; SGLT2 inhibitors offer overlapping cardio-metabolic outcomes without the GI burden. Worth discussing with your prescriber if symptoms are limiting daily life despite dose adjustment.`,
+        pharmaceutical_alternatives: [
+          { name: 'SGLT2 inhibitor (empagliflozin / dapagliflozin)', reason: 'Strong glycemic + cardiovascular + renal outcomes without the GI side effects. Often paired with metformin instead of GLP-1 when tolerability is the limiter.' },
+          { name: 'Lower GLP-1 dose + slower titration', reason: 'Discuss with prescriber — stepping back to the prior dose for 4-6 weeks then re-titrating slowly resolves GI symptoms in many patients.' },
+          { name: 'Switch GLP-1 to a different agent (oral semaglutide / dulaglutide)', reason: 'Oral semaglutide and dulaglutide have somewhat different GI profiles than injectable semaglutide / tirzepatide — sometimes one is tolerated when another is not.' },
+        ],
+        natural_alternatives: [
+          { name: 'Ginger 1-2g/day + small frequent meals + sub-15min protein-first eating', reason: 'Most-evidence GI-symptom mitigation while staying on GLP-1. Often allows continued use through the titration phase.' },
+        ],
+      };
+    },
+  },
+
+  // ── Anticonvulsant + low Vit D + osteopenia/fracture → enzyme-neutral
+  // Strict trigger: requires ALL three signals (enzyme-inducing
+  // anticonvulsant + measured Vit D deficiency + bone-health risk
+  // condition/symptom). Conservative — chronic anticonvulsant therapy
+  // is consequential; switching needs clear bone-health justification.
+  {
+    key: 'anticonvulsant_bone_loss',
+    detect: (ctx) => {
+      const onInducer = takesMed(ctx, [
+        /phenytoin|dilantin/i,
+        /carbamazepine|tegretol/i,
+        /phenobarbital/i,
+        /primidone|mysoline/i,
+        /oxcarbazepine|trileptal/i,
+        /\bvalproate\b|valproic|depakote|depakene/i,
+        /topiramate|topamax/i,
+      ]);
+      if (!onInducer) return null;
+      const vitD = lab(ctx, [/vitamin d|25.?hydroxy/i]);
+      const vitDLow = vitD && vitD.value < 30;
+      const boneRisk = /osteopen|osteoporos|fragility fracture|low bone density|t.?score|dexa/i.test(ctx.conditionsLower + ' ' + ctx.symptomsLower);
+      if (!vitDLow || !boneRisk) return null;
+      return {
+        current_medication: 'Anticonvulsant (enzyme-inducing)',
+        reason_to_consider: `Vit D ${vitD!.value} ng/mL + documented bone-health risk on an enzyme-inducing anticonvulsant. Phenytoin, carbamazepine, phenobarbital, and valproate accelerate 25-OH-D catabolism via hepatic CYP induction — fracture risk rises 30-50% on chronic use. Newer enzyme-neutral agents avoid the bone toll while maintaining seizure control.`,
+        pharmaceutical_alternatives: [
+          { name: 'Levetiracetam (Keppra)', reason: 'Broad-spectrum anticonvulsant. No hepatic enzyme induction → no bone-health acceleration. First-line alternative when seizure type allows.' },
+          { name: 'Lamotrigine', reason: 'Effective for focal + generalized seizures. Minimal CYP induction. Useful when levetiracetam mood side effects are a concern.' },
+          { name: 'Lacosamide (Vimpat)', reason: 'Focal seizures. Enzyme-neutral. Cleaner cognitive profile than older agents.' },
+        ],
+        natural_alternatives: [
+          { name: 'Vitamin D3 4000-5000 IU/day + Vitamin K2 (MK-7) 100 mcg + Calcium adequacy', reason: 'If staying on the current anticonvulsant: aggressive Vit D repletion + K2 to direct calcium to bone instead of vasculature. Recheck 25-OH-D in 12 weeks.' },
+          { name: 'Weight-bearing exercise + protein 1.0-1.2 g/kg/day', reason: 'Both reduce fracture risk independent of medication. Standard of care alongside repletion.' },
+        ],
+      };
+    },
+  },
 ];
 
 /** Run all rules. Returns deduped alternatives by medication name. */
