@@ -205,18 +205,10 @@ const TodayTab = ({ plan, uid }: { plan: any; uid: string }) => {
   const streak = useMemo(() => computeStreak(history), [history]);
   const week = useMemo(() => weekCompletion(history), [history]);
 
-  // Compute current week of 12 from plan generation
-  const planWeek = useMemo(() => {
-    if (!plan?.generated_at) return null;
-    const days = Math.floor((Date.now() - new Date(plan.generated_at).getTime()) / 86_400_000);
-    return { week: Math.max(1, Math.min(12, Math.floor(days / 7) + 1)), days };
-  }, [plan?.generated_at]);
-
-  const nextMilestone = useMemo(() => {
-    if (!planWeek) return null;
-    const m = MILESTONES_INLINE.find((x) => x.week >= planWeek.week) ?? MILESTONES_INLINE[MILESTONES_INLINE.length - 1];
-    return { ...m, daysUntil: Math.max(0, m.week * 7 - planWeek.days) };
-  }, [planWeek]);
+  // 2026-05-12: planWeek + nextMilestone were used by the removed
+  // "Week N of 12" + "next milestone" strip. Now dead code — kept
+  // for reference but no useMemo hook so TypeScript doesn't flag
+  // them as unused.
 
   if (actions.length === 0) {
     return <p className="text-body text-clinical-stone text-sm">Regenerate your plan to get today's 3 actions.</p>;
