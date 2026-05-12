@@ -46,13 +46,13 @@
       "priority": "high"
     },
     {
-      "name": "Lp(a) — Lipoprotein(a)",
-      "icd10": "E78.5",
+      "name": "Urine Albumin/Creatinine Ratio (UACR)",
+      "icd10": "R80.9",
       "priority": "high"
     },
     {
-      "name": "Urine Albumin/Creatinine Ratio (UACR)",
-      "icd10": "R80.9",
+      "name": "Lp(a) — Lipoprotein(a)",
+      "icd10": "E78.5",
       "priority": "high"
     },
     {
@@ -63,11 +63,6 @@
     {
       "name": "RBC Magnesium",
       "icd10": "E83.42",
-      "priority": "moderate"
-    },
-    {
-      "name": "Urine Albumin/Creatinine Ratio (UACR)",
-      "icd10": "R80.9",
       "priority": "moderate"
     },
     {

@@ -98,12 +98,16 @@ export const BASELINE_SHARED: TestIndication[] = [
   {
     id: 'baseline_fasting_insulin_universal',
     triggers: [{ kind: 'age_min', value: 25 }],
-    tests: [{ key: 'fasting_insulin_universal', whyShort: 'Fasting insulin + HOMA-IR — catches insulin resistance 5-10 years before A1c shifts; tracks lifestyle response 4-6 weeks faster than A1c.', trigger: 'd' }],
+    // Reuse existing fasting_insulin_homa_ir key so this baseline rule
+    // dedups with pattern-driven rules that fire the same test.
+    tests: [{ key: 'fasting_insulin_homa_ir', whyShort: 'Fasting insulin + HOMA-IR — catches insulin resistance 5-10 years before A1c shifts; tracks lifestyle response 4-6 weeks faster than A1c.', trigger: 'd' }],
   },
   {
     id: 'baseline_uacr_universal',
     triggers: [{ kind: 'age_min', value: 18 }],
-    tests: [{ key: 'uacr_universal', whyShort: 'UACR baseline — earliest hypertensive/diabetic kidney damage marker; precedes creatinine rise by years.', trigger: 'd' }],
+    // Reuse existing uacr key so this baseline rule dedups with the
+    // condition-driven UACR rules (T2D, HTN, CKD).
+    tests: [{ key: 'uacr', whyShort: 'UACR baseline — earliest hypertensive/diabetic kidney damage marker; precedes creatinine rise by years.', trigger: 'd' }],
   },
   {
     id: 'baseline_homocysteine_age30',
@@ -113,7 +117,9 @@ export const BASELINE_SHARED: TestIndication[] = [
   {
     id: 'baseline_cortisol_am_age30',
     triggers: [{ kind: 'age_min', value: 30 }],
-    tests: [{ key: 'cortisol_am_baseline', whyShort: 'AM cortisol baseline — captures HPA-axis tone; foundation for fatigue / stress / sleep / weight workup.', trigger: 'e' }],
+    // Reuse existing am_cortisol_if_hpa key to dedup with the
+    // condition-driven cortisol rules.
+    tests: [{ key: 'am_cortisol_if_hpa', whyShort: 'AM cortisol baseline — captures HPA-axis tone; foundation for fatigue / stress / sleep / weight workup.', trigger: 'e' }],
   },
 
   // ── CARDIOVASCULAR DEEPENING ────────────────────────────────────────

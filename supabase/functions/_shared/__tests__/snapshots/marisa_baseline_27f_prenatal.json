@@ -46,6 +46,16 @@
       "priority": "high"
     },
     {
+      "name": "Fasting Insulin + HOMA-IR (calculated)",
+      "icd10": "R73.09",
+      "priority": "high"
+    },
+    {
+      "name": "Urine Albumin/Creatinine Ratio (UACR)",
+      "icd10": "R80.9",
+      "priority": "high"
+    },
+    {
       "name": "Lp(a) — Lipoprotein(a)",
       "icd10": "E78.5",
       "priority": "high"
@@ -56,11 +66,6 @@
       "priority": "high"
     },
     {
-      "name": "Urine Albumin/Creatinine Ratio (UACR)",
-      "icd10": "R80.9",
-      "priority": "high"
-    },
-    {
       "name": "Hashimoto's Antibodies (TPO Ab + Thyroglobulin Ab)",
       "icd10": "E06.3",
       "priority": "high"
@@ -68,16 +73,6 @@
     {
       "name": "RBC Magnesium",
       "icd10": "E83.42",
-      "priority": "moderate"
-    },
-    {
-      "name": "Fasting Insulin + HOMA-IR",
-      "icd10": "R73.09",
-      "priority": "moderate"
-    },
-    {
-      "name": "Urine Albumin/Creatinine Ratio (UACR)",
-      "icd10": "R80.9",
       "priority": "moderate"
     },
     {
