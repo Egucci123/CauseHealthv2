@@ -554,16 +554,18 @@ function emojiForCondition(name: string): string {
 }
 
 export function buildTellDoctor(facts: ClinicalFacts): TellDoctorItem[] {
+  // 2026-05-12-37: NO TRUNCATION. The engine's evidence and
+  // what_to_ask_doctor strings are clinically complete and meant to be
+  // read in full. Previously slicing at 70/180 chars produced mid-word
+  // truncation ("All your blood numb", "Pattern says you", "ALT").
+  // Use the condition name as the headline and the FULL evidence as
+  // the detail body. The what_to_ask_doctor question is surfaced
+  // separately via buildQuestionsToAsk — no need to split it here.
   return facts.conditions.slice(0, 8).map(c => {
-    const question = c.what_to_ask_doctor ?? '';
-    // First sentence becomes the headline (≤70 chars), rest is detail.
-    const sentences = question.split(/(?<=[.?!])\s+/);
-    const headline = sentences[0] ? sentences[0].slice(0, 70) : c.name;
-    const detail = sentences.slice(1).join(' ').slice(0, 180) || c.evidence.slice(0, 180);
     return {
       emoji: emojiForCondition(c.name),
-      headline,
-      detail,
+      headline: c.name,
+      detail: c.evidence,
     };
   });
 }
@@ -576,8 +578,11 @@ export function buildExecutiveSummary(facts: ClinicalFacts): string[] {
   const bullets: string[] = [];
   // High-confidence patterns first
   const highConditions = facts.conditions.filter(c => c.confidence === 'high').slice(0, 3);
+  // 2026-05-12-37: no evidence truncation — the engine's strings are
+  // clinically complete. Slicing produced mid-word cuts like
+  // "All your blood numb".
   for (const c of highConditions) {
-    bullets.push(`${c.name} — ${c.evidence.slice(0, 100)}`);
+    bullets.push(`${c.name} — ${c.evidence}`);
   }
   // Then top outliers not yet covered
   for (const o of facts.labs.outliers.slice(0, 2)) {

@@ -799,7 +799,29 @@ function rankLabOutliers(labs: LabValue[]): LabOutlierFact[] {
       interpretation: interpretOutlier(l.marker, l.value, canonical),
     });
   }
-  return out.sort((a, b) => b.severityRank - a.severityRank);
+  // 2026-05-12-37: dedup parent/sub-component pairs so the UI doesn't
+  // show "Vitamin D 24 low" AND "Vitamin D-3 24 low" AND "Vitamin D-2 1
+  // low" — all three describe the same deficiency. Universal pattern:
+  // when a parent marker AND its sub-component variant both flag, keep
+  // only the parent. Same rule applies to other split markers (LDL
+  // direct vs calculated, Free T4 vs Free T4 index, etc.).
+  const PARENT_CHILD: Array<{ parent: RegExp; child: RegExp }> = [
+    { parent: /^25.?hydroxy.*vitamin\s*d\b(?!-?[23])/i, child: /vitamin\s*d-?[23]\b/i },
+    { parent: /^ldl\s*cholesterol/i,                    child: /ldl.*(direct|measured)/i },
+    { parent: /^hdl\s*cholesterol/i,                    child: /hdl.*(direct|measured)/i },
+    { parent: /^free\s*t4\b/i,                          child: /free\s*t4\s*index/i },
+    { parent: /^free\s*t3\b/i,                          child: /free\s*t3\s*index/i },
+  ];
+  const drop = new Set<string>();
+  for (const { parent, child } of PARENT_CHILD) {
+    const hasParent = out.some(o => parent.test(o.marker));
+    if (!hasParent) continue;
+    for (const o of out) {
+      if (child.test(o.marker) && !parent.test(o.marker)) drop.add(o.marker);
+    }
+  }
+  const deduped = out.filter(o => !drop.has(o.marker));
+  return deduped.sort((a, b) => b.severityRank - a.severityRank);
 }
 
 function interpretOutlier(marker: string, value: number | string, flag: string): string {
