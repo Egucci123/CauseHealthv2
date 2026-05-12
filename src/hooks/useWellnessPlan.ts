@@ -15,7 +15,11 @@ export interface SupplementItem {
   practical_note?: string;
   // Category for grouping in the UI. Maps to one of five sections so the user
   // sees the stack organized by purpose (sleep, gut, etc.) instead of one flat list.
-  category?: 'sleep_stress' | 'gut_healing' | 'inflammation_cardio' | 'nutrient_repletion' | 'condition_therapy';
+  // 2026-05-12-32: split inflammation_cardio into 'inflammation' (autoimmune,
+  // CRP, joints — curcumin, quercetin, tart cherry) and 'cardio' (lipids,
+  // triglycerides, HDL — omega-3, niacin, RYR). Universal; both kept in
+  // the union alongside the legacy combined value for back-compat.
+  category?: 'sleep_stress' | 'gut_healing' | 'liver_metabolic' | 'inflammation' | 'cardio' | 'inflammation_cardio' | 'nutrient_repletion' | 'condition_therapy';
   // 1-2 alternative options the user can pick instead — same purpose, different
   // form/source/price/brand. Lets the user choose what fits budget/preference.
   alternatives?: { name: string; form?: string; note?: string }[];

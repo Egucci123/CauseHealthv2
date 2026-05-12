@@ -28,7 +28,11 @@ export interface SupplementCandidate {
   timing: string;
   whyShort: string;
   why: string;
-  category: 'sleep_stress' | 'gut_healing' | 'liver_metabolic' | 'inflammation_cardio' | 'nutrient_repletion' | 'condition_therapy';
+  // 2026-05-12-32: split inflammation_cardio into two universal categories.
+  // 'inflammation' covers autoimmune/CRP/joint inflammation (curcumin,
+  // quercetin, tart_cherry). 'cardio' covers lipid/CV supplements
+  // (omega-3, niacin, red_yeast_rice). Old name kept for back-compat.
+  category: 'sleep_stress' | 'gut_healing' | 'liver_metabolic' | 'inflammation' | 'cardio' | 'inflammation_cardio' | 'nutrient_repletion' | 'condition_therapy';
   priority: 'critical' | 'high' | 'moderate';
   sourcedFrom: 'lab_finding' | 'medication_depletion' | 'disease_mechanism' | 'symptom_pattern';
   alternatives: { name: string; form: string; note: string }[];

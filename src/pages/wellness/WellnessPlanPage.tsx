@@ -473,6 +473,12 @@ const CATEGORY_META: Record<string, { label: string; sub: string; icon: string; 
   sleep_stress: { label: 'Sleep & Stress', sub: 'Calming, sleep onset, cortisol management', icon: 'bedtime', color: '#7B1FA2' },
   gut_healing: { label: 'Gut Healing', sub: 'Mucosal repair, microbiome, digestive support', icon: 'restaurant', color: '#2A9D8F' },
   liver_metabolic: { label: 'Liver & Metabolic', sub: 'Liver enzymes, lipids, blood sugar, hepatoprotection', icon: 'water_drop', color: '#5E8C61' },
+  // 2026-05-12-32: split inflammation_cardio -> separate sections.
+  // The combined section was hiding cholesterol/triglyceride supplements
+  // when an autoimmune supplement (e.g. curcumin for UC) won the slot.
+  inflammation: { label: 'Inflammation', sub: 'Autoimmune, joint, and CRP support', icon: 'shield', color: '#C94F4F' },
+  cardio: { label: 'Cardio & Lipids', sub: 'Cholesterol, triglycerides, HDL, heart support', icon: 'favorite', color: '#E07A5F' },
+  // Legacy combined category — kept so older cached plans render correctly.
   inflammation_cardio: { label: 'Inflammation & Cardio', sub: 'Lower inflammation, support heart + lipids', icon: 'favorite', color: '#C94F4F' },
   nutrient_repletion: { label: 'Nutrient Repletion', sub: 'Fixing measurable deficiencies', icon: 'science', color: '#1B423A' },
   condition_therapy: { label: 'Condition-Specific', sub: 'Disease-mechanism therapy with strong evidence', icon: 'medication', color: '#D4A574' },
@@ -485,7 +491,7 @@ const CATEGORY_META: Record<string, { label: string; sub: string; icon: string; 
 // Order: med depletions first (highest urgency for this patient), then deficiencies, then
 // the rest. Putting medication_depletion at top because the user will recognize it as
 // "the supplement that's because of my drug" and the "why" is immediately legible.
-const CATEGORY_ORDER_SUPPS = ['medication_depletion', 'nutrient_repletion', 'liver_metabolic', 'gut_healing', 'inflammation_cardio', 'condition_therapy', 'sleep_stress'];
+const CATEGORY_ORDER_SUPPS = ['medication_depletion', 'nutrient_repletion', 'liver_metabolic', 'cardio', 'gut_healing', 'inflammation', 'inflammation_cardio', 'condition_therapy', 'sleep_stress'];
 
 const TakeTab = ({ plan }: { plan: any }) => {
   const supps = [...(plan.supplement_stack ?? [])];
