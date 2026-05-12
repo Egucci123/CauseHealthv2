@@ -328,9 +328,15 @@ function mergeIntoLabAnalysisOutput(args: {
     return 'optimal';
   };
 
-  // priority_findings: deterministic outliers + AI explanation/what_to_do
-  const expByMarker = new Map<string, LabAnalysisOutput['finding_explanations'][number]>();
-  for (const e of ai.finding_explanations ?? []) expByMarker.set(String(e.marker).toLowerCase(), e);
+  // priority_findings: deterministic outliers + deterministic prose
+  // (2026-05-12-29: facts.findingExplanations preferred; AI is pass-through
+  // only and used as fallback).
+  const expByMarker = new Map<string, { marker: string; explanation: string; what_to_do: string }>();
+  for (const e of (facts.findingExplanations ?? [])) expByMarker.set(String(e.marker).toLowerCase(), e);
+  for (const e of ai.finding_explanations ?? []) {
+    const k = String(e.marker).toLowerCase();
+    if (!expByMarker.has(k)) expByMarker.set(k, e);
+  }
 
   const priority_findings = facts.labs.outliers.map((o: any) => {
     const exp = expByMarker.get(String(o.marker).toLowerCase());
@@ -345,9 +351,14 @@ function mergeIntoLabAnalysisOutput(args: {
     };
   });
 
-  // patterns: deterministic conditions + AI description/cause
-  const descByName = new Map<string, LabAnalysisOutput['pattern_descriptions'][number]>();
-  for (const p of ai.pattern_descriptions ?? []) descByName.set(String(p.name).toLowerCase(), p);
+  // patterns: deterministic conditions + deterministic prose
+  // (2026-05-12-29: facts.patternDescriptions preferred over AI).
+  const descByName = new Map<string, { name: string; description: string; likely_cause: string }>();
+  for (const p of (facts.patternDescriptions ?? [])) descByName.set(String(p.name).toLowerCase(), p);
+  for (const p of ai.pattern_descriptions ?? []) {
+    const k = String(p.name).toLowerCase();
+    if (!descByName.has(k)) descByName.set(k, p);
+  }
 
   const patterns = facts.conditions.map((c: any) => {
     const desc = descByName.get(String(c.name).toLowerCase());
@@ -392,7 +403,9 @@ function mergeIntoLabAnalysisOutput(args: {
     medication_connections,
     supplement_connections,
     missing_tests,
-    immediate_actions: ai.immediate_actions,
+    immediate_actions: (Array.isArray(facts.todayActions) && facts.todayActions.length > 0)
+      ? facts.todayActions.map((a: any) => ({ emoji: a.emoji, action: a.action }))
+      : ai.immediate_actions,
 
     // v2 extras
     _version: 'v2',

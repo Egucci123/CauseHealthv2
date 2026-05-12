@@ -192,18 +192,28 @@ export function buildDoctorPrepUserMessage(facts: ClinicalFacts): string {
     // The doctor prep MUST acknowledge these as expected rather than
     // alarming or recommending a workup specifically against them.
     expected_findings: facts.expectedFindings,
+    // Pre-computed deterministic prose (2026-05-11-29) — pass verbatim.
+    pre_computed_tell_doctor: facts.tellDoctor,
+    pre_computed_executive_summary: facts.executiveSummary,
   };
 
   return `FACTS (deterministic — do not invent or contradict):
 
 ${JSON.stringify(payload, null, 2)}
 
+PRE-COMPUTED PASS-THROUGH (2026-05-11-29):
+• tell_doctor → use pre_computed_tell_doctor VERBATIM.
+• executive_summary → use pre_computed_executive_summary VERBATIM.
+Do NOT rewrite or expand these fields.
+
+YOUR ONLY GENERATIVE JOB: headline, chief_complaint, hpi, questions_to_ask,
+discussion_points, patient_questions, functional_medicine_note. The
+pass-through fields above are already computed by the engine.
+
 EXPECTED-FINDING RULE (universal):
 When a marker appears in EXPECTED_FINDINGS, the prep document MUST note
-the value, attribute it to the explaining condition (use the rationale
-text verbatim or close), and NOT include it in tests-to-request or
-patterns-to-discuss as a standalone item. The receiving physician needs
-to see we recognized the explaining condition rather than missed it.
+the value, attribute it to the explaining condition, and NOT include it
+in tests-to-request as a standalone item.
 
 WRITE the doctor-facing prep document. Use the submit_doctor_prep tool.`;
 }

@@ -330,7 +330,12 @@ function mergeIntoDoctorPrepOutput(args: {
     generated_at: today.toISOString(),
     document_date: today.toISOString().split('T')[0],
     headline: ai.headline,
-    executive_summary: ai.executive_summary,
+    // 2026-05-12-29: executive_summary + tell_doctor are deterministic.
+    // Prefer the engine values; fall back to AI passthrough; final fallback
+    // to AI raw if engine somehow empty.
+    executive_summary: (Array.isArray(facts.executiveSummary) && facts.executiveSummary.length > 0)
+      ? facts.executiveSummary
+      : ai.executive_summary,
     chief_complaint: ai.chief_complaint,
     hpi: ai.hpi,
     pmh: facts.patient.conditions.join('; '),
@@ -339,7 +344,9 @@ function mergeIntoDoctorPrepOutput(args: {
       constitutional: '', cardiovascular: '', gastrointestinal: '', endocrine: '',
     },
     lab_summary,
-    tell_doctor: ai.tell_doctor,
+    tell_doctor: (Array.isArray(facts.tellDoctor) && facts.tellDoctor.length > 0)
+      ? facts.tellDoctor
+      : ai.tell_doctor,
     tests_to_request,
     advanced_screening: [], // v2 keeps this empty — rare-disease tests hit only if backstop fires
     questions_to_ask: ai.questions_to_ask,

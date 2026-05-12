@@ -129,43 +129,37 @@ export interface ActionPlanOutput {
 }
 
 export function buildActionPlanUserMessage(facts: ClinicalFacts): string {
+  // 2026-05-11-29: today_actions and action_plan are now pre-computed
+  // deterministically by the engine (proseTemplates.ts). The AI's only
+  // job is to pass them through verbatim via the tool call.
   const payload = {
-    patient: facts.patient,
-    lab_outliers: facts.labs.outliers,
-    conditions: facts.conditions,
-    depletions: facts.depletions,
-    supplement_candidates: facts.supplementCandidates.map(s => ({
-      nutrient: s.nutrient, dose: s.dose, timing: s.timing, category: s.category,
-    })),
-    tests: facts.tests.map(t => ({ name: t.name, priority: t.priority, specialist: t.specialist })),
-    risk_calculators: facts.riskCalculators,
-    goal_targets: facts.goalTargets,
-    is_optimization_mode: facts.isOptimizationMode,
-    // Markers whose flag is expected because of a known active condition.
-    // The headline / immediate_actions / 90-day plan MUST NOT call these
-    // out as needing attention. They are known and benign for this patient.
-    expected_findings: facts.expectedFindings,
+    pre_computed_today_actions: facts.todayActions,
+    pre_computed_action_plan: facts.actionPlan,
   };
 
-  return `FACTS (deterministic — reference test names by exact "name" field, do not invent):
+  return `PRE-COMPUTED OUTPUT (use verbatim — do NOT modify, expand, or rewrite):
 
 ${JSON.stringify(payload, null, 2)}
 
-EXPECTED-FINDING RULE (universal):
-When a marker appears in EXPECTED_FINDINGS, do NOT headline it as "needs
-attention." Do NOT include it in immediate_actions or 90-day priorities.
-If you reference it anywhere in plan prose, reference the explaining
-condition (e.g. "Your bilirubin remains in the expected range for your
-Gilbert syndrome"). The whole wellness plan must read as if this marker
-is already accounted for — because it is.
+STRICT INSTRUCTIONS:
+1. Call submit_action_plan exactly once.
+2. Pass pre_computed_today_actions as the today_actions argument verbatim.
+3. Pass pre_computed_action_plan as the action_plan argument verbatim.
+4. Do not invent new fields, reword strings, or alter emojis.
 
-EVIDENCE GROUNDING:
-NEVER cite a marker value not present in FACTS.lab_outliers. If a marker
-isn't in FACTS, don't reference it.
+This output was already validated by the deterministic engine. Your only
+job is to call the tool with the supplied values. No prose outside the
+tool call.`;
+}
 
-SYMPTOM SEVERITY SCALE:
-FACTS.patient.symptoms severity is 1–5, not 1–10. Always render with the
-correct denominator.
-
-WRITE today_actions and action_plan. Use the submit_action_plan tool.`;
+/**
+ * Skip-the-AI helper. Use this at the call site to bypass the AI entirely
+ * — the action plan is fully deterministic now. Returns the same shape
+ * as ActionPlanOutput so downstream code is unchanged.
+ */
+export function buildActionPlanDeterministic(facts: ClinicalFacts): ActionPlanOutput {
+  return {
+    today_actions: facts.todayActions,
+    action_plan: facts.actionPlan,
+  };
 }

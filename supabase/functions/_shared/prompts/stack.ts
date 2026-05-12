@@ -145,28 +145,33 @@ export function buildStackUserMessage(facts: ClinicalFacts): string {
     lab_outliers: facts.labs.outliers,
     conditions: facts.conditions,
     depletions: facts.depletions,
-    // Full stack — AI sees all so it can reference for eating_pattern + workouts
     supplement_candidates: facts.supplementCandidates,
-    // Subset needing AI-generated notes — usually 0-2 supplements
     supplements_needing_notes: suppsNeedingNotes.map(s => ({
       key: s.key, nutrient: s.nutrient, dose: s.dose, timing: s.timing,
     })),
     is_optimization_mode: facts.isOptimizationMode,
+    // Pre-computed deterministic prose (2026-05-11-29) — pass verbatim.
+    pre_computed_eating_pattern: facts.eatingPattern,
+    pre_computed_lifestyle_interventions: facts.lifestyleInterventions,
   };
 
   return `FACTS (deterministic — do not invent or modify supplements):
 
 ${JSON.stringify(payload, null, 2)}
 
-IMPORTANT — SUPPLEMENT NOTES POLICY:
-Most supplements in FACTS.supplement_candidates already have canned
-practicalNote + evidenceNote (pre-written in the engine registry).
-For those, DO NOT write new notes — they will be used verbatim.
+PRE-COMPUTED PASS-THROUGH (2026-05-11-29):
+• eating_pattern → use pre_computed_eating_pattern VERBATIM.
+• lifestyle_interventions → use pre_computed_lifestyle_interventions VERBATIM.
+Do NOT regenerate, rewrite, or expand them.
 
-You only write supplement_notes for entries in FACTS.supplements_needing_notes.
+SUPPLEMENT NOTES POLICY:
+Most supplements in FACTS.supplement_candidates already have canned
+practicalNote + evidenceNote. For those, return them as-is.
+You only write supplement_notes for entries in supplements_needing_notes.
 If that array is EMPTY, return supplement_notes: [].
 
-For eating_pattern + workouts + lifestyle_interventions, write as usual.
+YOUR ONLY GENERATIVE JOB: workouts[] (4-6 entries) + supplement_notes for
+the long-tail supps in supplements_needing_notes.
 
 Use the submit_stack_lifestyle tool.`;
 }

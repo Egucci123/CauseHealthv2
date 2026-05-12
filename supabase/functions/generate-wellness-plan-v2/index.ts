@@ -45,9 +45,10 @@ import {
   type StackOutput,
 } from '../_shared/prompts/stack.ts';
 import {
-  ACTION_PLAN_SYSTEM_PROMPT,
-  ACTION_PLAN_TOOL_SCHEMA,
-  buildActionPlanUserMessage,
+  // 2026-05-12-29: ACTION_PLAN_SYSTEM_PROMPT / TOOL_SCHEMA / buildActionPlanUserMessage
+  // are no longer used — action plan is fully deterministic. Kept exported
+  // for any legacy callers but not imported here.
+  buildActionPlanDeterministic,
   type ActionPlanOutput,
 } from '../_shared/prompts/actionPlan.ts';
 import { applyAllergyFilters } from '../_shared/safetyNet.ts';
@@ -144,8 +145,10 @@ serve(async (req) => {
     });
     console.log(`[v2] facts ${fromCache ? 'cache HIT' : 'cache MISS — computed'} (hash=${factsHash.slice(0, 8)}): ${facts.tests.length} tests, ${facts.conditions.length} conditions, ${facts.supplementCandidates.length} supps, ${facts.emergencyAlerts.length} alerts`);
 
-    // 4. Three parallel AI calls
-    const [narrativeRes, stackRes, actionRes] = await Promise.allSettled([
+    // 4. AI calls (2026-05-12-29: action_plan is now fully deterministic
+    //    — no AI call. Saves one full Sonnet round-trip per generation.)
+    const action = buildActionPlanDeterministic(facts);
+    const [narrativeRes, stackRes] = await Promise.allSettled([
       callAnthropicTool<NarrativeOutput>({
         system: NARRATIVE_SYSTEM_PROMPT,
         user: buildNarrativeUserMessage(facts),
@@ -156,18 +159,12 @@ serve(async (req) => {
         user: buildStackUserMessage(facts),
         tool: STACK_TOOL_SCHEMA,
       }),
-      callAnthropicTool<ActionPlanOutput>({
-        system: ACTION_PLAN_SYSTEM_PROMPT,
-        user: buildActionPlanUserMessage(facts),
-        tool: ACTION_PLAN_TOOL_SCHEMA,
-      }),
     ]);
 
     const narrative = settledOrFallback(narrativeRes, narrativeFallback(facts));
     const stack = settledOrFallback(stackRes, stackFallback(facts));
-    const action = settledOrFallback(actionRes, actionFallback(facts));
 
-    console.log(`[v2] AI calls finished in ${Date.now() - startTime}ms (narrative=${narrativeRes.status}, stack=${stackRes.status}, action=${actionRes.status})`);
+    console.log(`[v2] AI calls finished in ${Date.now() - startTime}ms (narrative=${narrativeRes.status}, stack=${stackRes.status}, action=deterministic)`);
 
     // 5. Merge into final plan (same shape as v1 for frontend compatibility)
     const plan = mergeIntoFinalPlan({ facts, narrative, stack, action, profile, factsHash });
@@ -654,20 +651,24 @@ function mergeIntoFinalPlan(args: {
       ...s,
       alternatives: Array.isArray(s.alternatives) ? s.alternatives : [],
     })) : [],
-    eating_pattern: stack.eating_pattern && typeof stack.eating_pattern === 'object'
+    // eating_pattern + lifestyle_interventions are now deterministic
+    // (facts.eatingPattern / facts.lifestyleInterventions). The AI is
+    // instructed to pass them through verbatim, but if for any reason
+    // it returns empty/garbled, fall back to the engine values directly.
+    eating_pattern: (stack.eating_pattern && Array.isArray(stack.eating_pattern.emphasize) && stack.eating_pattern.emphasize.length > 0)
       ? {
-          name: String(stack.eating_pattern.name ?? 'Mediterranean'),
-          rationale: String(stack.eating_pattern.rationale ?? ''),
-          emphasize: Array.isArray(stack.eating_pattern.emphasize) ? stack.eating_pattern.emphasize : [],
-          limit: Array.isArray(stack.eating_pattern.limit) ? stack.eating_pattern.limit : [],
+          name: String(stack.eating_pattern.name ?? facts.eatingPattern.name),
+          rationale: String(stack.eating_pattern.rationale ?? facts.eatingPattern.rationale),
+          emphasize: stack.eating_pattern.emphasize,
+          limit: Array.isArray(stack.eating_pattern.limit) ? stack.eating_pattern.limit : facts.eatingPattern.limit,
         }
-      : { name: 'Mediterranean', rationale: '', emphasize: [], limit: [] },
+      : facts.eatingPattern,
     workouts: Array.isArray(stack.workouts) ? stack.workouts : [],
     lifestyle_interventions: {
-      diet: Array.isArray(stack.lifestyle_interventions?.diet) ? stack.lifestyle_interventions.diet : [],
-      sleep: Array.isArray(stack.lifestyle_interventions?.sleep) ? stack.lifestyle_interventions.sleep : [],
-      exercise: Array.isArray(stack.lifestyle_interventions?.exercise) ? stack.lifestyle_interventions.exercise : [],
-      stress: Array.isArray(stack.lifestyle_interventions?.stress) ? stack.lifestyle_interventions.stress : [],
+      diet: (Array.isArray(stack.lifestyle_interventions?.diet) && stack.lifestyle_interventions.diet.length > 0) ? stack.lifestyle_interventions.diet : facts.lifestyleInterventions.diet,
+      sleep: (Array.isArray(stack.lifestyle_interventions?.sleep) && stack.lifestyle_interventions.sleep.length > 0) ? stack.lifestyle_interventions.sleep : facts.lifestyleInterventions.sleep,
+      exercise: (Array.isArray(stack.lifestyle_interventions?.exercise) && stack.lifestyle_interventions.exercise.length > 0) ? stack.lifestyle_interventions.exercise : facts.lifestyleInterventions.exercise,
+      stress: (Array.isArray(stack.lifestyle_interventions?.stress) && stack.lifestyle_interventions.stress.length > 0) ? stack.lifestyle_interventions.stress : facts.lifestyleInterventions.stress,
     },
     action_plan: action.action_plan && typeof action.action_plan === 'object'
       ? {

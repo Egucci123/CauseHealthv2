@@ -152,36 +152,38 @@ export interface LabAnalysisOutput {
 }
 
 export function buildLabAnalysisUserMessage(facts: ClinicalFacts): string {
-  // Compact FACTS payload — the AI gets exactly what it needs.
+  // 2026-05-11-29: finding_explanations, pattern_descriptions, and
+  // immediate_actions are pre-computed deterministically. The AI now
+  // only writes score_headline + summary (the truly subjective parts).
   const payload = {
     patient: facts.patient,
     lab_outliers: facts.labs.outliers.map(o => ({
       marker: o.marker, value: o.value, unit: o.unit, flag: o.flag,
       interpretation: o.interpretation,
     })),
-    suboptimal_flags: facts.suboptimalFlags,
     conditions: facts.conditions.map(c => ({
-      key: c.key, name: c.name, confidence: c.confidence, evidence: c.evidence, icd10: c.icd10,
-    })),
-    depletions: facts.depletions.map(d => ({
-      med_class: d.medClass, meds: d.medsMatched, nutrient: d.nutrient,
-    })),
-    supplement_candidates: facts.supplementCandidates.map(s => ({
-      key: s.key, nutrient: s.nutrient, dose: s.dose, timing: s.timing,
+      key: c.key, name: c.name, confidence: c.confidence, evidence: c.evidence,
     })),
     risk_calculators: facts.riskCalculators,
-    goal_targets: facts.goalTargets,
     is_optimization_mode: facts.isOptimizationMode,
-    canonical_prose: facts.canonicalProse,
-    // Markers whose flag is expected because of a known active condition
-    // (e.g. Gilbert syndrome → elevated bilirubin). Surface explicitly so
-    // the AI never alarms the user about a known, benign pattern.
     expected_findings: facts.expectedFindings,
+    // Pre-computed prose — pass through verbatim in tool call.
+    pre_computed_finding_explanations: facts.findingExplanations,
+    pre_computed_pattern_descriptions: facts.patternDescriptions,
+    pre_computed_immediate_actions: facts.todayActions.map(a => ({ emoji: a.emoji, action: a.action })),
   };
 
   return `FACTS (deterministic — do not invent or contradict):
 
 ${JSON.stringify(payload, null, 2)}
+
+PRE-COMPUTED PASS-THROUGH RULE (NEW, 2026-05-11-29):
+finding_explanations, pattern_descriptions, and immediate_actions are
+ALREADY computed by the engine. Copy pre_computed_* arrays VERBATIM into
+the matching tool fields. Do NOT modify, rewrite, or expand them.
+
+YOUR ONLY GENERATIVE JOB: score_headline (≤12 words) + summary
+(3 sentences). Everything else is pass-through.
 
 EXPECTED-FINDING RULE (universal, applies to all surfaces):
 When a marker appears in EXPECTED_FINDINGS, do NOT alarm the user.
