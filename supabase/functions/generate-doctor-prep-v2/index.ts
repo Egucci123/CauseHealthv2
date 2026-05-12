@@ -341,6 +341,20 @@ function mergeIntoDoctorPrepOutput(args: {
     };
   });
 
+  // 2026-05-12-35: enriched depletion data for the Medications tab.
+  // Mirror the wellness plan's medication_depletions shape so any UI
+  // consuming either surface gets identical, universal data.
+  const medication_depletions = facts.depletions.map((d: any) => ({
+    medication: d.medsMatched.join(' / '),
+    med_class: d.medClass,
+    nutrient: d.nutrient,
+    mechanism: d.mechanism,
+    severity: d.severity,
+    monitoring_test: d.monitoringTest,
+    clinical_effects: d.clinicalEffects ?? [],
+    recommended_supplement_key: d.recommendedSupplementKey,
+  }));
+
   // lab_summary — deterministic from outliers
   const lab_summary = {
     draw_date: today.toISOString().split('T')[0],
@@ -388,6 +402,7 @@ function mergeIntoDoctorPrepOutput(args: {
     medication_alternatives: [], // future enhancement; v1 had this AI-driven, defer to AI later
 
     // Deterministic extras (v2 unique)
+    medication_depletions, // enriched per-med depletion data for the Medications tab
     possible_conditions,
     risk_calculators: facts.riskCalculators,
     goal_targets: facts.goalTargets,

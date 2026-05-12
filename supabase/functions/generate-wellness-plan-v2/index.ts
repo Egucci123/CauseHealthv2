@@ -585,6 +585,7 @@ function mergeIntoFinalPlan(args: {
   const supplementStack = facts.supplementCandidates.map(c => {
     const note = stackByNutrient.get(c.nutrient.toLowerCase());
     return {
+      key: c.key,                 // stable supplement key, used by Medications tab
       emoji: c.emoji,
       nutrient: c.nutrient,
       form: c.form,
@@ -771,10 +772,20 @@ function mergeIntoFinalPlan(args: {
     progress_summary: null,
     plan_mode: facts.isOptimizationMode ? 'optimization' : 'treatment',
     multi_marker_patterns: [],
+    // 2026-05-12-35: enriched payload so the Medications tab can render
+    // every drug the engine recognizes (314 names across 35 classes),
+    // not just the 16 hardcoded in the client data file. Each entry
+    // carries clinical_effects + a supplement_key the UI can resolve
+    // against plan.supplement_stack for dose/form/timing details.
     medication_depletions: facts.depletions.map(d => ({
       medication: d.medsMatched.join(' / '),
+      med_class: d.medClass,
       nutrient: d.nutrient,
       mechanism: d.mechanism,
+      severity: d.severity,
+      monitoring_test: d.monitoringTest,
+      clinical_effects: d.clinicalEffects ?? [],
+      recommended_supplement_key: d.recommendedSupplementKey,
     })),
 
     // Safety

@@ -3,6 +3,32 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getDepletionProfile, type DepletionEntry } from '../../data/medicationDepletions';
 import { getAlternatives } from '../../data/medicationAlternatives';
+import { useEngineDepletions, lookupDepletions, type EngineDepletion } from '../../hooks/useEngineDepletions';
+import { useWellnessPlan } from '../../hooks/useWellnessPlan';
+
+// 2026-05-12-35: Map an engine depletion (35-class universal coverage)
+// to the rich DepletionEntry shape the UI already renders. Looks up
+// dose/form/timing from the latest wellness plan's supplement_stack
+// using the engine's recommended_supplement_key. Falls back to neutral
+// text when fields aren't available.
+function engineToDepletionEntry(
+  d: EngineDepletion,
+  suppByKey: Map<string, any>,
+): DepletionEntry {
+  const supp = d.recommended_supplement_key ? suppByKey.get(d.recommended_supplement_key) : undefined;
+  const sevMap: Record<string, DepletionEntry['severity']> = { high: 'critical', moderate: 'significant', low: 'moderate' };
+  return {
+    nutrient: d.nutrient,
+    severity: sevMap[d.severity] ?? 'moderate',
+    mechanism: d.mechanism,
+    clinical_effects: d.clinical_effects ?? [],
+    intervention: supp ? `Supplement with ${supp.nutrient}` : 'Discuss with your doctor whether repletion is right for you.',
+    dose: supp?.dose ?? '—',
+    form: supp?.form ?? '—',
+    timing: supp?.timing ?? '—',
+    contraindications: undefined,
+  };
+}
 
 function severityConfig(s: string) {
   if (s === 'critical') return { border: 'border-l-4 border-[#C94F4F]', badge: 'bg-[#C94F4F] text-white', text: 'CRITICAL' };
@@ -65,8 +91,29 @@ function altTypeCfg(t: string) {
 export const MedicationCard = ({ medication, index }: MedicationCardProps) => {
   const [open, setOpen] = useState(true);
   const [altsOpen, setAltsOpen] = useState(false);
-  const profile = getDepletionProfile(medication.name);
+  const clientProfile = getDepletionProfile(medication.name);
   const alternatives = getAlternatives(medication.name);
+
+  // 2026-05-12-35: Pull universal depletion coverage from the engine.
+  // If the engine recognizes this med (314 brand/generic names covered),
+  // build a profile from its output. Falls back to clientProfile (16
+  // hardcoded entries) only when the engine doesn't know the med.
+  const { data: engineMap } = useEngineDepletions();
+  const { data: wellnessPlan } = useWellnessPlan();
+  const engineDeps = lookupDepletions(engineMap, medication.name);
+  const suppByKey = new Map<string, any>();
+  for (const s of (wellnessPlan?.supplement_stack ?? [])) {
+    if ((s as any).key) suppByKey.set((s as any).key, s);
+  }
+  const engineProfile = engineDeps.length > 0 ? {
+    genericName: medication.name,
+    brandNames: [],
+    drugClass: engineDeps[0].med_class,
+    depletions: engineDeps.map(d => engineToDepletionEntry(d, suppByKey)),
+    interactions: [] as string[],
+    notes: undefined as string | undefined,
+  } : null;
+  const profile = engineProfile ?? clientProfile;
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.07 }}
