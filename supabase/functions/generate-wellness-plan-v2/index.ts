@@ -884,10 +884,15 @@ function narrativeFallback(facts: ClinicalFacts): NarrativeOutput {
 
 function stackFallback(facts: ClinicalFacts): StackOutput {
   return {
+    // 2026-05-12-43: fallback now uses the engine's canned per-supplement
+    // practicalNote + evidenceNote when present, ONLY falling back to a
+    // generic message if the supplement has no canned content. Prevents
+    // the rich engine notes from being silently overridden when the AI
+    // stack call is skipped.
     supplement_notes: facts.supplementCandidates.map(c => ({
       nutrient: c.nutrient,
-      practical_note: 'Take as directed. Verify timing with your pharmacist if you take other meds.',
-      evidence_note: 'Standard repletion dose with established efficacy.',
+      practical_note: (c as any).practicalNote ?? 'Take as directed. Verify timing with your pharmacist if you take other meds.',
+      evidence_note: (c as any).evidenceNote ?? 'Standard repletion dose with established efficacy.',
     })),
     eating_pattern: {
       name: 'Mediterranean',

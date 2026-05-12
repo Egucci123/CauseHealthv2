@@ -378,8 +378,11 @@ function mergeIntoLabAnalysisOutput(args: {
       value: `${o.value} ${o.unit}`,
       flag: flagFor(o.flag),
       headline: o.interpretation?.split('—')[0]?.trim()?.slice(0, 80) ?? `${o.marker} ${o.value}`,
-      explanation: exp?.explanation ?? `${o.marker} ${o.value} ${o.unit} is outside the normal range.`,
-      what_to_do: exp?.what_to_do ?? 'Discuss with your PCP at your next visit.',
+      // 2026-05-12-44: prefer engine's o.interpretation as the rich
+      // fallback (it already says "ALT 97 — elevated above lab
+      // reference") instead of the generic "is outside the normal range"
+      explanation: exp?.explanation ?? o.interpretation ?? `${o.marker} ${o.value} ${o.unit} is outside the normal range.`,
+      what_to_do: exp?.what_to_do ?? (o.flag?.startsWith('critical') ? 'Schedule a PCP visit this week to discuss this value.' : 'Bring this to your next PCP visit; track at the 12-week retest.'),
     };
   });
 
@@ -399,8 +402,10 @@ function mergeIntoLabAnalysisOutput(args: {
       pattern_name: c.name,
       severity: c.confidence === 'high' ? 'critical' : 'high',
       markers_involved: facts.labs.outliers.map((o: any) => o.marker).slice(0, 6),
+      // 2026-05-12-44: prefer engine evidence + what_to_ask_doctor as
+      // rich fallbacks instead of empty strings.
       description: desc?.description ?? c.evidence,
-      likely_cause: desc?.likely_cause ?? '',
+      likely_cause: desc?.likely_cause ?? c.what_to_ask_doctor ?? '',
       // v2 extras (frontend ignores unknown keys gracefully)
       _key: c.key,
       _icd10: c.icd10,
@@ -452,23 +457,36 @@ function mergeIntoLabAnalysisOutput(args: {
 
 function labAnalysisFallback(facts: any): LabAnalysisOutput {
   const top = facts.labs.outliers[0];
+  // 2026-05-12-44: fallback prefers engine deterministic prose templates
+  // (findingExplanations, patternDescriptions, todayActions) over generic
+  // hardcoded text. The engine has clinically complete strings for every
+  // outlier and condition; only fall back to a generic message if the
+  // engine output is somehow missing.
   return {
     score_headline: top ? `${top.marker} ${top.value} stands out — review your plan.` : 'Your lab analysis is ready.',
     summary: `We found ${facts.labs.outliers.length} markers outside the normal range and ${facts.conditions.length} patterns worth discussing with your doctor. The wellness plan walks through what to do over 12 weeks.`,
-    finding_explanations: facts.labs.outliers.map((o: any) => ({
-      marker: o.marker,
-      explanation: o.interpretation,
-      what_to_do: 'Discuss with your PCP at your next visit.',
-    })),
-    pattern_descriptions: facts.conditions.map((c: any) => ({
-      name: c.name,
-      description: c.evidence,
-      likely_cause: '',
-    })),
-    immediate_actions: [
-      { emoji: '💧', action: 'Drink 2-3 L of water today and track urine color (pale = hydrated).' },
-      { emoji: '🛏️', action: 'Set a bedtime alarm for 10:30 PM tonight.' },
-      { emoji: '🚶', action: 'Walk outdoors 15 min between 6:30-8 AM tomorrow.' },
-    ],
+    finding_explanations: (facts.findingExplanations && facts.findingExplanations.length > 0)
+      ? facts.findingExplanations
+      : facts.labs.outliers.map((o: any) => ({
+          marker: o.marker,
+          explanation: o.interpretation,
+          what_to_do: String(o.flag ?? '').startsWith('critical')
+            ? 'Schedule a PCP visit this week to discuss this value.'
+            : 'Bring this to your next PCP visit; track at the 12-week retest.',
+        })),
+    pattern_descriptions: (facts.patternDescriptions && facts.patternDescriptions.length > 0)
+      ? facts.patternDescriptions
+      : facts.conditions.map((c: any) => ({
+          name: c.name,
+          description: c.evidence,
+          likely_cause: c.what_to_ask_doctor ?? '',
+        })),
+    immediate_actions: (facts.todayActions && facts.todayActions.length > 0)
+      ? facts.todayActions.map((a: any) => ({ emoji: a.emoji, action: a.action }))
+      : [
+          { emoji: '💧', action: 'Drink 2-3 L of water today and track urine color (pale = hydrated).' },
+          { emoji: '🛏️', action: 'Set a bedtime alarm for 10:30 PM tonight.' },
+          { emoji: '🚶', action: 'Walk outdoors 15 min between 6:30-8 AM tomorrow.' },
+        ],
   };
 }

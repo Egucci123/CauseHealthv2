@@ -468,21 +468,32 @@ function mergeIntoDoctorPrepOutput(args: {
 }
 
 function doctorPrepFallback(facts: any): DoctorPrepOutput {
-  const top = facts.labs.outliers[0];
-  const cond = facts.conditions[0];
+  // 2026-05-12-44: doctor-prep AI was eliminated in -36; this function is
+  // dead-code-safety. If it ever fires, prefer engine deterministic
+  // templates over generic strings so the output stays clinically rich.
   return {
-    headline: cond ? `Follow-up for ${cond.name}` : 'Wellness check-in',
-    executive_summary: facts.conditions.slice(0, 4).map((c: any) => `${c.name}: ${c.evidence}`).slice(0, 5),
-    chief_complaint: 'Wellness follow-up with abnormal lab review.',
-    hpi: `Patient with conditions: ${facts.patient.conditions.join(', ') || 'none'}; on medications: ${facts.patient.meds.join(', ') || 'none'}. Recent labs show ${facts.labs.outliers.slice(0, 3).map((o: any) => `${o.marker} ${o.value}`).join(', ')}.`,
-    tell_doctor: facts.conditions.slice(0, 3).map((c: any) => ({
-      emoji: '💬', headline: `Discuss ${c.name.split('(')[0].trim()}`, detail: c.what_to_ask_doctor,
-    })),
-    questions_to_ask: facts.conditions.slice(0, 5).map((c: any) => ({
-      emoji: '❓', question: c.what_to_ask_doctor, why: c.evidence,
-    })),
-    discussion_points: facts.conditions.slice(0, 3).map((c: any) => `${c.name}: ${c.what_to_ask_doctor}`),
-    patient_questions: facts.conditions.slice(0, 5).map((c: any) => c.what_to_ask_doctor),
-    functional_medicine_note: 'See the wellness plan for the full 12-week protocol.',
+    headline: facts.conditions[0] ? `Follow-up for ${facts.conditions[0].name}` : 'Wellness check-in',
+    executive_summary: (facts.executiveSummary && facts.executiveSummary.length > 0)
+      ? facts.executiveSummary
+      : facts.conditions.slice(0, 4).map((c: any) => `${c.name}: ${c.evidence}`).slice(0, 5),
+    chief_complaint: facts.chiefComplaint ?? 'Wellness follow-up with abnormal lab review.',
+    hpi: facts.hpi ?? `Patient with conditions: ${facts.patient.conditions.join(', ') || 'none'}; on medications: ${facts.patient.meds.join(', ') || 'none'}. Recent labs show ${facts.labs.outliers.slice(0, 3).map((o: any) => `${o.marker} ${o.value}`).join(', ')}.`,
+    tell_doctor: (facts.tellDoctor && facts.tellDoctor.length > 0)
+      ? facts.tellDoctor
+      : facts.conditions.slice(0, 3).map((c: any) => ({
+          emoji: '💬', headline: `Discuss ${c.name.split('(')[0].trim()}`, detail: c.what_to_ask_doctor,
+        })),
+    questions_to_ask: (facts.questionsToAsk && facts.questionsToAsk.length > 0)
+      ? facts.questionsToAsk
+      : facts.conditions.slice(0, 5).map((c: any) => ({
+          emoji: '❓', question: c.what_to_ask_doctor, why: c.evidence,
+        })),
+    discussion_points: (facts.discussionPoints && facts.discussionPoints.length > 0)
+      ? facts.discussionPoints
+      : facts.conditions.slice(0, 3).map((c: any) => `${c.name}: ${c.what_to_ask_doctor}`),
+    patient_questions: (facts.patientQuestions && facts.patientQuestions.length > 0)
+      ? facts.patientQuestions
+      : facts.conditions.slice(0, 5).map((c: any) => c.what_to_ask_doctor),
+    functional_medicine_note: facts.functionalMedicineNote ?? 'See the wellness plan for the full 12-week protocol.',
   };
 }
