@@ -349,6 +349,21 @@ async function callAnthropicTool<T>(args: {
       throw new Error(`Anthropic ${res.status}: ${txt.slice(0, 400)}`);
     }
     const json = await res.json();
+    // Log token usage so cost is measurable. Anthropic returns:
+    //   input_tokens (uncached), cache_creation_input_tokens (writes at +100%),
+    //   cache_read_input_tokens (reads at 10%), output_tokens.
+    // Haiku 4.5 pricing: $1/1M input, $5/1M output, cache write +100%, read -90%.
+    const u = json?.usage ?? {};
+    const inputTok = u.input_tokens ?? 0;
+    const cacheWrite = u.cache_creation_input_tokens ?? 0;
+    const cacheRead = u.cache_read_input_tokens ?? 0;
+    const outputTok = u.output_tokens ?? 0;
+    const inCost  = (inputTok    / 1e6) * 1.0;
+    const wrCost  = (cacheWrite  / 1e6) * 2.0; // 1h write = 2x normal
+    const rdCost  = (cacheRead   / 1e6) * 0.1;
+    const outCost = (outputTok   / 1e6) * 5.0;
+    const totalCents = (inCost + wrCost + rdCost + outCost) * 100;
+    console.log(`[wellness-v2 tokens ${args.tool.name}] in=${inputTok} wr=${cacheWrite} rd=${cacheRead} out=${outputTok} = ${totalCents.toFixed(3)}¢`);
     const block = (json?.content ?? []).find((c: any) => c?.type === 'tool_use' && c?.name === args.tool.name);
     if (!block) throw new Error(`No tool_use block in response (stop_reason=${json?.stop_reason})`);
     return block.input as T;

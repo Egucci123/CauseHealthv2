@@ -254,6 +254,13 @@ async function callAnthropicTool<T>(args: {
     clearTimeout(timeout);
     if (!res.ok) throw new Error(`Anthropic ${res.status}: ${(await res.text()).slice(0, 300)}`);
     const json = await res.json();
+    const u = json?.usage ?? {};
+    const inputTok = u.input_tokens ?? 0;
+    const cacheWrite = u.cache_creation_input_tokens ?? 0;
+    const cacheRead = u.cache_read_input_tokens ?? 0;
+    const outputTok = u.output_tokens ?? 0;
+    const totalCents = ((inputTok/1e6)*1.0 + (cacheWrite/1e6)*2.0 + (cacheRead/1e6)*0.1 + (outputTok/1e6)*5.0) * 100;
+    console.log(`[doctor-prep-v2 tokens] in=${inputTok} wr=${cacheWrite} rd=${cacheRead} out=${outputTok} = ${totalCents.toFixed(3)}¢`);
     const block = (json?.content ?? []).find((c: any) => c?.type === 'tool_use' && c?.name === args.tool.name);
     if (!block) throw new Error(`No tool_use block (stop_reason=${json?.stop_reason})`);
     return block.input as T;
