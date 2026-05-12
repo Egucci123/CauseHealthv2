@@ -32,6 +32,12 @@ export interface SupplementCandidate {
   priority: 'critical' | 'high' | 'moderate';
   sourcedFrom: 'lab_finding' | 'medication_depletion' | 'disease_mechanism' | 'symptom_pattern';
   alternatives: { name: string; form: string; note: string }[];
+  /** Canned "when/how to take + interactions + absorption" note.
+   *  Pre-written per supplement, deterministic. AI no longer generates. */
+  practicalNote?: string;
+  /** Canned "mechanism + typical response time + magnitude" note.
+   *  Pre-written per supplement, deterministic. AI no longer generates. */
+  evidenceNote?: string;
 }
 
 interface Input {

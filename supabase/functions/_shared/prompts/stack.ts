@@ -132,12 +132,25 @@ export interface StackOutput {
 }
 
 export function buildStackUserMessage(facts: ClinicalFacts): string {
+  // 2026-05-12-28: Most top supplements now have canned practicalNote +
+  // evidenceNote in the SUPPLEMENT_BASE registry. The AI only needs to
+  // fill in for supplements WITHOUT canned notes (the long tail).
+  // Filter the payload so the AI sees only what it needs to write.
+  const suppsNeedingNotes = facts.supplementCandidates.filter(s =>
+    !(s as any).practicalNote || !(s as any).evidenceNote
+  );
+
   const payload = {
     patient: facts.patient,
     lab_outliers: facts.labs.outliers,
     conditions: facts.conditions,
     depletions: facts.depletions,
+    // Full stack — AI sees all so it can reference for eating_pattern + workouts
     supplement_candidates: facts.supplementCandidates,
+    // Subset needing AI-generated notes — usually 0-2 supplements
+    supplements_needing_notes: suppsNeedingNotes.map(s => ({
+      key: s.key, nutrient: s.nutrient, dose: s.dose, timing: s.timing,
+    })),
     is_optimization_mode: facts.isOptimizationMode,
   };
 
@@ -145,5 +158,15 @@ export function buildStackUserMessage(facts: ClinicalFacts): string {
 
 ${JSON.stringify(payload, null, 2)}
 
-WRITE the stack rationale and lifestyle interventions. Use the submit_stack_lifestyle tool.`;
+IMPORTANT — SUPPLEMENT NOTES POLICY:
+Most supplements in FACTS.supplement_candidates already have canned
+practicalNote + evidenceNote (pre-written in the engine registry).
+For those, DO NOT write new notes — they will be used verbatim.
+
+You only write supplement_notes for entries in FACTS.supplements_needing_notes.
+If that array is EMPTY, return supplement_notes: [].
+
+For eating_pattern + workouts + lifestyle_interventions, write as usual.
+
+Use the submit_stack_lifestyle tool.`;
 }

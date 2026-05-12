@@ -49,6 +49,13 @@ export interface SupplementBase {
   defaultWhyShort: string;
   /** Default explanatory note. Indication-level `why` can override. */
   defaultWhy: string;
+  /** Canned "when/how to take + interactions + absorption tips" note.
+   *  ~1 sentence. Pre-written per supplement so the AI doesn't have to
+   *  generate it on every call — saves ~$0.005-0.01/gen. */
+  practicalNote?: string;
+  /** Canned "mechanism + typical response time + magnitude" note.
+   *  ~1 sentence. Pre-written per supplement; same cost savings. */
+  evidenceNote?: string;
   /** Drops if patient is pregnant / trying / breastfeeding. */
   pregnancyContraindicated?: boolean;
   /** Drops if patient reported shellfish or fish allergy
@@ -68,6 +75,8 @@ export const SUPPLEMENT_BASE: Record<string, SupplementBase> = {
     category: 'nutrient_repletion',
     defaultWhyShort: 'Replete low vitamin D',
     defaultWhy: 'Vitamin D supports immunity, mood, bone, and metabolic health; supplementation typically raises 25-OH levels 10–15 ng/mL in 12 weeks.',
+    practicalNote: 'Take with the fattiest meal of the day — Vitamin D is fat-soluble and absorption drops 30-50% on an empty stomach.',
+    evidenceNote: '4000 IU/day raises 25-OH-D by ~10-15 ng/mL in 12 weeks. Target level 40-60 ng/mL per Endocrine Society / functional medicine consensus.',
     alternatives: [
       { name: 'Vitamin D3 + K2', form: 'Softgel', note: 'K2 directs calcium to bone, away from arteries — good for higher doses.' },
     ],
@@ -91,6 +100,8 @@ export const SUPPLEMENT_BASE: Record<string, SupplementBase> = {
     category: 'nutrient_repletion',
     defaultWhyShort: 'Replete low B12',
     defaultWhy: 'Methylcobalamin is the active form (no MTHFR conversion needed); sublingual bypasses absorption issues common with PPI/metformin/age.',
+    practicalNote: 'Hold under the tongue for 60-90 seconds before swallowing. Sublingual absorption bypasses gastric issues that cause low B12 (PPIs, metformin, atrophic gastritis).',
+    evidenceNote: '1000 mcg/day raises serum B12 + drops MMA and homocysteine within 4-8 weeks. Methylcobalamin works even with MTHFR variants that block cyanocobalamin conversion.',
   },
   methylfolate: {
     emoji: '💊',
@@ -101,6 +112,8 @@ export const SUPPLEMENT_BASE: Record<string, SupplementBase> = {
     category: 'nutrient_repletion',
     defaultWhyShort: 'Replete low folate',
     defaultWhy: 'Methylfolate is the bioavailable active form, important for users on mesalamine / methotrexate / hormonal contraception.',
+    practicalNote: 'Take in the morning — methylfolate is stimulating for some. If you feel jittery, switch to folinic acid (gentler alternative).',
+    evidenceNote: '400-800 mcg/day raises RBC folate and drops homocysteine in 8-12 weeks. Methylfolate is preferred over folic acid for users with MTHFR variants (~40% of population).',
     alternatives: [{ name: 'Folinic acid', form: 'Capsule', note: 'Alternative if methylfolate causes overstimulation.' }],
   },
   vit_b6_p5p: {
@@ -132,6 +145,8 @@ export const SUPPLEMENT_BASE: Record<string, SupplementBase> = {
     category: 'nutrient_repletion',
     defaultWhyShort: 'Energy + mitochondrial cofactor support',
     defaultWhy: 'Methylated B-vitamins (B6 P5P, methylfolate, methylcobalamin) bypass MTHFR conversion issues and support energy metabolism.',
+    practicalNote: 'Take in the morning with food — B vitamins can be stimulating and may disrupt sleep if taken late. Bright yellow urine is normal (B2 excretion).',
+    evidenceNote: 'Methylated B-complex (active forms of B6/folate/B12) supports energy metabolism + methylation cycle. Typical response: improved energy and mental clarity in 2-4 weeks of consistent use.',
   },
   biotin_5mg: {
     emoji: '💊',
@@ -164,6 +179,8 @@ export const SUPPLEMENT_BASE: Record<string, SupplementBase> = {
     category: 'sleep_stress',
     defaultWhyShort: 'Sleep / stress / mood support',
     defaultWhy: 'Glycinate crosses the blood-brain barrier and supports GABA tone; most-studied form for sleep latency and stress modulation.',
+    practicalNote: 'Take 2-3 hours before bed for sleep benefit. Magnesium glycinate is the gentlest form on the GI tract — no laxative effect at this dose.',
+    evidenceNote: 'Mg 300 mg/day improves sleep latency 15-20 min and subjective sleep quality in 2-3 RCTs. Supports GABA tone, muscle relaxation, and HPA-axis modulation.',
     alternatives: [{ name: 'Magnesium L-Threonate', form: 'Capsule', note: 'For added cognitive benefit.' }],
   },
   mg_glycinate_200: {
@@ -282,6 +299,8 @@ export const SUPPLEMENT_BASE: Record<string, SupplementBase> = {
     category: 'inflammation_cardio',
     defaultWhyShort: 'Anti-inflammatory / cognitive support',
     defaultWhy: 'Higher-dose omega-3 supports joint, mood, and cognitive inflammation modulation.',
+    practicalNote: 'Take with the largest fatty meal of the day for max absorption. Triglyceride form absorbs ~70% better than ethyl ester. Refrigerate after opening to prevent rancidity.',
+    evidenceNote: 'EPA/DHA at 2g/day lowers inflammation markers (hs-CRP, IL-6) and improves joint/mood symptoms in 8-12 weeks. Typical TG drop: 15-25%.',
     fishOilLike: true,
     alternatives: [{ name: 'Algal omega-3', form: 'Softgel', note: 'For shellfish/fish allergy.' }],
   },
@@ -294,6 +313,8 @@ export const SUPPLEMENT_BASE: Record<string, SupplementBase> = {
     category: 'inflammation_cardio',
     defaultWhyShort: 'Triglyceride reduction',
     defaultWhy: 'Omega-3 lowers triglycerides 20–40% with adherence; used for elevated TG.',
+    practicalNote: 'Split into 2 doses with biggest two meals if 3g causes burping. Triglyceride form is essential at this dose for absorption. If on warfarin, discuss with PCP (mild antiplatelet effect).',
+    evidenceNote: 'High-dose omega-3 (3-4g EPA/DHA) drops triglycerides 25-40% in 12 weeks. AHA endorses for TG >500. Reduces ApoB-particle count alongside.',
     fishOilLike: true,
     alternatives: [{ name: 'Vegan algae omega-3', form: 'Softgel', note: 'Same EPA/DHA effect; for shellfish/fish allergy.' }],
   },
@@ -308,6 +329,8 @@ export const SUPPLEMENT_BASE: Record<string, SupplementBase> = {
     category: 'sleep_stress',
     defaultWhyShort: 'Adaptogenic cortisol modulation',
     defaultWhy: 'KSM-66 ashwagandha 600 mg/day reduced cortisol 27–30% and perceived stress in RCTs (Chandrasekhar 2012, Salve 2019). Pregnancy-contraindicated.',
+    practicalNote: 'Take with breakfast for steady daytime cortisol blunting. KSM-66 is the most-studied root extract — avoid leaf extracts (different effect). Discontinue 2 weeks before any surgery.',
+    evidenceNote: '600 mg/day KSM-66 dropped morning cortisol 27-30% + perceived-stress scores by 30-44% in 8-week RCTs. Best evidence for chronic-stress adrenal modulation.',
     pregnancyContraindicated: true,
     alternatives: [{ name: 'Rhodiola rosea', form: 'Capsule', note: '300 mg/day — alternative adaptogen, more energizing; also pregnancy-contraindicated.' }],
   },
@@ -330,6 +353,8 @@ export const SUPPLEMENT_BASE: Record<string, SupplementBase> = {
     category: 'sleep_stress',
     defaultWhyShort: 'Lowers elevated cortisol',
     defaultWhy: 'Phosphatidylserine 300 mg blunts elevated cortisol in stress / overtraining studies (Monteleone 1992, Starks 2008). Pregnancy-safe.',
+    practicalNote: 'Take in the evening — PS blunts the cortisol awakening response. Pairs well with Ashwagandha (different mechanism). Sunflower-derived is fine for soy allergies.',
+    evidenceNote: '300 mg/day PS dropped elevated cortisol in stressed adults and overtrained athletes (Monteleone 1992, Starks 2008). Effects measurable in 2-4 weeks.',
     alternatives: [{ name: 'L-Theanine', form: 'Capsule', note: 'Alternative for daytime stress, 200 mg twice daily.' }],
   },
   vitex: {
@@ -398,6 +423,8 @@ export const SUPPLEMENT_BASE: Record<string, SupplementBase> = {
     category: 'inflammation_cardio',
     defaultWhyShort: 'Reduce inflammation',
     defaultWhy: 'Bioavailable curcumin reduces inflammation markers 20–40% (curcumin meta-analyses); matches NSAIDs for OA pain.',
+    practicalNote: 'Use phospholipid (Meriva) or BCM-95 forms — plain curcumin has <1% bioavailability. Take with food for fat absorption. Mild antiplatelet effect — discuss with PCP if on blood thinners.',
+    evidenceNote: 'Bioavailable curcumin (1g/day) drops CRP 20-40% and matches ibuprofen for OA pain in head-to-head trials. Mucosal benefit in mild-moderate UC at 2g/day.',
   },
   milk_thistle: {
     emoji: '💊',
@@ -408,6 +435,8 @@ export const SUPPLEMENT_BASE: Record<string, SupplementBase> = {
     category: 'liver_metabolic',
     defaultWhyShort: 'Hepatoprotection',
     defaultWhy: 'Silymarin is the best-studied hepatoprotective botanical — stabilizes hepatocyte membranes during enzyme elevation.',
+    practicalNote: 'Take with lunch — silymarin is poorly water-soluble; food slows transit and improves absorption. Use 80% silymarin standardization (not "milk thistle seed" without standardization).',
+    evidenceNote: 'Silymarin lowers ALT and AST in NAFLD / drug-induced injury (10-15 point drop typical at 12 weeks). Stabilizes hepatocyte membranes; safe for long-term use.',
   },
   berberine: {
     emoji: '💊',
@@ -418,6 +447,8 @@ export const SUPPLEMENT_BASE: Record<string, SupplementBase> = {
     category: 'liver_metabolic',
     defaultWhyShort: 'A1c / insulin sensitivity',
     defaultWhy: 'Berberine 1500 mg/day shows A1c reduction comparable to metformin in meta-analyses (Yin 2008).',
+    practicalNote: 'Take with each meal — short half-life means TID dosing matters. May cause initial GI upset; start at 1 capsule/day, build to 3 over 1-2 weeks. Avoid in pregnancy.',
+    evidenceNote: 'Berberine 1.5 g/day dropped A1c 0.5-1.0% and fasting glucose 15-30 mg/dL in T2D RCTs (Yin 2008 meta-analysis). Effect size comparable to metformin.',
     pregnancyContraindicated: true,
     alternatives: [{ name: 'Chromium picolinate', form: 'Capsule', note: '400 mcg/day — pregnancy-safe glucose support.' }],
   },
@@ -442,6 +473,8 @@ export const SUPPLEMENT_BASE: Record<string, SupplementBase> = {
     category: 'inflammation_cardio',
     defaultWhyShort: 'Lower elevated LDL / ApoB',
     defaultWhy: 'RYR delivers a natural-form statin (monacolin K); add CoQ10 to offset depletion. Avoid if already on a prescription statin.',
+    practicalNote: 'Take with dinner — RYR works on overnight cholesterol synthesis. NEVER combine with prescription statin (additive monacolin = rhabdomyolysis risk). Pair with CoQ10 100mg to offset depletion.',
+    evidenceNote: 'RYR 10mg monacolin K drops LDL 20-30% in 8-12 weeks — mechanism identical to lovastatin. Meta-analyses show parity with low-dose statin therapy for primary prevention.',
     pregnancyContraindicated: true,
     alternatives: [
       { name: 'Bergamot extract', form: 'Capsule', note: 'Citrus bergamot 500–1000 mg/day — 15–25% LDL reduction in trials.' },
@@ -468,6 +501,8 @@ export const SUPPLEMENT_BASE: Record<string, SupplementBase> = {
     category: 'liver_metabolic',
     defaultWhyShort: 'Glutathione precursor / hepatic support',
     defaultWhy: 'NAC is the glutathione precursor and the standard for hepatic oxidative stress.',
+    practicalNote: 'Take with food — empty stomach can cause mild GI upset. NAC has a slight sulfur odor (normal). Discontinue 2 weeks before scheduled surgery (mild antiplatelet effect).',
+    evidenceNote: 'NAC at 1200 mg/day raises hepatic glutathione + drops ALT/AST 10-20 points in NAFLD/drug-induced injury within 8-12 weeks. Standard antidote for acetaminophen toxicity.',
   },
   ala_600: {
     emoji: '💊',
@@ -478,6 +513,8 @@ export const SUPPLEMENT_BASE: Record<string, SupplementBase> = {
     category: 'condition_therapy',
     defaultWhyShort: 'Insulin sensitivity / nerve support',
     defaultWhy: 'ALA improves insulin sensitivity and is the standard for diabetic neuropathy (1200 mg for neuropathy).',
+    practicalNote: 'Take on empty stomach — ALA absorption drops 30% with food. R-ALA (stereoisomer) is more bioavailable than racemic. Monitor blood sugar if on insulin (may lower glucose).',
+    evidenceNote: 'ALA 600-1200 mg/day improves insulin sensitivity (15-20% HOMA-IR drop) and is approved in Germany for diabetic neuropathy at 1200 mg.',
   },
   inositol_40_1: {
     emoji: '💊',
@@ -509,6 +546,8 @@ export const SUPPLEMENT_BASE: Record<string, SupplementBase> = {
     category: 'gut_healing',
     defaultWhyShort: 'Gut barrier repair',
     defaultWhy: 'L-glutamine is the primary fuel for enterocytes — supports mucosal repair during IBD remission.',
+    practicalNote: 'Mix in water on empty stomach — glutamine is absorbed by intestinal cells directly. Tastes neutral. Avoid in active cancer or severe liver disease (precaution).',
+    evidenceNote: 'L-glutamine 5-10 g/day supports intestinal mucosal repair in IBD remission + post-surgical recovery. Primary fuel source for enterocytes (intestinal cells).',
     alternatives: [
       { name: 'Slippery elm', form: 'Capsule', note: 'Mucilaginous fiber — soothes gut lining.' },
       { name: 'Zinc carnosine', form: 'Capsule', note: 'Targeted gut-lining repair.' },
@@ -523,6 +562,8 @@ export const SUPPLEMENT_BASE: Record<string, SupplementBase> = {
     category: 'nutrient_repletion',
     defaultWhyShort: 'Mitochondrial / statin support',
     defaultWhy: 'CoQ10 supports cellular energy; endogenous synthesis declines with age 40+ and is depleted by statins.',
+    practicalNote: 'Take with the fattiest meal — CoQ10 is fat-soluble (absorption drops 50% on empty stomach). Ubiquinol form preferred over ubiquinone for age 40+ (better conversion). No statin interaction.',
+    evidenceNote: 'CoQ10 100-200 mg/day reverses statin-induced muscle pain in 4-8 weeks (Caso 2007). Supports mitochondrial energy production; relevant for fatigue + age 40+.',
     alternatives: [
       { name: 'Ubiquinone', form: 'Softgel', note: '~30% lower bioavailability than ubiquinol but cheaper.' },
     ],
@@ -576,6 +617,8 @@ export const SUPPLEMENT_BASE: Record<string, SupplementBase> = {
     dose: '1 capsule/day',
     timing: 'Morning, empty stomach',
     category: 'gut_healing',
+    practicalNote: 'Take on empty stomach with cool water — stomach acid kills probiotics; food slows transit. Refrigerate. Look for multi-strain + ≥30B CFU + delayed-release capsule.',
+    evidenceNote: 'Multi-strain probiotics reduce diarrhea + abdominal pain in IBS, normalize bowel patterns, and modestly extend remission in UC (VSL#3-style formulations).',
     defaultWhyShort: 'Bowel-pattern stabilization',
     defaultWhy: 'Multi-strain probiotics reduce diarrhea + abdominal pain in IBS and microbiome-driven bowel disruption.',
     alternatives: [{ name: 'L-Glutamine', form: 'Powder', note: '5 g/day — gut-barrier support.' }],
@@ -1074,6 +1117,8 @@ export function evaluateIndications(
         priority: ref.priority ?? 'moderate',
         sourcedFrom: ref.sourcedFrom ?? 'lab_finding',
         alternatives: base.alternatives ?? [],
+        practicalNote: base.practicalNote,
+        evidenceNote: base.evidenceNote,
       });
     }
   }
@@ -1094,6 +1139,8 @@ export function evaluateIndications(
         timing: base.timing,
         whyShort: ref.whyShort ?? base.defaultWhyShort,
         why: base.defaultWhy,
+        practicalNote: base.practicalNote,
+        evidenceNote: base.evidenceNote,
         category: base.category,
         priority: ref.priority ?? 'moderate',
         sourcedFrom: ref.sourcedFrom ?? 'symptom_pattern',
