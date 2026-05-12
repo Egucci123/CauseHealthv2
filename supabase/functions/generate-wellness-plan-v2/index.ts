@@ -687,9 +687,15 @@ function mergeIntoFinalPlan(args: {
     today_actions: (Array.isArray(action.today_actions) && action.today_actions.length > 0)
       ? action.today_actions
       : actionFallback(facts).today_actions,
+    // 2026-05-12: alternatives stripped from the wellness card. We
+    // surface only ONE recommended supplement per finding — the top
+    // engine pick. Alternatives are still computed internally and
+    // available for the doctor-prep advanced view, but the patient-
+    // facing supplement card stays clean: one supplement per signal,
+    // the best fit for their markers + patterns.
     supplement_stack: Array.isArray(filteredStack) ? filteredStack.map(s => ({
       ...s,
-      alternatives: Array.isArray(s.alternatives) ? s.alternatives : [],
+      alternatives: [],
     })) : [],
     // eating_pattern + lifestyle_interventions are now deterministic
     // (facts.eatingPattern / facts.lifestyleInterventions). The AI is
