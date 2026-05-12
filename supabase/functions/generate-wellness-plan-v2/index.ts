@@ -316,6 +316,10 @@ async function callAnthropicTool<T>(args: {
         'Content-Type': 'application/json',
         'x-api-key': ANTHROPIC_API_KEY,
         'anthropic-version': '2023-06-01',
+        // 1-hour prompt caching (beta) — keeps the constitution + tool
+        // schema warm across a user's analysis → wellness → doctor-prep
+        // reading session. Default 5-min TTL is too short.
+        'anthropic-beta': 'extended-cache-ttl-2025-04-11',
       },
       body: JSON.stringify({
         model: MODEL,
@@ -324,10 +328,13 @@ async function callAnthropicTool<T>(args: {
         // was the reason symptoms_addressed silently truncated.
         max_tokens: 8000,
         system: [
-          { type: 'text', cache_control: { type: 'ephemeral' }, text: args.system },
+          { type: 'text', cache_control: { type: 'ephemeral', ttl: '1h' }, text: args.system },
         ],
         messages: [{ role: 'user', content: args.user }],
-        tools: [args.tool],
+        // Cache the tool schema too — it's identical across regens of
+        // the same surface. 1-hour TTL applies to whichever block is
+        // closest to the end and has cache_control marked.
+        tools: [{ ...args.tool, cache_control: { type: 'ephemeral', ttl: '1h' } }],
         tool_choice: { type: 'tool', name: args.tool.name },
       }),
     });

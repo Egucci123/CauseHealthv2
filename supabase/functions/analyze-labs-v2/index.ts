@@ -291,13 +291,16 @@ async function callAnthropicTool<T>(args: {
         'Content-Type': 'application/json',
         'x-api-key': ANTHROPIC_API_KEY,
         'anthropic-version': '2023-06-01',
+        // 1-hour prompt caching (beta) — covers full analysis→wellness→prep
+        // user reading sessions. Constitution + tool schema stay warm.
+        'anthropic-beta': 'extended-cache-ttl-2025-04-11',
       },
       body: JSON.stringify({
         model: MODEL,
         max_tokens: 6000,
-        system: [{ type: 'text', cache_control: { type: 'ephemeral' }, text: args.system }],
+        system: [{ type: 'text', cache_control: { type: 'ephemeral', ttl: '1h' }, text: args.system }],
         messages: [{ role: 'user', content: args.user }],
-        tools: [args.tool],
+        tools: [{ ...args.tool, cache_control: { type: 'ephemeral', ttl: '1h' } }],
         tool_choice: { type: 'tool', name: args.tool.name },
       }),
     });
