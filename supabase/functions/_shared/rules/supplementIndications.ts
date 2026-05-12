@@ -1258,14 +1258,27 @@ export function evaluateIndications(
   const seenCategories = new Set<string>();
 
   for (const c of out) {
-    // Rule 1: keep every medication_depletion-sourced supplement.
+    // Rule 1: keep every medication_depletion-sourced supplement (each
+    // depletion needs its own counter-supplement; additive not competitive).
     if (c.sourcedFrom === 'medication_depletion') {
       balanced.push(c);
       continue;
     }
-    // Rule 2: one supplement per non-depletion category. Because `out`
-    // is sorted (priority → source → severity), the FIRST entry seen
-    // for each category is the best fit for this user's pattern.
+    // Rule 2 (2026-05-12-40): lab-confirmed nutrient repletion is ALSO
+    // additive — never override another nutrient_repletion supplement.
+    // A confirmed low folate AND a confirmed low Vit D AND a confirmed
+    // low B12 are three separate objective deficiencies, each needs its
+    // own counter-supplement. They do not "compete" for a category slot
+    // because each addresses a different specific deficiency the patient
+    // measurably has. This matches the unlimited-depletions principle:
+    // every objective signal gets its own supplement.
+    if (c.category === 'nutrient_repletion' && c.sourcedFrom === 'lab_finding') {
+      balanced.push(c);
+      continue;
+    }
+    // Rule 3: one supplement per non-depletion / non-lab-repletion
+    // category. Because `out` is sorted (priority → source → severity),
+    // the FIRST entry seen for each category is the best fit.
     const cat = c.category ?? 'unspecified';
     if (seenCategories.has(cat)) continue;
     balanced.push(c);
