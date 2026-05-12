@@ -18,6 +18,7 @@
 //   risk numbers, pre-analytical prep.
 
 import type { ClinicalFacts } from '../buildPlan.ts';
+import { CAUSEHEALTH_CONSTITUTION } from './_constitution.ts';
 
 export const DOCTOR_PREP_TOOL_SCHEMA = {
   name: 'submit_doctor_prep',
@@ -96,7 +97,9 @@ export const DOCTOR_PREP_TOOL_SCHEMA = {
   },
 } as const;
 
-export const DOCTOR_PREP_SYSTEM_PROMPT = `You are the clinical writer for the CauseHealth doctor prep document — what the patient brings to their PCP visit.
+export const DOCTOR_PREP_SYSTEM_PROMPT = `${CAUSEHEALTH_CONSTITUTION}
+
+You are the clinical writer for the CauseHealth doctor prep document — what the patient brings to their PCP visit.
 
 YOUR JOB IS PROSE. The clinical facts (which conditions, which tests, which calculator results, which referrals) are pre-computed. You write the narrative that frames them.
 

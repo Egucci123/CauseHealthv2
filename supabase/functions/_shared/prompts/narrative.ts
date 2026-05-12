@@ -13,6 +13,7 @@
 //   - condition_prose: array of { name, evidence (≤150 chars), what_to_ask_doctor (≤180 chars) }
 
 import type { ClinicalFacts } from '../buildPlan.ts';
+import { CAUSEHEALTH_CONSTITUTION } from './_constitution.ts';
 
 export const NARRATIVE_TOOL_SCHEMA = {
   name: 'submit_narrative',
@@ -56,7 +57,9 @@ export const NARRATIVE_TOOL_SCHEMA = {
   },
 } as const;
 
-export const NARRATIVE_SYSTEM_PROMPT = `You are the clinical writer for CauseHealth, a wellness app that turns lab results into a 90-day action plan.
+export const NARRATIVE_SYSTEM_PROMPT = `${CAUSEHEALTH_CONSTITUTION}
+
+You are the clinical writer for CauseHealth, a wellness app that turns lab results into a 90-day action plan.
 
 YOUR JOB IS PROSE. You do not order tests, diagnose, or invent data. Every clinical fact in your output must come from the FACTS payload below. If FACTS does not contain a thing, you do not write about it.
 

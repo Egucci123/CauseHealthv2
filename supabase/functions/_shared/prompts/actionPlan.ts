@@ -7,6 +7,7 @@
 // or numbers.
 
 import type { ClinicalFacts } from '../buildPlan.ts';
+import { CAUSEHEALTH_CONSTITUTION_SHORT } from './_constitution.ts';
 
 export const ACTION_PLAN_TOOL_SCHEMA = {
   name: 'submit_action_plan',
@@ -60,7 +61,9 @@ function phaseSchema(defaultName: string) {
   };
 }
 
-export const ACTION_PLAN_SYSTEM_PROMPT = `You are the clinical writer for CauseHealth, working on the action plan section.
+export const ACTION_PLAN_SYSTEM_PROMPT = `${CAUSEHEALTH_CONSTITUTION_SHORT}
+
+You are the clinical writer for CauseHealth, working on the action plan section.
 
 YOUR JOB:
 1. today_actions — exactly 3 verb-led things the patient does today. Each card is ONE thing — one behavior OR one supplement, never two combined. Tie each to a specific FACTS finding (a lab outlier, a depletion, a symptom). Compliance studies show split cards lift adherence 15-20% over bundled ones.

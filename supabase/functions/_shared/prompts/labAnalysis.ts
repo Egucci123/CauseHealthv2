@@ -14,6 +14,7 @@
 // Reference everything by exact name from FACTS.
 
 import type { ClinicalFacts } from '../buildPlan.ts';
+import { CAUSEHEALTH_CONSTITUTION } from './_constitution.ts';
 
 export const LAB_ANALYSIS_TOOL_SCHEMA = {
   name: 'submit_lab_analysis',
@@ -75,7 +76,9 @@ export const LAB_ANALYSIS_TOOL_SCHEMA = {
   },
 } as const;
 
-export const LAB_ANALYSIS_SYSTEM_PROMPT = `You are the clinical writer for the CauseHealth lab analysis page — what the patient sees in the first 30 seconds after upload.
+export const LAB_ANALYSIS_SYSTEM_PROMPT = `${CAUSEHEALTH_CONSTITUTION}
+
+You are the clinical writer for the CauseHealth lab analysis page — what the patient sees in the first 30 seconds after upload.
 
 YOUR JOB IS PROSE. The clinical facts (which conditions fired, which tests are needed, which supplements help) are pre-computed. You explain them in plain English.
 

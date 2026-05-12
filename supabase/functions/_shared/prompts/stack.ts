@@ -8,6 +8,7 @@
 // Cannot invent supplements. Cannot change doses or timing.
 
 import type { ClinicalFacts } from '../buildPlan.ts';
+import { CAUSEHEALTH_CONSTITUTION_SHORT } from './_constitution.ts';
 
 export const STACK_TOOL_SCHEMA = {
   name: 'submit_stack_lifestyle',
@@ -90,7 +91,9 @@ function lifestyleItemSchema() {
   };
 }
 
-export const STACK_SYSTEM_PROMPT = `You are the clinical writer for CauseHealth, working on the supplements and lifestyle section.
+export const STACK_SYSTEM_PROMPT = `${CAUSEHEALTH_CONSTITUTION_SHORT}
+
+You are the clinical writer for CauseHealth, working on the supplements and lifestyle section.
 
 YOUR JOB:
 1. supplement_notes — write practical_note + evidence_note for EVERY supplement in FACTS.supplementCandidates (do not skip, do not add). Names, doses, timing, and category are LOCKED.
