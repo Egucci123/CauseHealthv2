@@ -56,6 +56,7 @@ interface Input {
   conditionsLower: string;
   symptomsLower: string;
   supplementsLower: string;
+  labsLower?: string;                // 2026-05-12-46: drives measured-normal suppression
   isPregnant: boolean;
   hasShellfishAllergy: boolean;
   hasSulfaAllergy: boolean;
@@ -85,6 +86,7 @@ export function buildSupplementCandidates(input: Input): SupplementCandidate[] {
     conditionsLower: input.conditionsLower,
     medsLower: '',                   // not used yet by any registry trigger
     depletions: input.depletions,    // medication triggers consume this
+    labsLower: input.labsLower,      // drives measured-normal suppression
     isPregnant: input.isPregnant,
     hasShellfishAllergy: input.hasShellfishAllergy,
   };

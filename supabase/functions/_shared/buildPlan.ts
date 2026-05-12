@@ -277,6 +277,7 @@ export function buildPlan(input: PatientInput): ClinicalFacts {
     conditionsLower: input.conditionsLower,
     symptomsLower: input.symptomsLower,
     supplementsLower: input.supplementsLower,
+    labsLower: input.labsLower,             // measured-normal suppression
     isPregnant: input.isPregnant,
     hasShellfishAllergy: input.hasShellfishAllergy,
     hasSulfaAllergy: input.hasSulfaAllergy,

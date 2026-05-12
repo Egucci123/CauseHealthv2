@@ -1109,6 +1109,12 @@ export interface EvaluateInput {
   depletions: DepletionFact[];
   isPregnant: boolean;
   hasShellfishAllergy: boolean;
+  /** 2026-05-12-46: full labs string (lowered) including normal markers.
+   *  Used to suppress nutrient-repletion supplements when the target
+   *  nutrient was MEASURED and is NORMAL — even if a disease / symptom /
+   *  drug trigger would otherwise fire it. "Don't supplement what's
+   *  measured normal" — universal safety rule. */
+  labsLower?: string;
 }
 
 export interface EvaluateOptions {
@@ -1216,6 +1222,58 @@ export function evaluateIndications(
       });
     }
   }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // 2026-05-12-46 — MEASURED-NORMAL SUPPRESSION (universal safety rule)
+  // For nutrient-repletion supplements: if the patient's bloodwork
+  // includes a measurement for the target nutrient AND that measurement
+  // is NORMAL/healthy (no outlier flag), suppress the empirical
+  // recommendation regardless of what trigger fired it.
+  //
+  // Example: IBD condition fires B12 (disease_mechanism). But if the
+  // patient's labs show B12 = 600 pg/mL (normal), the engine drops the
+  // B12 recommendation. "Don't supplement what's measured normal."
+  //
+  // EXCEPTION: lab_finding source is kept — if a lab fires the
+  // supplement, the lab obviously says it's not normal.
+  // ─────────────────────────────────────────────────────────────────────
+  const NUTRIENT_MARKER_PATTERNS: Array<{ supplementKey: RegExp; marker: RegExp }> = [
+    { supplementKey: /^vit_b12_methyl$/,            marker: /\b(b.?12|cobalamin|vitamin b.?12)\b/i },
+    { supplementKey: /^methylfolate$/,              marker: /\b(folate|folic acid|rbc folate|serum folate)\b/i },
+    { supplementKey: /^iron_bisglycinate$/,         marker: /\bferritin\b/i },
+    { supplementKey: /^(vit_d3_1000|vit_d3_4000)$/, marker: /\b(vitamin d|25.?hydroxy)\b/i },
+    { supplementKey: /^mg_/,                        marker: /\b(magnesium|rbc magnesium|serum magnesium)\b/i },
+    { supplementKey: /^selenium/,                   marker: /\bselenium\b/i },
+    { supplementKey: /^zinc/,                       marker: /\bzinc\b/i },
+    { supplementKey: /^riboflavin_b2$/,             marker: /\b(riboflavin|vitamin b.?2)\b/i },
+    { supplementKey: /^vit_b6_p5p$/,                marker: /\b(vitamin b.?6|pyridoxal|b.?6 plasma)\b/i },
+    { supplementKey: /^vit_e_/,                     marker: /\bvitamin e|tocopherol\b/i },
+    { supplementKey: /^biotin/,                     marker: /\bbiotin\b/i },
+  ];
+  const labsTextLower = (input.labsLower ?? '').toLowerCase();
+  const markerMeasuredNormal = (markerPattern: RegExp): boolean => {
+    if (!labsTextLower) return false;
+    const lines = labsTextLower.split('\n');
+    for (const line of lines) {
+      if (!markerPattern.test(line)) continue;
+      // Match flag suffix [normal|healthy|optimal] — any of these means
+      // measured and not an outlier. Skip the line if flag is low /
+      // watch / high — those would already trigger a lab_finding rule.
+      if (/\[(normal|healthy|optimal)\]/.test(line)) return true;
+    }
+    return false;
+  };
+  const filtered = out.filter(c => {
+    // Only consider suppression for empirical sources. Lab-finding
+    // means a lab fired the rule — never suppress.
+    if (c.sourcedFrom === 'lab_finding') return true;
+    const match = NUTRIENT_MARKER_PATTERNS.find(m => m.supplementKey.test(c.key));
+    if (!match) return true; // not a nutrient-repletion supplement
+    if (markerMeasuredNormal(match.marker)) return false; // measured-normal → drop
+    return true;
+  });
+  out.length = 0;
+  out.push(...filtered);
 
   // Sort by (priority, source). Same ordering as the legacy engine so
   // callers see consistent ranking.
