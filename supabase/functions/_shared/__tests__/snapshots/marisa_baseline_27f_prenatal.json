@@ -56,6 +56,11 @@
       "priority": "high"
     },
     {
+      "name": "GGT (Gamma-Glutamyl Transferase)",
+      "icd10": "R74.0",
+      "priority": "high"
+    },
+    {
       "name": "Lp(a) — Lipoprotein(a)",
       "icd10": "E78.5",
       "priority": "high"

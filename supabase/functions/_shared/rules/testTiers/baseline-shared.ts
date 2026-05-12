@@ -142,6 +142,45 @@ export const BASELINE_SHARED: TestIndication[] = [
     tests: [{ key: 'ggt', whyShort: 'Liver baseline at 40+ — sensitive marker for biliary stress, NAFLD, alcohol-related injury', trigger: 'd' }],
   },
 
+  // ── GGT — signal-driven for adults under 40 ─────────────────────────
+  // Any liver-enzyme abnormality, statin user, NAFLD, or alcohol signal
+  // → GGT regardless of age. Catches elevated-ALT 28-year-olds the
+  // age-40 baseline misses.
+  {
+    id: 'baseline_ggt_signal_under_40',
+    triggers: [
+      { kind: 'age_min', value: 18 },
+      { kind: 'age_max', value: 39 },
+      { kind: 'any', of: [
+        { kind: 'flag_true', flag: 'altElevated' },
+        { kind: 'flag_true', flag: 'astElevated' },
+        { kind: 'flag_true', flag: 'bilirubinElevated' },
+        { kind: 'flag_true', flag: 'onStatin' },
+        { kind: 'condition_match', pattern: /\b(alcohol use|alcoholism|nafld|fatty liver|hepatitis|cirrhos)/i },
+      ]},
+    ],
+    tests: [{ key: 'ggt', whyShort: 'Liver enzyme abnormal / statin / NAFLD / alcohol signal — GGT separates biliary from hepatocellular pattern', trigger: 'd' }],
+  },
+
+  // ── hs-CRP — signal-driven for adults under 40 ──────────────────────
+  // CV / autoimmune / inflammatory signal → hs-CRP regardless of age.
+  // Useful for IBD patients, dyslipidemia, family hx CV, joint sx.
+  {
+    id: 'baseline_hs_crp_signal_under_40',
+    triggers: [
+      { kind: 'age_min', value: 18 },
+      { kind: 'age_max', value: 39 },
+      { kind: 'any', of: [
+        { kind: 'condition_match', pattern: /\b(diabetes|hypertension|cad|coronary|stroke|tia|autoimmune|lupus|rheumatoid|psoriasis|ibd|crohn|colitis|family history.*coronary|family history.*cardiac|familial hypercholesterol)/i },
+        { kind: 'flag_true', flag: 'ldlHigh' },
+        { kind: 'flag_true', flag: 'tgHigh' },
+        { kind: 'flag_true', flag: 'glucoseWatch' },
+        { kind: 'flag_true', flag: 'hasJointSymptoms' },
+      ]},
+    ],
+    tests: [{ key: 'hs_crp', whyShort: 'CV / metabolic / autoimmune / IBD signal — hs-CRP captures inflammation that amplifies CV and disease-activity risk regardless of age', trigger: 'd' }],
+  },
+
   // ── Lp(a) — ONCE-IN-LIFETIME (the one exception) ────────────────────
   // AHA/ESC: measure once in every adult. Doesn't change — genetic.
   // This is the only baseline rule that keeps a drawn-suppression gate.

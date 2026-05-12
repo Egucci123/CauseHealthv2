@@ -502,7 +502,7 @@ const RULES: BackstopRule[] = [
         category: 'gi',
         confidence: isHigh ? 'high' : 'moderate',
         evidence: `Liver enzymes elevated: ${ev.join(', ')}. ${astDominant || macrocytic ? 'The AST/ALT ratio and/or macrocytic red cells point toward alcohol-related liver stress; NAFLD remains in the differential.' : 'Both alcohol-related liver disease and NAFLD can produce this pattern.'}`,
-        confirmatory_tests: ['Liver Ultrasound', 'GGT (already drawn)', 'Hepatitis B + C serology', 'Ferritin + Iron Studies (rule out hemochromatosis)', 'Fasting Insulin + HOMA-IR'],
+        confirmatory_tests: ['Liver Ultrasound', 'GGT', 'Hepatitis B + C serology', 'Ferritin + Iron Studies (rule out hemochromatosis)', 'Fasting Insulin + HOMA-IR'],
         icd10: 'K76.9',
         what_to_ask_doctor: "My liver enzymes are elevated. Can we get a liver ultrasound, hepatitis B and C screening, and iron studies to figure out what's driving this? I'd also like to honestly review my alcohol intake.",
         source: 'deterministic',
