@@ -591,3 +591,298 @@ export function buildExecutiveSummary(facts: ClinicalFacts): string[] {
   }
   return bullets.slice(0, 5);
 }
+
+// ──────────────────────────────────────────────────────────────────────
+// 2026-05-12-36 — DETERMINISTIC TEMPLATES FOR DOCTOR-PREP NARRATIVE
+// Replaces AI-generated chief_complaint, HPI, questions_to_ask, discussion
+// points, patient_questions, functional_medicine_note. Engine-derived
+// strings only — every claim is traceable to a deterministic fact.
+// Universal across every patient.
+// ──────────────────────────────────────────────────────────────────────
+
+/** Pure structural age-decade label for prose ("60-year-old" not "60s"). */
+function ageLabel(age: number | null): string {
+  if (age == null || !Number.isFinite(age)) return 'adult';
+  return `${age}-year-old`;
+}
+function sexLabel(sex: 'male' | 'female' | null): string {
+  return sex === 'male' ? 'male' : sex === 'female' ? 'female' : 'patient';
+}
+
+/** Chief complaint — clinical phrase, ≤15 words. Universal pattern:
+ *  "Follow-up for [primary outlier or condition], [secondary], [tertiary]." */
+export function buildChiefComplaint(facts: ClinicalFacts): string {
+  const parts: string[] = [];
+  // Primary: most severe outlier marker name
+  const topOutlier = facts.labs.outliers[0];
+  if (topOutlier) {
+    const direction = topOutlier.flag.includes('high') ? 'elevated' : topOutlier.flag.includes('low') ? 'low' : 'borderline';
+    parts.push(`${direction} ${topOutlier.marker}`);
+  }
+  // Secondary: top high-confidence condition (different from outlier)
+  const topCondition = facts.conditions.find(c => c.confidence === 'high');
+  if (topCondition && parts.length < 2) {
+    parts.push(topCondition.name.split('(')[0].trim().toLowerCase());
+  }
+  // Tertiary: top severity-4+ symptom
+  const topSymptom = facts.patient.symptoms.find(s => s.severity >= 4);
+  if (topSymptom && parts.length < 3) {
+    parts.push(topSymptom.name.toLowerCase());
+  }
+  if (parts.length === 0) return 'Wellness check-in with lab review.';
+  return `Follow-up for ${parts.join(', ')}.`;
+}
+
+/** HPI — MD-to-MD voice, 2-3 sentences. Structure is canonical:
+ *  "[age]-year-old [sex] with [PMH] on [meds]. Recent labs: [outliers].
+ *   Reports [symptoms]. [Pattern interpretation if any]." */
+export function buildHpi(facts: ClinicalFacts): string {
+  const a = ageLabel(facts.patient.age);
+  const s = sexLabel(facts.patient.sex);
+  const pmh = facts.patient.conditions.length > 0
+    ? `with ${facts.patient.conditions.join(', ')}`
+    : '';
+  const meds = facts.patient.meds.length > 0
+    ? ` on ${facts.patient.meds.join(', ')}`
+    : '';
+  const opener = `${a} ${s}${pmh ? ' ' + pmh : ''}${meds}.`;
+
+  const outliers = facts.labs.outliers.slice(0, 4);
+  const labLine = outliers.length > 0
+    ? ` Recent labs reveal ${outliers.map(o => `${o.marker} ${o.value}`).join(', ')}.`
+    : '';
+
+  const sxs = facts.patient.symptoms.filter(s => s.severity >= 3).slice(0, 4);
+  const sxLine = sxs.length > 0
+    ? ` Reports ${sxs.map(x => x.name.toLowerCase()).join(', ')}.`
+    : '';
+
+  const topCondition = facts.conditions[0];
+  const patternLine = topCondition
+    ? ` Pattern fits ${topCondition.name.toLowerCase()}.`
+    : '';
+
+  return (opener + labLine + sxLine + patternLine).slice(0, 360);
+}
+
+/** Patient-voice questions — each tied to a specific finding in FACTS.
+ *  Uses engine's per-condition what_to_ask_doctor strings (clinically
+ *  curated) + outlier-specific asks for unexplained markers. */
+export function buildQuestionsToAsk(
+  facts: ClinicalFacts,
+): Array<{ emoji: string; question: string; why: string }> {
+  const out: Array<{ emoji: string; question: string; why: string }> = [];
+  const seen = new Set<string>();
+
+  // 1. Per-condition: the engine's what_to_ask_doctor string is already
+  //    a curated question. Use it verbatim.
+  for (const c of facts.conditions.slice(0, 6)) {
+    const q = c.what_to_ask_doctor;
+    if (!q || !q.trim()) continue;
+    const k = q.toLowerCase().slice(0, 50);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push({
+      emoji: emojiForCondition(c.name),
+      question: q,
+      why: c.evidence.slice(0, 160),
+    });
+    if (out.length >= 8) break;
+  }
+
+  // 2. Critical-range outliers without a condition card: ask about workup.
+  const criticalOutliers = facts.labs.outliers
+    .filter(o => o.flag.startsWith('critical'))
+    .filter(o => !facts.conditions.some(c => c.evidence.includes(o.marker)));
+  for (const o of criticalOutliers.slice(0, 2)) {
+    if (out.length >= 8) break;
+    out.push({
+      emoji: '⚠️',
+      question: `My ${o.marker} is ${o.value} ${o.unit} — what should we do about it?`,
+      why: o.interpretation ?? `${o.marker} is in the critical range.`,
+    });
+  }
+
+  // 3. Depletion-driven: if a medication depletion has a monitoring test,
+  //    ask the doctor to order it.
+  for (const d of facts.depletions.filter(x => x.severity === 'high').slice(0, 2)) {
+    if (out.length >= 8) break;
+    if (!d.monitoringTest) continue;
+    out.push({
+      emoji: '💊',
+      question: `Can we check ${d.nutrient} since I'm on ${d.medsMatched[0] ?? d.medClass}?`,
+      why: d.mechanism.slice(0, 160),
+    });
+  }
+  return out;
+}
+
+/** Discussion points — "lead with the ask" prose for the doctor visit.
+ *  Each is 1-2 sentences derived from a condition or finding. */
+export function buildDiscussionPoints(facts: ClinicalFacts): string[] {
+  const out: string[] = [];
+  // 1. Top conditions framed as discussion items
+  for (const c of facts.conditions.slice(0, 4)) {
+    const tests = (c.confirmatory_tests ?? []).slice(0, 2).map((t: any) =>
+      typeof t === 'string' ? t : (t?.test ?? ''),
+    ).filter(Boolean);
+    const testsClause = tests.length > 0 ? ` Tests to discuss: ${tests.join(', ')}.` : '';
+    out.push(`${c.name}. ${c.evidence.split('.')[0]}.${testsClause}`.slice(0, 200));
+  }
+  // 2. Critical outliers
+  const criticalOutliers = facts.labs.outliers.filter(o => o.flag.startsWith('critical')).slice(0, 2);
+  for (const o of criticalOutliers) {
+    if (out.length >= 6) break;
+    out.push(`${o.marker} ${o.value} ${o.unit} is in the critical range — review at the visit and decide on workup or treatment.`);
+  }
+  return out.slice(0, 6);
+}
+
+/** Plain-language fallback question list — same source as questions_to_ask
+ *  but stripped to just the question string for users who skip the rich UI. */
+export function buildPatientQuestions(facts: ClinicalFacts): string[] {
+  return buildQuestionsToAsk(facts).map(q => q.question).slice(0, 8);
+}
+
+/** Functional medicine note — bridges conventional findings to root-cause
+ *  framing. 2-3 sentences, template-driven from engine facts. */
+
+export function buildFunctionalMedicineNote(facts: ClinicalFacts): string {
+  const outliers = facts.labs.outliers.slice(0, 3).map(function(o){return o.marker.toLowerCase();});
+  const conditions = facts.conditions.slice(0, 2).map(function(c){return c.name.split('(')[0].trim();});
+  const depletions = facts.depletions.slice(0, 2).map(function(d){return (d.medsMatched[0] || d.medClass) + '-driven ' + d.nutrient;});
+
+  const labClause = outliers.length > 0 ? 'The lab pattern (' + outliers.join(', ') + ') ' : 'The current labs ';
+  const condClause = conditions.length > 0 ? 'frames ' + conditions.join(' + ') : 'point to modifiable metabolic drivers';
+  const interventions = [];
+  if (depletions.length > 0) interventions.push('addressing ' + depletions.join(' + ') + ' depletion');
+  if (facts.supplementCandidates.some(function(s){return s.category === 'liver_metabolic';})) interventions.push('liver / metabolic support');
+  if (facts.supplementCandidates.some(function(s){return s.category === 'cardio';})) interventions.push('lipid optimization');
+  if (facts.supplementCandidates.some(function(s){return s.category === 'nutrient_repletion';})) interventions.push('nutrient repletion');
+  if (interventions.length === 0) interventions.push('foundational hydration / sleep / movement');
+
+  return (labClause + condClause + '. The plan ' + interventions.join(', ') + ', alongside any current prescription regimens.').slice(0, 360);
+}
+
+export interface WorkoutEntry {
+  emoji: string;
+  day: 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun';
+  title: string;
+  duration_min: number;
+  description: string;
+  why: string;
+}
+
+// WORKOUTS — 4-6 templated workouts/week, calibrated to conditions + age + sex
+export function buildWorkouts(facts: ClinicalFacts): WorkoutEntry[] {
+  const age = facts.patient.age || 40;
+  const conds = (facts.patient.conditions.join(' ') + ' ' + facts.conditions.map(function(c){return c.name;}).join(' ')).toLowerCase();
+  const sxs = facts.patient.symptoms.map(function(s){return s.name.toLowerCase();}).join(' ');
+
+  const hasIBD = /ibd|crohn|colitis|ulcerative/.test(conds);
+  const hasCV = /hypertension|cad|coronary|stroke|atrial fib/.test(conds);
+  const hasMetabolic = /metabolic|insulin|prediab|nafld|t2d|hyperlipid/.test(conds);
+  const hasAutoimmune = /lupus|rheumatoid|psoriasis|hashimoto|graves/.test(conds);
+  const hasOsteoporosis = /osteoporos|osteopen|fragility fracture|low bone density/.test(conds);
+  const fatigue = /fatigue|exhaust|tired|exercise intoleran/.test(sxs);
+  const sleepIssue = /insomn|sleep|wak/.test(sxs);
+
+  const senior = age >= 65;
+  const youngActive = age < 35;
+  const flareRisk = hasIBD || hasAutoimmune;
+  const cardioIntensity = senior || flareRisk || fatigue ? 'low' : hasMetabolic || hasCV ? 'moderate' : 'high';
+
+  const workouts = [];
+
+  workouts.push({
+    emoji: '\u{1F4AA}',
+    day: 'Mon',
+    title: senior || hasOsteoporosis ? 'Bodyweight resistance' : 'Full-body strength',
+    duration_min: senior ? 25 : 40,
+    description: senior || hasOsteoporosis
+      ? 'Chair squats, wall push-ups, banded rows, plank holds. 2 sets, 10 reps each.'
+      : flareRisk
+      ? 'Squats, push-ups, rows, plank, glute bridges. 2-3 sets of 8-10 reps. Stop short of failure.'
+      : 'Squats, deadlifts, push-ups, rows, plank. 3 sets of 8-12 reps.',
+    why: hasOsteoporosis ? 'Resistance training is the best modifiable bone-density intervention.'
+      : senior ? 'Maintains muscle + balance as you age.'
+      : 'Builds metabolic reserve; the most leveraged 30 min of your week.',
+  });
+
+  workouts.push({
+    emoji: '\u{1F6B6}',
+    day: 'Tue',
+    title: cardioIntensity === 'low' ? 'Easy walk' : 'Zone-2 walk or cycle',
+    duration_min: cardioIntensity === 'low' ? 20 : 35,
+    description: cardioIntensity === 'low'
+      ? 'Comfortable pace, ideally outdoors. Nose-breathing throughout.'
+      : 'Conversational pace — you can talk but not sing. Hilly route or steady incline if possible.',
+    why: hasMetabolic ? 'Zone-2 cardio is the most evidence-based intervention for insulin sensitivity.'
+      : 'Builds aerobic base + mitochondrial density without overstressing recovery.',
+  });
+
+  workouts.push({
+    emoji: '\u{1F9D8}',
+    day: 'Wed',
+    title: flareRisk ? 'Restorative yoga' : sleepIssue ? 'Evening yoga' : 'Mobility + stretching',
+    duration_min: 25,
+    description: flareRisk
+      ? 'Gentle restorative poses, breathwork. Avoid deep twists during active disease.'
+      : sleepIssue
+      ? 'Slow flow, supine poses, 4-7-8 breathing for 5 min at the end.'
+      : 'Hip openers, thoracic mobility, shoulder + calf stretching.',
+    why: sleepIssue ? 'Evening parasympathetic activation drops cortisol + improves sleep.'
+      : 'Recovery day — keeps joints mobile, drops sympathetic tone.',
+  });
+
+  workouts.push({
+    emoji: '\u{1F3CB}',
+    day: 'Thu',
+    title: senior ? 'Balance + light strength' : 'Lower-body strength',
+    duration_min: senior ? 25 : 35,
+    description: senior
+      ? 'Single-leg stands, step-ups, heel raises, banded glute bridges. 2 sets of 8-10.'
+      : 'Squats or split squats, Romanian deadlifts, calf raises, plank. 3 sets.',
+    why: senior ? 'Single-leg work cuts fall risk — highest-leverage senior fitness intervention.'
+      : 'Posterior chain + glute work; drives metabolic improvement.',
+  });
+
+  if (cardioIntensity !== 'low') {
+    workouts.push({
+      emoji: '\u{1F3C3}',
+      day: 'Fri',
+      title: hasCV ? 'Zone-2 cardio' : youngActive ? 'Intervals or run' : 'Brisk walk or bike',
+      duration_min: hasCV ? 40 : youngActive ? 30 : 40,
+      description: hasCV
+        ? 'Steady moderate pace — heart-rate target 60-70% max.'
+        : youngActive
+        ? '5 min easy + 6 x (1 min hard / 2 min easy) + 5 min cool-down.'
+        : '40-min brisk walk outdoors. Add 4-5 short hills if available.',
+      why: hasCV ? 'Steady zone-2 builds mitochondrial density without spiking BP.'
+        : youngActive ? 'Short intervals lift VO2max efficiently.'
+        : 'Longer steady cardio drives weekly minutes-of-movement target.',
+    });
+  } else {
+    workouts.push({
+      emoji: '\u{1F6B6}',
+      day: 'Fri',
+      title: 'Outdoor walk + sunlight',
+      duration_min: 25,
+      description: 'Walk outdoors, ideally morning or late afternoon.',
+      why: 'Sunlight + mild aerobic activity anchors circadian rhythm.',
+    });
+  }
+
+  workouts.push({
+    emoji: '\u{1F392}',
+    day: 'Sat',
+    title: youngActive ? 'Long hike or sport' : 'Longer walk or hike',
+    duration_min: 60,
+    description: youngActive
+      ? 'Pickleball, tennis, hike, climbing, basketball — anything for 60+ min that you enjoy.'
+      : 'Walking trail, hike, golf with walking, gardening. 60-90 min total movement.',
+    why: 'Long-form weekend movement adds aerobic volume + mental recovery.',
+  });
+
+  return workouts.slice(0, 6);
+}

@@ -147,26 +147,37 @@ serve(async (req) => {
     });
     console.log(`[v2] facts ${fromCache ? 'cache HIT' : 'cache MISS — computed'} (hash=${factsHash.slice(0, 8)}): ${facts.tests.length} tests, ${facts.conditions.length} conditions, ${facts.supplementCandidates.length} supps, ${facts.emergencyAlerts.length} alerts`);
 
-    // 4. AI calls (2026-05-12-29: action_plan is now fully deterministic
-    //    — no AI call. Saves one full Sonnet round-trip per generation.)
+    // 4. AI calls. 2026-05-12-36: action_plan AND workouts are now fully
+    //    deterministic. The stack AI call fires ONLY when long-tail
+    //    supplements need handwritten notes (no canned content in the
+    //    registry). Most patients skip it entirely.
     const action = buildActionPlanDeterministic(facts);
+    const suppsNeedingAI = facts.supplementCandidates.filter(s =>
+      !(s as any).practicalNote || !(s as any).evidenceNote
+    );
+    const skipStackAI = suppsNeedingAI.length === 0;
+
+    const stackPromise: Promise<StackOutput> = skipStackAI
+      ? Promise.resolve(stackFallback(facts))
+      : callAnthropicTool<StackOutput>({
+          system: STACK_SYSTEM_PROMPT,
+          user: buildStackUserMessage(facts),
+          tool: STACK_TOOL_SCHEMA,
+        });
+
     const [narrativeRes, stackRes] = await Promise.allSettled([
       callAnthropicTool<NarrativeOutput>({
         system: NARRATIVE_SYSTEM_PROMPT,
         user: buildNarrativeUserMessage(facts),
         tool: NARRATIVE_TOOL_SCHEMA,
       }),
-      callAnthropicTool<StackOutput>({
-        system: STACK_SYSTEM_PROMPT,
-        user: buildStackUserMessage(facts),
-        tool: STACK_TOOL_SCHEMA,
-      }),
+      stackPromise,
     ]);
 
     const narrative = settledOrFallback(narrativeRes, narrativeFallback(facts));
     const stack = settledOrFallback(stackRes, stackFallback(facts));
 
-    console.log(`[v2] AI calls finished in ${Date.now() - startTime}ms (narrative=${narrativeRes.status}, stack=${stackRes.status}, action=deterministic)`);
+    console.log(`[v2] AI calls finished in ${Date.now() - startTime}ms (narrative=${narrativeRes.status}, stack=${skipStackAI ? 'skipped(deterministic)' : stackRes.status}, action=deterministic)`);
 
     // 5. Merge into final plan (same shape as v1 for frontend compatibility)
     const plan = mergeIntoFinalPlan({ facts, narrative, stack, action, profile, factsHash });
@@ -732,7 +743,11 @@ function mergeIntoFinalPlan(args: {
           limit: Array.isArray(stack.eating_pattern.limit) ? stack.eating_pattern.limit : facts.eatingPattern.limit,
         }
       : facts.eatingPattern,
-    workouts: Array.isArray(stack.workouts) ? stack.workouts : [],
+    // 2026-05-12-36: workouts deterministic from engine (proseTemplates).
+    // Engine wins; AI workouts kept as a soft fallback only.
+    workouts: (Array.isArray(facts.workouts) && facts.workouts.length > 0)
+      ? facts.workouts
+      : (Array.isArray(stack.workouts) ? stack.workouts : []),
     lifestyle_interventions: {
       diet: (Array.isArray(stack.lifestyle_interventions?.diet) && stack.lifestyle_interventions.diet.length > 0) ? stack.lifestyle_interventions.diet : facts.lifestyleInterventions.diet,
       sleep: (Array.isArray(stack.lifestyle_interventions?.sleep) && stack.lifestyle_interventions.sleep.length > 0) ? stack.lifestyle_interventions.sleep : facts.lifestyleInterventions.sleep,

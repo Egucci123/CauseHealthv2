@@ -102,18 +102,27 @@ serve(async (req) => {
     });
     console.log(`[doctor-prep-v2] facts ${fromCache ? 'cache HIT' : 'cache MISS'} (hash=${factsHash.slice(0, 8)}): ${facts.tests.length} tests, ${facts.conditions.length} conditions`);
 
-    // ── 4. Single AI prose call ────────────────────────────────────────
-    const aiOutput = await callAnthropicTool<DoctorPrepOutput>({
-      system: DOCTOR_PREP_SYSTEM_PROMPT,
-      user: buildDoctorPrepUserMessage(facts),
-      tool: DOCTOR_PREP_TOOL_SCHEMA,
-    }).catch(e => {
-      console.error('[doctor-prep-v2] AI call failed, using fallback:', e);
-      return doctorPrepFallback(facts);
-    });
+    // ── 4. Doctor prep is now 100% deterministic (2026-05-12-36) ───────
+    // Every narrative field used to require an AI call:
+    //   chief_complaint, hpi, questions_to_ask, discussion_points,
+    //   patient_questions, functional_medicine_note, headline,
+    //   tell_doctor, executive_summary.
+    // All now come from proseTemplates.ts. Headline derived from the
+    // top condition or outlier — no model variance, no AI cost.
+    const ai: DoctorPrepOutput = {
+      headline: deterministicHeadline(facts),
+      executive_summary: facts.executiveSummary,
+      chief_complaint: facts.chiefComplaint,
+      hpi: facts.hpi,
+      tell_doctor: facts.tellDoctor,
+      questions_to_ask: facts.questionsToAsk,
+      discussion_points: facts.discussionPoints,
+      patient_questions: facts.patientQuestions,
+      functional_medicine_note: facts.functionalMedicineNote,
+    };
 
-    // ── 5. Merge facts + AI prose → v1 shape ───────────────────────────
-    const doc = mergeIntoDoctorPrepOutput({ facts, ai: aiOutput, factsHash });
+    // ── 5. Merge facts + deterministic prose → v1 shape ────────────────
+    const doc = mergeIntoDoctorPrepOutput({ facts, ai, factsHash });
 
     // ── 6. Save to doctor_prep_documents ───────────────────────────────
     // NOTE: `generated_at` is NOT a column on this table — that field
@@ -160,6 +169,20 @@ function pickFlag(l: any, ctx: { age: number; sex: 'male' | 'female' | string; i
     },
     { age: ctx.age, sex: ctx.sex, isPregnant: ctx.isPregnant ?? false },
   );
+}
+
+/** 2026-05-12-36: deterministic headline for the doctor prep document.
+ *  Picks the top condition or critical outlier and produces a ≤12-word
+ *  clinical headline. Replaces the AI-generated version. Universal. */
+function deterministicHeadline(facts: any): string {
+  const topCondition = (facts.conditions ?? []).find((c: any) => c.confidence === 'high');
+  const criticalOutlier = (facts.labs?.outliers ?? []).find((o: any) => String(o.flag ?? '').startsWith('critical'));
+  if (topCondition && criticalOutlier) {
+    return `${topCondition.name.split('(')[0].trim()} follow-up with ${criticalOutlier.marker} review.`.slice(0, 90);
+  }
+  if (topCondition) return `${topCondition.name.split('(')[0].trim()} follow-up.`.slice(0, 90);
+  if (criticalOutlier) return `${criticalOutlier.marker} ${criticalOutlier.value} ${criticalOutlier.unit} review.`.slice(0, 90);
+  return 'Wellness check-in with lab review.';
 }
 
 function json(body: unknown, status = 200): Response {

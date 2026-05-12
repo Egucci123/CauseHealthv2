@@ -37,6 +37,13 @@ import {
   buildLifestyleInterventions,
   buildTellDoctor,
   buildExecutiveSummary,
+  buildChiefComplaint,
+  buildHpi,
+  buildQuestionsToAsk,
+  buildDiscussionPoints,
+  buildPatientQuestions,
+  buildFunctionalMedicineNote,
+  buildWorkouts,
   type TodayAction,
   type ActionPlan,
   type FindingExplanation,
@@ -44,6 +51,7 @@ import {
   type EatingPattern,
   type LifestyleBuckets,
   type TellDoctorItem,
+  type WorkoutEntry,
 } from './rules/proseTemplates.ts';
 
 // ──────────────────────────────────────────────────────────────────────
@@ -192,6 +200,18 @@ export interface ClinicalFacts {
   lifestyleInterventions: LifestyleBuckets;
   tellDoctor: TellDoctorItem[];
   executiveSummary: string[];
+
+  // 2026-05-12-36 — Doctor-prep deterministic templates.
+  // Engine produces all the medical writing the AI used to generate:
+  // chief complaint, HPI, questions to ask, discussion points, patient
+  // questions, functional medicine note, and the workout plan.
+  chiefComplaint: string;
+  hpi: string;
+  questionsToAsk: Array<{ emoji: string; question: string; why: string }>;
+  discussionPoints: string[];
+  patientQuestions: string[];
+  functionalMedicineNote: string;
+  workouts: WorkoutEntry[];
 }
 
 export interface LabOutlierFact {
@@ -542,6 +562,13 @@ export function buildPlan(input: PatientInput): ClinicalFacts {
     lifestyleInterventions: { diet:[], sleep:[], exercise:[], stress:[] },
     tellDoctor: [],
     executiveSummary: [],
+    chiefComplaint: '',
+    hpi: '',
+    questionsToAsk: [],
+    discussionPoints: [],
+    patientQuestions: [],
+    functionalMedicineNote: '',
+    workouts: [],
   };
   const symptomsAddressed = buildSymptomsAddressed(factsForSymptoms);
 
@@ -646,6 +673,8 @@ export function buildPlan(input: PatientInput): ClinicalFacts {
       eatingPattern: { name:'', rationale:'', emphasize:[], limit:[] },
       lifestyleInterventions: { diet:[], sleep:[], exercise:[], stress:[] },
       tellDoctor: [], executiveSummary: [],
+      chiefComplaint: '', hpi: '', questionsToAsk: [], discussionPoints: [],
+      patientQuestions: [], functionalMedicineNote: '', workouts: [],
     }),
     // ────────────────────────────────────────────────────────────────────
     // Deterministic prose — computed last with the full facts in scope.
@@ -673,6 +702,8 @@ export function buildPlan(input: PatientInput): ClinicalFacts {
         eatingPattern: { name:'', rationale:'', emphasize:[], limit:[] },
         lifestyleInterventions: { diet:[], sleep:[], exercise:[], stress:[] },
         tellDoctor: [], executiveSummary: [],
+        chiefComplaint: '', hpi: '', questionsToAsk: [], discussionPoints: [],
+        patientQuestions: [], functionalMedicineNote: '', workouts: [],
       };
       return {
         todayActions: buildTodayActions(tmpFacts),
@@ -683,6 +714,13 @@ export function buildPlan(input: PatientInput): ClinicalFacts {
         lifestyleInterventions: buildLifestyleInterventions(tmpFacts),
         tellDoctor: buildTellDoctor(tmpFacts),
         executiveSummary: buildExecutiveSummary(tmpFacts),
+        chiefComplaint: buildChiefComplaint(tmpFacts),
+        hpi: buildHpi(tmpFacts),
+        questionsToAsk: buildQuestionsToAsk(tmpFacts),
+        discussionPoints: buildDiscussionPoints(tmpFacts),
+        patientQuestions: buildPatientQuestions(tmpFacts),
+        functionalMedicineNote: buildFunctionalMedicineNote(tmpFacts),
+        workouts: buildWorkouts(tmpFacts),
       };
     })(),
   };
