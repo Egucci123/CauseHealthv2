@@ -37,6 +37,19 @@ export function buildTestList(ctx: InjectionContext): TestOrder[] {
   const requests = buildUniversalTestInjectionRequests(ctx);
   const out: TestOrder[] = [];
   const seen = new Set<string>();
+  const seenNormalizedName = new Set<string>();
+
+  // Normalize for display-name dedup. Two registry keys with the same
+  // canonical name (e.g., dexa_female_65_or_risk vs dexa_if_long_term)
+  // would otherwise both render as "DEXA Scan (Bone Density)" in the
+  // patient's test list. Lower + strip parentheticals + collapse
+  // whitespace gives the comparison key.
+  const normalizeName = (s: string): string =>
+    s.toLowerCase()
+      .replace(/\([^)]*\)/g, ' ')      // strip parentheticals
+      .replace(/[^a-z0-9]+/g, ' ')     // non-alphanumeric → space
+      .replace(/\s+/g, ' ')
+      .trim();
 
   for (const req of requests) {
     if (seen.has(req.key)) continue;
@@ -45,7 +58,11 @@ export function buildTestList(ctx: InjectionContext): TestOrder[] {
       console.warn(`[testRules] Unknown registry key: ${req.key} — dropped`);
       continue;
     }
+    // Second dedup layer — display-name. Catches synonym registry keys.
+    const normName = normalizeName(def.canonical);
+    if (seenNormalizedName.has(normName)) continue;
     seen.add(req.key);
+    seenNormalizedName.add(normName);
     out.push({
       key: req.key,
       name: def.canonical,

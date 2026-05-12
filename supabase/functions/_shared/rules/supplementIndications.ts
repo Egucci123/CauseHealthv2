@@ -1021,6 +1021,17 @@ export function evaluateIndications(
   const topN = opts.topN ?? 6;
   const out: SupplementCandidate[] = [];
   const seenKeys = new Set<string>();
+  const seenNutrient = new Set<string>();
+
+  // Normalize nutrient names for dose-variant dedup. mg_glycinate_200 +
+  // mg_glycinate_300 + mg_glycinate_400 all render as "Magnesium
+  // Glycinate" — only one should appear in the final stack.
+  const normalizeNutrient = (s: string): string =>
+    s.toLowerCase()
+      .replace(/\([^)]*\)/g, ' ')
+      .replace(/[^a-z0-9]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
 
   for (const ind of INDICATIONS) {
     // Trigger match: ANY trigger must fire.
@@ -1043,7 +1054,12 @@ export function evaluateIndications(
       // Dedup by supplement key — same supplement only added once even
       // if multiple indications fire it.
       if (seenKeys.has(ref.key)) continue;
+      // Dedup by nutrient display name — catches dose-variant keys
+      // (mg_glycinate_200 / _300 / _400 all = "Magnesium Glycinate").
+      const normNutrient = normalizeNutrient(base.nutrient);
+      if (seenNutrient.has(normNutrient)) continue;
       seenKeys.add(ref.key);
+      seenNutrient.add(normNutrient);
 
       out.push({
         key: ref.key,

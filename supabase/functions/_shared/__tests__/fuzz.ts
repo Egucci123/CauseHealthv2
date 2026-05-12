@@ -141,6 +141,29 @@ const INVARIANTS: Array<{ name: string; check: Invariant }> = [
 
   // Counts within bounds
   { name:'test count ≤ 25', check:(_,p)=> p.tests.length <= 25 ? null : `tests=${p.tests.length}` },
+
+  // No duplicate test names in the output — added 2026-05-12-21 after
+  // evangutman audit surfaced "Fasting Insulin + HOMA-IR" appearing
+  // twice (baseline + pattern rules used different registry keys).
+  { name:'no duplicate test names', check:(_,p)=> {
+    const names = p.tests.map(t => t.name);
+    const seen = new Set(names);
+    if (names.length === seen.size) return null;
+    const dupes = names.filter((n, i) => names.indexOf(n) !== i);
+    return `duplicate test names: ${[...new Set(dupes)].join(', ')}`;
+  }},
+  { name:'no duplicate test keys',  check:(_,p)=> {
+    const keys = p.tests.map((t: any) => t.key).filter(Boolean);
+    return keys.length === new Set(keys).size ? null : `duplicate keys detected`;
+  }},
+  { name:'no duplicate supplement names', check:(_,p)=> {
+    const n = p.supplementCandidates.map(s => s.nutrient);
+    return n.length === new Set(n).size ? null : `duplicate supps: ${n.join(', ')}`;
+  }},
+  { name:'no duplicate condition names', check:(_,p)=> {
+    const n = p.conditions.map(c => c.name);
+    return n.length === new Set(n).size ? null : `duplicate conditions`;
+  }},
   { name:'supplement count ≤ 6', check:(_,p)=> p.supplementCandidates.length <= 6 ? null : `supps=${p.supplementCandidates.length}` },
 
   // Field integrity
