@@ -93,6 +93,11 @@
   ],
   "conditions": [
     {
+      "name": "Cortisol excess — rule out Cushing syndrome",
+      "icd10": "E24.9",
+      "confidence": "moderate"
+    },
+    {
       "name": "Thyroid pattern worth tracking (subclinical / early)",
       "icd10": "E03.9",
       "confidence": "moderate"

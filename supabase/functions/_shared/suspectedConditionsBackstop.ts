@@ -390,7 +390,12 @@ const RULES: BackstopRule[] = [
       const a1c = mark(ctx.labValues, [/^hemoglobin a1c/i, /^a1c\b/i]);
       const glucose = mark(ctx.labValues, [/^glucose\b/i, /^fasting glucose/i]);
       const insulin = mark(ctx.labValues, [/^insulin\b/i, /fasting insulin/i]);
-      const a1cPre = a1c && a1c.value >= 5.7 && a1c.value < 6.5;
+      // 2026-05-12-24: Lowered A1c threshold 5.7 → 5.6 (catches early
+      // pre-diabetic drift the standard ADA threshold misses). Glucose
+      // KEPT at ADA standard ≥100 — A1c is the more reliable early marker
+      // and Glucose 95-99 with metabolic signal is already caught by
+      // insulin_resistance_dyslipidemia rule.
+      const a1cPre = a1c && a1c.value >= 5.6 && a1c.value < 6.5;
       const glucElev = glucose && glucose.value >= 100 && glucose.value < 126;
       const insElev = insulin && insulin.value >= 10;
       if (a1cPre || glucElev || insElev) {
@@ -560,7 +565,10 @@ const RULES: BackstopRule[] = [
       const cortisol = mark(ctx.labValues, [/cortisol/i]);
       const onSteroid = /prednisone|prednisolone|methylprednisolone|dexamethasone|hydrocortisone/i.test(ctx.medsLower);
       if (onSteroid) return null; // exogenous — different workup
-      if (!cortisol || cortisol.value < 23) return null;
+      // 2026-05-12-24: lowered cortisol threshold 23 → 19 µg/dL to
+      // catch borderline elevations (close-call audit found 17% rate
+      // at 20-23 range). Confidence drops to moderate at 19-22.
+      if (!cortisol || cortisol.value < 19) return null;
       const sx = ctx.symptomsLower ?? '';
       const cushingSx: string[] = [];
       if (/weight gain|central obes|moon face|buffalo/i.test(sx)) cushingSx.push('central body changes');
@@ -722,7 +730,10 @@ const RULES: BackstopRule[] = [
     skipIfDx: ['hyperthyroidism', 'graves'],
     detect: (ctx) => {
       const tsh = mark(ctx.labValues, [/^tsh\b/i, /^thyroid[\s-]*stimulating[\s-]*hormone\b/i]);
-      if (!tsh || tsh.value >= 0.4) return null;
+      // 2026-05-12-24: TSH threshold raised 0.4 → 0.45 to catch
+      // borderline subclinical hyperthyroid (close-call audit found
+      // 26% miss rate at 0.40-0.42 range).
+      if (!tsh || tsh.value >= 0.45) return null;
       const sx = ctx.symptomsLower ?? '';
       const sxMatches: string[] = [];
       if (/\bheat intolerance\b/i.test(sx)) sxMatches.push('heat intolerance');
@@ -1286,26 +1297,37 @@ const RULES: BackstopRule[] = [
     },
   },
 
-  // ── Vitamin D deficiency (clinical) ────────────────────────────────────
+  // ── Vitamin D Deficiency / Insufficiency / Suboptimal — comprehensive
+  // 2026-05-12-24: Merged previous deficient-only rule with broader
+  // insufficient + suboptimal detection. Single source of truth. Engine
+  // had no pattern card for 20-30 (insufficient) before — surfaced via
+  // 5000-subtle audit (0% detection rate).
   {
     key: 'vitamin_d_deficiency',
-    alreadyRaisedIf: [/vitamin d def/i, /\bd deficien/i],
-    skipIfDx: [],
+    alreadyRaisedIf: [/vitamin d def/i, /\bd deficien/i, /vit.?d.*low/i, /25.?oh.?d.*low/i],
+    skipIfDx: ['vitamin_d_deficiency'],
     detect: (ctx) => {
-      const d = mark(ctx.labValues, [/^vitamin d\b/i, /25[-\s]?(oh|hydroxy)/i]);
-      if (d && d.value < 20) {
-        return {
-          name: 'Vitamin D Deficiency',
-          category: 'nutritional',
-          confidence: 'high',
-          evidence: `25-OH Vitamin D ${d.value} ng/mL — clinically deficient (<20).`,
-          confirmatory_tests: ['Repeat 25-OH Vitamin D after 8 weeks of D3', 'Calcium', 'PTH (parathyroid)'],
-          icd10: 'E55.9',
-          what_to_ask_doctor: "My vitamin D is very low. Can we start high-dose D3 (5,000 IU or more per day) and recheck in 8 weeks?",
-          source: 'deterministic',
-        };
-      }
-      return null;
+      const d = mark(ctx.labValues, [/25.?hydroxy.*vitamin d|vitamin d.*25|25\(?oh\)?d|25-hydroxyvitamin|^vitamin d\b/i]);
+      if (!d) return null;
+      const isDeficient = d.value < 20;
+      const isInsufficient = d.value >= 20 && d.value < 30;
+      // Suboptimal (30-40) is handled by the suboptimalFlags layer,
+      // not as a pattern card — avoids spamming healthy users with
+      // "your Vit D should be 40+" functional-medicine framing.
+      if (!isDeficient && !isInsufficient) return null;
+      const label = isDeficient ? 'Vitamin D Deficiency' : 'Vitamin D Insufficiency';
+      const confidence: 'high'|'moderate' = 'high';
+      const dosing = isDeficient ? '5,000 IU/day for 12 weeks' : '4,000 IU/day for 12 weeks';
+      return {
+        name: label,
+        category: 'nutritional',
+        confidence,
+        evidence: `Vitamin D 25-OH ${d.value} ng/mL. ${isDeficient ? 'Below 20 ng/mL — frank clinical deficiency.' : isInsufficient ? 'Below 30 ng/mL — Endocrine Society insufficiency threshold.' : 'In standard range but below functional-medicine optimal (40-60).'} Drives mood, immune function, bone density, autoimmunity risk. Affects 40%+ of US adults.`,
+        confirmatory_tests: ['Repeat 25-OH Vitamin D after 12 weeks of D3', 'Calcium (especially if deficient)', 'PTH (rule out secondary hyperparathyroidism if deficient)', 'Ionized Calcium (if long-term low Vit D)'],
+        icd10: 'E55.9',
+        what_to_ask_doctor: `My Vitamin D 25-OH is ${d.value} ng/mL. Can we start ${dosing} and recheck? Standard PCP recommendation, ACA-covered with any deficiency-related symptom (fatigue, mood, bone pain).`,
+        source: 'deterministic',
+      };
     },
   },
 
@@ -1356,12 +1378,17 @@ const RULES: BackstopRule[] = [
       const creat = mark(ctx.labValues, [/^creatinine\b/i]);
       const egfr = mark(ctx.labValues, [/\begfr\b|estimated.?glomerular/i]);
       const bun = mark(ctx.labValues, [/^bun\b|urea nitrogen/i]);
+      // 2026-05-12-24: lowered eGFR threshold 60 → 75 to catch
+      // subclinical CKD G2 (mild functional decline). Creatinine
+      // KEPT at >1.3 — eGFR is the more sensitive early marker;
+      // dropping Creat to 1.1 false-fires for healthy adults with
+      // muscular build (Creat 1.2 normal).
       const creatHigh = creat && creat.value > 1.3;
-      const egfrLow = egfr && egfr.value < 60;
+      const egfrLow = egfr && egfr.value < 75;
       const bunHigh = bun && bun.value > 25;
       if (!creatHigh && !egfrLow) return null;
       const stage = egfr
-        ? (egfr.value >= 60 ? 'G2 (mild)' : egfr.value >= 45 ? 'G3a (moderate)' :
+        ? (egfr.value >= 75 ? 'G1 (normal)' : egfr.value >= 60 ? 'G2 (mild)' : egfr.value >= 45 ? 'G3a (moderate)' :
            egfr.value >= 30 ? 'G3b (moderate-severe)' : egfr.value >= 15 ? 'G4 (severe)' : 'G5 (kidney failure)')
         : 'unstaged';
       const isHigh = egfr ? egfr.value < 45 : (creat ? creat.value > 1.8 : false);
@@ -1610,6 +1637,7 @@ const SYSTEM_NAMED_RULE_DEDUP: Record<string, string[]> = {
   iron_hematology:     ['iron_deficiency_anemia', 'hemoconcentration_dehydration', 'b12_deficiency', 'hemochromatosis', 'early_hypochromic_pattern'],
   adrenal:             ['cushing_syndrome_workup', 'adrenal_insufficiency', 'primary_aldosteronism', 'pheochromocytoma_workup'],
   parathyroid_calcium: ['primary_hyperparathyroidism'],
+  vitamin_d:           ['vitamin_d_deficiency'],
   inflammation:        ['inflammation_cv_amplifier', 'pmr_age_50plus'],
   b_vitamin:           ['b12_deficiency'],
   male_hormone:        ['low_t_male'],
