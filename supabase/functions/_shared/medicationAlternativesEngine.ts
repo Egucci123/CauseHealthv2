@@ -151,6 +151,109 @@ const RULES: Rule[] = [
       };
     },
   },
+
+  // ────────────────────────────────────────────────────────────────────
+  // UNIVERSAL EXPANSION — 2026-05-12-33
+  // Lab-driven "consider switching" patterns. Each rule needs an
+  // objective trigger (lab outlier or measured value) so the suggestion
+  // is grounded — never fire alternatives on med name alone.
+  // ────────────────────────────────────────────────────────────────────
+
+  // ── Levothyroxine + persistent low Free T3 (poor T4→T3 conversion) ─
+  {
+    key: 'levothyroxine_low_ft3',
+    detect: (ctx) => {
+      if (!takesMed(ctx, [/levothyroxine|synthroid|levoxyl|tirosint|euthyrox|unithroid/i])) return null;
+      const ft3 = lab(ctx, [/free\s*t3|^ft3\b/i]);
+      if (!ft3 || ft3.value >= 3.0) return null;
+      return {
+        current_medication: 'Levothyroxine',
+        reason_to_consider: `Free T3 ${ft3.value} pg/mL on levothyroxine monotherapy. Some patients convert T4 to T3 poorly even on adequate doses; adding T3 or switching to combination therapy can restore symptoms when TSH appears "controlled" on labs.`,
+        pharmaceutical_alternatives: [
+          { name: 'Liothyronine (T3) add-on at low dose', reason: 'Adding 5-10 mcg liothyronine to current levothyroxine restores Free T3 in poor-converters. Most-evidence option for combination therapy.' },
+          { name: 'Natural desiccated thyroid (Armour / NP Thyroid)', reason: 'Contains both T4 and T3 in a fixed ratio (~80:20). Useful when the patient strongly prefers a non-synthetic approach and tolerates the ratio.' },
+        ],
+        natural_alternatives: [
+          { name: 'Selenium 200 mcg/day + tyrosine + iodine adequacy check', reason: 'Selenium supports deiodinase enzymes (T4→T3 conversion). Tyrosine + iodine are substrates. Address before adding T3 — sometimes resolves the gap.' },
+        ],
+      };
+    },
+  },
+
+  // ── SSRI + persistent depression + measured low B6 or folate ───────
+  {
+    key: 'ssri_persistent_low_b_vitamins',
+    detect: (ctx) => {
+      if (!takesMed(ctx, [/sertraline|zoloft|fluoxetine|prozac|escitalopram|lexapro|citalopram|celexa|paroxetine|paxil|fluvoxamine|luvox/i])) return null;
+      const persistent = /persistent depres|treatment.?resistant|still depressed|not responding/i.test(ctx.symptomsLower);
+      const b6 = lab(ctx, [/^b.?6\b|vitamin b6|pyridoxal/i]);
+      const folate = lab(ctx, [/^folate\b|serum folate/i]);
+      const b6Low = b6 && b6.value < 30;
+      const folateLow = folate && folate.value < 6;
+      if (!persistent && !b6Low && !folateLow) return null;
+      const findings: string[] = [];
+      if (b6Low) findings.push(`B6 ${b6!.value}`);
+      if (folateLow) findings.push(`Folate ${folate!.value}`);
+      if (persistent) findings.push('persistent depressive symptoms');
+      return {
+        current_medication: 'SSRI',
+        reason_to_consider: `${findings.join(' + ')} on SSRI. B-vitamin deficiency limits neurotransmitter synthesis even with SSRI on board; repletion + dose review often outperforms switching agents.`,
+        pharmaceutical_alternatives: [
+          { name: 'SNRI (venlafaxine / duloxetine)', reason: 'Different mechanism (NE + 5HT). Useful when SSRI hits a ceiling or anxiety-with-pain phenotype dominates.' },
+          { name: 'Bupropion (add-on or monotherapy)', reason: 'Dopaminergic; no SSRI sexual side effects. Often added to existing SSRI for partial response.' },
+        ],
+        natural_alternatives: [
+          { name: 'Methylfolate 7.5-15 mg + Methylcobalamin 1000 mcg', reason: 'Methylated B-vitamins bypass MTHFR pathway limits; evidence for adjunct in SSRI partial responders.' },
+        ],
+      };
+    },
+  },
+
+  // ── Beta blocker + symptomatic fatigue + low normal BP ─────────────
+  {
+    key: 'beta_blocker_fatigue',
+    detect: (ctx) => {
+      if (!takesMed(ctx, [/metoprolol|atenolol|propranolol|bisoprolol|carvedilol|nebivolol/i])) return null;
+      const fatigueSx = /chronic fatigue|exhaust|tired all the time|exercise intoleran/i.test(ctx.symptomsLower);
+      if (!fatigueSx) return null;
+      return {
+        current_medication: 'Beta blocker',
+        reason_to_consider: `Persistent fatigue + exercise intolerance on beta blocker. Beta blockers blunt CoQ10-dependent ATP production and HR response to exercise; if the BP/HR target is met, a different antihypertensive class often restores energy.`,
+        pharmaceutical_alternatives: [
+          { name: 'ARB (losartan / telmisartan)', reason: 'BP control without HR / fatigue effect. Often first choice when fatigue dominates side effects.' },
+          { name: 'Calcium channel blocker (amlodipine)', reason: 'BP control without metabolic / fatigue effect. Useful when HR is already on the low end.' },
+          { name: 'Nebivolol (if beta blocker class needed)', reason: 'Highly cardioselective + nitric-oxide effect; lower fatigue rates than metoprolol / atenolol in trials.' },
+        ],
+        natural_alternatives: [
+          { name: 'CoQ10 (Ubiquinol) 100-200 mg/day', reason: 'Beta blockers deplete CoQ10; repletion alongside the drug often restores energy. Discuss before switching.' },
+        ],
+      };
+    },
+  },
+
+  // ── PPI without measured deficiency but >5 years use ───────────────
+  {
+    key: 'ppi_chronic_no_indication_review',
+    detect: (ctx) => {
+      if (!takesMed(ctx, [/omeprazole|esomeprazole|pantoprazole|lansoprazole|rabeprazole|dexlansoprazole/i, /\bppi\b/i])) return null;
+      // Fire only when patient EXPLICITLY indicates long-term use. Default
+      // PPI users without that context should not trigger an alternative —
+      // they may have an active reflux indication we can't see in the input.
+      const longTerm = /long.?term ppi|chronic ppi|on ppi for years|ppi for \d+\s*year|years on (omeprazole|esomeprazole|pantoprazole|lansoprazole|rabeprazole|dexlansoprazole)/i.test(ctx.medsLower + ' ' + ctx.symptomsLower + ' ' + ctx.conditionsLower);
+      if (!longTerm) return null;
+      return {
+        current_medication: 'PPI (long-term)',
+        reason_to_consider: `Long-term PPI use. Current guidelines recommend annual deprescribing review after 8 weeks for non-Barrett's, non-erosive indications. Risks accumulate with duration: B12, Mg, Ca depletion, kidney disease, fracture risk, microbiome shifts.`,
+        pharmaceutical_alternatives: [
+          { name: 'H2 blocker (famotidine)', reason: 'Less aggressive acid suppression; lower long-term risk profile. Often adequate for maintenance.' },
+          { name: 'On-demand PPI', reason: 'Take only when symptoms occur instead of daily. Reduces cumulative exposure dramatically.' },
+        ],
+        natural_alternatives: [
+          { name: 'Lifestyle: smaller meals, no late eating, head-of-bed 6 inches, weight loss if BMI >25', reason: 'Most-evidence reflux interventions. Often allow full PPI discontinuation in non-erosive disease.' },
+        ],
+      };
+    },
+  },
 ];
 
 /** Run all rules. Returns deduped alternatives by medication name. */

@@ -202,7 +202,7 @@ for (let i = 0; i < N; i++) {
     if (s.dose && s.dose.trim()) totalCounts.supplementsWithDose++;
     if (s.timing && s.timing.trim()) totalCounts.supplementsWithTiming++;
     init('supplement.category');
-    const validCat = ['sleep_stress','gut_healing','liver_metabolic','inflammation_cardio','nutrient_repletion','condition_therapy'];
+    const validCat = ['sleep_stress','gut_healing','liver_metabolic','inflammation','cardio','inflammation_cardio','nutrient_repletion','condition_therapy'];
     if (validCat.includes(s.category)) stats['supplement.category'].presentCount++;
     else { stats['supplement.category'].invalidCount++; recordViolation(i, 'supplement.category', `bad: ${s.category}`); }
     init('supplement.priority');

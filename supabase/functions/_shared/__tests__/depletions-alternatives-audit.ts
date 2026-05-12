@@ -67,6 +67,20 @@ const EXPECTED: ExpectedDepletion[] = [
   { medClass: 'bile_acid_sequestrant',   medExample: 'Cholestyramine',             expectedNutrients: [/fat.?soluble|vitamin a|vitamin d|vitamin e|vitamin k/i] },
   { medClass: 'allopurinol',             medExample: 'Allopurinol 300mg',          expectedNutrients: [/iron/i] },
   { medClass: 'antibiotic_long_term',    medExample: 'Doxycycline long-term',      expectedNutrients: [/b.?complex|microbiome|biotin|k2/i] },
+  // ── 2026-05-12-33 expansions ────────────────────────────────────
+  { medClass: 'fibrate',                 medExample: 'Fenofibrate 145mg',          expectedNutrients: [/coq10/i, /homocysteine|b6|b12|folate/i] },
+  { medClass: 'h2_blocker',              medExample: 'Famotidine 40mg',            expectedNutrients: [/b12|cobalamin/i] },
+  { medClass: 'arb',                     medExample: 'Losartan 50mg',              expectedNutrients: [/zinc/i] },
+  { medClass: 'ccb',                     medExample: 'Amlodipine 5mg',             expectedNutrients: [/magnesium/i] },
+  { medClass: 'snri',                    medExample: 'Venlafaxine 75mg',           expectedNutrients: [/sodium/i] },
+  { medClass: 'tca',                     medExample: 'Amitriptyline 25mg',         expectedNutrients: [/coq10/i, /b2|riboflavin/i] },
+  { medClass: 'benzodiazepine',          medExample: 'Lorazepam 1mg',              expectedNutrients: [/melatonin/i] },
+  { medClass: 'inhaled_steroid',         medExample: 'Fluticasone inhaler',        expectedNutrients: [/vitamin d/i] },
+  { medClass: 'hrt_estrogen',            medExample: 'Estradiol patch',            expectedNutrients: [/folate/i, /vitamin b6/i, /magnesium/i] },
+  { medClass: 'antithyroid',             medExample: 'Methimazole 10mg',           expectedNutrients: [/selenium/i] },
+  { medClass: 'sulfonylurea',            medExample: 'Glipizide 5mg',              expectedNutrients: [/coq10/i] },
+  { medClass: 'insulin',                 medExample: 'Insulin glargine (Lantus)',  expectedNutrients: [/magnesium/i] },
+  { medClass: 'biologic_ibd',            medExample: 'Ustekinumab (Stelara)',      expectedNutrients: [/vitamin d/i] },
 ];
 
 console.log(`\n══════════════════════════════════════════════════════════════`);
@@ -165,6 +179,13 @@ const altCases: AltCase[] = [
   { label: 'PPI + Mg 2.1 (normal)', meds: ['Omeprazole'], labs: [{ marker_name: 'Magnesium', value: 2.1 }], symptoms: '', expectMed: null },
   // Negative: no meds, no triggers
   { label: 'no meds, no labs', meds: [], labs: [], symptoms: '', expectMed: null },
+  // ── New alternatives rules (2026-05-12-33) ───────────────────────
+  { label: 'levothyroxine + Free T3 2.5 (low)', meds: ['Levothyroxine'], labs: [{ marker_name: 'Free T3', value: 2.5 }], symptoms: '', expectMed: 'Levothyroxine' },
+  { label: 'levothyroxine + Free T3 3.5 (normal)', meds: ['Levothyroxine'], labs: [{ marker_name: 'Free T3', value: 3.5 }], symptoms: '', expectMed: null },
+  { label: 'SSRI + persistent depression', meds: ['Sertraline'], labs: [], symptoms: 'persistent depression, not responding to medication', expectMed: 'SSRI' },
+  { label: 'SSRI + B6 low (20)', meds: ['Sertraline'], labs: [{ marker_name: 'Vitamin B6', value: 20 }], symptoms: '', expectMed: 'SSRI' },
+  { label: 'beta blocker + chronic fatigue', meds: ['Metoprolol'], labs: [], symptoms: 'chronic fatigue and exercise intolerance', expectMed: 'Beta blocker' },
+  { label: 'beta blocker + no symptoms', meds: ['Metoprolol'], labs: [], symptoms: '', expectMed: null },
 ];
 
 let altPass = 0;

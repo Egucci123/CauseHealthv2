@@ -125,6 +125,56 @@ const DEPLETION_RULES: Rule[] = [
 
   // ── Allopurinol → no major depletion but iron interaction
   { medClass: 'allopurinol', nutrient: 'Iron absorption alteration', mechanism: 'Allopurinol can increase iron absorption slightly + alter uric acid handling; relevant for patients with concurrent hemochromatosis risk.', monitoringTest: 'iron_panel', severity: 'low' },
+
+  // ────────────────────────────────────────────────────────────────────
+  // UNIVERSAL EXPANSION — 2026-05-12-33
+  // Closing the gap between the 44 MED_CLASSES in medicationAliases and
+  // the depletion library. Each rule below is evidence-based and applies
+  // to every user on that drug class, never patient-specific.
+  // ────────────────────────────────────────────────────────────────────
+
+  // ── Fibrates → CoQ10, homocysteine elevators
+  { medClass: 'fibrate', nutrient: 'CoQ10', mechanism: 'Fibrates inhibit HMG-CoA reductase pathway downstream of statins → similar CoQ10 depletion mechanism. Relevant for muscle pain or fatigue on therapy.', monitoringTest: 'ck_if_muscle_symptoms', severity: 'moderate' },
+  { medClass: 'fibrate', nutrient: 'Homocysteine elevation (B6/B12/Folate)', mechanism: 'Fibrates (gemfibrozil, fenofibrate) raise homocysteine 20-40% via interference with B-vitamin metabolism. Co-supplementation reduces the rise.', monitoringTest: 'homocysteine', severity: 'moderate' },
+
+  // ── H2 blockers → B12 (milder than PPI but real on long-term use)
+  { medClass: 'h2_blocker', nutrient: 'Vitamin B12', mechanism: 'H2 blockers (famotidine, ranitidine, cimetidine) suppress gastric acid 50-70% → impaired B12 cleavage from food. Less severe than PPIs but measurable on >2-year use.', monitoringTest: 'vit_b12_workup', severity: 'low' },
+
+  // ── ARBs → zinc (milder than ACE)
+  { medClass: 'arb', nutrient: 'Zinc', mechanism: 'ARBs (losartan, valsartan, telmisartan) modestly lower serum zinc on long-term use, similar mechanism to ACE inhibitors but lower magnitude.', monitoringTest: null, severity: 'low' },
+
+  // ── Calcium channel blockers → magnesium (chronic use)
+  { medClass: 'ccb', nutrient: 'Magnesium', mechanism: 'Dihydropyridine CCBs (amlodipine, nifedipine) compete with Mg at vascular L-type channels; chronic use linked to relative Mg depletion + ankle edema.', monitoringTest: 'rbc_magnesium', severity: 'low' },
+
+  // ── SNRI → sodium (SIADH risk like SSRI)
+  { medClass: 'snri', nutrient: 'Sodium', mechanism: 'SNRIs (venlafaxine, duloxetine, desvenlafaxine) occasionally cause SIADH (hyponatremia) similar to SSRIs, especially in older adults.', monitoringTest: 'cmp', severity: 'low' },
+
+  // ── TCA → CoQ10
+  { medClass: 'tca', nutrient: 'CoQ10', mechanism: 'Tricyclics (amitriptyline, nortriptyline, imipramine) inhibit mitochondrial CoQ-dependent enzymes — relevant for fatigue, orthostatic hypotension, and cardiac side effects.', monitoringTest: null, severity: 'moderate' },
+  { medClass: 'tca', nutrient: 'Vitamin B2 (Riboflavin)', mechanism: 'TCAs reduce B2 absorption + utilization; co-supplementation has shown benefit for the headache indication.', monitoringTest: null, severity: 'low' },
+
+  // ── Benzodiazepines → melatonin (suppression of natural cycle)
+  { medClass: 'benzodiazepine', nutrient: 'Melatonin', mechanism: 'Long-term benzo use suppresses endogenous melatonin synthesis. Withdrawal often unmasks insomnia until melatonin recovers (months).', monitoringTest: null, severity: 'low' },
+
+  // ── Inhaled steroids → vitamin D (high-dose chronic use)
+  { medClass: 'inhaled_steroid', nutrient: 'Vitamin D', mechanism: 'High-dose inhaled corticosteroids (fluticasone, budesonide) accelerate 25-OH-D catabolism on chronic use. Smaller effect than oral steroids but measurable.', monitoringTest: 'vit_d_25oh', severity: 'low' },
+
+  // ── HRT estrogen (similar to OCP for folate/B6/Mg)
+  { medClass: 'hrt_estrogen', nutrient: 'Folate', mechanism: 'Exogenous estrogen lowers serum + RBC folate 20-30% via same mechanism as oral contraceptives. Relevant for cardiovascular and bone health.', monitoringTest: 'folate_workup', severity: 'moderate' },
+  { medClass: 'hrt_estrogen', nutrient: 'Vitamin B6', mechanism: 'Estrogen competes with B6 for the same enzymatic pathways — functional B6 deficiency contributes to mood symptoms.', monitoringTest: null, severity: 'low' },
+  { medClass: 'hrt_estrogen', nutrient: 'Magnesium', mechanism: 'Estrogen alters magnesium handling; long-term HRT users trend toward functional Mg deficiency.', monitoringTest: 'rbc_magnesium', severity: 'low' },
+
+  // ── Antithyroid → selenium
+  { medClass: 'antithyroid', nutrient: 'Selenium', mechanism: 'Antithyroid drugs (methimazole, PTU) work alongside selenium-dependent deiodinases. Repletion has shown faster TSH normalization in Graves patients.', monitoringTest: null, severity: 'moderate' },
+
+  // ── Sulfonylureas → CoQ10 (mild, via mitochondrial K-ATP channels)
+  { medClass: 'sulfonylurea', nutrient: 'CoQ10', mechanism: 'Sulfonylureas close mitochondrial K-ATP channels, modestly affecting CoQ-dependent electron transport. Relevant for fatigue complaints.', monitoringTest: null, severity: 'low' },
+
+  // ── Insulin → magnesium (intensive control hypomagnesemia)
+  { medClass: 'insulin', nutrient: 'Magnesium', mechanism: 'Intensive insulin therapy shifts Mg intracellularly; chronic users have a 10-20% lower serum Mg than non-diabetic controls. Mg deficiency worsens insulin resistance.', monitoringTest: 'rbc_magnesium', severity: 'moderate' },
+
+  // ── Biologic IBD (anti-TNF / IL-23 / integrin inhibitors)
+  { medClass: 'biologic_ibd', nutrient: 'Vitamin D', mechanism: 'IBD patients on biologics still have 50-60% Vit D deficiency rate; the biologic does not correct underlying malabsorption. Vit D modulates Th17/Treg balance and supports disease control.', monitoringTest: 'vit_d_25oh', severity: 'high' },
 ];
 
 export function buildDepletionList(input: Input): DepletionFact[] {
