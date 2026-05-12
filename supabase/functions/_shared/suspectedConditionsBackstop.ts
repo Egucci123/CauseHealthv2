@@ -770,7 +770,12 @@ const RULES: BackstopRule[] = [
       const hgbLow = hgb && (isFemale ? hgb.value < 12 : hgb.value < 13.5);
       const ferritinLow = ferritin && ferritin.value < 30;
       const microcytic = mcv && mcv.value < 80;
-      if ((hgbLow && microcytic) || (ferritinLow && (mcv && mcv.value < 90))) {
+      // 2026-05-12-25: Loosened — ferritin <30 alone = iron deficiency
+      // per ASCO/AABB clinical guidance, MCV-independent. Microcytic
+      // anemia (low Hgb + low MCV) also independently sufficient.
+      // Earlier required BOTH ferritin AND microcytic — missed iron-
+      // deficient patients with normal MCV (common in early deficiency).
+      if (ferritinLow || (hgbLow && microcytic)) {
         const ev: string[] = [];
         if (hgbLow) ev.push(`Hgb ${hgb!.value}`);
         if (ferritinLow) ev.push(`Ferritin ${ferritin!.value}`);

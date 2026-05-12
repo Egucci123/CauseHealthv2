@@ -96,7 +96,13 @@
       "priority": "moderate"
     }
   ],
-  "conditions": [],
+  "conditions": [
+    {
+      "name": "Iron Deficiency Anemia",
+      "icd10": "D50.9",
+      "confidence": "high"
+    }
+  ],
   "supplements": [
     "Iron (gentle, low-dose)",
     "Methylated B-Complex",

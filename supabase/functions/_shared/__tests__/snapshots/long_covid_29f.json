@@ -88,6 +88,11 @@
   ],
   "conditions": [
     {
+      "name": "Iron Deficiency Anemia",
+      "icd10": "D50.9",
+      "confidence": "high"
+    },
+    {
       "name": "Vitamin D Deficiency",
       "icd10": "E55.9",
       "confidence": "high"
