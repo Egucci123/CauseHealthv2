@@ -80,5 +80,11 @@ export function buildSupplementCandidates(input: Input): SupplementCandidate[] {
     isPregnant: input.isPregnant,
     hasShellfishAllergy: input.hasShellfishAllergy,
   };
-  return evaluateIndications(evalInput, { topN: 6 });
+  // 2026-05-12-30: bumped topN 6 -> 8. The previous cap of 6 with
+  // MAX_PER_CATEGORY=3 was cap-cutting genuinely-needed lab-driven
+  // supplements (milk_thistle / vit_d3) for patients with multi-pattern
+  // profiles (UC + statin + lipids + ALT 97 + Vit D 24 edgemech case).
+  // With topN=8, MAX_PER_CATEGORY auto-scales to 4 so 1:1 outlier-driven
+  // supplements get to land alongside disease-mechanism supplements.
+  return evaluateIndications(evalInput, { topN: 8 });
 }

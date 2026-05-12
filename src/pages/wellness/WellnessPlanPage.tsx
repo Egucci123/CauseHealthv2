@@ -534,7 +534,7 @@ const TakeTab = ({ plan }: { plan: any }) => {
       <div className="bg-[#D4A574]/10 border border-[#D4A574]/30 rounded-[10px] p-4 flex items-start gap-3">
         <span className="material-symbols-outlined text-[#B8915F] text-[20px] flex-shrink-0 mt-0.5">tips_and_updates</span>
         <p className="text-body text-clinical-charcoal text-sm leading-relaxed">
-          Grouped by what each supplement does. Each card shows the primary recommendation; tap "Other options" for equivalent alternatives you can pick instead based on form, budget, or preference.
+          Your top supplement picks, chosen for your specific markers and patterns. Grouped by what each one does.
         </p>
       </div>
 
