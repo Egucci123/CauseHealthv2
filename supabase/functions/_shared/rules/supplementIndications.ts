@@ -901,7 +901,11 @@ export const INDICATIONS: Indication[] = [
       { key: 'l_glutamine',      priority: 'critical', sourcedFrom: 'disease_mechanism', whyShort: 'Primary enterocyte fuel — supports mucosal repair in IBD remission' },
       { key: 'probiotic',        priority: 'critical', sourcedFrom: 'disease_mechanism', whyShort: 'Multi-strain probiotic — IBD-microbiome support; VSL#3-style formulations have UC remission evidence' },
       { key: 'curcumin',         priority: 'critical', sourcedFrom: 'disease_mechanism', whyShort: 'Curcumin reduces colonic inflammation in mild-moderate UC trials' },
-      { key: 'vit_d3_4000',      priority: 'high',     sourcedFrom: 'disease_mechanism', whyShort: 'IBD patients have 60% deficiency rate; Vit D modulates Th17/Treg balance' },
+      // 2026-05-12-41: empirical Vit D for IBD = 1000 IU safe baseline. IBD
+      // patients have 60% Vit D deficiency rate per evidence so it's worth
+      // recommending, but at the safe empirical dose. Lab-confirmed low Vit
+      // D upgrades this to 4000 IU automatically via vit_d_low rule.
+      { key: 'vit_d3_1000',      priority: 'high',     sourcedFrom: 'disease_mechanism', whyShort: 'IBD patients have 60% deficiency rate; Vit D modulates Th17/Treg balance' },
       { key: 'omega3_2000',      priority: 'high',     sourcedFrom: 'disease_mechanism', whyShort: 'EPA/DHA reduce mucosal prostaglandin synthesis' },
       { key: 'vit_b12_methyl',   priority: 'moderate', sourcedFrom: 'disease_mechanism', whyShort: 'Terminal-ileum disease + biologic use → B12 malabsorption risk' },
     ],
@@ -914,7 +918,12 @@ export const INDICATIONS: Indication[] = [
   {
     id: 'hashimoto',
     triggers: [{ kind: 'condition', pattern: /\bhashimoto|autoimmune\s+thyroid/i }],
-    supplements: [{ key: 'vit_d3_4000', priority: 'moderate', sourcedFrom: 'disease_mechanism' }],
+    // 2026-05-12-41: empirical Vit D for Hashimoto uses SAFE dose 1000 IU
+    // instead of therapeutic 4000 IU. 4000 IU is only fired by lab-confirmed
+    // low Vit D (vit_d_low / vit_d_watch_below_40 rules). Lower empirical
+    // dose avoids fat-soluble accumulation in patients whose Vit D status
+    // is unknown.
+    supplements: [{ key: 'vit_d3_1000', priority: 'moderate', sourcedFrom: 'disease_mechanism' }],
   },
   {
     id: 't2d',
@@ -1073,7 +1082,9 @@ export const INDICATIONS: Indication[] = [
     id: 'frequent_infections',
     triggers: [{ kind: 'symptom', pattern: /(frequent infection|sick often|always sick|low immun|catch.*cold)/i }],
     supplements: [
-      { key: 'vit_d3_4000', priority: 'moderate', sourcedFrom: 'symptom_pattern', whyShort: 'Immune-function support' },
+      // 2026-05-12-41: empirical Vit D dose = 1000 IU (safe baseline).
+      // Therapeutic 4000 IU only fires from lab-confirmed deficiency.
+      { key: 'vit_d3_1000', priority: 'moderate', sourcedFrom: 'symptom_pattern', whyShort: 'Immune-function support' },
       { key: 'zinc_15',     priority: 'moderate', sourcedFrom: 'symptom_pattern', whyShort: 'Immune-function cofactor' },
     ],
   },
