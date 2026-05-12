@@ -833,6 +833,61 @@ export const INDICATIONS: Indication[] = [
     supplements: [{ key: 'vit_b12_methyl', priority: 'high', sourcedFrom: 'lab_finding' }],
   },
 
+  // 2026-05-12-39 — missing folate indications. Without these, a confirmed
+  // low folate lab would not push methylfolate into the supplement stack.
+  {
+    id: 'folate_low',
+    triggers: [
+      { kind: 'lab', marker: /^folate\b|^serum\s+folate\b|^rbc\s+folate\b/i, states: ['low', 'critical_low'] },
+    ],
+    supplements: [{ key: 'methylfolate', priority: 'high', sourcedFrom: 'lab_finding' }],
+  },
+  {
+    id: 'folate_watch',
+    triggers: [
+      { kind: 'lab', marker: /^folate\b|^serum\s+folate\b|^rbc\s+folate\b/i, states: ['watch'], valueThreshold: { op: '<', value: 6 } },
+    ],
+    supplements: [{ key: 'methylfolate', priority: 'high', sourcedFrom: 'lab_finding' }],
+  },
+
+  // Homocysteine high → methylated B's (methylfolate + B12 + B6 pathway)
+  // Indirect folate signal — elevated Hcy often reflects functional folate /
+  // B12 / B6 deficiency even when serum values are borderline.
+  {
+    id: 'homocysteine_elevated_methylated_b',
+    triggers: [
+      { kind: 'lab', marker: /homocysteine/i, states: ['any_high'], valueThreshold: { op: '>', value: 10 } },
+    ],
+    supplements: [
+      { key: 'methylfolate', priority: 'moderate', sourcedFrom: 'lab_finding' },
+      { key: 'vit_b12_methyl', priority: 'moderate', sourcedFrom: 'lab_finding' },
+    ],
+  },
+
+  // Empirical folate repletion for folate-depleting medications. Standard
+  // of care for methotrexate; reasonable consideration for 5-ASA + OCP +
+  // anticonvulsant users — but ONLY if a folate test is also ordered.
+  {
+    id: 'mesalamine_empirical_folate',
+    triggers: [{ kind: 'medication', medClass: 'mesalamine_5asa' }],
+    supplements: [{ key: 'methylfolate', priority: 'high', sourcedFrom: 'medication_depletion', whyShort: '5-ASA blocks folate absorption — empirical methylfolate' }],
+  },
+  {
+    id: 'methotrexate_empirical_folate',
+    triggers: [{ kind: 'medication', medClass: 'methotrexate' }],
+    supplements: [{ key: 'methylfolate', priority: 'critical', sourcedFrom: 'medication_depletion', whyShort: 'Methotrexate is a folate antagonist — folate co-supplementation is standard of care' }],
+  },
+  {
+    id: 'ocp_empirical_folate',
+    triggers: [{ kind: 'medication', medClass: 'hormonal_contraceptive' }],
+    supplements: [{ key: 'methylfolate', priority: 'moderate', sourcedFrom: 'medication_depletion', whyShort: 'OCPs lower folate 20-40% — relevant for any user considering pregnancy' }],
+  },
+  {
+    id: 'anticonvulsant_empirical_folate',
+    triggers: [{ kind: 'medication', medClass: 'anticonvulsant' }],
+    supplements: [{ key: 'methylfolate', priority: 'high', sourcedFrom: 'medication_depletion', whyShort: 'Enzyme-inducing anticonvulsants lower folate — NTD risk for women of reproductive age' }],
+  },
+
   // ── Conditions ─────────────────────────────────────────────────────
   {
     // IBD (UC / Crohn) — the standard IBD supplement stack. Diagnosed
