@@ -1104,6 +1104,12 @@ export function evaluateIndications(
       seenKeys.add(ref.key);
       seenNutrient.add(normNutrient);
 
+      // Capture the severity of the triggering signal so we can pick the
+      // BEST candidate per category (highest severity wins ties). Lab
+      // triggers carry severityRank from the outlier; other trigger
+      // kinds default to 0. Universal — applies to every candidate.
+      const triggerSeverityRank = triggerSeverityFor(triggerHit, input);
+
       out.push({
         key: ref.key,
         emoji: base.emoji,
@@ -1119,7 +1125,8 @@ export function evaluateIndications(
         alternatives: base.alternatives ?? [],
         practicalNote: base.practicalNote,
         evidenceNote: base.evidenceNote,
-      });
+        triggerSeverityRank,
+      } as SupplementCandidate);
     }
   }
 
@@ -1164,72 +1171,76 @@ export function evaluateIndications(
     if (pa !== pb) return pa - pb;
     const sa = SOURCE_RANK[a.sourcedFrom] ?? 9;
     const sb = SOURCE_RANK[b.sourcedFrom] ?? 9;
-    return sa - sb;
+    if (sa !== sb) return sa - sb;
+    // Tiebreaker: more severe triggering outlier wins. ALT 97 (rank 50)
+    // beats A1c 5.5 watch (rank 20) when both produce high+lab supplements.
+    const va = a.triggerSeverityRank ?? 0;
+    const vb = b.triggerSeverityRank ?? 0;
+    return vb - va; // higher severity first
   });
 
-  // CATEGORY DIVERSIFIER (Evan audit, 2026-05-12-15):
-  // Without this, a patient with multiple active patterns in one
-  // category (e.g., lipid-drift + NAFLD + IR all → liver_metabolic
-  // supplements) sees the top-6 dominated by that category, while
-  // genuinely-needed supplements in other categories (gut healing
-  // for IBD patient, etc.) get cap-cut.
+  // CATEGORY POLICY (Evan audit, 2026-05-12-31) — UNIVERSAL:
   //
-  // Rule: in the top-N, no single category may exceed MAX_PER_CATEGORY
-  // unless filling the rest of the slots is impossible. Pass 1 picks
-  // up to MAX_PER_CATEGORY from each category in priority order. Pass 2
-  // backfills any remaining slots from the leftovers.
-  const MAX_PER_CATEGORY = Math.max(1, Math.floor(topN / 2)); // 4 of 8
+  //  • medication_depletion source: UNLIMITED. Each med-driven nutrient
+  //    depletion needs its own supplement (statin → CoQ10, metformin →
+  //    B12, PPI → Mg, OCP → folate). One depletion = one supplement.
+  //
+  //  • All other categories: exactly ONE supplement per category. The
+  //    pick is the TOP of the sorted list for that category, where sort
+  //    order is priority → source → triggerSeverityRank. This guarantees
+  //    the most-clinically-important supplement per category lands (e.g.
+  //    Milk Thistle from ALT 97 beats Berberine from A1c 5.5 watch
+  //    because ALT outlier has a higher severityRank).
+  //
+  //  Rationale: depletions are mechanistic and stack additively (statin
+  //  patient on metformin needs BOTH CoQ10 and B12). The other supplement
+  //  categories are organ/system support — one well-chosen supplement per
+  //  system is enough; adding two creates confusion without clinical lift.
+  //
+  //  Categories that allow 1 each: nutrient_repletion, sleep_stress,
+  //  gut_healing, liver_metabolic, inflammation_cardio, condition_therapy.
   const balanced: SupplementCandidate[] = [];
-  const categoryCount: Record<string, number> = {};
-  const leftovers: SupplementCandidate[] = [];
+  const seenCategories = new Set<string>();
 
-  // PASS 0 — ESSENTIAL REPLETION RESERVE (Evan audit, 2026-05-12-30):
-  // Lab-finding supplements in the nutrient_repletion category are 1:1
-  // with a deficiency marker — if Vit D is low, the answer is Vit D3;
-  // if Ferritin is low, the answer is Iron; if B12 is low, the answer
-  // is B12. NOTHING else in the stack repletes that specific deficiency.
-  // These supplements get guaranteed slots before the category diversifier
-  // runs, so they cannot be cap-cut by disease/medication supplements
-  // (which crowd out repletion in multi-pattern users — edgemech case).
-  // Universal: applies to every user with a flagged deficiency outlier.
-  const reservedKeys = new Set<string>();
   for (const c of out) {
-    if (c.category === 'nutrient_repletion' && c.sourcedFrom === 'lab_finding') {
-      if (reservedKeys.has(c.key)) continue;
+    // Rule 1: keep every medication_depletion-sourced supplement.
+    if (c.sourcedFrom === 'medication_depletion') {
       balanced.push(c);
-      reservedKeys.add(c.key);
-      categoryCount[c.category] = (categoryCount[c.category] ?? 0) + 1;
-      if (balanced.length >= topN) break;
+      continue;
     }
-  }
-
-  // Pass 1 — respect category cap, skip already-reserved
-  for (const c of out) {
-    if (reservedKeys.has(c.key)) continue;
-    if (balanced.length >= topN) break;
+    // Rule 2: one supplement per non-depletion category. Because `out`
+    // is sorted (priority → source → severity), the FIRST entry seen
+    // for each category is the best fit for this user's pattern.
     const cat = c.category ?? 'unspecified';
-    if ((categoryCount[cat] ?? 0) < MAX_PER_CATEGORY) {
-      balanced.push(c);
-      categoryCount[cat] = (categoryCount[cat] ?? 0) + 1;
-    } else {
-      leftovers.push(c);
-    }
-  }
-  // Pass 2 — backfill remaining slots from leftovers
-  if (balanced.length < topN) {
-    for (const c of leftovers) {
-      if (reservedKeys.has(c.key)) continue;
-      balanced.push(c);
-      if (balanced.length >= topN) break;
-    }
+    if (seenCategories.has(cat)) continue;
+    balanced.push(c);
+    seenCategories.add(cat);
   }
 
+  // Safety cap — should rarely fire since the natural limit is
+  // 1 (per category) × 6 (categories) + N depletions.
+  if (balanced.length > topN && topN > 0) {
+    return balanced.slice(0, topN);
+  }
   return balanced;
 }
 
 // ──────────────────────────────────────────────────────────────────────
 // 6. INTERNAL — trigger/gate matchers
 // ──────────────────────────────────────────────────────────────────────
+
+/**
+ * Returns the severity rank of the outlier that fired this trigger, or
+ * 0 if non-lab trigger (condition / symptom / medication). Used as a
+ * tiebreaker so the supplement driven by the most-severe lab wins when
+ * priority + source are equal (e.g. ALT 97 critical_high beats A1c 5.5
+ * watch even though both produce a high-priority lab_finding candidate).
+ */
+function triggerSeverityFor(t: Trigger, input: EvaluateInput): number {
+  if (t.kind !== 'lab' || !t.marker) return 0;
+  const matched = input.outliers.find(o => t.marker!.test(o.marker));
+  return matched?.severityRank ?? 0;
+}
 
 function matchesTrigger(t: Trigger, input: EvaluateInput): boolean {
   switch (t.kind) {

@@ -20,10 +20,12 @@ const labs: LabValue[] = [
   { marker: 'Vitamin B12', value: 586, unit: 'pg/mL', flag: 'normal' },
 ];
 
+const conditions = ['Ulcerative Colitis (UC)', 'High Cholesterol (Hyperlipidemia)'];
+const meds = ['Mesalamine', 'Ustekinumab', 'Atorvastatin'];
 const input: PatientInput = {
   age: 32, sex: 'male', heightCm: 178, weightKg: 95, bmi: 30,
-  conditionsList: [], conditionsLower: '',
-  medsList: [], medsLower: '',
+  conditionsList: conditions, conditionsLower: conditions.join(' ').toLowerCase(),
+  medsList: meds, medsLower: meds.join(' ').toLowerCase(),
   symptomsList: [], symptomsLower: '',
   supplementsList: [], supplementsLower: '',
   labs, labsLower: labs.map(l => `${l.marker}: ${l.value} [${l.flag}]`).join('\n').toLowerCase(),

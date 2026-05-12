@@ -38,6 +38,10 @@ export interface SupplementCandidate {
   /** Canned "mechanism + typical response time + magnitude" note.
    *  Pre-written per supplement, deterministic. AI no longer generates. */
   evidenceNote?: string;
+  /** Severity rank of the triggering outlier (0 if non-lab trigger).
+   *  Used inside the engine for "best of category" picking when
+   *  priority + source tie. Universal tiebreaker. */
+  triggerSeverityRank?: number;
 }
 
 interface Input {
@@ -80,11 +84,10 @@ export function buildSupplementCandidates(input: Input): SupplementCandidate[] {
     isPregnant: input.isPregnant,
     hasShellfishAllergy: input.hasShellfishAllergy,
   };
-  // 2026-05-12-30: bumped topN 6 -> 8. The previous cap of 6 with
-  // MAX_PER_CATEGORY=3 was cap-cutting genuinely-needed lab-driven
-  // supplements (milk_thistle / vit_d3) for patients with multi-pattern
-  // profiles (UC + statin + lipids + ALT 97 + Vit D 24 edgemech case).
-  // With topN=8, MAX_PER_CATEGORY auto-scales to 4 so 1:1 outlier-driven
-  // supplements get to land alongside disease-mechanism supplements.
-  return evaluateIndications(evalInput, { topN: 8 });
+  // 2026-05-12-31: topN is now a safety cap, not the active limiter.
+  // The new category policy in supplementIndications.ts is:
+  //   • UNLIMITED medication_depletion supplements (1 per depletion)
+  //   • Exactly 1 supplement per non-depletion category, best of category
+  //   Natural max ≈ 6 categories + N depletions. Cap of 12 is generous.
+  return evaluateIndications(evalInput, { topN: 12 });
 }
