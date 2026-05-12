@@ -52,6 +52,7 @@ import {
   type ActionPlanOutput,
 } from '../_shared/prompts/actionPlan.ts';
 import { applyAllergyFilters } from '../_shared/safetyNet.ts';
+import { CAUSEHEALTH_CONSTITUTION, CAUSEHEALTH_CONSTITUTION_SHORT } from '../_shared/prompts/_constitution.ts';
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -327,9 +328,12 @@ async function callAnthropicTool<T>(args: {
         // 8 conditions × 300 char cap + headline + summary. v1's 4000 cap
         // was the reason symptoms_addressed silently truncated.
         max_tokens: 8000,
-        system: [
-          { type: 'text', cache_control: { type: 'ephemeral', ttl: '1h' }, text: args.system },
-        ],
+        // Split the system message at the constitution boundary so the
+        // shared CAUSEHEALTH_CONSTITUTION becomes its own cache entry —
+        // identical across analyze-labs, narrative, stack, doctor-prep.
+        // First call writes it; subsequent calls (any surface) read at 10%.
+        // The role-specific tail gets its own cache entry that hits on regens.
+        system: splitForCache(args.system),
         messages: [{ role: 'user', content: args.user }],
         // Cache the tool schema too — it's identical across regens of
         // the same surface. 1-hour TTL applies to whichever block is
@@ -351,6 +355,35 @@ async function callAnthropicTool<T>(args: {
   } finally {
     clearTimeout(timeout);
   }
+}
+
+/**
+ * Split a full system prompt into 2 cached blocks at the constitution
+ * boundary. If the prompt begins with the long or short constitution,
+ * emit [constitution, tail] each with its own 1-hour cache_control —
+ * the constitution becomes a SHARED cache entry across all 4 v2 AI
+ * calls so analyze-labs writes it once, wellness + doctor-prep hit it
+ * at 10% on read. If neither prefix matches, fall back to one block.
+ */
+function splitForCache(system: string): Array<{ type: 'text'; text: string; cache_control: { type: 'ephemeral'; ttl: '1h' } }> {
+  const cc = { type: 'ephemeral' as const, ttl: '1h' as const };
+  if (system.startsWith(CAUSEHEALTH_CONSTITUTION)) {
+    const tail = system.slice(CAUSEHEALTH_CONSTITUTION.length);
+    if (tail.trim().length === 0) return [{ type: 'text', text: CAUSEHEALTH_CONSTITUTION, cache_control: cc }];
+    return [
+      { type: 'text', text: CAUSEHEALTH_CONSTITUTION, cache_control: cc },
+      { type: 'text', text: tail, cache_control: cc },
+    ];
+  }
+  if (system.startsWith(CAUSEHEALTH_CONSTITUTION_SHORT)) {
+    const tail = system.slice(CAUSEHEALTH_CONSTITUTION_SHORT.length);
+    if (tail.trim().length === 0) return [{ type: 'text', text: CAUSEHEALTH_CONSTITUTION_SHORT, cache_control: cc }];
+    return [
+      { type: 'text', text: CAUSEHEALTH_CONSTITUTION_SHORT, cache_control: cc },
+      { type: 'text', text: tail, cache_control: cc },
+    ];
+  }
+  return [{ type: 'text', text: system, cache_control: cc }];
 }
 
 function settledOrFallback<T>(res: PromiseSettledResult<T>, fallback: T): T {

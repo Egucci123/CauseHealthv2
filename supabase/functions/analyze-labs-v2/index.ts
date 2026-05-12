@@ -24,6 +24,7 @@ import {
   buildLabAnalysisUserMessage,
   type LabAnalysisOutput,
 } from '../_shared/prompts/labAnalysis.ts';
+import { CAUSEHEALTH_CONSTITUTION, CAUSEHEALTH_CONSTITUTION_SHORT } from '../_shared/prompts/_constitution.ts';
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -298,7 +299,8 @@ async function callAnthropicTool<T>(args: {
       body: JSON.stringify({
         model: MODEL,
         max_tokens: 6000,
-        system: [{ type: 'text', cache_control: { type: 'ephemeral', ttl: '1h' }, text: args.system }],
+        // Split at constitution boundary — see splitForCache() below.
+        system: splitForCache(args.system),
         messages: [{ role: 'user', content: args.user }],
         tools: [{ ...args.tool, cache_control: { type: 'ephemeral', ttl: '1h' } }],
         tool_choice: { type: 'tool', name: args.tool.name },
@@ -313,6 +315,26 @@ async function callAnthropicTool<T>(args: {
   } finally {
     clearTimeout(timeout);
   }
+}
+
+/**
+ * Split system prompt into 2 cached blocks at the CauseHealth constitution
+ * boundary so the constitution becomes a SHARED cache entry across all v2
+ * AI calls. First call writes; subsequent calls hit at 10% on read.
+ */
+function splitForCache(system: string): Array<{ type: 'text'; text: string; cache_control: { type: 'ephemeral'; ttl: '1h' } }> {
+  const cc = { type: 'ephemeral' as const, ttl: '1h' as const };
+  for (const constitution of [CAUSEHEALTH_CONSTITUTION, CAUSEHEALTH_CONSTITUTION_SHORT]) {
+    if (system.startsWith(constitution)) {
+      const tail = system.slice(constitution.length);
+      if (tail.trim().length === 0) return [{ type: 'text', text: constitution, cache_control: cc }];
+      return [
+        { type: 'text', text: constitution, cache_control: cc },
+        { type: 'text', text: tail, cache_control: cc },
+      ];
+    }
+  }
+  return [{ type: 'text', text: system, cache_control: cc }];
 }
 
 // ──────────────────────────────────────────────────────────────────────
