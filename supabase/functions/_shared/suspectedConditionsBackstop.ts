@@ -1306,6 +1306,12 @@ const RULES: BackstopRule[] = [
       const threshold = isMale ? 13.5 : 12.0;
       if (hgb.value >= threshold) return null;
       if (hgb.value < 8) return null; // severe handled by severe_anemia_workup
+      // Yield to the more-specific Iron Deficiency Anemia detector when
+      // ferritin is also low — IDA handles that combo. Same for B12 / folate.
+      const ferritin = mark(ctx.labValues, [/^ferritin/i]);
+      if (ferritin && ferritin.value < 30) return null;
+      const b12 = mark(ctx.labValues, [/^vitamin b.?12$|^b12$/i]);
+      if (b12 && b12.value < 250) return null;
       return {
         name: 'Anemia — universal differential workup',
         category: 'hematology',
@@ -1562,6 +1568,512 @@ const RULES: BackstopRule[] = [
         confirmatory_tests: ['AM Cortisol (8 AM, fasting) — pair with DHEA-S for adrenal axis snapshot', 'ACTH', 'Cosyntropin (ACTH) stimulation test if AM cortisol is borderline low', 'TSH + Free T4', 'Comprehensive medication review (chronic steroid use suppresses DHEA-S)', 'Pituitary MRI if low DHEA-S + low cortisol + other pituitary axis abnormalities'],
         icd10: 'E27.49',
         what_to_ask_doctor: "My DHEA-S is low. Can we check AM cortisol + ACTH together for the adrenal axis, and TSH for thyroid? If AM cortisol is also low, I want a cosyntropin stimulation test for adrenal insufficiency.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════
+  //  EXTENDED COVERAGE — pass 2 (24 more universal detectors)
+  // ═══════════════════════════════════════════════════════════════════════
+
+  // ── Troponin elevation — ACS / myocarditis workup ────────────────────
+  {
+    key: 'troponin_elevation',
+    alreadyRaisedIf: [/troponin elev|acute coronary|myocard/i],
+    skipIfDx: ['acute_mi'],
+    detect: (ctx) => {
+      const trop = mark(ctx.labValues, [/^troponin|^hs-?troponin/i]);
+      if (!trop || trop.value < 0.04) return null;
+      return {
+        name: 'Troponin elevation — urgent cardiac workup',
+        category: 'cardio',
+        confidence: 'high',
+        evidence: `Troponin ${trop.value} ${trop.unit}. Any elevation above the 99th percentile is myocardial injury — not necessarily infarction. Differential: acute coronary syndrome (most urgent), myocarditis, pulmonary embolism, sepsis, CKD (chronic baseline elevation), demand ischemia, takotsubo. Urgency depends on trajectory (rising/falling vs flat).`,
+        confirmatory_tests: ['Repeat Troponin in 3 hours (rising = active injury)', '12-lead ECG immediately', 'BNP / NT-proBNP', 'CBC + BMP + Mg + Phosphorus', 'D-Dimer if PE suspected', 'Echocardiogram', 'Cardiology consult', 'Coronary angiogram if rising + ECG changes'],
+        icd10: 'R79.89',
+        what_to_ask_doctor: "My troponin is elevated. We need a 12-lead ECG, a 3-hour repeat troponin to check trajectory, BNP, and an echo. If trending up + any ECG change, I need cardiology now.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── BNP / NT-proBNP elevation — heart failure workup ─────────────────
+  {
+    key: 'natriuretic_peptide_elevation',
+    alreadyRaisedIf: [/bnp elev|natriuretic|heart failure (workup|suspected)|chf/i],
+    skipIfDx: ['heart_failure', 'chf'],
+    detect: (ctx) => {
+      const bnp = mark(ctx.labValues, [/^bnp\b/i]);
+      const ntp = mark(ctx.labValues, [/nt-?probnp|n-?terminal/i]);
+      const bnpHigh = bnp && bnp.value >= 100;
+      const ntpHigh = ntp && ntp.value >= 300;
+      if (!bnpHigh && !ntpHigh) return null;
+      const which = bnpHigh ? `BNP ${bnp.value} ${bnp.unit}` : `NT-proBNP ${ntp.value} ${ntp.unit}`;
+      return {
+        name: 'Natriuretic peptide elevation — heart failure workup',
+        category: 'cardio',
+        confidence: ((bnp && bnp.value >= 400) || (ntp && ntp.value >= 900)) ? 'high' : 'moderate',
+        evidence: `${which}. Elevation reflects ventricular wall stretch. Differential: HFrEF / HFpEF (most common driver), atrial fibrillation, PE, pulmonary HTN, CKD (chronic baseline elevation), sepsis, anemia. Age-adjusted cutoffs matter for NT-proBNP (higher in elderly).`,
+        confirmatory_tests: ['Transthoracic Echocardiogram (LVEF, diastolic function, valves)', '12-lead ECG (afib? LVH? prior MI?)', 'Repeat BNP / NT-proBNP after diuresis (responds to treatment)', 'CBC + BMP + Mg + TSH', 'Troponin (rule out ischemic driver)', 'Chest X-ray (pulmonary edema)', 'Lipid Panel + Hemoglobin A1c (risk factor optimization)'],
+        icd10: 'I50.9',
+        what_to_ask_doctor: "My BNP is elevated. I need an echo for ejection fraction, an ECG, TSH, and a chest X-ray. If LVEF is reduced, I want to start guideline-directed medical therapy (ACEi/ARNi, beta-blocker, SGLT2i, MRA).",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── D-Dimer elevation — VTE workup ────────────────────────────────────
+  {
+    key: 'd_dimer_elevation',
+    alreadyRaisedIf: [/d.?dimer elev|vte|dvt|pulmonary embolism/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const dd = mark(ctx.labValues, [/^d.?dimer/i]);
+      if (!dd) return null;
+      // Age-adjusted threshold: age × 10 µg/L (≈ 0.5 if <50, higher otherwise)
+      const ageAdjusted = ctx.age && ctx.age > 50 ? (ctx.age / 100) : 0.5;
+      if (dd.value < ageAdjusted) return null;
+      return {
+        name: 'D-Dimer elevation — VTE rule-out',
+        category: 'hematology',
+        confidence: dd.value > 1.0 ? 'high' : 'moderate',
+        evidence: `D-Dimer ${dd.value} ${dd.unit}. D-dimer is sensitive but not specific — false positives from recent surgery, trauma, infection, malignancy, pregnancy, age, DIC, liver disease. Only useful for ruling OUT VTE when pretest probability is low. If pretest probability is high, go straight to imaging.`,
+        confirmatory_tests: ['Wells score (calculator) for DVT/PE pretest probability', 'Compression Ultrasound (DVT — bilateral leg if symptoms)', 'CT Pulmonary Angiogram (PE — gold standard)', 'V/Q Scan if CT contraindicated', 'CBC + BMP + INR/PT/PTT', 'Echocardiogram if PE confirmed (RV strain)'],
+        icd10: 'R79.89',
+        what_to_ask_doctor: "My D-dimer is elevated. We need to calculate Wells score for clot probability. If symptoms or high probability, compression ultrasound for DVT or CT-PA for PE — D-dimer alone isn't enough.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Creatine Kinase elevation — myopathy / rhabdo workup ─────────────
+  {
+    key: 'ck_elevation_workup',
+    alreadyRaisedIf: [/elevated ck|rhabdomyolysis|myopath/i],
+    skipIfDx: ['rhabdomyolysis'],
+    detect: (ctx) => {
+      const ck = mark(ctx.labValues, [/^creatine.?kinase|^ck\b/i]);
+      if (!ck || ck.value < 250) return null;
+      const isRhabdo = ck.value >= 5000;
+      return {
+        name: isRhabdo ? 'Severe CK elevation — rhabdomyolysis' : 'CK elevation — myopathy workup',
+        category: 'hematology',
+        confidence: isRhabdo ? 'high' : 'moderate',
+        evidence: `CK ${ck.value} ${ck.unit}. ${isRhabdo ? 'CK ≥ 5000 = rhabdomyolysis range — acute kidney injury risk from myoglobinuria. ' : ''}Differential: heavy exercise (drops in 7 days), statin myopathy, hypothyroidism (often subtle CK elevation), trauma / crush, viral myositis, polymyositis / dermatomyositis (proximal weakness pattern), inherited myopathies, alcohol / drugs (cocaine, energy drinks). Macro-CK is a benign false-positive — check CK-MB / electrophoresis if persistent.`,
+        confirmatory_tests: ['Repeat CK in 5-7 days (exercise-driven drops fast)', 'TSH', 'Creatinine + eGFR + Urinalysis (myoglobinuria)', 'Aldolase + LDH (myositis pattern)', 'ANA + RF + Anti-Jo-1 if myositis suspected', 'CK isoenzymes (CK-MM vs CK-MB) — rule out macro-CK', 'Comprehensive medication review (statins, fibrates, colchicine)'],
+        icd10: 'R74.8',
+        what_to_ask_doctor: "My CK is elevated. Can we rest from exercise for 5-7 days, recheck, plus check TSH and a urinalysis for myoglobin? If still high and I'm on a statin, that's the likely cause.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Low AM cortisol — adrenal insufficiency rule-out ─────────────────
+  {
+    key: 'low_am_cortisol',
+    alreadyRaisedIf: [/adrenal insuffic|addison|low cortisol/i],
+    skipIfDx: ['adrenal_insufficiency', 'addison'],
+    detect: (ctx) => {
+      const cort = mark(ctx.labValues, [/^cortisol(?!.*pm|.*evening|.*night)/i, /am cortisol|morning cortisol/i]);
+      if (!cort || cort.value >= 5) return null;
+      return {
+        name: 'Low AM cortisol — adrenal insufficiency rule-out',
+        category: 'endocrine',
+        confidence: cort.value < 3 ? 'high' : 'moderate',
+        evidence: `AM cortisol ${cort.value} ${cort.unit}. Cortisol < 3 µg/dL essentially confirms adrenal insufficiency; 3-10 is the gray zone needing stimulation testing. Primary (Addison — autoimmune adrenalitis most common, also TB, hemorrhage, infiltration) shows high ACTH; secondary (pituitary failure) shows normal/low ACTH. Critical — untreated adrenal crisis is fatal.`,
+        confirmatory_tests: ['Cosyntropin (ACTH) stimulation test — gold standard (cortisol < 18 at 60min = positive)', 'ACTH level (primary vs secondary split)', 'Aldosterone + Renin (primary affects both axes)', 'Adrenal autoantibodies (21-hydroxylase Ab) if primary', '17-OH-Progesterone (rule out CAH)', 'Electrolytes (hyponatremia + hyperkalemia in primary)', 'Pituitary MRI if secondary', 'TSH + Free T4 (often co-deficient)'],
+        icd10: 'E27.40',
+        what_to_ask_doctor: "My morning cortisol is low. I need a cosyntropin stimulation test to confirm adrenal insufficiency, plus ACTH to figure out primary vs secondary. While we work this up, I need a stress-dose plan in case of illness or surgery.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Elevated ACTH — adrenal axis workup ───────────────────────────────
+  {
+    key: 'elevated_acth',
+    alreadyRaisedIf: [/elevated acth|cushing|addison|primary adrenal/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const acth = mark(ctx.labValues, [/^acth\b|adrenocorticotrop/i]);
+      if (!acth || acth.value < 80) return null;
+      return {
+        name: 'Elevated ACTH — adrenal axis workup',
+        category: 'endocrine',
+        confidence: 'moderate',
+        evidence: `ACTH ${acth.value} ${acth.unit}. With concurrent low cortisol = primary adrenal insufficiency (Addison). With high cortisol = ACTH-dependent Cushing (pituitary adenoma > ectopic). With normal cortisol = consider congenital adrenal hyperplasia, exogenous steroid withdrawal, or assay artifact. Pair with cortisol to interpret.`,
+        confirmatory_tests: ['AM Cortisol (paired with ACTH — interpretation depends on both)', '24-hour Urine Free Cortisol', 'Late-night Salivary Cortisol (Cushing screen)', '1-mg Overnight Dexamethasone Suppression Test', 'High-Dose Dexamethasone Suppression (pituitary vs ectopic)', 'Pituitary MRI (Cushing disease)', 'Chest + Abdomen CT (ectopic ACTH)', '21-Hydroxylase + 17-OH Progesterone (CAH workup if young)'],
+        icd10: 'E27.49',
+        what_to_ask_doctor: "My ACTH is elevated. The interpretation depends on cortisol — can we get a paired AM cortisol + 24-hour urine free cortisol + a 1-mg overnight dex suppression test? If Cushing's, then pituitary MRI; if Addison's, antibody panel.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── IGF-1 elevation — acromegaly rule-out ─────────────────────────────
+  {
+    key: 'elevated_igf1',
+    alreadyRaisedIf: [/elevated igf|acromegal|growth hormone excess/i],
+    skipIfDx: ['acromegaly'],
+    detect: (ctx) => {
+      const igf = mark(ctx.labValues, [/^igf-?1\b|insulin.?like growth/i]);
+      if (!igf || igf.value < 350) return null;
+      return {
+        name: 'Elevated IGF-1 — acromegaly rule-out',
+        category: 'endocrine',
+        confidence: 'moderate',
+        evidence: `IGF-1 ${igf.value} ${igf.unit}. Age-adjusted ULN matters (younger = higher normal). True elevation outside age range raises concern for growth hormone excess (acromegaly in adults, gigantism if pre-fusion). Signs: enlarging hands/feet/jaw, prognathism, deepening voice, sweating, headache, joint pain. Also: exogenous GH use (athletes, anti-aging clinics).`,
+        confirmatory_tests: ['Oral Glucose Tolerance Test with GH levels (failure to suppress GH < 1 ng/mL = acromegaly)', 'Pituitary MRI (adenoma detection)', 'Prolactin (frequently co-elevated)', 'Visual field testing (chiasmal compression)', 'TSH + Free T4 + Cortisol + ACTH + LH + FSH (full pituitary axis)', 'Comprehensive medication / supplement review (rule out GH use)'],
+        icd10: 'E22.0',
+        what_to_ask_doctor: "My IGF-1 is elevated. Can we do an OGTT with GH measurements and a pituitary MRI? Also check prolactin and the full pituitary axis. If I've used GH or peptide GH-secretagogues, that explains it.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Low IGF-1 — adult GH deficiency / chronic illness ─────────────────
+  {
+    key: 'low_igf1',
+    alreadyRaisedIf: [/low igf|gh deficien|hypopituitar/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const igf = mark(ctx.labValues, [/^igf-?1\b|insulin.?like growth/i]);
+      if (!igf || igf.value > 90) return null;
+      return {
+        name: 'Low IGF-1 — adult GH deficiency / chronic illness',
+        category: 'endocrine',
+        confidence: 'moderate',
+        evidence: `IGF-1 ${igf.value} ${igf.unit}. Differential: chronic illness / undernutrition (most common — IGF-1 is sensitive to caloric status), hepatic dysfunction (liver produces IGF-1 in response to GH), adult GH deficiency (pituitary), severe insulin deficiency, hypothyroidism, prolonged glucocorticoid use. Not diagnostic of GH deficiency alone — needs stimulation testing.`,
+        confirmatory_tests: ['Repeat IGF-1 after addressing any nutritional / illness driver', 'Liver Panel (hepatic source of IGF-1)', 'TSH + Free T4', 'AM Cortisol + ACTH', 'Glucagon stimulation test or insulin tolerance test (definitive GH stim)', 'Pituitary MRI if other pituitary axes also abnormal'],
+        icd10: 'E23.0',
+        what_to_ask_doctor: "My IGF-1 is low. Can we rule out chronic illness, liver issues, and thyroid first? If we suspect actual GH deficiency, I want a proper stim test plus a pituitary MRI rather than empiric GH.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Low Free T3 — conversion / non-thyroidal illness ─────────────────
+  {
+    key: 'low_free_t3',
+    alreadyRaisedIf: [/low free t3|sick euthyroid|non-?thyroidal illness|conversion issue/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const ft3 = mark(ctx.labValues, [/free t3|^t3,?\s*free|triyodotironina libre/i]);
+      if (!ft3 || ft3.value >= 2.3) return null;
+      return {
+        name: 'Low Free T3 — conversion / non-thyroidal illness',
+        category: 'endocrine',
+        confidence: 'moderate',
+        evidence: `Free T3 ${ft3.value} ${ft3.unit}. Low Free T3 with normal TSH and normal Free T4 = "low T3 syndrome" — typically reflects poor T4→T3 conversion or peripheral down-regulation. Drivers: acute illness, chronic illness, caloric restriction (esp. low-carb / extended fasting), high stress / high reverse T3, selenium / zinc / iron deficiency, certain meds (amiodarone, beta-blockers, glucocorticoids).`,
+        confirmatory_tests: ['Reverse T3 (sick euthyroid pattern = high rT3)', 'Free T3/Reverse T3 Ratio', 'Selenium + Zinc + Ferritin (conversion cofactors)', 'TSH + Free T4 (confirm pattern)', 'Comprehensive medication review', 'Nutritional history (caloric intake, carb restriction, intermittent fasting)'],
+        icd10: 'E03.9',
+        what_to_ask_doctor: "My Free T3 is low. Most likely this is conversion or sick-euthyroid pattern. Can we get reverse T3, check selenium/zinc/ferritin which are conversion cofactors, and review meds + nutrition before deciding on T3 supplementation?",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── High Reverse T3 — sick euthyroid / stress ────────────────────────
+  {
+    key: 'high_reverse_t3',
+    alreadyRaisedIf: [/elevated reverse t3|sick euthyroid|stress/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const rt3 = mark(ctx.labValues, [/reverse t3|^rt3\b/i]);
+      if (!rt3 || rt3.value <= 24) return null;
+      return {
+        name: 'Elevated Reverse T3 — sick euthyroid / stress pattern',
+        category: 'endocrine',
+        confidence: 'moderate',
+        evidence: `Reverse T3 ${rt3.value} ${rt3.unit}. Elevated rT3 shunts T4 away from active T3 conversion. Drivers: acute or chronic illness, caloric restriction, high stress / elevated cortisol, certain meds (amiodarone, beta-blockers, glucocorticoids), heavy metals, selenium deficiency. Often coexists with low Free T3. Address the underlying driver before T3 supplementation.`,
+        confirmatory_tests: ['Free T3 + Free T4 + TSH (full thyroid panel)', 'Free T3 / Reverse T3 Ratio (functional thyroid status)', 'AM Cortisol + DHEA-S (stress axis)', 'Selenium + Zinc + Iron Studies (conversion cofactors)', 'Comprehensive medication review'],
+        icd10: 'E03.9',
+        what_to_ask_doctor: "My Reverse T3 is elevated. Most often this is stress / illness / undernutrition driving T4 away from T3. Can we check AM cortisol, selenium/zinc/iron as conversion cofactors, and address the upstream driver?",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── ANA positive — autoimmune workup ──────────────────────────────────
+  {
+    key: 'ana_positive',
+    alreadyRaisedIf: [/positive ana|autoimmune workup|lupus|sjogren|sclerosis/i],
+    skipIfDx: ['lupus', 'sle', 'rheumatoid_arthritis'],
+    detect: (ctx) => {
+      const ana = mark(ctx.labValues, [/^ana\b|antinuclear/i]);
+      if (!ana) return null;
+      // Titer ≥ 160 (1:160) is the standard positive threshold
+      if (ana.value < 160) return null;
+      return {
+        name: 'Positive ANA — autoimmune workup',
+        category: 'autoimmune',
+        confidence: ana.value >= 640 ? 'high' : 'moderate',
+        evidence: `ANA ${ana.value} ${ana.unit}. Positive ANA alone is non-specific (~5% of healthy adults have low-titer positives). Significance depends on titer (≥1:160 more meaningful, ≥1:1280 highly suggestive), pattern (homogeneous, speckled, nucleolar, centromere — each maps to different conditions), and symptoms. Differential: SLE, Sjögren, scleroderma, polymyositis, mixed connective tissue disease, drug-induced (procainamide, hydralazine, TNF inhibitors), chronic infection, normal variant.`,
+        confirmatory_tests: ['ANA Reflex Panel (dsDNA, Smith, RNP, SSA/SSB, Scl-70, Jo-1, Centromere)', 'Complement C3 + C4 (low in active SLE)', 'CBC + BMP + Urinalysis (organ involvement)', 'CRP + ESR', 'Anti-CCP + RF (rule out RA overlap)', 'Comprehensive medication review (drug-induced lupus)', 'Rheumatology referral if symptomatic or high-titer'],
+        icd10: 'R76.0',
+        what_to_ask_doctor: "My ANA is positive. Alone this doesn't mean much — can we get the reflex panel (dsDNA, Smith, RNP, SSA/SSB, Scl-70, anti-CCP) plus complement C3/C4 and urinalysis? If I have any joint, skin, or organ symptoms, I want a rheumatology referral.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Elevated Rheumatoid Factor — inflammatory arthritis workup ───────
+  {
+    key: 'elevated_rheumatoid_factor',
+    alreadyRaisedIf: [/elevated rf|rheumatoid arthritis|inflammatory arthritis/i],
+    skipIfDx: ['rheumatoid_arthritis', 'ra'],
+    detect: (ctx) => {
+      const rf = mark(ctx.labValues, [/^rheumatoid factor|^rf\b/i]);
+      if (!rf || rf.value < 20) return null;
+      return {
+        name: 'Elevated Rheumatoid Factor — inflammatory arthritis workup',
+        category: 'autoimmune',
+        confidence: 'moderate',
+        evidence: `RF ${rf.value} ${rf.unit}. RF alone is non-specific. Differential: rheumatoid arthritis (most common pathologic association — confirm with anti-CCP for specificity), Sjögren, mixed connective tissue, viral infection (hepatitis C — common false-positive), chronic infection, age (~10% of elderly have positive RF without disease), normal variant.`,
+        confirmatory_tests: ['Anti-CCP Antibodies (specific for RA, >95%)', 'CRP + ESR', 'ANA + Reflex Panel', 'Hepatitis C Antibody (common false-positive driver)', 'Joint Imaging (X-ray of symptomatic joints — erosions confirm RA)', 'CBC + Comprehensive Metabolic Panel', 'Rheumatology referral if anti-CCP positive or persistent joint symptoms'],
+        icd10: 'M05.9',
+        what_to_ask_doctor: "My RF is elevated. RF alone isn't specific — can we get anti-CCP (which is specific for RA), CRP/ESR, and Hep C antibody (common false-positive)? If symptoms or anti-CCP positive, rheumatology referral.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Low C-peptide — T1DM / pancreatic beta-cell failure ──────────────
+  {
+    key: 'low_c_peptide',
+    alreadyRaisedIf: [/low c-?peptide|type 1 diabetes|t1dm|beta-?cell failure|lada/i],
+    skipIfDx: ['type_1_diabetes', 't1dm'],
+    detect: (ctx) => {
+      const cp = mark(ctx.labValues, [/^c.?peptide/i]);
+      if (!cp || cp.value >= 0.5) return null;
+      return {
+        name: 'Low C-peptide — T1DM / LADA workup',
+        category: 'endocrine',
+        confidence: 'high',
+        evidence: `C-Peptide ${cp.value} ${cp.unit}. Low C-peptide with elevated glucose = type 1 diabetes (or LADA — latent autoimmune diabetes in adults, increasingly recognized). With normal glucose: could be inappropriate sample (non-fasting non-stimulated) or post-prandial timing issue. Critical to identify before insulin dependence; misdiagnosis as T2DM and inappropriate sulfonylurea / metformin therapy delays definitive insulin.`,
+        confirmatory_tests: ['GAD-65 Antibodies (T1DM / LADA marker)', 'Islet Cell Antibodies (ICA)', 'Insulin Autoantibodies (IAA)', 'Zinc Transporter 8 (ZnT8) Antibodies', 'Tyrosine Phosphatase IA-2 Antibodies', 'Random Glucose + Hemoglobin A1c', 'Endocrinology referral if confirmed'],
+        icd10: 'E10.9',
+        what_to_ask_doctor: "My C-peptide is low. That suggests type 1 diabetes or LADA — adult-onset autoimmune diabetes that's commonly misdiagnosed as type 2. Can we run the autoantibody panel (GAD-65, IA-2, ZnT8, IAA, ICA) and refer to endocrine?",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Elevated reticulocytes — hemolysis or blood loss response ────────
+  {
+    key: 'reticulocytosis',
+    alreadyRaisedIf: [/reticulocytos|hemoly|blood loss/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const ret = mark(ctx.labValues, [/^reticulocyte\b|^reticulocyte\s*%/i]);
+      if (!ret || ret.value < 2.5) return null;
+      return {
+        name: 'Elevated reticulocytes — hemolysis vs blood loss',
+        category: 'hematology',
+        confidence: ret.value > 5 ? 'high' : 'moderate',
+        evidence: `Reticulocytes ${ret.value} ${ret.unit}. Marrow is responding to red cell loss — either bleeding (most common) or hemolysis. Always pair with Hgb (elevated retics + low Hgb = active loss; elevated retics + normal Hgb = recovering from prior insult).`,
+        confirmatory_tests: ['LDH + Haptoglobin + Indirect Bilirubin (hemolysis pattern: high LDH, low haptoglobin, elevated indirect bili)', 'Peripheral Blood Smear (schistocytes = MAHA emergency; spherocytes = AIHA / HS)', 'Direct Antiglobulin Test (DAT / Coombs) — autoimmune hemolysis', 'Stool occult blood / FIT (GI bleed)', 'Urinalysis (hemoglobinuria)', 'CBC trend over time'],
+        icd10: 'R71.0',
+        what_to_ask_doctor: "My reticulocytes are high. My marrow is responding to blood loss or hemolysis. Can we run LDH, haptoglobin, indirect bilirubin to check for hemolysis, and a FIT or stool occult blood for GI bleed? And a peripheral smear.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Low haptoglobin — intravascular hemolysis ─────────────────────────
+  {
+    key: 'low_haptoglobin',
+    alreadyRaisedIf: [/low haptoglobin|hemoly|intravascular/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const hp = mark(ctx.labValues, [/^haptoglobin/i]);
+      if (!hp || hp.value >= 30) return null;
+      return {
+        name: 'Low haptoglobin — intravascular hemolysis workup',
+        category: 'hematology',
+        confidence: 'high',
+        evidence: `Haptoglobin ${hp.value} ${hp.unit}. Haptoglobin binds free hemoglobin from intravascular red cell lysis — when consumed, levels drop. Causes: autoimmune hemolytic anemia (AIHA), microangiopathic hemolytic anemia (TTP/HUS/DIC/HELLP — emergency), G6PD crisis, mechanical hemolysis (prosthetic valve), paroxysmal nocturnal hemoglobinuria (PNH). False-low: congenital ahaptoglobinemia (rare).`,
+        confirmatory_tests: ['LDH + Indirect Bilirubin + Reticulocyte Count (hemolysis pattern)', 'Direct Antiglobulin Test (DAT / Coombs) — distinguishes AIHA', 'Peripheral Blood Smear (schistocytes = MAHA — EMERGENCY)', 'G6PD level (after acute episode resolves — false-normal during crisis)', 'PNH Flow Cytometry if recurrent / unexplained', 'Hemoglobin A1c if recurrent hemolysis suspected hemoglobinopathy', 'Urinalysis (hemoglobinuria)'],
+        icd10: 'D59.9',
+        what_to_ask_doctor: "My haptoglobin is low — that's intravascular hemolysis until proven otherwise. We need a peripheral smear immediately to rule out TTP/HUS, plus a Coombs test, LDH, indirect bilirubin, reticulocyte count, and urinalysis.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Elevated LDH — hemolysis / MPN / lymphoma differential ───────────
+  {
+    key: 'elevated_ldh',
+    alreadyRaisedIf: [/elevated ldh|hemoly|lymphoma|mpn/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const ldh = mark(ctx.labValues, [/^ldh\b|lactate dehydrogen/i]);
+      if (!ldh || ldh.value < 280) return null;
+      return {
+        name: 'Elevated LDH — broad differential',
+        category: 'hematology',
+        confidence: ldh.value > 500 ? 'high' : 'moderate',
+        evidence: `LDH ${ldh.value} ${ldh.unit}. LDH is in every cell — elevation is sensitive but very non-specific. Differential: hemolysis (intravascular or extravascular), muscle injury, hepatic disease, lymphoma / leukemia (often markedly elevated), myeloproliferative disorders, tumor lysis, PE, sepsis. LDH isoenzymes can localize the source.`,
+        confirmatory_tests: ['LDH Isoenzymes (LDH1/2 cardiac/RBC, LDH3 lung/pancreas, LDH4/5 liver/skeletal muscle)', 'Haptoglobin + Reticulocyte Count + Indirect Bilirubin (hemolysis workup)', 'Peripheral Blood Smear', 'CBC with Manual Differential', 'Comprehensive Metabolic Panel + Liver Panel', 'Creatine Kinase (muscle source)', 'Lymph node exam / imaging if lymphadenopathy or B-symptoms'],
+        icd10: 'R74.02',
+        what_to_ask_doctor: "My LDH is elevated. LDH is non-specific — can we get isoenzymes to localize the source, plus haptoglobin/retics/indirect bili for hemolysis, CK for muscle, and a smear? If I have any B-symptoms (fever, night sweats, weight loss, lymph nodes), I want imaging too.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Elevated procalcitonin — bacterial infection ─────────────────────
+  {
+    key: 'elevated_procalcitonin',
+    alreadyRaisedIf: [/elevated procalcit|bacterial infection|sepsis/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const pct = mark(ctx.labValues, [/^procalciton/i]);
+      if (!pct || pct.value < 0.5) return null;
+      return {
+        name: 'Elevated procalcitonin — bacterial infection / sepsis workup',
+        category: 'infectious',
+        confidence: pct.value >= 2 ? 'high' : 'moderate',
+        evidence: `Procalcitonin ${pct.value} ${pct.unit}. PCT rises specifically with bacterial infections (more specific than CRP for bacterial vs viral). ≥0.5 suggests bacterial; ≥2.0 highly suggestive; ≥10 strongly suggestive of severe sepsis / septic shock. Other drivers: trauma, major surgery, burns, MAS, certain malignancies.`,
+        confirmatory_tests: ['Blood Cultures × 2 (before antibiotics if possible)', 'CBC with Differential', 'Comprehensive Metabolic Panel + Lactate', 'CRP + ESR for comparison', 'Urinalysis + Urine Culture', 'Chest X-ray', 'Source-specific cultures (sputum, wound, CSF, etc.)', 'Empiric antibiotics if clinical sepsis suspected'],
+        icd10: 'A41.9',
+        what_to_ask_doctor: "My procalcitonin is elevated — that's specific for bacterial infection. We need blood cultures, urinalysis with culture, chest X-ray, and a lactate. If I have any sepsis criteria, empiric antibiotics don't wait for cultures.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Elevated CEA — GI / colorectal workup ─────────────────────────────
+  {
+    key: 'elevated_cea',
+    alreadyRaisedIf: [/elevated cea|colorectal|gi cancer/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const cea = mark(ctx.labValues, [/^cea\b|carcinoembryonic/i]);
+      if (!cea || cea.value < 5) return null;
+      return {
+        name: 'Elevated CEA — GI / colorectal workup',
+        category: 'oncology',
+        confidence: cea.value >= 10 ? 'high' : 'moderate',
+        evidence: `CEA ${cea.value} ${cea.unit}. CEA is not a screening test (low sensitivity) but elevation in a symptomatic or high-risk patient warrants workup. Differential: colorectal cancer (most common pathologic association), other GI cancers (pancreatic, gastric, esophageal), lung cancer, breast, smoking (mild elevation), liver disease, IBD, COPD, smoker baseline. Trend matters more than single value.`,
+        confirmatory_tests: ['Colonoscopy (especially if age ≥45 or symptomatic — overdue screening)', 'Smoking history (smokers have higher baseline)', 'Liver Panel + Right Upper Quadrant Ultrasound', 'CT Chest / Abdomen / Pelvis if persistently elevated', 'CA 19-9 (pancreatic / hepatobiliary co-marker)', 'Repeat CEA in 4-6 weeks to establish trend'],
+        icd10: 'R97.8',
+        what_to_ask_doctor: "My CEA is elevated. It's not specific but worth investigating. Colonoscopy if I'm due or symptomatic, plus liver imaging and CT chest/abdomen/pelvis if persistently elevated. I'd also like to recheck in 4-6 weeks to see the trend.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Elevated AFP — hepatocellular / germ cell workup ─────────────────
+  {
+    key: 'elevated_afp',
+    alreadyRaisedIf: [/elevated afp|hepatocellular|hcc|germ cell/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const afp = mark(ctx.labValues, [/^afp\b|alpha.?fetoprot/i]);
+      if (!afp || afp.value < 10) return null;
+      const isVeryHigh = afp.value > 400;
+      return {
+        name: isVeryHigh ? 'Markedly elevated AFP — HCC strongly suggested' : 'Elevated AFP — workup',
+        category: 'oncology',
+        confidence: isVeryHigh ? 'high' : 'moderate',
+        evidence: `AFP ${afp.value} ${afp.unit}. ${isVeryHigh ? 'AFP > 400 in adult is highly suggestive of hepatocellular carcinoma. ' : ''}Differential: HCC (most common pathologic), germ cell tumor (testicular / ovarian — esp. in younger patients), chronic hepatitis with cirrhosis (modest elevation), pregnancy (false-positive — always check first in reproductive-age females), rare congenital hereditary persistence.`,
+        confirmatory_tests: ['β-hCG (pregnancy + germ cell workup)', 'Liver Panel + Liver Ultrasound + Triple-Phase CT', 'AFP-L3 fraction (HCC specificity)', 'PIVKA-II / DCP (HCC marker)', 'Hepatitis B + C serology', 'Testicular / pelvic ultrasound if young + suspected germ cell', 'GI / Oncology referral'],
+        icd10: 'R97.8',
+        what_to_ask_doctor: "My AFP is elevated. First — pregnancy test if I'm reproductive-age female (it can be a false-positive). Then liver ultrasound + triple-phase CT for HCC, hepatitis B/C serology, and if I'm young, testicular or pelvic imaging for germ cell tumor.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Elevated Lipase — pancreatitis ─────────────────────────────────────
+  {
+    key: 'elevated_lipase',
+    alreadyRaisedIf: [/elevated lipase|pancreatitis/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const lip = mark(ctx.labValues, [/^lipase/i]);
+      if (!lip || lip.value < 200) return null;
+      const isPancreatitis = lip.value >= 600;
+      return {
+        name: isPancreatitis ? 'Severe lipase elevation — acute pancreatitis' : 'Elevated lipase — pancreatitis workup',
+        category: 'gi',
+        confidence: isPancreatitis ? 'high' : 'moderate',
+        evidence: `Lipase ${lip.value} ${lip.unit}. ${isPancreatitis ? 'Lipase ≥ 3× ULN with epigastric pain meets diagnostic criteria for acute pancreatitis. ' : ''}Differential: acute pancreatitis (most common — gallstones, alcohol, hypertriglyceridemia, drugs, ERCP), chronic pancreatitis flare, pancreatic cancer, intestinal ischemia, perforation, severe DKA, CKD (chronic mild elevation). Always pair with epigastric pain workup.`,
+        confirmatory_tests: ['CT Abdomen with Contrast (severity grading — Balthazar / CTSI score)', 'Right Upper Quadrant Ultrasound (gallstones)', 'Liver Panel + Bilirubin (biliary obstruction)', 'Triglycerides (hypertriglyceridemic pancreatitis if > 1000)', 'Calcium', 'Lactate + ABG (severity)', 'BUN + Creatinine (volume status)', 'Comprehensive medication review (drug-induced)'],
+        icd10: 'K85.9',
+        what_to_ask_doctor: "My lipase is elevated. If I have epigastric pain, we need a CT abdomen, right upper quadrant ultrasound for gallstones, triglycerides for hyperTG pancreatitis, calcium, and a comprehensive med review.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Elevated amylase — pancreatic / parotid workup ───────────────────
+  {
+    key: 'elevated_amylase',
+    alreadyRaisedIf: [/elevated amylase|pancreatitis|parotitis/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const amy = mark(ctx.labValues, [/^amylase/i]);
+      if (!amy || amy.value < 150) return null;
+      return {
+        name: 'Elevated amylase — pancreatic vs parotid workup',
+        category: 'gi',
+        confidence: amy.value >= 300 ? 'high' : 'moderate',
+        evidence: `Amylase ${amy.value} ${amy.unit}. Less specific than lipase — also rises with parotid (mumps, sialadenitis), bowel obstruction, ectopic pregnancy / fallopian tube pathology, DKA, CKD, macroamylasemia (benign — IgA-bound amylase doesn't clear renally). Use lipase to confirm pancreatic source.`,
+        confirmatory_tests: ['Lipase (pancreas-specific — definitive marker)', 'Right Upper Quadrant Ultrasound (gallstones)', 'CT Abdomen if pancreatitis suspected', 'β-hCG if reproductive-age female (ectopic)', 'Parotid exam (mumps / sialadenitis)', 'Macroamylase fractionation if isolated, persistent, and lipase normal'],
+        icd10: 'R74.8',
+        what_to_ask_doctor: "My amylase is elevated. Lipase would tell us if this is actually pancreatic. If lipase is normal, we need to think about parotid, bowel, ectopic pregnancy, or macroamylasemia.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Low AMH — diminished ovarian reserve ──────────────────────────────
+  {
+    key: 'low_amh',
+    alreadyRaisedIf: [/low amh|diminished ovarian reserve|premature ovarian/i],
+    skipIfDx: ['poi', 'premature_ovarian_insufficiency'],
+    detect: (ctx) => {
+      const isFemale = (ctx.sex ?? '').toLowerCase() === 'female';
+      if (!isFemale) return null;
+      const amh = mark(ctx.labValues, [/^amh\b|anti.?mullerian/i]);
+      if (!amh || amh.value >= 1) return null;
+      return {
+        name: 'Low AMH — diminished ovarian reserve',
+        category: 'reproductive',
+        confidence: amh.value < 0.5 ? 'high' : 'moderate',
+        evidence: `AMH ${amh.value} ${amh.unit}. AMH reflects ovarian follicle pool — drops naturally with age and predicts response to fertility treatment. Low AMH (< 1 ng/mL) in a reproductive-age woman raises concern for diminished ovarian reserve or early POI. Doesn't predict natural fertility well, but predicts IVF response strongly. Age-stratified normals matter (45yo with AMH 0.8 may still be normal-for-age).`,
+        confirmatory_tests: ['FSH + Estradiol on cycle day 2-4 (elevated FSH = ovarian reserve declining)', 'Antral Follicle Count (transvaginal ultrasound)', 'TSH + Prolactin', 'Karyotype + Fragile X premutation if POI suspected (< 40yo)', 'Adrenal antibodies (autoimmune POI association)', 'Reproductive endocrinology referral if fertility planning matters'],
+        icd10: 'E28.39',
+        what_to_ask_doctor: "My AMH is low. If I'm planning fertility, I want a reproductive endocrinology referral — they'll do FSH/E2 on cycle day 2-4, antral follicle count, and check for autoimmune POI if I'm under 40.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Elevated FSH — menopause / POI / primary testicular failure ──────
+  {
+    key: 'elevated_fsh',
+    alreadyRaisedIf: [/elevated fsh|menopause|premature ovarian|primary testicular|hypogonad/i],
+    skipIfDx: ['menopause'],
+    detect: (ctx) => {
+      const fsh = mark(ctx.labValues, [/^fsh\b|follicle.?stimulating/i]);
+      if (!fsh || fsh.value < 25) return null;
+      const isMale = (ctx.sex ?? '').toLowerCase() === 'male';
+      return {
+        name: isMale
+          ? 'Elevated FSH (male) — primary testicular failure workup'
+          : 'Elevated FSH (female) — menopause / POI workup',
+        category: 'endocrine',
+        confidence: 'high',
+        evidence: `FSH ${fsh.value} ${fsh.unit}. ${isMale ? 'In males: elevated FSH = primary testicular failure (Sertoli cell dysfunction / spermatogenesis impairment). Differential: Klinefelter syndrome, varicocele, prior chemo/radiation, mumps orchitis, idiopathic.' : 'In females: elevated FSH reflects ovarian failure to respond to pituitary drive. Differential by age: > 50 = menopause (normal); < 40 = POI (premature ovarian insufficiency — needs workup); 40-50 = perimenopause.'}`,
+        confirmatory_tests: isMale ? ['Repeat FSH + LH', 'Total + Free Testosterone', 'Estradiol + Prolactin', 'Karyotype (Klinefelter — 47,XXY most common cause of primary)', 'Y-chromosome microdeletion testing', 'Scrotal ultrasound', 'Semen analysis', 'Endocrine + Urology referral'] : ['Repeat FSH + Estradiol (cycle day 2-4 if still menstruating)', 'AMH', 'LH', 'Prolactin + TSH', 'Karyotype + Fragile X premutation if < 40yo (POI workup)', 'Adrenal antibodies (autoimmune POI association)', 'DEXA (bone density — estrogen deficiency)', 'Reproductive endocrinology referral'],
+        icd10: isMale ? 'E29.1' : 'E28.39',
+        what_to_ask_doctor: isMale
+          ? "My FSH is high — that's primary testicular failure. We need LH, testosterone (total + free), estradiol, prolactin, and a karyotype to rule out Klinefelter. Plus semen analysis if fertility matters."
+          : "My FSH is high. If I'm under 40, this is POI and needs workup — karyotype, Fragile X premutation, adrenal antibodies, plus AMH and a DEXA scan. If I'm over 50, this is just menopause confirmation.",
         source: 'deterministic',
       };
     },

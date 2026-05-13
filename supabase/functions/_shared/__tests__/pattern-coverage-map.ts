@@ -103,6 +103,45 @@ const MARKERS: MarkerFixture[] = [
   // ── Other ──
   { marker: 'Homocysteine',             unit: 'µmol/L',direction: 'high',          value: 18,  description: 'Hyperhomocysteinemia' },
   { marker: 'PSA',                      unit: 'ng/mL', direction: 'high',          value: 6.5, description: 'PSA elevation', sexOnly: 'male' },
+
+  // ── EXTENDED COVERAGE — pass 2 ──
+  // Cardiac & vascular
+  { marker: 'Troponin',                 unit: 'ng/mL', direction: 'high',          value: 0.5, description: 'Elevated troponin (cardiac injury)' },
+  { marker: 'BNP',                      unit: 'pg/mL', direction: 'high',          value: 480, description: 'Elevated BNP (heart failure)' },
+  { marker: 'NT-proBNP',                unit: 'pg/mL', direction: 'high',          value: 1200,description: 'Elevated NT-proBNP (heart failure)' },
+  { marker: 'D-Dimer',                  unit: 'µg/mL', direction: 'high',          value: 2.5, description: 'Elevated D-Dimer (clot suspicion)' },
+  // Muscle / rhabdo
+  { marker: 'Creatine Kinase',          unit: 'U/L',   direction: 'high',          value: 850, description: 'Elevated CK (myopathy / rhabdo)' },
+  { marker: 'Creatine Kinase',          unit: 'U/L',   direction: 'critical_high', value: 5500,description: 'Severe rhabdomyolysis range' },
+  // Endocrine — adrenal / pituitary
+  { marker: 'Cortisol',                 unit: 'µg/dL', direction: 'low',           value: 3.5, description: 'AM cortisol low (Addison rule-out)' },
+  { marker: 'ACTH',                     unit: 'pg/mL', direction: 'high',          value: 120, description: 'Elevated ACTH (primary adrenal vs ectopic)' },
+  { marker: 'IGF-1',                    unit: 'ng/mL', direction: 'high',          value: 480, description: 'Elevated IGF-1 (acromegaly rule-out)' },
+  { marker: 'IGF-1',                    unit: 'ng/mL', direction: 'low',           value: 60,  description: 'Low IGF-1 (GH deficiency / chronic illness)' },
+  // Thyroid extended
+  { marker: 'Free T3',                  unit: 'pg/mL', direction: 'low',           value: 1.8, description: 'Low Free T3 (conversion / NTI)' },
+  { marker: 'Reverse T3',               unit: 'ng/dL', direction: 'high',          value: 28,  description: 'Elevated Reverse T3 (sick euthyroid / stress)' },
+  { marker: 'TPO Antibodies',           unit: 'IU/mL', direction: 'high',          value: 350, description: 'Positive TPO (autoimmune thyroid)' },
+  // Autoimmune
+  { marker: 'ANA',                      unit: 'titer', direction: 'high',          value: 640, description: 'ANA positive (≥1:160)' },
+  { marker: 'Rheumatoid Factor',        unit: 'IU/mL', direction: 'high',          value: 95,  description: 'Elevated RF' },
+  // Insulin / glucose extended
+  { marker: 'C-Peptide',                unit: 'ng/mL', direction: 'low',           value: 0.3, description: 'Low C-peptide (T1DM / pancreatic beta-cell failure)' },
+  // Hematology extended
+  { marker: 'Reticulocyte %',           unit: '%',     direction: 'high',          value: 4.2, description: 'Elevated reticulocytes (hemolysis / blood loss response)' },
+  { marker: 'Haptoglobin',              unit: 'mg/dL', direction: 'low',           value: 18,  description: 'Low haptoglobin (intravascular hemolysis)' },
+  { marker: 'LDH',                      unit: 'U/L',   direction: 'high',          value: 380, description: 'Elevated LDH (hemolysis / MPN / lymphoma)' },
+  // Inflammation extended
+  { marker: 'Procalcitonin',            unit: 'ng/mL', direction: 'high',          value: 2.5, description: 'Elevated procalcitonin (bacterial infection)' },
+  // Tumor / monoclonal
+  { marker: 'CEA',                      unit: 'ng/mL', direction: 'high',          value: 12,  description: 'Elevated CEA' },
+  { marker: 'AFP',                      unit: 'ng/mL', direction: 'high',          value: 25,  description: 'Elevated AFP' },
+  // GI / liver extended
+  { marker: 'Lipase',                   unit: 'U/L',   direction: 'high',          value: 380, description: 'Elevated lipase (pancreatitis)' },
+  { marker: 'Amylase',                  unit: 'U/L',   direction: 'high',          value: 220, description: 'Elevated amylase' },
+  // Reproductive
+  { marker: 'AMH',                      unit: 'ng/mL', direction: 'low',           value: 0.4, description: 'Low AMH (diminished ovarian reserve)', sexOnly: 'female' },
+  { marker: 'FSH',                      unit: 'mIU/mL',direction: 'high',          value: 38,  description: 'Elevated FSH (menopause / POI / primary testicular failure)' },
 ];
 
 function lab(m: string, v: number, u: string, f: LabValue['flag']): LabValue {

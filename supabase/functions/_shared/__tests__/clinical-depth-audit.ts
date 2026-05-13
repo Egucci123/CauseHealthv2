@@ -526,6 +526,196 @@ const CASES: ClinicalCase[] = [
     ],
   },
 
+  // ── Bariatric post-op multi-nutrient deficiency cascade ────────────────
+  {
+    id: 'bariatric_postop_multi_deficient',
+    description: '38yo female, 18mo post-RYGB, multi-nutrient deficient pattern',
+    input: makeInput({
+      age: 38, sex: 'female', bmi: 27,
+      conditions: ['Roux-en-Y Gastric Bypass'],
+      symptoms: ['Fatigue', 'Hair loss', 'Tingling', 'Brain fog', 'Cold intolerance'],
+      labs: [
+        lab('Vitamin B12', 180, 'pg/mL', 'low'),
+        lab('Ferritin', 14, 'ng/mL', 'low'),
+        lab('25-Hydroxy, Vitamin D', 18, 'ng/mL', 'low'),
+        lab('Folate', 3.0, 'ng/mL', 'low'),
+        lab('Hemoglobin', 11.2, 'g/dL', 'low'),
+      ],
+    }),
+    expectations: [
+      mustHaveCondition(/b12 deficiency|pernicious/i, 'B12 deficiency must fire'),
+      mustHaveCondition(/iron deficiency anemia/i, 'IDA must fire'),
+      mustHaveCondition(/vitamin d deficiency|vit d.*deficiency/i, 'Vit D deficiency must fire'),
+      mustHaveCondition(/folate deficiency|low folate/i, 'Folate deficiency must fire'),
+    ],
+  },
+
+  // ── New-onset T1DM / LADA — low C-peptide + high glucose ───────────────
+  {
+    id: 'new_t1dm_lada_pattern',
+    description: '32yo adult with new T1DM/LADA signal (C-peptide 0.3, glucose 280, A1c 9.2)',
+    input: makeInput({
+      age: 32, sex: 'male', bmi: 22,
+      symptoms: ['Polyuria', 'Polydipsia', 'Weight loss', 'Fatigue'],
+      labs: [
+        lab('C-Peptide', 0.3, 'ng/mL', 'low'),
+        lab('Glucose', 280, 'mg/dL', 'critical_high'),
+        lab('Hemoglobin A1c', 9.2, '%', 'critical_high'),
+      ],
+    }),
+    expectations: [
+      mustHaveCondition(/c.?peptide|t1dm|lada|type 1/i, 'Low C-peptide T1DM/LADA workup must fire'),
+      mustHaveCondition(/diabetes/i, 'Diabetes pattern must fire on glucose 280 + A1c 9.2'),
+    ],
+  },
+
+  // ── Graves' hyperthyroidism signal ──────────────────────────────────────
+  {
+    id: 'graves_hyperthyroid',
+    description: '38yo female, suppressed TSH + high Free T4, palpitations + weight loss + heat intolerance',
+    input: makeInput({
+      age: 38, sex: 'female', bmi: 21,
+      symptoms: ['Palpitations', 'Heat intolerance', 'Weight loss', 'Tremor', 'Anxiety'],
+      labs: [
+        lab('TSH', 0.05, 'mIU/L', 'low'),
+        lab('Free T4', 2.4, 'ng/dL', 'high'),
+        lab('Free T3', 6.8, 'pg/mL', 'high'),
+      ],
+    }),
+    expectations: [
+      mustHaveCondition(/hyperthyroid|graves/i, 'Hyperthyroid pattern must fire on low TSH + high T4/T3'),
+    ],
+  },
+
+  // ── Addison disease pattern ─────────────────────────────────────────────
+  {
+    id: 'addison_disease_pattern',
+    description: '42yo female, low AM cortisol + high K + low Na + fatigue + hyperpigmentation',
+    input: makeInput({
+      age: 42, sex: 'female', bmi: 21,
+      symptoms: ['Severe fatigue', 'Hyperpigmentation', 'Dizziness on standing', 'Salt craving', 'Weight loss'],
+      labs: [
+        lab('Cortisol', 2.8, 'µg/dL', 'low'),
+        lab('Potassium', 5.7, 'mEq/L', 'high'),
+        lab('Sodium', 129, 'mEq/L', 'low'),
+      ],
+    }),
+    expectations: [
+      mustHaveCondition(/cortisol|adrenal insuffic|addison/i, 'Low AM cortisol must fire'),
+      mustHaveCondition(/hyperkalemia|high potassium/i, 'Hyperkalemia must fire'),
+      mustHaveCondition(/hyponatremia|low sodium/i, 'Hyponatremia must fire'),
+    ],
+  },
+
+  // ── Pituitary tumor / central hypopituitarism pattern ──────────────────
+  {
+    id: 'pituitary_central_hypopit',
+    description: '45yo female, low Free T4 + low cortisol + low FSH + headache + visual changes',
+    input: makeInput({
+      age: 45, sex: 'female', bmi: 23,
+      symptoms: ['Headache', 'Visual changes', 'Fatigue', 'Low libido', 'Amenorrhea'],
+      labs: [
+        lab('Free T4', 0.6, 'ng/dL', 'low'),
+        lab('TSH', 1.2, 'mIU/L'),
+        lab('Cortisol', 3.8, 'µg/dL', 'low'),
+        lab('FSH', 2.1, 'mIU/mL', 'low'),
+      ],
+    }),
+    expectations: [
+      mustHaveCondition(/central hypothyroid|free t4.*non-elevated tsh/i, 'Central hypothyroidism pattern must fire'),
+      mustHaveCondition(/cortisol|adrenal insuffic/i, 'Low cortisol must fire'),
+    ],
+  },
+
+  // ── RED-S / female athlete triad — low energy availability ────────────
+  {
+    id: 'red_s_female_athlete',
+    description: '24yo female athlete, BMI 18, amenorrhea + low IGF-1 + low ferritin + low FT3',
+    input: makeInput({
+      age: 24, sex: 'female', bmi: 18,
+      symptoms: ['Amenorrhea', 'Stress fracture', 'Fatigue', 'Cold intolerance'],
+      labs: [
+        lab('IGF-1', 75, 'ng/mL', 'low'),
+        lab('Ferritin', 11, 'ng/mL', 'low'),
+        lab('Free T3', 1.9, 'pg/mL', 'low'),
+        lab('TSH', 1.5, 'mIU/L'),
+        lab('Free T4', 0.95, 'ng/dL'),
+      ],
+    }),
+    expectations: [
+      mustHaveCondition(/igf-?1|gh deficiency|chronic illness/i, 'Low IGF-1 must fire'),
+      mustHaveCondition(/iron deficiency anemia|iron deficien/i, 'IDA must fire on low ferritin'),
+      mustHaveCondition(/low free t3|conversion|non.?thyroidal/i, 'Low FT3 conversion pattern must fire'),
+    ],
+  },
+
+  // ── Chronic alcohol-related liver disease pattern ──────────────────────
+  {
+    id: 'chronic_alcohol_liver',
+    description: '48yo male, AST > ALT 2:1, GGT high, macrocytic MCV, low folate',
+    input: makeInput({
+      age: 48, sex: 'male', bmi: 27,
+      symptoms: ['Fatigue', 'Easy bruising'],
+      labs: [
+        lab('AST', 110, 'U/L', 'high'),
+        lab('ALT', 52, 'U/L', 'high'),
+        lab('GGT', 180, 'U/L', 'high'),
+        lab('MCV', 104, 'fL', 'high'),
+        lab('Folate', 3.0, 'ng/mL', 'low'),
+        lab('Platelets', 130, 'x10³/uL', 'low'),
+      ],
+    }),
+    expectations: [
+      mustHaveCondition(/hepatic stress|nafld|alcohol|alcoholic/i, 'Hepatic stress / alcohol pattern must fire'),
+      mustHaveCondition(/folate deficien/i, 'Folate deficiency must fire'),
+      mustHaveDiscussionPoint(/alcohol|etoh|drink/i, 'Alcohol intake review must be raised'),
+    ],
+  },
+
+  // ── CKD + renal anemia cluster ──────────────────────────────────────────
+  {
+    id: 'ckd_renal_anemia',
+    description: '68yo female, CKD G3b with anemia + low ferritin (mixed-etiology)',
+    input: makeInput({
+      age: 68, sex: 'female', bmi: 28,
+      conditions: ['Hypertension', 'Type 2 Diabetes'],
+      meds: ['Lisinopril 20mg', 'Metformin 1000mg'],
+      symptoms: ['Fatigue', 'Pallor', 'Shortness of breath'],
+      labs: [
+        lab('Creatinine', 1.55, 'mg/dL', 'high'),
+        lab('eGFR', 42, 'mL/min', 'low'),
+        lab('Hemoglobin', 10.2, 'g/dL', 'low'),
+        lab('Ferritin', 28, 'ng/mL', 'low'),
+        lab('Hemoglobin A1c', 7.1, '%', 'high'),
+      ],
+    }),
+    expectations: [
+      mustHaveCondition(/ckd|chronic kidney|kidney disease/i, 'CKD pattern must fire'),
+      mustHaveCondition(/anemia|iron deficien/i, 'Anemia pattern must fire'),
+      mustHaveTest(/uacr|microalbumin/i, 'UACR must fire for CKD progression monitoring'),
+    ],
+  },
+
+  // ── Statin myopathy crisis (CK > 5000 + AKI signal) ────────────────────
+  {
+    id: 'rhabdo_statin_myopathy_crisis',
+    description: '60yo on high-dose statin + clopidogrel, recent gym, CK 7200 + Cr 1.6',
+    input: makeInput({
+      age: 60, sex: 'male', bmi: 28,
+      conditions: ['CAD', 'Hyperlipidemia'],
+      meds: ['Atorvastatin 80mg', 'Clopidogrel 75mg'],
+      symptoms: ['Severe muscle pain', 'Dark urine', 'Weakness'],
+      labs: [
+        lab('Creatine Kinase', 7200, 'U/L', 'critical_high'),
+        lab('Creatinine', 1.6, 'mg/dL', 'high'),
+        lab('AST', 280, 'U/L', 'high'),
+      ],
+    }),
+    expectations: [
+      mustHaveCondition(/rhabdomyolysis|ck elevation|severe ck/i, 'Severe CK / rhabdo must fire'),
+    ],
+  },
+
   // ── Pregnant + IBD ──────────────────────────────────────────────────────
   {
     id: 'pregnant_ibd',
