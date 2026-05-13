@@ -158,48 +158,59 @@ function findComponent(labs: LabSnapshot[], pattern: RegExp): LabSnapshot | null
 }
 
 /**
- * Filter a test panel against user labs. Returns:
- *   - kept: tests that are not redundant
- *   - suppressed: tests that were dropped (with reason)
+ * Annotate a test panel against the user's existing labs. We DO NOT drop
+ * baseline tests — they're standard-of-care surveillance and should
+ * remain in the recommendation list regardless of recent normal results.
+ *
+ * Instead, when every essential component is already measured + normal,
+ * we add a `recent_normal_note` to the test so the UI can render it
+ * as "recent measurement available — discuss recheck timing with your
+ * PCP." This keeps the test visible (good for trust + surveillance
+ * compliance) while signaling that it's not urgent.
+ *
+ * If ANY essential is missing OR ANY present component is abnormal,
+ * the test is returned unchanged — recheck is genuinely warranted.
  */
 export function suppressRedundantTests(
   tests: TestOrder[],
   labs: LabSnapshot[],
 ): { kept: TestOrder[]; suppressed: Array<{ test: TestOrder; reason: string }> } {
   const kept: TestOrder[] = [];
+  // Kept for back-compat with the API shape — no longer populated in
+  // dropping mode. Tests are always kept and may carry a recent_normal_note.
   const suppressed: Array<{ test: TestOrder; reason: string }> = [];
 
   for (const t of tests) {
     const map = TEST_COMPONENT_MAP.find(m => m.testKeyPattern.test(t.key));
     if (!map) { kept.push(t); continue; }
 
-    // Rule: drop the test when EVERY essential component is measured AND
-    // normal, AND every supplementary that IS measured is also normal.
-    // If any essential is missing OR any present component is abnormal,
-    // keep the test.
-    let keep = false;
-    let abnormalSeen = false;
-    let missingEssential = false;
+    // Walk essentials. If any is missing or abnormal, no annotation needed.
+    let allEssentialNormal = true;
     for (const p of map.essential) {
       const found = findComponent(labs, p);
-      if (!found) { missingEssential = true; break; }
+      if (!found) { allEssentialNormal = false; break; }
       const flag = String(found.optimal_flag ?? found.standard_flag ?? '').toLowerCase();
-      if (!NORMAL_FLAGS.has(flag)) { abnormalSeen = true; break; }
+      if (!NORMAL_FLAGS.has(flag)) { allEssentialNormal = false; break; }
     }
-    if (!missingEssential && !abnormalSeen) {
+    // Walk supplementaries — if any PRESENT one is abnormal, no annotation.
+    if (allEssentialNormal) {
       for (const p of (map.supplementary ?? [])) {
         const found = findComponent(labs, p);
-        if (!found) continue; // supplementary absence is fine
+        if (!found) continue;
         const flag = String(found.optimal_flag ?? found.standard_flag ?? '').toLowerCase();
-        if (!NORMAL_FLAGS.has(flag)) { abnormalSeen = true; break; }
+        if (!NORMAL_FLAGS.has(flag)) { allEssentialNormal = false; break; }
       }
     }
-    keep = missingEssential || abnormalSeen;
 
-    if (keep) {
-      kept.push(t);
+    if (allEssentialNormal) {
+      // Recent normal — surface as still-on-the-list with context. UI can
+      // render "✓ recent normal — discuss recheck timing with your PCP".
+      kept.push({
+        ...t,
+        recent_normal_note: `Recent measurement is in range. Standard surveillance interval applies — discuss recheck timing with your PCP.`,
+      } as TestOrder & { recent_normal_note: string });
     } else {
-      suppressed.push({ test: t, reason: `${map.description} — all components already measured and in range; rechecking adds no signal` });
+      kept.push(t);
     }
   }
 
