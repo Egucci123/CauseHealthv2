@@ -787,12 +787,15 @@ export const INDICATIONS: Indication[] = [
   },
   {
     id: 'ast_high',
-    triggers: [{ kind: 'lab', marker: /^ast|sgot|aspartate/i, states: ['any_high'], valueThreshold: { op: '>', value: 35 } }],
+    // 2026-05-13-62: extended to match Spanish marker names (Aspartato
+    // aminotransferasa) and parenthetical suffixes (AST/GOT, SGOT). Word
+    // boundaries on AST/GOT avoid false matches like "Total/AST ratio".
+    triggers: [{ kind: 'lab', marker: /\bast\b|\bsgot\b|\bgot\b|aspart|aminotransferasa.*\bast\b/i, states: ['any_high'], valueThreshold: { op: '>', value: 35 } }],
     supplements: [{ key: 'nac_600', priority: 'moderate', sourcedFrom: 'lab_finding' }],
   },
   {
     id: 'alt_high',
-    triggers: [{ kind: 'lab', marker: /^alt$|sgpt/i, states: ['any_high'], valueThreshold: { op: '>', value: 50 } }],
+    triggers: [{ kind: 'lab', marker: /\balt\b|\bsgpt\b|\bgpt\b|alanin|aminotransferasa.*\balt\b/i, states: ['any_high'], valueThreshold: { op: '>', value: 50 } }],
     supplements: [{ key: 'milk_thistle', priority: 'high', sourcedFrom: 'lab_finding' }],
   },
   {

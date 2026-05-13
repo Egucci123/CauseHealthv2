@@ -168,6 +168,223 @@ const TRAPS: Array<{
     mustNotMatchCondition: [],
     mustMatchCondition: [/leukocyt|stress.?leukogram/i],
   },
+
+  // ═══════════════════════════════════════════════════════════════════════
+  //  PROACTIVE SWEEP — every confusable-name pair I could think of
+  //  Each test puts the confuser BEFORE the target in labs array order to
+  //  exercise the worst-case for mark()'s first-match-wins behavior.
+  // ═══════════════════════════════════════════════════════════════════════
+
+  // ── HDL vs Non-HDL ───────────────────────────────────────────────────
+  {
+    id: 'hdl_vs_non_hdl',
+    description: 'Non-HDL Cholesterol 148 (high) listed before HDL 38 — must not flag the HDL pattern using non-HDL value',
+    input: input({
+      age: 45, sex: 'male',
+      labs: [
+        lab('Non-HDL Cholesterol', 148, 'mg/dL', 'high'),
+        lab('HDL Cholesterol', 38, 'mg/dL', 'low'),
+        lab('LDL Cholesterol', 110, 'mg/dL'),
+        lab('Triglycerides', 180, 'mg/dL'),
+      ],
+    }),
+    mustNotMatchCondition: [/\bHDL\s*148/i, /HDL\s*148\s*mg/i],
+    mustMatchCondition: [/low hdl|HDL\s*38/i],
+  },
+
+  // ── Cholesterol Total vs HDL/LDL/VLDL ────────────────────────────────
+  {
+    id: 'cholesterol_total_vs_others',
+    description: 'HDL/LDL/VLDL Cholesterol listed before Total Cholesterol — total cholesterol matching must not pick HDL value',
+    input: input({
+      age: 50, sex: 'male',
+      labs: [
+        lab('HDL Cholesterol', 38, 'mg/dL', 'low'),
+        lab('LDL Cholesterol', 170, 'mg/dL', 'high'),
+        lab('VLDL Cholesterol', 45, 'mg/dL', 'high'),
+        lab('Cholesterol, Total', 280, 'mg/dL', 'critical_high'),
+      ],
+    }),
+    // Total cholesterol shouldn't be misrepresented anywhere in conditions
+    mustNotMatchCondition: [/Total\s+Cholesterol\s*38|Total\s+Cholesterol\s*45|Total\s+Cholesterol\s*170/i],
+  },
+
+  // ── MCH vs MCHC ───────────────────────────────────────────────────────
+  // Both start with "MCH" — bare `/mch/i` matches both. We DON'T explicitly
+  // detect on these but verify no detector pulls MCHC value as MCH.
+  {
+    id: 'mch_vs_mchc',
+    description: 'MCHC 34 listed before MCH 29 — pattern detection must not confuse them',
+    input: input({
+      age: 30, sex: 'female',
+      labs: [
+        lab('MCHC', 34, 'g/dL'),
+        lab('MCH', 29, 'pg'),
+        lab('MCV', 88, 'fL'),
+        lab('Hemoglobin', 13.0, 'g/dL'),
+        lab('Ferritin', 50, 'ng/mL'),
+      ],
+    }),
+    // Should produce a clean plan with no bogus anemia subtype call-outs
+    mustNotMatchCondition: [],
+  },
+
+  // ── Free T3 vs Reverse T3 vs Total T3 ────────────────────────────────
+  {
+    id: 'free_t3_vs_reverse_t3_vs_total_t3',
+    description: 'Reverse T3 high listed before Free T3 low — detectors must pull correct values',
+    input: input({
+      age: 38, sex: 'female',
+      labs: [
+        lab('Reverse T3', 28, 'ng/dL', 'high'),
+        lab('Triiodothyronine (T3), Free', 1.9, 'pg/mL', 'low'),
+        lab('Triiodothyronine (T3)', 95, 'ng/dL'),
+        lab('TSH', 2.5, 'mIU/L'),
+        lab('Free T4', 1.1, 'ng/dL'),
+      ],
+    }),
+    mustNotMatchCondition: [],
+    mustMatchCondition: [/reverse t3|free t3|conversion|sick euthyroid/i],
+  },
+
+  // ── Free T4 vs Total T4 ──────────────────────────────────────────────
+  {
+    id: 'free_t4_vs_total_t4',
+    description: 'Total T4 in range listed before Free T4 low — central hypothyroid detector must pick Free T4',
+    input: input({
+      age: 45, sex: 'female',
+      labs: [
+        lab('Thyroxine (T4)', 7.2, 'ug/dL'),
+        lab('Free T4', 0.6, 'ng/dL', 'low'),
+        lab('TSH', 1.2, 'mIU/L'),
+      ],
+    }),
+    mustNotMatchCondition: [],
+    mustMatchCondition: [/central hypothyroid|free t4.*non-elevated tsh/i],
+  },
+
+  // ── B12 (serum) vs Active B12 / Holotranscobalamin ───────────────────
+  // Active B12 (holotranscobalamin) is a different test — we don't have a
+  // detector for it. Trap verifies serum B12 detector doesn't grab Active.
+  {
+    id: 'b12_serum_vs_active',
+    description: 'Active B12 listed before serum B12 low — B12 deficiency detector must pull serum value',
+    input: input({
+      age: 60, sex: 'female',
+      labs: [
+        lab('Active B12 (Holotranscobalamin)', 35, 'pmol/L'),
+        lab('Vitamin B12', 190, 'pg/mL', 'low'),
+        lab('Methylmalonic Acid', 0.5, 'umol/L'),
+      ],
+    }),
+    mustNotMatchCondition: [],
+    mustMatchCondition: [/b12 deficien|low b12/i],
+  },
+
+  // ── Cortisol AM vs PM ────────────────────────────────────────────────
+  {
+    id: 'cortisol_am_vs_pm',
+    description: 'Cortisol PM listed before Cortisol AM — AM cortisol detector must pull AM value',
+    input: input({
+      age: 42, sex: 'female',
+      labs: [
+        lab('Cortisol PM', 14, 'ug/dL'),
+        lab('Cortisol - AM', 3.0, 'ug/dL', 'low'),
+      ],
+    }),
+    mustNotMatchCondition: [],
+    mustMatchCondition: [/cortisol|adrenal insuffic|addison/i],
+  },
+
+  // ── Bilirubin Total vs Direct vs Indirect ────────────────────────────
+  {
+    id: 'bilirubin_total_vs_direct',
+    description: 'Direct Bilirubin in range listed before Total — Gilbert detector must pull Total',
+    input: input({
+      age: 28, sex: 'female',
+      labs: [
+        lab('Bilirubin Direct', 0.2, 'mg/dL'),
+        lab('Bilirubin Total', 1.5, 'mg/dL', 'high'),
+        lab('ALT', 22, 'U/L'),
+        lab('AST', 24, 'U/L'),
+        lab('Alkaline Phosphatase', 60, 'U/L'),
+      ],
+    }),
+    mustNotMatchCondition: [],
+    mustMatchCondition: [/gilbert|isolated hyperbilirubinem/i],
+  },
+
+  // ── Apolipoprotein A vs Apolipoprotein B ─────────────────────────────
+  {
+    id: 'apo_a_vs_apo_b',
+    description: 'Apo A-1 listed before Apo B — ApoB detector must pull ApoB value',
+    input: input({
+      age: 50, sex: 'male',
+      labs: [
+        lab('Apolipoprotein A-1', 130, 'mg/dL'),
+        lab('Apolipoprotein B', 115, 'mg/dL', 'high'),
+        lab('LDL Cholesterol', 95, 'mg/dL'),
+      ],
+    }),
+    // ApoB > 100 + LDL borderline → ApoB high should still fire correctly
+    mustNotMatchCondition: [/ApoB\s*130|apolipoprotein b\s*130/i],
+  },
+
+  // ── Calcium Total vs Ionized Calcium ─────────────────────────────────
+  {
+    id: 'calcium_total_vs_ionized',
+    description: 'Ionized Calcium listed before Calcium Total — hypercalcemia must pull total value',
+    input: input({
+      age: 65, sex: 'female',
+      labs: [
+        lab('Ionized Calcium', 1.4, 'mmol/L'),
+        lab('Calcium', 11.5, 'mg/dL', 'high'),
+        lab('PTH', 35, 'pg/mL'),
+      ],
+    }),
+    // Hypercalcemia detector fires on Ca > 10.5 — must pull Ca value 11.5 not the ionized 1.4
+    mustNotMatchCondition: [/Calcium\s*1\.4/i],
+  },
+
+  // ── Lymphocyte % vs Absolute ─────────────────────────────────────────
+  {
+    id: 'lymphocyte_percent_vs_absolute',
+    description: 'Lymphocytes 25% (normal) + Absolute 1.8 — must not confuse for either lymphopenia or lymphocytosis',
+    input: input({
+      age: 35, sex: 'male',
+      labs: [
+        lab('Lymphocytes', 25, '%'),
+        lab('Lymphocytes (Absolute)', 1.8, 'x10E3/uL'),
+        lab('WBC', 7.2, 'x10E3/uL'),
+        lab('Neutrophils (Absolute)', 4.3, 'x10E3/uL'),
+      ],
+    }),
+    mustNotMatchCondition: [/leukocytos|leukopen/i],
+  },
+
+  // ── Monocyte / Eosinophil / Basophil %/absolute ──────────────────────
+  {
+    id: 'cbc_diff_all_percentages_normal',
+    description: 'Healthy adult with all CBC differential % markers present — engine must not fire any false-high pattern',
+    input: input({
+      age: 30, sex: 'female',
+      labs: [
+        lab('Neutrophils', 60, '%'),
+        lab('Lymphocytes', 30, '%'),
+        lab('Monocytes', 7, '%'),
+        lab('Eosinophils', 2, '%'),
+        lab('Basophils', 1, '%'),
+        lab('WBC', 6.5, 'x10E3/uL'),
+        lab('Neutrophils (Absolute)', 3.9, 'x10E3/uL'),
+        lab('Lymphocytes (Absolute)', 2.0, 'x10E3/uL'),
+        lab('Monocytes (Absolute)', 0.5, 'x10E3/uL'),
+        lab('Eosinophils (Absolute)', 0.1, 'x10E3/uL'),
+        lab('Basophils (Absolute)', 0.05, 'x10E3/uL'),
+      ],
+    }),
+    // No CBC pattern should fire — all numbers normal
+    mustNotMatchCondition: [/leukocytos|leukopen|neutropen|thrombocyto|hemolysi/i],
+  },
 ];
 
 let totalChecks = 0, totalFailures = 0;
