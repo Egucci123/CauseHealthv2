@@ -745,18 +745,18 @@ export const INDICATIONS: Indication[] = [
   // ── Lipid panel ────────────────────────────────────────────────────
   {
     id: 'tg_high',
-    triggers: [{ kind: 'lab', marker: /triglyc/i, states: ['any_high', 'watch'], valueThreshold: { op: '>=', value: 150 } }],
+    triggers: [{ kind: 'lab', marker: /triglyc|triglicér/i, states: ['any_high', 'watch'], valueThreshold: { op: '>=', value: 150 } }],
     supplements: [{ key: 'omega3_high_tg', priority: 'high', sourcedFrom: 'lab_finding' }],
   },
   {
     id: 'hdl_low',
-    triggers: [{ kind: 'lab', marker: /^hdl/i, states: ['any_low', 'watch'], valueThreshold: { op: '<', value: 50 } }],
+    triggers: [{ kind: 'lab', marker: /\bhdl\b|colesterol hdl/i, states: ['any_low', 'watch'], valueThreshold: { op: '<', value: 50 } }],
     supplements: [{ key: 'niacin', priority: 'moderate', sourcedFrom: 'lab_finding' }],
   },
   {
     id: 'ldl_apob_high',
     triggers: [
-      { kind: 'lab', marker: /^ldl(\s|$|-c)/i, states: ['any_high', 'watch'], valueThreshold: { op: '>', value: 130 } },
+      { kind: 'lab', marker: /\bldl\b|colesterol ldl/i, states: ['any_high', 'watch'], valueThreshold: { op: '>', value: 130 } },
       { kind: 'lab', marker: /apo.?b/i,         states: ['any_high', 'watch'], valueThreshold: { op: '>', value: 100 } },
     ],
     supplements: [{ key: 'red_yeast_rice', priority: 'high', sourcedFrom: 'lab_finding' }],

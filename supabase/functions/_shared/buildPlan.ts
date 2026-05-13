@@ -269,12 +269,21 @@ export function buildPlan(input: PatientInput): ClinicalFacts {
   // produced false signal). Every selected symptom is auto-stamped
   // severity = 5 as a no-op default. The act of selecting a symptom IS
   // the signal — no further gating needed at the rule layer.
+  // 2026-05-13-56: blend ENGINE-DETECTED conditions into conditionsLower so
+  // condition-keyed supplement indications fire on patterns the engine
+  // surfaced (hepatic stress → NAC/TUDCA, low HDL → niacin/berberine,
+  // anabolic profile → CoQ10, etc.) — not just user-stated conditions.
+  // Angel had zero stated conditions but a clear hepatic + anabolic +
+  // leukocytosis pattern; before this blend only generic Omega-3 fired.
+  const detectedConditionNames = conditions.map(c => c.name).join(' ').toLowerCase();
+  const blendedConditionsLower = `${input.conditionsLower} ${detectedConditionNames}`.trim();
+
   const supplementCandidates = buildSupplementCandidates({
     age: input.age,
     sex: sexNormalized,
     depletions,
     outliers,
-    conditionsLower: input.conditionsLower,
+    conditionsLower: blendedConditionsLower,
     symptomsLower: input.symptomsLower,
     supplementsLower: input.supplementsLower,
     labsLower: input.labsLower,             // measured-normal suppression
