@@ -59,6 +59,22 @@ function mustHaveTest(testNamePattern: RegExp, description: string): Expectation
       : `MISSING TEST matching ${testNamePattern} — got [${plan.tests.map(t => t.name).join(' | ')}]`,
   };
 }
+/** Test name appears EITHER in the global PCP test panel OR inside one of
+ *  the suspected conditions' confirmatory_tests recommendations. Both
+ *  surface to the user in doctor prep / wellness plan. */
+function mustHaveTestAnywhere(testNamePattern: RegExp, description: string): Expectation {
+  return {
+    description,
+    check: (plan) => {
+      const inPanel = plan.tests.some(t => testNamePattern.test(t.name));
+      if (inPanel) return null;
+      const inCondTests = plan.conditions.some(c =>
+        (c.confirmatory_tests ?? []).some((t: any) =>
+          testNamePattern.test(typeof t === 'string' ? t : (t?.test ?? ''))));
+      return inCondTests ? null : `MISSING TEST matching ${testNamePattern} in panel OR condition confirmatory_tests`;
+    },
+  };
+}
 function mustHaveCondition(conditionNamePattern: RegExp, description: string): Expectation {
   return {
     description,
@@ -485,6 +501,28 @@ const CASES: ClinicalCase[] = [
       mustHaveCondition(/leukocytos/i, 'Leukocytosis differential must fire on WBC >12 + neutrophils >10'),
       mustHaveCondition(/anabolic.*erythrocyt|erythrocyt.*anabolic/i, 'Anabolic-erythrocytosis must fire on high Hct + high T in male'),
       mustNotHaveSupplement(/vitamin d|vit_?d|^d3$/i, 'Vit D supplement MUST NOT fire when measured Vit D is high (toxicity risk)'),
+    ],
+  },
+
+  // ── Mono / EBV — lymphocyte-predominant leukocytosis ────────────────────
+  // Young patient with viral illness presentation. Tests lymphocyte branch
+  // of the leukocytosis detector — should NOT fire the "stress/anabolic"
+  // bacterial framing; should fire the viral/mono framing instead.
+  {
+    id: 'mono_lymphocytic_leukocytosis',
+    description: '19yo with mono — WBC 13.5 with lymph 68% (lymphocyte-predominant)',
+    input: makeInput({
+      age: 19, sex: 'female', bmi: 22,
+      symptoms: ['Fatigue', 'Sore throat', 'Swollen glands', 'Fever'],
+      labs: [
+        lab('WBC', 13.5, 'x10³/uL', 'high'),
+        lab('Lymphocytes %', 68, '%', 'high'),
+        lab('Neutrophils', 3.2, 'x10³/uL'),
+      ],
+    }),
+    expectations: [
+      mustHaveCondition(/lymphocyte.predominant|viral|mono/i, 'Lymphocytic leukocytosis branch must fire (mono/EBV/CMV workup, not bacterial framing)'),
+      mustHaveTestAnywhere(/monospot|heterophile|ebv/i, 'Monospot/EBV serology must appear in test panel OR condition confirmatory_tests'),
     ],
   },
 

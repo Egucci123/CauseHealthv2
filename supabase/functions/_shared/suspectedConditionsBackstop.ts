@@ -725,11 +725,34 @@ const RULES: BackstopRule[] = [
       const wbcHigh = wbc && wbc.value > 12;
       const neutHigh = neut && neut.value > 10;
       const lymphLow = lymphPct && lymphPct.value < 20;
-      if (!wbcHigh && !neutHigh) return null;
+      // Lymphocyte-predominant pattern (mono / EBV / CMV / pertussis / CLL):
+      // Lymph % ≥ 50 even with borderline-high or normal WBC is a different
+      // story than neutrophilic leukocytosis — points at viral / atypical
+      // lymphocytic process rather than bacterial / stress / anabolic.
+      const lymphHigh = lymphPct && lymphPct.value >= 50;
+      const wbcBorderline = wbc && wbc.value >= 10;
+      const lymphocyticPattern = lymphHigh && (wbcBorderline || wbcHigh);
+      if (!wbcHigh && !neutHigh && !lymphocyticPattern) return null;
+      // Branch on pattern shape — same condition surface, different framing.
+      if (lymphocyticPattern && !neutHigh) {
+        const cluesL: string[] = [];
+        if (wbc) cluesL.push(`WBC ${wbc.value} ${wbc.unit}`);
+        cluesL.push(`Lymphocytes ${lymphPct!.value}% (≥50 — lymphocyte-predominant)`);
+        return {
+          name: 'Lymphocyte-predominant leukocytosis — viral / atypical workup',
+          category: 'hematology',
+          confidence: (wbc && wbc.value > 15) ? 'high' : 'moderate',
+          evidence: `${cluesL.join(', ')}. Differential includes: acute viral infection (EBV / mono — most common in 15-30yo; CMV; acute HIV seroconversion; viral hepatitis; pertussis in unvaccinated); chronic lymphocytic leukemia (CLL) if persistent in 50+; T-cell lymphoma (less common). The right next step is a peripheral smear (atypical lymphocytes are classic for mono) + heterophile (Monospot) + EBV/CMV serology if symptomatic, OR flow cytometry if persistent in adults > 50.`,
+          confirmatory_tests: ['Peripheral Blood Smear (atypical lymphocytes — Downey cells = mono)', 'Heterophile antibody (Monospot) — pos in 85% of EBV mono after week 1', 'EBV serology (VCA IgM + IgG, EBNA) if Monospot negative but suspicion high', 'CMV serology (IgM + IgG) — mono-like illness when EBV negative', 'HIV 4th-gen Ag/Ab test — acute HIV seroconversion mimics mono', 'LDH (elevated in lymphoproliferative)', 'Flow Cytometry if persistent > 3 months OR age > 50 (rules out CLL)'],
+          icd10: 'D72.820',
+          what_to_ask_doctor: "My lymphocyte count is high. If I've had a recent viral illness, can we run a Monospot and EBV/CMV serology? If this persists past 3 months or I have any swollen lymph nodes, I'd like flow cytometry to rule out CLL.",
+          source: 'deterministic',
+        };
+      }
       const cluesArr: string[] = [];
-      if (wbcHigh) cluesArr.push(`WBC ${wbc.value} ${wbc.unit} (>12)`);
-      if (neutHigh) cluesArr.push(`Neutrophils ${neut.value} ${neut.unit} (>10)`);
-      if (lymphLow) cluesArr.push(`Lymphocytes ${lymphPct.value}% (<20 — stress-leukogram shift)`);
+      if (wbcHigh) cluesArr.push(`WBC ${wbc!.value} ${wbc!.unit} (>12)`);
+      if (neutHigh) cluesArr.push(`Neutrophils ${neut!.value} ${neut!.unit} (>10)`);
+      if (lymphLow) cluesArr.push(`Lymphocytes ${lymphPct!.value}% (<20 — stress-leukogram shift)`);
       // Common drivers to mention in evidence
       const drivers: string[] = ['active infection (most common — bacterial)', 'systemic inflammation', 'steroid / anabolic exposure (endogenous or exogenous)', 'chronic stress / smoking', 'early myeloproliferative disorder (CML, ET, PV — rare but rules-out)'];
       return {
