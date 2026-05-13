@@ -360,7 +360,9 @@ const RULES: BackstopRule[] = [
     skipIfDx: ['t2d'],
     detect: (ctx) => {
       const a1c = mark(ctx.labValues, [/^hemoglobin a1c/i, /^a1c\b/i, /glycohemoglobin/i]);
-      const glucose = mark(ctx.labValues, [/^glucose\b/i, /^fasting glucose/i]);
+      // Exclude "Glucose Tolerance Test", "Glucose, Random", "Glucose, 2-hr post" etc.
+      // — those are OGTT/post-load values that would falsely trigger diabetes flags.
+      const glucose = mark(ctx.labValues, [/^glucose\b(?!.*(?:tolerance|post|random|gtt|\bhr\b|\bpp\b|2[-\s]?hr|1[-\s]?hr))/i, /^fasting glucose/i]);
       const a1cDx = a1c && a1c.value >= 6.5;
       const glucDx = glucose && glucose.value >= 126;
       if (a1cDx || glucDx) {
@@ -389,7 +391,9 @@ const RULES: BackstopRule[] = [
     skipIfDx: ['t2d'],
     detect: (ctx) => {
       const a1c = mark(ctx.labValues, [/^hemoglobin a1c/i, /^a1c\b/i]);
-      const glucose = mark(ctx.labValues, [/^glucose\b/i, /^fasting glucose/i]);
+      // Exclude "Glucose Tolerance Test", "Glucose, Random", "Glucose, 2-hr post" etc.
+      // — those are OGTT/post-load values that would falsely trigger diabetes flags.
+      const glucose = mark(ctx.labValues, [/^glucose\b(?!.*(?:tolerance|post|random|gtt|\bhr\b|\bpp\b|2[-\s]?hr|1[-\s]?hr))/i, /^fasting glucose/i]);
       const insulin = mark(ctx.labValues, [/^insulin\b/i, /fasting insulin/i]);
       // 2026-05-12-24: Lowered A1c threshold 5.7 → 5.6 (catches early
       // pre-diabetic drift the standard ADA threshold misses). Glucose
@@ -530,7 +534,9 @@ const RULES: BackstopRule[] = [
     detect: (ctx) => {
       const ferritin = mark(ctx.labValues, [/^ferritin/i]);
       const transSat = mark(ctx.labValues, [/transferrin\s*saturation|tsat|iron\s*sat/i]);
-      const iron = mark(ctx.labValues, [/^iron\b/i]);
+      // Exclude "Iron Saturation", "Iron Binding Capacity (TIBC)", "Iron, % Saturation"
+      // — serum iron is the target marker. The compound names would yield 27%, 310 µg/dL etc.
+      const iron = mark(ctx.labValues, [/^iron\b(?!.*(?:saturation|\bsat\b|binding|tibc|%|capacity))/i]);
       if (!ferritin) return null;
       const isFemale = ctx.sex === 'female';
       const ferritinHigh = ferritin.value > (isFemale ? 200 : 300);
@@ -1003,7 +1009,8 @@ const RULES: BackstopRule[] = [
       const tg = mark(ctx.labValues, [/triglyc/i]);
       const hdl = mark(ctx.labValues, [/\bhdl\b/i, /hdl[\s-]*c\b/i, /high[\s-]*density/i]);
       const ldl = mark(ctx.labValues, [/\bldl\b/i, /ldl[\s-]*c\b/i, /low[\s-]*density/i]);
-      const glu = mark(ctx.labValues, [/\bglucose\b/i, /fasting glucose/i]);
+      // Exclude OGTT-style markers (Glucose Tolerance, 2-hr post, random)
+      const glu = mark(ctx.labValues, [/\bglucose\b(?!.*(?:tolerance|post|random|gtt|\bhr\b|\bpp\b|2[-\s]?hr|1[-\s]?hr))/i, /fasting glucose/i]);
       const a1c = mark(ctx.labValues, [/hemoglobin a1c/i, /\ba1c\b/i, /\bhba1c\b/i]);
 
       // Anchor: TG ≥ 150
@@ -1123,7 +1130,8 @@ const RULES: BackstopRule[] = [
       if (!crp || crp.value < 1.0) return null;
       const tg = mark(ctx.labValues, [/triglyc/i]);
       const ldl = mark(ctx.labValues, [/\bldl\b/i, /ldl[\s-]*c\b/i]);
-      const glu = mark(ctx.labValues, [/\bglucose\b/i, /fasting glucose/i]);
+      // Exclude OGTT-style markers (Glucose Tolerance, 2-hr post, random)
+      const glu = mark(ctx.labValues, [/\bglucose\b(?!.*(?:tolerance|post|random|gtt|\bhr\b|\bpp\b|2[-\s]?hr|1[-\s]?hr))/i, /fasting glucose/i]);
       const a1c = mark(ctx.labValues, [/hemoglobin a1c/i, /\ba1c\b/i, /\bhba1c\b/i]);
       const metabolicAbn = (tg && tg.value >= 150) || (ldl && ldl.value >= 130) ||
         (glu && glu.value >= 95) || (a1c && a1c.value >= 5.4);
