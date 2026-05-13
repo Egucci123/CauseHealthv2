@@ -153,7 +153,8 @@ const RULES: BackstopRule[] = [
     skipIfDx: [],
     detect: (ctx) => {
       const albumin = mark(ctx.labValues, [/^albumin\b/i]);
-      const hgb = mark(ctx.labValues, [/^hemoglobin\b/i]);
+      // Exclude "Hemoglobin A1c" — different marker, would pull A1c % as if it were Hgb g/dL
+      const hgb = mark(ctx.labValues, [/^hemoglobin\b(?!\s*a1c)/i, /^hgb\b/i]);
       const hct = mark(ctx.labValues, [/^hematocrit\b/i]);
       const rbc = mark(ctx.labValues, [/red blood cell count|^rbc\b/i]);
       const cre = mark(ctx.labValues, [/^creatinine\b/i]);
@@ -613,11 +614,19 @@ const RULES: BackstopRule[] = [
       const kLow = k && k.value < 3.5;
       if (!hasHtn) return null;
       if (!kLow && !onThreePlus) return null;
+      // 2026-05-13-49: Note diuretic-induced hypokalemia BEFORE the aldosteronism
+      // workup if the patient is on a K-wasting diuretic. HCTZ / thiazides /
+      // furosemide cause hypokalemia far more often than Conn syndrome —
+      // honest clinician's stepwise approach: rule out the obvious first.
+      const onKWastingDiuretic = (ctx.medsLower ?? '').match(/\b(hydrochlorothiazide|hctz|chlorthalidone|indapamide|furosemide|lasix|torsemide|bumetanide|metolazone)\b/i);
+      const diureticCaveat = (kLow && onKWastingDiuretic)
+        ? ` First step: confirm this isn't simple ${onKWastingDiuretic[0].toUpperCase()}-induced hypokalemia — discuss reducing or swapping the diuretic (or adding K supplementation) and rechecking K in 2-4 weeks. If K stays low after that, then proceed with ARR screening.`
+        : '';
       return {
         name: 'Hypertension workup — rule out primary aldosteronism',
         category: 'endocrine',
         confidence: (kLow && onThreePlus) ? 'high' : 'moderate',
-        evidence: `${kLow ? `Potassium ${k!.value} mEq/L (low) ` : ''}${kLow && onThreePlus ? '+ ' : ''}${onThreePlus ? `on ${onMultipleAntihtn!.length} antihypertensives ` : ''}with established HTN. Primary aldosteronism is present in 5-10% of all HTN and 20% of treatment-resistant HTN — most missed treatable HTN cause. Worth the screen; treatment (spironolactone or adrenalectomy) often normalizes BP.`,
+        evidence: `${kLow ? `Potassium ${k!.value} mEq/L (low) ` : ''}${kLow && onThreePlus ? '+ ' : ''}${onThreePlus ? `on ${onMultipleAntihtn!.length} antihypertensives ` : ''}with established HTN. Primary aldosteronism is present in 5-10% of all HTN and 20% of treatment-resistant HTN — most missed treatable HTN cause. Worth the screen; treatment (spironolactone or adrenalectomy) often normalizes BP.${diureticCaveat}`,
         confirmatory_tests: ['Aldosterone-to-Renin Ratio (ARR) — morning fasting', 'Plasma Aldosterone Concentration', 'Plasma Renin Activity', 'Adrenal CT if ARR confirms', 'Adrenal vein sampling if unilateral source suspected'],
         icd10: 'E26.9',
         what_to_ask_doctor: "My potassium is low and I'm on multiple BP meds. Can we run an aldosterone-to-renin ratio to screen for primary aldosteronism? It's the most-missed treatable cause of HTN — if positive, spironolactone often normalizes things.",
@@ -764,7 +773,8 @@ const RULES: BackstopRule[] = [
     skipIfDx: [],
     detect: (ctx) => {
       const ferritin = mark(ctx.labValues, [/^ferritin/i]);
-      const hgb = mark(ctx.labValues, [/^hemoglobin\b/i, /^hgb\b/i]);
+      // Exclude "Hemoglobin A1c" — would otherwise pull A1c value as if it were Hgb
+      const hgb = mark(ctx.labValues, [/^hemoglobin\b(?!\s*a1c)/i, /^hgb\b/i]);
       const mcv = mark(ctx.labValues, [/^mcv\b/i]);
       const isFemale = (ctx.sex ?? '').toLowerCase() === 'female';
       const hgbLow = hgb && (isFemale ? hgb.value < 12 : hgb.value < 13.5);
@@ -1512,7 +1522,8 @@ const RULES: BackstopRule[] = [
       const globulin = mark(ctx.labValues, [/^globulin\b/i]);
       const calcium = mark(ctx.labValues, [/^calcium\b/i]);
       const creat = mark(ctx.labValues, [/^creatinine\b/i]);
-      const hgb = mark(ctx.labValues, [/^hemoglobin\b/i, /^hgb\b/i]);
+      // Exclude "Hemoglobin A1c" — different marker entirely
+      const hgb = mark(ctx.labValues, [/^hemoglobin\b(?!\s*a1c)/i, /^hgb\b/i]);
       const bonePainSx = symptom(ctx.symptomsLower, [/bone pain/i, /back pain/i]);
       const globulinHigh = globulin && globulin.value > 4.0;
       const calciumHigh = calcium && calcium.value > 10.5;

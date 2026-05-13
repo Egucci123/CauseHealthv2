@@ -751,8 +751,12 @@ export function buildDiscussionPoints(facts: ClinicalFacts): string[] {
       typeof t === 'string' ? t : (t?.test ?? ''),
     ).filter(Boolean);
     const testsClause = tests.length > 0 ? ` Tests to discuss: ${tests.join(', ')}.` : '';
-    // 2026-05-12-45 no truncation. Use full first sentence of evidence.
-    out.push(`${c.name}. ${c.evidence.split('.')[0]}.${testsClause}`);
+    // 2026-05-13-49 — split on SENTENCE-ending periods only: period/!/? followed
+    // by whitespace+capital OR end of string. NOT decimal points like "A1c 5.7"
+    // or "Creatinine 1.05" where the period is between digits.
+    const firstSentenceMatch = c.evidence.match(/^.+?[.!?](?=\s+[A-Z(])/) ?? c.evidence.match(/^.+?[.!?]$/);
+    const firstSentence = firstSentenceMatch ? firstSentenceMatch[0] : c.evidence;
+    out.push(`${c.name}. ${firstSentence}${/[.!?]$/.test(firstSentence) ? '' : '.'}${testsClause}`);
   }
   // 2. Critical outliers
   const criticalOutliers = facts.labs.outliers.filter(o => o.flag.startsWith('critical')).slice(0, 2);
@@ -814,6 +818,33 @@ export function buildDiscussionPoints(facts: ClinicalFacts): string[] {
   const astHigh = facts.labs.outliers.some(o => /^ast|sgot/i.test(o.marker) && (o.flag === 'high' || (o as any).flag === 'critical_high'));
   if (ggtHigh && !altHigh && !astHigh && out.length < 6) {
     out.push(`Isolated GGT elevation (with normal ALT/AST) is most often driven by alcohol intake or early metabolic liver stress. Honest alcohol-intake review (drinks/week, frequency, binge episodes) with your PCP is the next step — if alcohol is ruled out, this points at metabolic/insulin-resistance liver patterns and a NAFLD workup.`);
+  }
+
+  // 8a. Diuretic-induced hypokalemia caveat — universal: if patient is on
+  // a K-wasting diuretic (HCTZ / chlorthalidone / loop) AND potassium is
+  // low, this is far more often the diuretic than Conn syndrome. Stepwise
+  // approach: adjust diuretic + recheck K → only then ARR if K stays low.
+  const kLowOutlier = facts.labs.outliers.find(o => /^potassium\b/i.test(o.marker) && o.flag === 'low');
+  const onKWastingDiureticDx = facts.patient.meds.join(' ').match(/\b(hydrochlorothiazide|hctz|chlorthalidone|indapamide|furosemide|lasix|torsemide|bumetanide|metolazone)\b/i);
+  if (kLowOutlier && onKWastingDiureticDx && out.length < 6) {
+    const drugName = onKWastingDiureticDx[0];
+    out.push(`Your potassium is ${kLowOutlier.value} ${kLowOutlier.unit} and you're on ${drugName} — this is most likely diuretic-induced hypokalemia, NOT primary aldosteronism. First step: ask about reducing the dose, swapping to a K-sparing agent (spironolactone, eplerenone), or adding K supplementation. Recheck potassium in 2-4 weeks. Only if K stays low after that should you proceed with the aldosterone/renin workup. Rules out the obvious before chasing the rare.`);
+  }
+
+  // 8. Under-replaced hypothyroidism — universal: diagnosed Hashimoto's or
+  // hypothyroidism on levothyroxine (or NDT) with TSH still >2.5 means
+  // suboptimal replacement. AACE/ATA target for treated hypothyroid is
+  // 0.5–2.5 mIU/L. PCPs often leave patients at TSH 3–4 because "in range"
+  // — patients keep complaining of fatigue and don't know to ask for dose
+  // adjustment. Universal across all ages, sexes, both Hashimoto and
+  // non-autoimmune hypothyroidism diagnoses.
+  const onThyroidRx = /levothyroxine|synthroid|levoxyl|tirosint|liothyronine|cytomel|armour|nature.?throid|np thyroid|wp thyroid|desiccated thyroid|ndt/i.test(facts.patient.meds.join(' '));
+  const hasHypothyroidDx = /hashimoto|hypothyroid|chronic thyroiditis|autoimmune thyroid/i.test(condText);
+  const tshOutlier = facts.labs.outliers.find(o => /^tsh\b/i.test(o.marker));
+  const tshRaw = facts.labs.raw.find((l: any) => /^tsh\b/i.test(l.marker));
+  const tshValue = tshOutlier ? tshOutlier.value : (tshRaw ? tshRaw.value : null);
+  if (onThyroidRx && hasHypothyroidDx && tshValue !== null && tshValue > 2.5 && out.length < 6) {
+    out.push(`Your TSH is ${tshValue} mIU/L on thyroid replacement — AACE/ATA target for treated hypothyroidism is 0.5–2.5 mIU/L. Even though this may be inside the lab's reference range, it suggests under-replacement, especially if you still have fatigue / cold intolerance / brain fog / weight resistance. Discuss a small dose adjustment + recheck Free T4 / Free T3 in 6–8 weeks. Don't accept "your TSH is fine" when you're symptomatic and TSH > 2.5 on treatment.`);
   }
 
   return out.slice(0, 6);
