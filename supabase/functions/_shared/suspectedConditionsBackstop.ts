@@ -810,14 +810,16 @@ const RULES: BackstopRule[] = [
       const phlebotomyThreshold = hct.value >= 54;
       return {
         name: phlebotomyThreshold
-          ? 'Anabolic-induced erythrocytosis — therapeutic phlebotomy threshold reached'
-          : 'Anabolic-induced erythrocytosis — dose review + monitor',
+          ? 'Anabolic-pattern erythrocytosis — discuss with your prescriber'
+          : 'Anabolic-pattern erythrocytosis — discuss with your prescriber',
         category: 'hematology',
         confidence: 'high',
-        evidence: `Hct ${hct.value}% in a male with Testosterone ${t.value} ${t.unit} (${stdHigh ? `vs lab upper ${stdHigh}` : 'high'}). Exogenous testosterone (AAS or TRT) suppresses hepcidin and directly stimulates erythropoiesis — this is the most common cause of new erythrocytosis in adult men. ${phlebotomyThreshold ? 'Hct ≥54% meets standard threshold for therapeutic phlebotomy and a TRT dose reduction.' : 'Hct 50-53% warrants TRT/AAS dose reduction or split-dose, plus repeat Hct in 6-8 weeks.'} Sleep apnea workup is reasonable to add but the anabolic axis is the dominant driver here.`,
-        confirmatory_tests: ['Therapeutic Phlebotomy (450 mL) if Hct ≥ 54% — drops Hct ~3% per unit', 'TRT dose review with prescriber: split into 2× weekly injections, lower total dose, or consider transdermal', 'Repeat CBC + Hct in 6-8 weeks after intervention', 'Ferritin baseline before phlebotomy (will drop after donations — supplement iron only if ferritin <30)', 'Home sleep apnea test if BMI ≥30 or snoring (additive to anabolic erythropoiesis, not alternative explanation)', 'Erythropoietin level if T is suppressed but Hct still rising (rules out primary polycythemia / JAK2)'],
+        // Patient-prep voice. We surface the pattern + give the
+        // conversation. The prescriber owns dose / phlebotomy decisions.
+        evidence: `Hct ${hct.value}% in a male with Testosterone ${t.value} ${t.unit} (${stdHigh ? `vs lab upper ${stdHigh}` : 'high'}). Exogenous testosterone (TRT or anabolic compounds) suppresses hepcidin and stimulates erythropoiesis — the most common cause of new erythrocytosis in adult men. Lifestyle factors that help: hydration, regular blood donation if eligible, reviewing total weekly dose with your prescriber. ${phlebotomyThreshold ? 'At Hct ≥54%, this is the right time to bring this up with your prescriber — they may discuss therapeutic phlebotomy or a dose / schedule adjustment.' : 'At Hct 50-53%, worth raising at your next visit so your prescriber knows the trajectory. Recheck Hct in 8-12 weeks.'} Sleep apnea workup is reasonable to add (additive risk, not alternative explanation).`,
+        confirmatory_tests: ['Repeat CBC + Hct in 8-12 weeks (after hydration optimization)', 'Discuss therapy dose / schedule with your prescriber', 'Ferritin baseline (relevant if therapeutic phlebotomy comes up)', 'Home sleep apnea test if BMI ≥30 or snoring (additive risk, not alternative explanation)', 'Erythropoietin level if T is suppressed but Hct still rising (rules out primary polycythemia / JAK2)', 'Comprehensive Metabolic Panel + Liver Panel'],
         icd10: 'D75.1',
-        what_to_ask_doctor: "My hematocrit is high and my testosterone is also elevated. Can we treat this as anabolic-induced erythrocytosis first — TRT/dose adjustment plus therapeutic phlebotomy if needed — before jumping to a sleep study? I want my Hct under 52% and a plan to keep it there.",
+        what_to_ask_doctor: "My hematocrit is high and my testosterone is also elevated. I want to bring this up at my next visit — could we discuss what's driving it (likely the testosterone source) and what monitoring you'd want going forward? I'm planning to focus on hydration and tracking the trend, and would value your input on whether dose / schedule adjustments make sense.",
         source: 'deterministic',
       };
     },
@@ -866,7 +868,7 @@ const RULES: BackstopRule[] = [
         evidence: `Triglycerides ${tg.value} ${tg.unit} — at or above 500 mg/dL puts you in the acute pancreatitis risk zone. Anything ≥ 1000 is high-risk and warrants urgent intervention. Most common drivers: uncontrolled diabetes, alcohol, hypothyroidism, nephrotic syndrome, certain meds (estrogens, retinoids, thiazides), or familial chylomicronemia.`,
         confirmatory_tests: ['Repeat Fasting Lipid Panel (12-hr fast — non-fasting inflates TG)', 'Hemoglobin A1c + Fasting Glucose', 'TSH', 'ApoB + Lipoprotein Electrophoresis (rule out familial chylomicronemia)', 'Liver Panel', 'Lipase (rule out subclinical pancreatitis)', 'Urinalysis (proteinuria — nephrotic)', 'Genetic testing if persistent severe + family history'],
         icd10: 'E78.1',
-        what_to_ask_doctor: "My triglycerides are dangerously high — pancreatitis range. I'd like to recheck fasting, screen for diabetes and thyroid, and start a fibrate or high-dose omega-3 immediately. Also check lipase to make sure there's no subclinical pancreatitis already.",
+        what_to_ask_doctor: "My triglycerides are very high — pancreatitis range. I'd like to schedule a fasting recheck, screen for diabetes and thyroid, and discuss with you what therapy options make sense alongside lifestyle changes (lower carbs, reduce alcohol, weight loss). Could we also check lipase to rule out subclinical pancreatitis?",
         source: 'deterministic',
       };
     },
@@ -931,7 +933,7 @@ const RULES: BackstopRule[] = [
         category: 'renal_endocrine',
         confidence: isCritical ? 'high' : 'moderate',
         evidence: `Potassium ${k.value} ${k.unit}${isCritical ? ' — at this level, cardiac arrhythmia risk is significant and an ECG is mandatory (look for peaked T waves, widened QRS).' : ' (above 5.4).'} Differential: ACE/ARB or spironolactone, NSAID-induced renal hypoperfusion, CKD, adrenal insufficiency, rhabdomyolysis, hemolyzed sample (most common false-positive). Always recheck with a clean draw before assuming pathology.`,
-        confirmatory_tests: ['Repeat Potassium with NO tourniquet, fast-spin, no fist-pumping (hemolyzed sample is the #1 cause of falsely high K)', 'ECG immediately if K ≥ 6.0', 'Creatinine + eGFR + BUN', 'Aldosterone + Renin (rule out hyporeninemic hypoaldosteronism)', 'AM Cortisol (rule out adrenal insufficiency)', 'Review meds: ACE/ARB, spironolactone, NSAIDs, trimethoprim, potassium supplements', 'Urinalysis + UACR'],
+        confirmatory_tests: ['Repeat Potassium with NO tourniquet, fast-spin, no fist-pumping (hemolyzed sample is the #1 cause of falsely high K)', 'ECG with your doctor — typically same-day if K ≥ 6.0', 'Creatinine + eGFR + BUN', 'Aldosterone + Renin (rule out hyporeninemic hypoaldosteronism)', 'AM Cortisol (rule out adrenal insufficiency)', 'Discuss meds with your doctor: ACE/ARB, spironolactone, NSAIDs, trimethoprim, potassium supplements can all raise K', 'Urinalysis + UACR'],
         icd10: 'E87.5',
         what_to_ask_doctor: "My potassium is high. First — can we recheck with a clean draw to rule out hemolysis? If real, I need an ECG, a med review for K-retaining drugs, kidney check, and aldosterone/cortisol screening for adrenal insufficiency.",
         source: 'deterministic',
@@ -1196,7 +1198,7 @@ const RULES: BackstopRule[] = [
         category: 'endocrine',
         confidence: 'high',
         evidence: `25-OH Vitamin D ${d.value} ${d.unit}. Above 100 ng/mL (250 nmol/L) raises concern for hypervitaminosis — most common cause is over-supplementation, occasionally granulomatous disease (sarcoid, TB, lymphoma) which produces 1,25-OH-D extrarenally. Drives hypercalcemia → kidney stones, soft-tissue calcification, neuropsych symptoms.`,
-        confirmatory_tests: ['STOP all Vitamin D supplementation immediately', 'Serum Calcium + Ionized Calcium + Phosphorus + PTH (hypercalcemia workup)', '24-hour Urine Calcium (hypercalciuria)', '1,25-OH Vitamin D (rules out granulomatous source)', 'Repeat 25-OH Vitamin D in 8-12 weeks after stopping supplement', 'BUN + Creatinine + eGFR (renal effect)', 'Chest X-ray + ACE level if granulomatous suspected'],
+        confirmatory_tests: ['Pause Vitamin D supplementation for 8-12 weeks and recheck 25-OH', 'Serum Calcium + Ionized Calcium + Phosphorus + PTH (hypercalcemia workup with your doctor)', '24-hour Urine Calcium (hypercalciuria)', '1,25-OH Vitamin D (rules out granulomatous source)', 'BUN + Creatinine + eGFR (renal effect)', 'Chest X-ray + ACE level if granulomatous source suspected'],
         icd10: 'E67.3',
         what_to_ask_doctor: "My Vitamin D is above 100. I need to STOP supplementing, check my calcium and PTH for hypercalcemia, get a 24-hour urine calcium, and recheck D in 8-12 weeks. If calcium is also high, we need to rule out granulomatous disease.",
         source: 'deterministic',
@@ -1608,9 +1610,9 @@ const RULES: BackstopRule[] = [
         category: 'cardio',
         confidence: 'high',
         evidence: `Troponin ${trop.value} ${trop.unit}. Any elevation above the 99th percentile is myocardial injury — not necessarily infarction. Differential: acute coronary syndrome (most urgent), myocarditis, pulmonary embolism, sepsis, CKD (chronic baseline elevation), demand ischemia, takotsubo. Urgency depends on trajectory (rising/falling vs flat).`,
-        confirmatory_tests: ['Repeat Troponin in 3 hours (rising = active injury)', '12-lead ECG immediately', 'BNP / NT-proBNP', 'CBC + BMP + Mg + Phosphorus', 'D-Dimer if PE suspected', 'Echocardiogram', 'Cardiology consult', 'Coronary angiogram if rising + ECG changes'],
+        confirmatory_tests: ['12-lead ECG (typically same-day given a positive troponin)', 'Repeat Troponin in 3 hours (rising trend = active injury — your doctor will choose timing)', 'BNP / NT-proBNP', 'CBC + BMP + Mg + Phosphorus', 'D-Dimer if PE suspected', 'Echocardiogram (timing per your doctor)', 'Cardiology referral if persistent or rising'],
         icd10: 'R79.89',
-        what_to_ask_doctor: "My troponin is elevated. We need a 12-lead ECG, a 3-hour repeat troponin to check trajectory, BNP, and an echo. If trending up + any ECG change, I need cardiology now.",
+        what_to_ask_doctor: "My troponin came back elevated. Given that's a marker of cardiac injury, I want to bring this to your attention promptly — could we get a 12-lead ECG, a repeat troponin to check the trend, and an echo? If chest pain, shortness of breath, or other acute symptoms develop in the meantime, I'd go to urgent care or the ER.",
         source: 'deterministic',
       };
     },
@@ -1914,7 +1916,7 @@ const RULES: BackstopRule[] = [
         evidence: `Haptoglobin ${hp.value} ${hp.unit}. Haptoglobin binds free hemoglobin from intravascular red cell lysis — when consumed, levels drop. Causes: autoimmune hemolytic anemia (AIHA), microangiopathic hemolytic anemia (TTP/HUS/DIC/HELLP — emergency), G6PD crisis, mechanical hemolysis (prosthetic valve), paroxysmal nocturnal hemoglobinuria (PNH). False-low: congenital ahaptoglobinemia (rare).`,
         confirmatory_tests: ['LDH + Indirect Bilirubin + Reticulocyte Count (hemolysis pattern)', 'Direct Antiglobulin Test (DAT / Coombs) — distinguishes AIHA', 'Peripheral Blood Smear (schistocytes = MAHA — EMERGENCY)', 'G6PD level (after acute episode resolves — false-normal during crisis)', 'PNH Flow Cytometry if recurrent / unexplained', 'Hemoglobin A1c if recurrent hemolysis suspected hemoglobinopathy', 'Urinalysis (hemoglobinuria)'],
         icd10: 'D59.9',
-        what_to_ask_doctor: "My haptoglobin is low — that's intravascular hemolysis until proven otherwise. We need a peripheral smear immediately to rule out TTP/HUS, plus a Coombs test, LDH, indirect bilirubin, reticulocyte count, and urinalysis.",
+        what_to_ask_doctor: "My haptoglobin is low — that pattern points at hemolysis. Given some causes (TTP/HUS) are serious, I want to bring this to your attention promptly. Could we run a peripheral smear, Coombs test, LDH, indirect bilirubin, reticulocyte count, and urinalysis? If neurologic symptoms, fever, dark urine, or significant fatigue develop in the meantime, I'd go to urgent care or the ER.",
         source: 'deterministic',
       };
     },
