@@ -2097,6 +2097,119 @@ const RULES: BackstopRule[] = [
     },
   },
 
+  // ═══════════════════════════════════════════════════════════════════════
+  //  EVAN-CASE FILL (3 universal clinical patterns from real-user audit)
+  // ═══════════════════════════════════════════════════════════════════════
+
+  // ── Statin therapy not at goal — intensification discussion ──────────
+  //
+  // Universal: patient on a statin AND lipids still elevated (LDL ≥ 100
+  // OR TG ≥ 200 OR ApoB ≥ 90) = current dose isn't working. AHA / ACC:
+  // primary prevention LDL goal < 100, secondary prevention or
+  // metabolic-syndrome LDL goal < 70. Action is dose escalation,
+  // ezetimibe add-on, or PCSK9 inhibitor — NOT just "keep doing what
+  // you're doing." Most PCPs continue the same dose for years without
+  // re-evaluating.
+  {
+    key: 'statin_not_at_goal',
+    alreadyRaisedIf: [/statin.*not at goal|statin.*not working|statin intensif/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const onStatin = (ctx.medsLower ?? '').match(/\b(atorvastatin|simvastatin|rosuvastatin|pravastatin|lovastatin|pitavastatin|fluvastatin|crestor|lipitor|zocor|pravachol|livalo|lescol)\b/i);
+      if (!onStatin) return null;
+      const ldl = mark(ctx.labValues, [/\bldl\b(?!\s*p)/i, /ldl chol/i, /colesterol ldl/i]);
+      const tg = mark(ctx.labValues, [/^triglyc|^triglicér/i]);
+      const apob = mark(ctx.labValues, [/\bapob\b|apolipoprotein b/i]);
+      const ldlAtGoal = !ldl || ldl.value < 100;
+      const tgAtGoal = !tg || tg.value < 200;
+      const apobAtGoal = !apob || apob.value < 90;
+      if (ldlAtGoal && tgAtGoal && apobAtGoal) return null;
+      const ev: string[] = [];
+      if (ldl) ev.push(`LDL ${ldl.value} mg/dL${ldl.value >= 100 ? ' (≥100 — not at goal)' : ''}`);
+      if (tg) ev.push(`TG ${tg.value} mg/dL${tg.value >= 200 ? ' (≥200 — not at goal)' : ''}`);
+      if (apob) ev.push(`ApoB ${apob.value} mg/dL${apob.value >= 90 ? ' (≥90 — not at goal)' : ''}`);
+      const drug = onStatin[0];
+      return {
+        name: 'Current statin not at goal — intensification discussion',
+        category: 'cardio',
+        confidence: 'high',
+        evidence: `You're on ${drug} but ${ev.join(', ')}. ACC/AHA primary-prevention LDL goal is <100 mg/dL; secondary prevention or metabolic-syndrome target is <70. Real next step is intensification — increase statin dose, add ezetimibe (drops LDL another ~20%), or add a PCSK9 inhibitor / bempedoic acid for resistant cases. Do NOT accept "your statin is fine, keep taking it" when your numbers stay above goal.`,
+        confirmatory_tests: ['Repeat Fasting Lipid Panel (12-hr fast) in 6-8 weeks after any change', 'ApoB (atherogenic particle count — better than LDL for tracking response)', 'Lp(a) — once-in-lifetime if not already done', 'Liver Panel + CK (baseline before dose escalation)', 'hs-CRP (residual inflammatory CV risk)', 'CAC score if not already done (intermediate risk stratification)'],
+        icd10: 'E78.5',
+        what_to_ask_doctor: `I'm on ${drug} but my LDL${ldl ? ` is ${ldl.value}` : ''}${tg && tg.value >= 200 ? ` and my triglycerides are ${tg.value}` : ''} — that's not at goal. Can we discuss intensifying the statin, adding ezetimibe, or considering PCSK9 inhibitor or bempedoic acid?`,
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Statin hepatotoxicity differential — ALT elevation on a statin ───
+  //
+  // Universal: ALT > 1.5× ULN in a patient on a statin warrants
+  // explicit attribution discussion BEFORE attributing to NAFLD. ALT > 3×
+  // ULN requires statin reduction or hold per AHA. The "hold and recheck"
+  // is the diagnostic test — if ALT normalizes off-statin, the statin
+  // was the driver. Most PCPs see "ALT high + on statin + obese" and
+  // attribute to NAFLD without testing the statin contribution.
+  {
+    key: 'statin_hepatotoxicity_differential',
+    alreadyRaisedIf: [/statin hepatotox|statin.*induced (hep|liver)|drug.*induced.*liver/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const onStatin = (ctx.medsLower ?? '').match(/\b(atorvastatin|simvastatin|rosuvastatin|pravastatin|lovastatin|pitavastatin|fluvastatin|crestor|lipitor|zocor|pravachol|livalo|lescol)\b/i);
+      if (!onStatin) return null;
+      const alt = mark(ctx.labValues, [/\balt\b|\bsgpt\b|alanin/i]);
+      if (!alt) return null;
+      const ulnAlt = alt.standard_high ?? 40;
+      const altRatio = alt.value / ulnAlt;
+      if (altRatio < 1.5) return null; // need at least 1.5× ULN to fire
+      const drug = onStatin[0];
+      const isCritical = altRatio >= 3;
+      return {
+        name: isCritical
+          ? `${drug} hepatotoxicity — hold and recheck (ALT >3× ULN)`
+          : `${drug} hepatic stress — discuss attribution`,
+        category: 'cardio',
+        confidence: isCritical ? 'high' : 'moderate',
+        evidence: `ALT ${alt.value} ${alt.unit} = ${altRatio.toFixed(1)}× the lab's upper limit while on ${drug}. ${isCritical ? 'AHA guideline: ALT >3× ULN on a statin requires hold or dose reduction now. ' : 'Borderline elevation — '}NAFLD and metabolic liver stress are also common drivers, but the statin contribution can only be ruled in or out one way: hold the statin 4-6 weeks and recheck ALT. If it normalizes, the statin was the driver. If it stays high, NAFLD / metabolic / other.`,
+        confirmatory_tests: ['Repeat ALT + AST + GGT in 4-6 weeks after holding or reducing statin', 'Liver Ultrasound (NAFLD / steatosis baseline)', 'GGT (biliary vs hepatocellular pattern)', 'Hepatitis B + C serology', 'Ferritin + Iron Studies (rule out hemochromatosis)'],
+        icd10: 'K71.9',
+        what_to_ask_doctor: `My ALT is ${altRatio.toFixed(1)}× the upper limit while I'm on ${drug}. ${isCritical ? 'Per AHA that\'s the threshold to hold or reduce the statin. ' : 'It could be the statin or fatty liver. '}Can we hold the statin for 4-6 weeks and recheck? If it normalizes, the statin was the cause and we'll need a different one.`,
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── IBD-associated arthritis — joint symptoms in UC/Crohn patient ────
+  //
+  // Universal: joint pain or stiffness in a patient with IBD = work it
+  // up as an extra-intestinal manifestation. Affects ~25% of UC/Crohn
+  // patients. Often parallels IBD activity (peripheral arthritis) but
+  // can be independent (axial / ankylosing spondylitis variant). Most
+  // PCPs miss the IBD connection and refer the joint symptom to ortho
+  // instead of GI/rheum.
+  {
+    key: 'ibd_associated_arthritis',
+    alreadyRaisedIf: [/ibd.?associated arthritis|enteropathic arthrit|extra.?intestinal manifest/i],
+    skipIfDx: ['rheumatoid_arthritis', 'ankylosing_spondylitis', 'psoriatic_arthritis'],
+    detect: (ctx) => {
+      const hasIBD = /\b(ibd|ulcerative colitis|\buc\b|crohn|inflammatory bowel)\b/i.test(ctx.conditionsLower ?? '');
+      if (!hasIBD) return null;
+      const sx = ctx.symptomsLower ?? '';
+      const hasJoint = /\b(joint pain|joint stiff|joint ache|arthralg|arthrit|back pain|sacroil|morning stiff)\b/i.test(sx);
+      if (!hasJoint) return null;
+      return {
+        name: 'IBD-associated arthritis (extra-intestinal manifestation)',
+        category: 'autoimmune',
+        confidence: 'high',
+        evidence: `Joint symptoms in an IBD patient. Joint pain / stiffness occurs in ~25% of UC and Crohn's patients as an extra-intestinal manifestation. Two patterns: (1) peripheral arthritis — large joints, parallels gut activity, resolves with IBD treatment. (2) axial / ankylosing spondylitis variant — sacroiliac and spine, independent of gut activity, HLA-B27 associated. Most PCPs miss the IBD link and send to ortho; the right route is GI / rheumatology co-management.`,
+        confirmatory_tests: ['Fecal Calprotectin (IBD activity — is the gut flaring?)', 'CRP + ESR (active inflammation)', 'HLA-B27 (axial / AS variant marker)', 'X-ray of sacroiliac joints + symptomatic peripheral joints', 'Rheumatology referral if axial symptoms or persistent peripheral arthritis', 'Consider whether biologic should be intensified (anti-TNF may treat both)'],
+        icd10: 'M07.60',
+        what_to_ask_doctor: "I have joint pain/stiffness and ulcerative colitis. About 25% of UC patients get IBD-associated arthritis. Can we check fecal calprotectin (is my gut flaring?), CRP/ESR, HLA-B27, and consider whether my biologic should be optimized or if I need rheumatology co-management?",
+        source: 'deterministic',
+      };
+    },
+  },
+
   // ── Pheochromocytoma — paroxysmal HTN + adrenergic symptoms ──────────
   {
     key: 'pheochromocytoma_workup',
