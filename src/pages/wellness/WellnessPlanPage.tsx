@@ -10,6 +10,7 @@ import { Button } from '../../components/ui/Button';
 import { TabNav } from '../../components/ui/TabNav';
 import { FolderSection } from '../../components/ui/FolderSection';
 import { LifestyleInterventions } from '../../components/wellness/LifestyleInterventions';
+import { FastFoodPlaybook } from '../../components/wellness/FastFoodPlaybook';
 import { ActionPlan } from '../../components/wellness/ActionPlan';
 import { InteractionWarnings } from '../../components/wellness/InteractionWarnings';
 import { ProgressSummary } from '../../components/wellness/ProgressSummary';
@@ -325,6 +326,7 @@ const EatTab = ({ plan }: { plan: any }) => {
             ))}
           </div>
         </div>
+        <FastFoodPlaybook />
       </div>
     );
   }
@@ -400,8 +402,10 @@ const EatTab = ({ plan }: { plan: any }) => {
         </div>
       </div>
 
-      {/* 2026-05-12: fast-food smart-orders section removed. Eating
-          pattern card + lifestyle interventions already cover this. */}
+      {/* Fast Food Playbook — 89 curated drive-thru / coffee-shop /
+          gas-station / airport orders grouped by venue, each card
+          tappable to expand into full order details + macros. */}
+      <FastFoodPlaybook />
     </div>
   );
 };
