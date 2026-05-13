@@ -1238,11 +1238,11 @@ export function evaluateIndications(
   // supplement, the lab obviously says it's not normal.
   // ─────────────────────────────────────────────────────────────────────
   const NUTRIENT_MARKER_PATTERNS: Array<{ supplementKey: RegExp; marker: RegExp }> = [
-    { supplementKey: /^vit_b12_methyl$/,            marker: /\b(b.?12|cobalamin|vitamin b.?12)\b/i },
-    { supplementKey: /^methylfolate$/,              marker: /\b(folate|folic acid|rbc folate|serum folate)\b/i },
-    { supplementKey: /^iron_bisglycinate$/,         marker: /\bferritin\b/i },
-    { supplementKey: /^(vit_d3_1000|vit_d3_4000)$/, marker: /\b(vitamin d|25.?hydroxy)\b/i },
-    { supplementKey: /^mg_/,                        marker: /\b(magnesium|rbc magnesium|serum magnesium)\b/i },
+    { supplementKey: /^vit_b12_methyl$/,            marker: /\b(b.?12|cobalamin|vitamin b.?12|vitamina b.?12)\b/i },
+    { supplementKey: /^methylfolate$/,              marker: /\b(folate|folic acid|rbc folate|serum folate|folato|ácido fólico|acido folico)\b/i },
+    { supplementKey: /^iron_bisglycinate$/,         marker: /\b(ferritin|ferritina)\b/i },
+    { supplementKey: /^(vit_d3_1000|vit_d3_4000)$/, marker: /\b(vitamin d|vitamina d|25.?hydroxy|25.?oh|calcidiol)\b/i },
+    { supplementKey: /^mg_/,                        marker: /\b(magnesium|rbc magnesium|serum magnesium|magnesio)\b/i },
     { supplementKey: /^selenium/,                   marker: /\bselenium\b/i },
     { supplementKey: /^zinc/,                       marker: /\bzinc\b/i },
     { supplementKey: /^riboflavin_b2$/,             marker: /\b(riboflavin|vitamin b.?2)\b/i },
