@@ -2734,11 +2734,29 @@ const RULES: BackstopRule[] = [
         ? `My prolactin came back at ${prl.value} ng/mL — can we repeat it fasting, check testosterone and LH/FSH, and consider a pituitary MRI if it stays high?`
         : `My prolactin is ${prl.value} ng/mL — can we run a pregnancy test first, then repeat the prolactin fasting, and review any medications I'm on that could raise it?`;
 
+      // 2026-05-13-57 enhancement: connect prolactin elevation to downstream
+      // axis suppression that frequently coexists. High prolactin suppresses
+      // GnRH → low LH/FSH → ovarian or testicular dysfunction. When we see
+      // those low gonadotropins alongside high prolactin, name the cause so
+      // the PCP doesn't chase low FSH separately. Estradiol can also be
+      // altered (often elevated in women on the cycle phase / driven by the
+      // disinhibited GnRH pulsatility).
+      const fsh = mark(ctx.labValues, [/^fsh\b|follicle.?stimulating/i]);
+      const lh = mark(ctx.labValues, [/^lh\b|luteinizing/i]);
+      const e2 = mark(ctx.labValues, [/^estradiol\b|^e2\b/i]);
+      const downstreamNotes: string[] = [];
+      if (fsh && fsh.value < 3.5) downstreamNotes.push(`FSH ${fsh.value} (low — expected: high prolactin suppresses GnRH → low LH/FSH)`);
+      if (lh && lh.flag === 'low') downstreamNotes.push(`LH ${lh.value} (low — same GnRH-suppression axis)`);
+      if (e2 && (e2.flag === 'high' || e2.flag === 'critical_high')) downstreamNotes.push(`Estradiol ${e2.value} (high — context-dependent; interpret with cycle phase)`);
+      const axisClause = downstreamNotes.length > 0
+        ? ` Downstream effects already visible: ${downstreamNotes.join('; ')}.`
+        : '';
+
       return {
         name: 'Hyperprolactinemia Workup',
         category: 'reproductive',
         confidence: prl.value > 50 ? 'high' : 'moderate',
-        evidence: `Prolactin ${prl.value} ng/mL — above the lab's upper reference. Pregnancy (in women), medications (dopamine blockers, SSRIs), and primary hypothyroidism are the common reversible causes; rule those out before chasing a pituitary microadenoma.`,
+        evidence: `Prolactin ${prl.value} ng/mL — above the lab's upper reference. Pregnancy (in women), medications (dopamine blockers, SSRIs), and primary hypothyroidism are the common reversible causes; rule those out before chasing a pituitary microadenoma.${axisClause}`,
         confirmatory_tests: baseConfirmatory,
         icd10: 'E22.1',
         what_to_ask_doctor: question,

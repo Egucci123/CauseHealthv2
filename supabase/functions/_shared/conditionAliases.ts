@@ -272,6 +272,20 @@ const T1: ConditionDef[] = [
     },
   },
   {
+    key: 'gilbert_syndrome',
+    label: "Gilbert's syndrome",
+    category: 'gi',
+    tier: 3,
+    icd10: 'E80.4',
+    aliases: [
+      /gilbert.?s? syndrome/i,
+      /\bgilbert\b/i,
+      /unconjugated hyperbilirubinem/i,
+    ],
+    // Benign — no required workup once confirmed. Mainly used to suppress
+    // duplicate "rule out Gilbert" cards for users who already have the dx.
+  },
+  {
     key: 'nafld',
     label: 'Fatty Liver / NAFLD',
     category: 'metabolic',
