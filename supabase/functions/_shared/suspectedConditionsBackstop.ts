@@ -2130,13 +2130,16 @@ const RULES: BackstopRule[] = [
       if (apob) ev.push(`ApoB ${apob.value} mg/dL${apob.value >= 90 ? ' (≥90 — not at goal)' : ''}`);
       const drug = onStatin[0];
       return {
-        name: 'Current statin not at goal — intensification discussion',
+        name: 'Lipids above guideline targets on current therapy — discuss with your doctor',
         category: 'cardio',
         confidence: 'high',
-        evidence: `You're on ${drug} but ${ev.join(', ')}. ACC/AHA primary-prevention LDL goal is <100 mg/dL; secondary prevention or metabolic-syndrome target is <70. Real next step is intensification — increase statin dose, add ezetimibe (drops LDL another ~20%), or add a PCSK9 inhibitor / bempedoic acid for resistant cases. Do NOT accept "your statin is fine, keep taking it" when your numbers stay above goal.`,
-        confirmatory_tests: ['Repeat Fasting Lipid Panel (12-hr fast) in 6-8 weeks after any change', 'ApoB (atherogenic particle count — better than LDL for tracking response)', 'Lp(a) — once-in-lifetime if not already done', 'Liver Panel + CK (baseline before dose escalation)', 'hs-CRP (residual inflammatory CV risk)', 'CAC score if not already done (intermediate risk stratification)'],
+        // 2026-05-13-59: framed as patient-prep, not medical instruction.
+        // We surface the goal gap and the OPTIONS that exist, but the
+        // treatment decision is between the patient and their doctor.
+        evidence: `You're on ${drug} and ${ev.join(', ')}. ACC/AHA primary-prevention LDL goal is <100 mg/dL, and tighter (<70) for those with metabolic syndrome or established cardiovascular risk. Lifestyle factors that meaningfully shift these numbers — Mediterranean-style or lower-carb pattern, 150+ minutes/week aerobic exercise, soluble fiber (oats, legumes), weight loss of 5-7%, and reducing added sugars + refined grains — typically drop LDL another 10-20% and TG 20-30% on top of statin therapy. If your lipids stay above goal after a sustained lifestyle effort, that's the right conversation to have with your doctor about whether adjusting therapy makes sense.`,
+        confirmatory_tests: ['Repeat Fasting Lipid Panel (12-hr fast) in 8-12 weeks after lifestyle changes', 'ApoB (atherogenic particle count — better than LDL for tracking response)', 'Lp(a) — once-in-lifetime if not already done', 'Liver Panel + CK (baseline if therapy adjustments come up)', 'hs-CRP (residual inflammatory CV risk)', 'CAC score if not already done (intermediate risk stratification)'],
         icd10: 'E78.5',
-        what_to_ask_doctor: `I'm on ${drug} but my LDL${ldl ? ` is ${ldl.value}` : ''}${tg && tg.value >= 200 ? ` and my triglycerides are ${tg.value}` : ''} — that's not at goal. Can we discuss intensifying the statin, adding ezetimibe, or considering PCSK9 inhibitor or bempedoic acid?`,
+        what_to_ask_doctor: `I'm on ${drug} but my LDL${ldl ? ` is ${ldl.value}` : ''}${tg && tg.value >= 200 ? ` and my triglycerides are ${tg.value}` : ''} — those are above the ACC/AHA goal. I'm planning to focus on diet, exercise, and weight management for the next 8-12 weeks and recheck. If my numbers are still above goal after that, what therapy options would you consider — dose adjustment, ezetimibe, PCSK9 inhibitor, or bempedoic acid?`,
         source: 'deterministic',
       };
     },
@@ -2166,14 +2169,17 @@ const RULES: BackstopRule[] = [
       const isCritical = altRatio >= 3;
       return {
         name: isCritical
-          ? `${drug} hepatotoxicity — hold and recheck (ALT >3× ULN)`
-          : `${drug} hepatic stress — discuss attribution`,
+          ? `${drug} + significantly elevated liver enzymes — talk to your doctor`
+          : `Elevated liver enzymes while on ${drug} — discuss with your doctor`,
         category: 'cardio',
         confidence: isCritical ? 'high' : 'moderate',
-        evidence: `ALT ${alt.value} ${alt.unit} = ${altRatio.toFixed(1)}× the lab's upper limit while on ${drug}. ${isCritical ? 'AHA guideline: ALT >3× ULN on a statin requires hold or dose reduction now. ' : 'Borderline elevation — '}NAFLD and metabolic liver stress are also common drivers, but the statin contribution can only be ruled in or out one way: hold the statin 4-6 weeks and recheck ALT. If it normalizes, the statin was the driver. If it stays high, NAFLD / metabolic / other.`,
-        confirmatory_tests: ['Repeat ALT + AST + GGT in 4-6 weeks after holding or reducing statin', 'Liver Ultrasound (NAFLD / steatosis baseline)', 'GGT (biliary vs hepatocellular pattern)', 'Hepatitis B + C serology', 'Ferritin + Iron Studies (rule out hemochromatosis)'],
-        icd10: 'K71.9',
-        what_to_ask_doctor: `My ALT is ${altRatio.toFixed(1)}× the upper limit while I'm on ${drug}. ${isCritical ? 'Per AHA that\'s the threshold to hold or reduce the statin. ' : 'It could be the statin or fatty liver. '}Can we hold the statin for 4-6 weeks and recheck? If it normalizes, the statin was the cause and we'll need a different one.`,
+        // 2026-05-13-59: framed as patient-prep, not medical instruction.
+        // We never tell a user to change/stop their medication — only what
+        // to ask their PCP, and lifestyle interventions are the first step.
+        evidence: `Your ALT is ${alt.value} ${alt.unit}, which is ${altRatio.toFixed(1)}× your lab's upper limit, and you're taking ${drug}. The most common drivers in someone with this lipid pattern are fatty liver (NAFLD) and metabolic stress — both improve significantly with lifestyle changes (lower added sugars + refined carbs, weight loss of 5-7%, alcohol reduction, regular exercise). If liver enzymes don't trend down after 8-12 weeks of consistent lifestyle changes, that's the right time to discuss with your doctor whether ${drug} could be contributing.${isCritical ? ' At this magnitude (>3× upper limit), bringing this up with your doctor sooner is reasonable — they may want to recheck more frequently while you work on lifestyle factors.' : ''}`,
+        confirmatory_tests: ['Repeat Liver Panel (ALT, AST, GGT) in 8-12 weeks after lifestyle changes', 'Liver Ultrasound (NAFLD / steatosis baseline)', 'GGT (biliary vs hepatocellular pattern)', 'Hepatitis B + C serology', 'Ferritin + Iron Studies (rule out hemochromatosis)'],
+        icd10: 'R74.01',
+        what_to_ask_doctor: `My ALT is ${altRatio.toFixed(1)}× the upper limit while I'm on ${drug}. I'm planning to focus on lifestyle changes — lower refined carbs, more exercise, weight loss${isCritical ? '' : ', maybe less alcohol'} — and recheck in 8-12 weeks. If the enzymes are still elevated after that, would you want to evaluate whether ${drug} is contributing or order additional liver workup?`,
         source: 'deterministic',
       };
     },
