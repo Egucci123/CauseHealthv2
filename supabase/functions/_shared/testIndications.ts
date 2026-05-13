@@ -519,10 +519,48 @@ export const TEST_INDICATIONS: TestIndication[] = [
           { kind: 'sex', is: 'male' },
           { kind: 'age_min', value: 70 },
         ]},
+        // Path D — postmenopausal woman age 50–64 (NAMS / Endocrine Society):
+        // bone loss accelerates 2-3 yr post-menopause; waiting until 65
+        // misses years of treatable loss. Trigger on explicit menopause
+        // condition OR vasomotor symptoms (clinical menopause marker).
+        { kind: 'all', of: [
+          { kind: 'sex', is: 'female' },
+          { kind: 'age_min', value: 50 },
+          { kind: 'age_max', value: 64 },
+          { kind: 'any', of: [
+            { kind: 'condition_match', pattern: /\b(menopaus\w*|postmenopaus\w*|perimenopaus\w*|surgical menopause|premature ovarian)/i },
+            { kind: 'symptom_match', pattern: /\b(hot flash\w*|night sweat\w*|vasomotor|menopaus\w*)/i },
+          ]},
+        ]},
       ]},
     ],
     tests: [
-      { key: 'dexa_female_65_or_risk', whyShort: 'High-risk bone density screen — diagnosed osteoporosis / fragility fracture / chronic steroid / aromatase inhibitor / age-based USPSTF screen', trigger: 'b' },
+      { key: 'dexa_female_65_or_risk', whyShort: 'High-risk bone density screen — diagnosed osteoporosis / fragility fracture / chronic steroid / aromatase inhibitor / age-based USPSTF screen / postmenopausal screening', trigger: 'b' },
+    ],
+  },
+
+  // ── Aldosterone / renin ratio — secondary HTN workup ─────────────────
+  //
+  // Conn syndrome (primary hyperaldosteronism) is the most common
+  // reversible secondary cause of HTN — accounts for 5–10% of all
+  // hypertensives, much higher in resistant or young-onset HTN. Clinical
+  // signal: HTN + low potassium (with or without metabolic alkalosis)
+  // OR HTN onset before age 40 OR HTN resistant to ≥3 drugs.
+  // Universal rule because most PCPs anchor on essential HTN and never
+  // order the ARR before adding a 3rd antihypertensive.
+  {
+    id: 'aldosterone_renin_secondary_htn',
+    triggers: [
+      { kind: 'flag_true', flag: 'hasHTN' },
+      { kind: 'any', of: [
+        // Young-onset HTN — secondary cause much more likely
+        { kind: 'age_max', value: 40 },
+        // Low potassium pattern (regardless of age)
+        { kind: 'labs_match', pattern: /potassium.*\b(2\.\d|3\.[0-4])\b.*\[(low|critical)/i },
+      ]},
+    ],
+    tests: [
+      { key: 'aldosterone_renin_ratio', whyShort: 'HTN with young onset or low potassium — aldosterone/renin ratio rules out Conn syndrome (5–10% of all HTN cases, treatable)', trigger: 'b' },
     ],
   },
 

@@ -333,6 +333,16 @@ const REGISTRY: RetestDef[] = [
     surfaces: 'both',
   },
   {
+    key: 'aldosterone_renin_ratio',
+    canonical: 'Aldosterone / Renin Ratio (ARR)',
+    icd10: 'I15.2',
+    icd10Description: 'Hypertension secondary to endocrine disorders',
+    insuranceNote: 'Covered with HTN + low potassium, young-onset HTN, or HTN resistant to ≥3 drugs. Rules out primary hyperaldosteronism (Conn syndrome — 5–10% of all HTN, treatable).',
+    defaultPriority: 'high',
+    aliases: [/aldosterone.*renin/i, /\barr\b/i, /renin.*aldosterone/i, /hyperaldosteron/i, /conn syndrome/i],
+    surfaces: 'both',
+  },
+  {
     key: 'pth',
     canonical: 'PTH (Parathyroid Hormone)',
     icd10: 'E55.9',

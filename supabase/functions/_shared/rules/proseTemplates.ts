@@ -793,6 +793,29 @@ export function buildDiscussionPoints(facts: ClinicalFacts): string[] {
     out.push(`Sleep apnea suppresses testosterone production — treating OSA (CPAP compliance or optimization) often raises T meaningfully before any TRT decision. Discuss CPAP adherence data + a repeat sleep study before assuming primary hypogonadism.`);
   }
 
+  // 6. Heavy menstrual bleeding workup — universal: any premenopausal female
+  // with iron deficiency anemia pattern (low ferritin or low Hgb) should
+  // have a gyn workup raised. Most PCPs treat the iron without investigating
+  // the bleeding source — endometrial pathology gets missed for years.
+  const isPremenopausalFemale = facts.patient.sex === 'female' && facts.patient.age >= 12 && facts.patient.age < 55;
+  const ferritinLow = facts.labs.outliers.some(o => /ferritin/i.test(o.marker) && o.flag === 'low');
+  const hgbLow = facts.labs.outliers.some(o => /hemoglobin|^hgb/i.test(o.marker) && o.flag === 'low');
+  const hasHeavyMensesSx = /heavy period|menorrhagia|heavy menstrual|heavy bleed/i.test(sxText);
+  if (isPremenopausalFemale && (ferritinLow || hgbLow) && out.length < 6) {
+    const menorrhagiaQual = hasHeavyMensesSx ? ' You\'ve reported heavy periods — that\'s the likely driver.' : '';
+    out.push(`Iron-deficiency pattern in a premenopausal woman warrants a heavy menstrual bleeding workup before assuming it's dietary.${menorrhagiaQual} Discuss menstrual history and consider gyn referral / pelvic ultrasound if periods are heavy, prolonged, or worsening. Treating the iron without investigating the bleed source misses uterine pathology.`);
+  }
+
+  // 7. Alcohol intake review — universal: isolated GGT elevation (GGT high,
+  // ALT/AST normal or only mildly up) is a strong alcohol-or-metabolic
+  // marker. Most PCPs let this float; surfacing it forces the conversation.
+  const ggtHigh = facts.labs.outliers.some(o => /^ggt|gamma.glutam/i.test(o.marker) && (o.flag === 'high' || o.flag === 'watch' || (o as any).flag === 'critical_high'));
+  const altHigh = facts.labs.outliers.some(o => /^alt|sgpt/i.test(o.marker) && (o.flag === 'high' || (o as any).flag === 'critical_high'));
+  const astHigh = facts.labs.outliers.some(o => /^ast|sgot/i.test(o.marker) && (o.flag === 'high' || (o as any).flag === 'critical_high'));
+  if (ggtHigh && !altHigh && !astHigh && out.length < 6) {
+    out.push(`Isolated GGT elevation (with normal ALT/AST) is most often driven by alcohol intake or early metabolic liver stress. Honest alcohol-intake review (drinks/week, frequency, binge episodes) with your PCP is the next step — if alcohol is ruled out, this points at metabolic/insulin-resistance liver patterns and a NAFLD workup.`);
+  }
+
   return out.slice(0, 6);
 }
 

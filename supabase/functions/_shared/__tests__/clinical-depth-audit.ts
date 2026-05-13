@@ -273,6 +273,193 @@ const CASES: ClinicalCase[] = [
     ],
   },
 
+  // ── Young female + low ferritin + heavy menses (universal IDA pattern) ──
+  {
+    id: 'young_female_iron_deficiency',
+    description: '28yo female, BMI 22, fatigue + heavy periods, ferritin 12 + Hgb 11.5',
+    input: makeInput({
+      age: 28, sex: 'female', bmi: 22,
+      symptoms: ['Chronic fatigue', 'Hair shedding', 'Heavy periods'],
+      labs: [
+        lab('Ferritin', 12, 'ng/mL', 'low'),
+        lab('Hemoglobin', 11.5, 'g/dL', 'low'),
+        lab('Hematocrit', 35, '%', 'low'),
+      ],
+    }),
+    expectations: [
+      mustHaveTest(/ferritin|iron panel|tibc|transferrin/i, 'Iron studies must fire for low ferritin in menstruating female'),
+      mustHaveTest(/cbc|reticulocyte/i, 'CBC w/ retics for anemia workup'),
+      mustHaveDiscussionPoint(/menorrhagia|heavy menstrual|gyn|menstrual/i, 'Heavy menstrual bleeding workup must be raised'),
+    ],
+  },
+
+  // ── apoB > LDL discordance (universal CVD risk miss) ─────────────────────
+  {
+    id: 'apob_ldl_discordance',
+    description: '45yo male, BMI 28, LDL "fine" at 110 but apoB elevated + small-particle pattern',
+    input: makeInput({
+      age: 45, sex: 'male', bmi: 28,
+      conditions: ['Family history of premature CAD'],
+      labs: [
+        lab('LDL Cholesterol', 110, 'mg/dL'),
+        lab('Triglycerides', 180, 'mg/dL', 'watch'),
+        lab('HDL', 38, 'mg/dL', 'low'),
+        lab('Non-HDL Cholesterol', 148, 'mg/dL', 'high'),
+      ],
+    }),
+    expectations: [
+      mustHaveTest(/apob|apolipoprotein b/i, 'apoB must fire on atherogenic lipid pattern + family CAD history'),
+      mustHaveTest(/lp\(a\)|lipoprotein\(a\)|lp-a/i, 'Lp(a) must fire once-in-lifetime on family CAD history'),
+    ],
+  },
+
+  // ── Subclinical hypothyroidism (universal "your TSH is fine" miss) ───────
+  {
+    id: 'subclinical_hypothyroid',
+    description: '42yo female, BMI 27, TSH 5.8 + normal T4, fatigue + cold + weight gain',
+    input: makeInput({
+      age: 42, sex: 'female', bmi: 27,
+      symptoms: ['Chronic fatigue', 'Cold intolerance', 'Weight gain', 'Brain fog', 'Dry skin'],
+      labs: [
+        lab('TSH', 5.8, 'mIU/L', 'high'),
+      ],
+    }),
+    expectations: [
+      mustHaveTest(/free t4|ft4/i, 'Free T4 must fire on elevated TSH'),
+      mustHaveTest(/free t3|ft3/i, 'Free T3 must fire on subclinical hypothyroid'),
+      mustHaveTest(/tpo|thyroid antibod|thyroglobulin/i, 'Thyroid antibodies must fire on elevated TSH'),
+    ],
+  },
+
+  // ── Prediabetes A1c 5.7-6.4 + central adiposity (universal IR miss) ──────
+  {
+    id: 'prediabetes_central_adiposity',
+    description: '45yo male, BMI 31, A1c 6.0, fasting glucose 105',
+    input: makeInput({
+      age: 45, sex: 'male', bmi: 31,
+      symptoms: ['Sugar cravings', 'Afternoon energy crash', 'Difficulty losing weight'],
+      labs: [
+        lab('Hemoglobin A1c', 6.0, '%', 'high'),
+        lab('Glucose', 105, 'mg/dL', 'high'),
+        lab('Triglycerides', 175, 'mg/dL', 'watch'),
+      ],
+    }),
+    expectations: [
+      mustHaveTest(/fasting insulin|insulin/i, 'Fasting insulin must fire on prediabetes'),
+      mustHaveTest(/homa-ir|homa/i, 'HOMA-IR must fire to quantify insulin resistance'),
+    ],
+  },
+
+  // ── Fatigue with completely normal basic CMP/CBC (universal expansion) ──
+  {
+    id: 'fatigue_normal_basics',
+    description: '35yo female, BMI 23, persistent fatigue but every basic lab is normal',
+    input: makeInput({
+      age: 35, sex: 'female', bmi: 23,
+      symptoms: ['Chronic fatigue', 'Brain fog', 'Poor sleep quality'],
+      labs: [
+        lab('Glucose', 88, 'mg/dL'),
+        lab('Creatinine', 0.8, 'mg/dL'),
+        lab('Hemoglobin', 13.5, 'g/dL'),
+        lab('TSH', 2.1, 'mIU/L'),
+      ],
+    }),
+    expectations: [
+      mustHaveTest(/ferritin/i, 'Ferritin must fire on fatigue even with normal Hgb (non-anemic iron deficiency)'),
+      mustHaveTest(/vitamin d|25-?oh/i, 'Vit D must fire on chronic fatigue workup'),
+      mustHaveTest(/b12|cobalamin/i, 'B12 must fire on fatigue + brain fog'),
+    ],
+  },
+
+  // ── Elevated GGT + normal ALT/AST (universal alcohol/metabolic liver) ────
+  {
+    id: 'elevated_ggt_alcohol_pattern',
+    description: '50yo male, BMI 27, GGT 95 with normal ALT/AST — alcohol vs metabolic',
+    input: makeInput({
+      age: 50, sex: 'male', bmi: 27,
+      labs: [
+        lab('GGT', 95, 'U/L', 'high'),
+        lab('ALT', 28, 'U/L'),
+        lab('AST', 26, 'U/L'),
+        lab('Alkaline Phosphatase', 88, 'U/L'),
+      ],
+    }),
+    expectations: [
+      mustHaveDiscussionPoint(/alcohol|drink|etoh/i, 'Alcohol intake review must be raised on isolated GGT elevation'),
+    ],
+  },
+
+  // ── Long-term SSRI (universal monitoring miss) ──────────────────────────
+  {
+    id: 'long_term_ssri',
+    description: '60yo female, BMI 27, on sertraline 5+ years',
+    input: makeInput({
+      age: 60, sex: 'female', bmi: 27,
+      conditions: ['Depression'],
+      meds: ['Sertraline 100mg'],
+      symptoms: ['Low libido', 'Weight gain'],
+    }),
+    expectations: [
+      mustHaveTest(/sodium|cmp/i, 'Sodium monitoring (SSRI hyponatremia risk, esp. age 60+)'),
+    ],
+  },
+
+  // ── Postmenopausal female + no HRT (universal screening gap) ────────────
+  {
+    id: 'postmenopausal_no_hrt',
+    description: '58yo female, BMI 26, postmenopausal, not on HRT, no recent DEXA',
+    input: makeInput({
+      age: 58, sex: 'female', bmi: 26,
+      conditions: ['Menopause'],
+      symptoms: ['Hot flashes', 'Sleep disturbance', 'Joint pain'],
+      labs: [
+        lab('LDL Cholesterol', 142, 'mg/dL', 'high'),
+        lab('25-Hydroxy, Vitamin D', 24, 'ng/mL', 'low'),
+      ],
+    }),
+    expectations: [
+      mustHaveTest(/dexa|bone density/i, 'DEXA must fire for postmenopausal screening'),
+      mustHaveTest(/apob|apolipoprotein|lipid/i, 'apoB or lipid panel must fire for postmenopausal CVD risk shift'),
+    ],
+  },
+
+  // ── Young hypertension (universal secondary HTN workup miss) ────────────
+  {
+    id: 'young_hypertension',
+    description: '32yo male, BMI 24, BP 158/98 with no obvious cause',
+    input: makeInput({
+      age: 32, sex: 'male', bmi: 24,
+      conditions: ['Hypertension'],
+      symptoms: ['Headaches', 'Palpitations'],
+      labs: [
+        lab('Potassium', 3.4, 'mEq/L', 'low'),
+        lab('Creatinine', 0.9, 'mg/dL'),
+      ],
+    }),
+    expectations: [
+      mustHaveTest(/aldosterone|renin|aldo-?renin/i, 'Aldosterone/renin ratio must fire on young HTN + low K (Conn syndrome rule-out)'),
+      mustHaveTest(/uacr|microalbumin|urine albumin/i, 'UACR for end-organ damage screening in HTN'),
+    ],
+  },
+
+  // ── Chronic NSAID user (universal kidney/GI monitoring miss) ────────────
+  {
+    id: 'chronic_nsaid_user',
+    description: '52yo male, BMI 28, on daily ibuprofen for chronic back pain',
+    input: makeInput({
+      age: 52, sex: 'male', bmi: 28,
+      conditions: ['Chronic back pain'],
+      meds: ['Ibuprofen 800mg daily'],
+      labs: [
+        lab('Creatinine', 1.1, 'mg/dL'),
+        lab('eGFR', 85, 'mL/min'),
+      ],
+    }),
+    expectations: [
+      mustHaveTest(/creatinine|egfr|cmp/i, 'Renal monitoring for chronic NSAID use'),
+    ],
+  },
+
   // ── Pregnant + IBD ──────────────────────────────────────────────────────
   {
     id: 'pregnant_ibd',
