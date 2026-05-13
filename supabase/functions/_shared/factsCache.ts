@@ -182,7 +182,7 @@ import { buildPlan, type ClinicalFacts, type PatientInput } from './buildPlan.ts
 // (2) Added standard-of-care female baseline indications: Pap smear
 //     (21-65), Thyroid antibodies baseline (women 5-8x higher autoimmune
 //     thyroid risk), DEXA (≥65), STI screen (18-25).
-export const RULE_LIBRARY_VERSION = '2026-05-13-55';
+export const RULE_LIBRARY_VERSION = '2026-05-13-56';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;

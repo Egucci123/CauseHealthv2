@@ -447,10 +447,17 @@ const RULES: BackstopRule[] = [
       const ggt = mark(ctx.labValues, [/\bggt\b/i, /gamma[\s-]?glutamyl/i]);
       const tg = mark(ctx.labValues, [/triglyc/i]);
       const a1c = mark(ctx.labValues, [/hemoglobin a1c/i, /\ba1c\b/i, /\bhba1c\b/i]);
-      const altHigh = alt && alt.value > 35;
-      const altDoubled = alt && alt.value >= 70;       // ≥2× ULN of ~35
-      const astHigh = ast && ast.value > 35;
-      const ggtHigh = ggt && ggt.value > 50;
+      // 2026-05-13-56: respect each lab's own reference range — see comment
+      // in hepatic_stress_pattern for rationale.
+      const isAboveOwnRange = (m: { value: number; flag: string; standard_high: number | null } | null, abs: number) => {
+        if (!m) return false;
+        if (m.flag === 'normal' || m.flag === 'healthy' || m.flag === 'optimal') return false;
+        return m.value > (m.standard_high ?? abs);
+      };
+      const altHigh = isAboveOwnRange(alt, 35);
+      const altDoubled = alt && alt.value >= (alt.standard_high ? alt.standard_high * 2 : 70);
+      const astHigh = isAboveOwnRange(ast, 35);
+      const ggtHigh = isAboveOwnRange(ggt, 50);
       const tgHigh = tg && tg.value > 150;
       const tgVeryHigh = tg && tg.value >= 250;        // strong IR signal
       const irPattern = (a1c && a1c.value >= 5.4) || tgHigh;
@@ -503,9 +510,20 @@ const RULES: BackstopRule[] = [
       const ast = mark(ctx.labValues, [/\bast\b/i, /\bsgot\b/i, /aspartate[\s-]?aminotransferase/i]);
       const ggt = mark(ctx.labValues, [/\bggt\b/i, /gamma[\s-]?glutamyl/i]);
       const mcv = mark(ctx.labValues, [/\bmcv\b/i]);
-      const altHigh = alt && alt.value > 35;
-      const astHigh = ast && ast.value > 35;
-      const ggtHigh = ggt && ggt.value > 50;
+      // 2026-05-13-56: respect each lab's own reference range. Hard-coded 35
+      // misfired for users whose lab uses 0-70 ranges (Tim case — ALT 37 is
+      // normal at his lab, but the global 35 threshold flagged it as elevated).
+      // Use the lab's standard_high when available, else fall back to the
+      // textbook absolute. Also require flag to indicate actual elevation.
+      const isAboveOwnRange = (m: { value: number; flag: string; standard_high: number | null } | null, abs: number) => {
+        if (!m) return false;
+        if (m.flag === 'normal' || m.flag === 'healthy' || m.flag === 'optimal') return false;
+        const threshold = m.standard_high ?? abs;
+        return m.value > threshold;
+      };
+      const altHigh = isAboveOwnRange(alt, 35);
+      const astHigh = isAboveOwnRange(ast, 35);
+      const ggtHigh = isAboveOwnRange(ggt, 50);
       // Need at least 2 of (ALT, AST, GGT) elevated to fire.
       const elevatedCount = [altHigh, astHigh, ggtHigh].filter(Boolean).length;
       if (elevatedCount < 2) return null;
