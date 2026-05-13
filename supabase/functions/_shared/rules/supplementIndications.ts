@@ -756,7 +756,7 @@ export const INDICATIONS: Indication[] = [
   {
     id: 'ldl_apob_high',
     triggers: [
-      { kind: 'lab', marker: /\bldl\b|colesterol ldl/i, states: ['any_high', 'watch'], valueThreshold: { op: '>', value: 130 } },
+      { kind: 'lab', marker: /(?<!v)\bldl\b|(?<!v)colesterol ldl/i, states: ['any_high', 'watch'], valueThreshold: { op: '>', value: 130 } },
       { kind: 'lab', marker: /apo.?b/i,         states: ['any_high', 'watch'], valueThreshold: { op: '>', value: 100 } },
     ],
     supplements: [{ key: 'red_yeast_rice', priority: 'high', sourcedFrom: 'lab_finding' }],

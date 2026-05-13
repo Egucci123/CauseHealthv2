@@ -87,6 +87,45 @@ function mark(labs: any[], patterns: RegExp[]): { value: number; flag: string; u
 }
 
 /**
+ * Same as mark() but explicitly REQUIRES the lab to be an absolute count,
+ * not a percentage. Distinguishes "Neutrophils 59 %" (CBC differential %)
+ * from "Neutrophils (Absolute) 4.3 x10E3/uL" (the actual ANC).
+ *
+ * Real-user bug 2026-05-13 caught the leukocytosis detector treating the
+ * 59% neutrophil percentage as the absolute count (>10) and firing false
+ * leukocytosis on a healthy CBC. Use this helper for any detector that
+ * needs the absolute cell count.
+ */
+function markAbsoluteCount(labs: any[], patterns: RegExp[]): { value: number; flag: string; unit: string; standard_high: number | null; standard_low: number | null; marker_name: string } | null {
+  // Pass 1: prefer an explicit "(Absolute)" / "Abs" marker name match.
+  for (const v of labs) {
+    const name = String(v.marker_name ?? v.marker ?? '');
+    if (patterns.some(re => re.test(name)) && /\(absolute\)|\babs(?:olute)?\b/i.test(name)) {
+      const num = typeof v.value === 'number' ? v.value : parseFloat(String(v.value ?? ''));
+      if (Number.isFinite(num)) {
+        const stdHigh = typeof v.standard_high === 'number' ? v.standard_high
+          : (v.standard_high != null && Number.isFinite(parseFloat(String(v.standard_high))) ? parseFloat(String(v.standard_high)) : null);
+        return { value: num, flag: (v.optimal_flag ?? v.flag ?? '').toLowerCase(), unit: String(v.unit ?? ''), standard_high: stdHigh, standard_low: null, marker_name: name };
+      }
+    }
+  }
+  // Pass 2: bare marker name match, BUT only if unit is NOT a percentage.
+  for (const v of labs) {
+    const name = String(v.marker_name ?? v.marker ?? '');
+    const unit = String(v.unit ?? '').trim();
+    if (patterns.some(re => re.test(name)) && unit !== '%' && !/percent/i.test(unit)) {
+      const num = typeof v.value === 'number' ? v.value : parseFloat(String(v.value ?? ''));
+      if (Number.isFinite(num)) {
+        const stdHigh = typeof v.standard_high === 'number' ? v.standard_high
+          : (v.standard_high != null && Number.isFinite(parseFloat(String(v.standard_high))) ? parseFloat(String(v.standard_high)) : null);
+        return { value: num, flag: (v.optimal_flag ?? v.flag ?? '').toLowerCase(), unit, standard_high: stdHigh, standard_low: null, marker_name: name };
+      }
+    }
+  }
+  return null;
+}
+
+/**
  * Find a marker AND classify its borderline zone against the lab's own
  * reference range. Used by correlation rules that connect-the-dots
  * across multiple markers in a "borderline-high / borderline-low" zone.
@@ -738,7 +777,11 @@ const RULES: BackstopRule[] = [
     skipIfDx: ['leukemia', 'cml', 'aml', 'cll'],
     detect: (ctx) => {
       const wbc = mark(ctx.labValues, [/^wbc\b|^leucocitos\b|^white blood cell/i]);
-      const neut = mark(ctx.labValues, [/^neutrophil(?!.*%)|^neutrófilos(?!\s*%)/i]);
+      // ABSOLUTE neutrophil count only — the % marker has unit "%" and gets
+      // filtered. Real-user bug 2026-05-13: Evan's neutrophils 59% was being
+      // read as absolute, firing false leukocytosis. markAbsoluteCount enforces
+      // either "(Absolute)" in the name OR a non-% unit.
+      const neut = markAbsoluteCount(ctx.labValues, [/^neutrophil|^neutrófilos/i]);
       const lymphPct = mark(ctx.labValues, [/^lymphocyte.*%|^linfocitos\s*%/i]);
       const wbcHigh = wbc && wbc.value > 12;
       const neutHigh = neut && neut.value > 10;
@@ -903,7 +946,7 @@ const RULES: BackstopRule[] = [
     alreadyRaisedIf: [/neutropen|low neutroph/i],
     skipIfDx: [],
     detect: (ctx) => {
-      const neut = mark(ctx.labValues, [/^neutrophil(?!.*%)|^neutrófilos(?!\s*%)/i]);
+      const neut = markAbsoluteCount(ctx.labValues, [/^neutrophil|^neutrófilos/i]);
       if (!neut || neut.value >= 1.5) return null;
       const isSevere = neut.value < 0.5;
       return {
@@ -2119,7 +2162,9 @@ const RULES: BackstopRule[] = [
     detect: (ctx) => {
       const onStatin = (ctx.medsLower ?? '').match(/\b(atorvastatin|simvastatin|rosuvastatin|pravastatin|lovastatin|pitavastatin|fluvastatin|crestor|lipitor|zocor|pravachol|livalo|lescol)\b/i);
       if (!onStatin) return null;
-      const ldl = mark(ctx.labValues, [/\bldl\b(?!\s*p)/i, /ldl chol/i, /colesterol ldl/i]);
+      // Exclude VLDL (contains "LDL Chol" substring — real-user bug 2026-05-13 caught
+      // VLDL value 41 being returned as LDL in Evan's plan). Use negative lookbehind.
+      const ldl = mark(ctx.labValues, [/(?<!v)\bldl\b(?!\s*p)/i, /(?<!v)ldl chol/i, /(?<!v)colesterol ldl/i]);
       const tg = mark(ctx.labValues, [/^triglyc|^triglicér/i]);
       const apob = mark(ctx.labValues, [/\bapob\b|apolipoprotein b/i]);
       const ldlAtGoal = !ldl || ldl.value < 100;
@@ -2584,8 +2629,9 @@ const RULES: BackstopRule[] = [
     skipIfDx: ['t2d', 'metabolic_syndrome'],
     detect: (ctx) => {
       const tg = mark(ctx.labValues, [/triglyc/i]);
-      const hdl = mark(ctx.labValues, [/\bhdl\b/i, /hdl[\s-]*c\b/i, /high[\s-]*density/i]);
-      const ldl = mark(ctx.labValues, [/\bldl\b/i, /ldl[\s-]*c\b/i, /low[\s-]*density/i]);
+      // Exclude non-HDL from HDL match; exclude VLDL from LDL match.
+      const hdl = mark(ctx.labValues, [/(?<!non[-\s]?)\bhdl\b/i, /(?<!non[-\s]?)hdl[\s-]*c\b/i, /high[\s-]*density/i]);
+      const ldl = mark(ctx.labValues, [/(?<!v)\bldl\b/i, /(?<!v)ldl[\s-]*c\b/i, /low[\s-]*density/i]);
       // Exclude OGTT-style markers (Glucose Tolerance, 2-hr post, random)
       const glu = mark(ctx.labValues, [/\bglucose\b(?!.*(?:tolerance|post|random|gtt|\bhr\b|\bpp\b|2[-\s]?hr|1[-\s]?hr))/i, /fasting glucose/i]);
       const a1c = mark(ctx.labValues, [/hemoglobin a1c/i, /\ba1c\b/i, /\bhba1c\b/i]);
@@ -2706,7 +2752,7 @@ const RULES: BackstopRule[] = [
       const crp = mark(ctx.labValues, [/hs[\s-]?crp/i, /high[\s-]*sensitivity[\s-]*c[\s-]*reactive/i, /\bcrp\b/i]);
       if (!crp || crp.value < 1.0) return null;
       const tg = mark(ctx.labValues, [/triglyc/i]);
-      const ldl = mark(ctx.labValues, [/\bldl\b/i, /ldl[\s-]*c\b/i]);
+      const ldl = mark(ctx.labValues, [/(?<!v)\bldl\b/i, /(?<!v)ldl[\s-]*c\b/i]);
       // Exclude OGTT-style markers (Glucose Tolerance, 2-hr post, random)
       const glu = mark(ctx.labValues, [/\bglucose\b(?!.*(?:tolerance|post|random|gtt|\bhr\b|\bpp\b|2[-\s]?hr|1[-\s]?hr))/i, /fasting glucose/i]);
       const a1c = mark(ctx.labValues, [/hemoglobin a1c/i, /\ba1c\b/i, /\bhba1c\b/i]);
@@ -3037,7 +3083,7 @@ const RULES: BackstopRule[] = [
     alreadyRaisedIf: [/familial hypercholesterol|\bfh\b|hypercholesterolemia|hyperlipidemia/i],
     skipIfDx: ['familial_hypercholesterolemia', 'hyperlipidemia'],
     detect: (ctx) => {
-      const ldl = mark(ctx.labValues, [/^ldl\b(?! p)/i, /ldl chol/i]);
+      const ldl = mark(ctx.labValues, [/^ldl\b(?! p)/i, /(?<!v)ldl chol/i]);
       const tc = mark(ctx.labValues, [/total cholesterol|^cholesterol\b/i]);
       const apob = mark(ctx.labValues, [/apolipoprotein b|\bapob\b|apo b/i]);
       const ldlHigh = ldl && ldl.value > 130;
@@ -3068,7 +3114,7 @@ const RULES: BackstopRule[] = [
     alreadyRaisedIf: [/familial hypercholesterol/i, /\bfh\b/i],
     skipIfDx: ['familial_hypercholesterolemia'],
     detect: (ctx) => {
-      const ldl = mark(ctx.labValues, [/^ldl\b(?! p)/i, /ldl chol/i]);
+      const ldl = mark(ctx.labValues, [/^ldl\b(?! p)/i, /(?<!v)ldl chol/i]);
       const ageNum = ctx.age ?? 99;
       if (ldl && ldl.value > 190 && ageNum < 50) {
         return {
@@ -3302,7 +3348,12 @@ const SYSTEM_NAMED_RULE_DEDUP: Record<string, string[]> = {
   liver:               ['nafld', 'hepatic_stress_pattern'],
   kidney:              ['ckd_pattern'],
   glucose_metabolism:  ['t2d_range', 'prediabetes_range', 'insulin_resistance_dyslipidemia'],
-  lipid:               ['ldl_high_for_age', 'particle_pattern_atherogenic', 'inflammation_cv_amplifier', 'hypercholesterolemia_pattern', 'familial_hypercholesterolemia'],
+  // 2026-05-13-61: expanded lipid dedup. Without these keys, Evan's plan
+  // showed both "Lipids above guideline targets on atorvastatin" (specific)
+  // and "Cholesterol & triglycerides — multiple markers above range"
+  // (generic) — the generic card was redundant noise. Now suppressed when
+  // ANY specific lipid card has fired.
+  lipid:               ['ldl_high_for_age', 'particle_pattern_atherogenic', 'inflammation_cv_amplifier', 'hypercholesterolemia_pattern', 'familial_hypercholesterolemia', 'severe_hypertriglyceridemia', 'hypertriglyceridemia_mild_moderate', 'statin_not_at_goal', 'elevated_lp_a', 'low_hdl_workup', 'insulin_resistance_dyslipidemia'],
   thyroid:             ['hashimoto_or_hypothyroid', 'subclinical_hypothyroidism', 'hyperthyroidism_rule_out_graves'],
   iron_hematology:     ['iron_deficiency_anemia', 'hemoconcentration_dehydration', 'b12_deficiency', 'hemochromatosis', 'early_hypochromic_pattern'],
   adrenal:             ['cushing_syndrome_workup', 'adrenal_insufficiency', 'primary_aldosteronism', 'pheochromocytoma_workup'],

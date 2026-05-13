@@ -198,7 +198,7 @@ const OUTLIER_PROSE_RULES: OutlierProseRule[] = [
     },
   },
   {
-    marker: /^ldl|ldl-c/i,
+    marker: /^ldl|(?<!v)ldl-c/i,
     build: (o) => ({
       oneLiner: `LDL ${o.value} ${o.unit || ''} is above the goal range.`,
       meaning: `LDL elevation drives cardiovascular plaque buildup over years. ApoB + Lp(a) refine the actual risk picture beyond the bare LDL number.`,

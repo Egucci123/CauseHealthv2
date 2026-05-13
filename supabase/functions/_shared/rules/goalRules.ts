@@ -92,7 +92,7 @@ const RULES: Rule[] = [
     },
   },
   {
-    match: /^ldl|ldl[\s-]*c/i,
+    match: /^ldl|(?<!v)ldl[\s-]*c/i,
     emoji: '🩸',
     goalFor: (today) => {
       if (today <= 100) return null;

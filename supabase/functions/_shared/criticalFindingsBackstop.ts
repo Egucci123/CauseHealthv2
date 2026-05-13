@@ -135,7 +135,7 @@ const RULES: Rule[] = [
   },
   {
     marker: 'LDL-C',
-    patterns: [/ldl[-\s]?c\b/i, /ldl cholesterol/i, /^ldl$/i],
+    patterns: [/(?<!v)ldl[-\s]?c\b/i, /(?<!v)ldl cholesterol/i, /^ldl$/i],
     test: (v) => v >= 190 ? { severity: 'high', threshold: '≥190 mg/dL', rationale: 'Severe hypercholesterolemia — consider FH workup.' } : null,
   },
   {

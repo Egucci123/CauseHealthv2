@@ -87,6 +87,87 @@ const TRAPS: Array<{
     }),
     mustNotMatchCondition: [/iron \d{1,2}\s*µg.*?(?:>175|elevated)/i],
   },
+
+  // ── TRAP 4: VLDL Cholesterol ≠ LDL Cholesterol (real Evan-case bug) ───
+  // The `/ldl chol/i` substring matched "VLDL Cholesterol" because it has
+  // no anchors. Engine then reported "LDL 41" when actual LDL was 166.
+  // Universal — applies to any user with both LDL and VLDL on their panel.
+  {
+    id: 'ldl_vs_vldl_substring_match',
+    description: 'VLDL Cholesterol 41 listed BEFORE LDL Cholesterol 166 — engine must not pull VLDL value as LDL',
+    input: input({
+      age: 28, sex: 'male',
+      labs: [
+        // Order matters: VLDL first to provoke the substring-match bug
+        lab('VLDL Cholesterol', 41, 'mg/dL', 'high'),
+        lab('Cholesterol, Total', 269, 'mg/dL', 'critical_high'),
+        lab('LDL Cholesterol', 166, 'mg/dL', 'critical_high'),
+        lab('HDL Cholesterol', 62, 'mg/dL'),
+        lab('Triglycerides', 327, 'mg/dL', 'critical_high'),
+      ],
+    }),
+    // Statin not at goal would have evidence including "LDL ##" — assert
+    // the value mentioned is NOT 41. Match the wrong-value pattern explicitly.
+    mustNotMatchCondition: [/\bLDL\s*41\b|LDL\s*41\s*mg/i],
+  },
+
+  // ── TRAP 5: VLDL on a user with statin — statin_not_at_goal must use real LDL ─
+  {
+    id: 'ldl_vs_vldl_with_statin',
+    description: 'Patient on atorvastatin with VLDL 41 + LDL 166 — statin_not_at_goal must read LDL 166, not 41',
+    input: {
+      ...input({
+        age: 28, sex: 'male',
+        labs: [
+          lab('VLDL Cholesterol', 41, 'mg/dL', 'high'),
+          lab('LDL Cholesterol', 166, 'mg/dL', 'critical_high'),
+          lab('Triglycerides', 327, 'mg/dL', 'critical_high'),
+        ],
+      }),
+      medsList: ['Atorvastatin'], medsLower: 'atorvastatin',
+    },
+    mustNotMatchCondition: [/\bLDL\s*41\b|LDL\s*41\s*mg/i],
+    mustMatchCondition: [/LDL\s*166/i],
+  },
+
+  // ── TRAP 6: Neutrophil % ≠ Neutrophil Absolute count (real Evan-case bug) ─
+  // Detector treated "Neutrophils 59 %" (the percentage) as if it were the
+  // absolute neutrophil count (which has units like ×10³/uL). 59 > 10
+  // threshold → fired false leukocytosis on a perfectly healthy CBC.
+  {
+    id: 'neutrophil_percent_vs_absolute',
+    description: 'Neutrophils 59 % (normal) + Neutrophils (Absolute) 4.3 — must NOT fire leukocytosis',
+    input: input({
+      age: 28, sex: 'male',
+      labs: [
+        // Percentage first to provoke the bug
+        lab('Neutrophils', 59, '%'),
+        lab('Neutrophils (Absolute)', 4.3, 'x10E3/uL'),
+        lab('WBC', 7.2, 'x10E3/uL'),
+        lab('Lymphocytes (Absolute)', 2.0, 'x10E3/uL'),
+        lab('Lymphocytes %', 28, '%'),
+      ],
+    }),
+    mustNotMatchCondition: [/leukocyt|stress.?leukogram|leukocytic/i],
+  },
+
+  // ── TRAP 7: Genuine leukocytosis still fires when absolute IS elevated ──
+  // Inverse of TRAP 6 — make sure the fix didn't break real detection.
+  {
+    id: 'genuine_neutrophil_leukocytosis',
+    description: 'Neutrophils (Absolute) 12.1 — must STILL fire leukocytosis',
+    input: input({
+      age: 28, sex: 'male',
+      labs: [
+        lab('Neutrophils', 75, '%'),                  // % also high but irrelevant
+        lab('Neutrophils (Absolute)', 12.1, 'x10E3/uL', 'high'),
+        lab('WBC', 16, 'x10E3/uL', 'high'),
+        lab('Lymphocytes %', 15, '%', 'low'),
+      ],
+    }),
+    mustNotMatchCondition: [],
+    mustMatchCondition: [/leukocyt|stress.?leukogram/i],
+  },
 ];
 
 let totalChecks = 0, totalFailures = 0;
