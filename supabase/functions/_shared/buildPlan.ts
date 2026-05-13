@@ -16,6 +16,7 @@
 // rules file is unit-testable in isolation.
 
 import { buildTestList, type TestOrder } from './rules/testRules.ts';
+import { suppressRedundantTests } from './suppressRedundantTests.ts';
 import { getRetest, specialistForKey } from './retestRegistry.ts';
 import { buildConditionList, type SuspectedConditionFact } from './rules/conditionRules.ts';
 import { buildDepletionList, type DepletionFact } from './rules/depletionRules.ts';
@@ -235,7 +236,7 @@ export function buildPlan(input: PatientInput): ClinicalFacts {
   const outliers = rankLabOutliers(input.labs);
 
   // 2. Deterministic test list (canonical only)
-  const tests = buildTestList({
+  const testsRaw = buildTestList({
     age: input.age,
     sex: sexNormalized,
     conditionsLower: input.conditionsLower,
@@ -244,6 +245,21 @@ export function buildPlan(input: PatientInput): ClinicalFacts {
     medsLower: input.medsLower,
     isPregnant: !!input.isPregnant,
   });
+
+  // 2026-05-13-63: post-process — drop any baseline test where every
+  // constituent marker is already measured AND every value is normal.
+  // Real-user audit case (Marisa, 27F): engine was recommending CMP, CBC,
+  // Lipid Panel, A1c, Vit D etc. when she already had them all measured
+  // and all in range. Wastes the appointment and undermines the tests
+  // that ARE genuinely new.
+  const _labsForSuppression = input.labs.map(l => ({
+    marker_name: l.marker,
+    value: l.value,
+    optimal_flag: l.flag,
+    standard_flag: (l as any).standard_flag ?? null,
+  }));
+  const { kept: tests, suppressed: _suppressedTests } =
+    suppressRedundantTests(testsRaw, _labsForSuppression);
 
   // 3. Suspected conditions (deterministic pattern matchers, high confidence)
   const conditions = buildConditionList({
