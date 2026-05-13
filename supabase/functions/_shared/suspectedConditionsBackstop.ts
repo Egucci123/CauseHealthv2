@@ -805,6 +805,768 @@ const RULES: BackstopRule[] = [
     },
   },
 
+  // ═══════════════════════════════════════════════════════════════════════
+  //  PATTERN-COVERAGE FILL — universal detectors for single-marker
+  //  abnormalities flagged silent by pattern-coverage-map.ts (2026-05-13).
+  //  Each detector below was a "silent zone" before. Universal: fires for
+  //  ANY patient with the lab pattern, regardless of demographics.
+  // ═══════════════════════════════════════════════════════════════════════
+
+  // ── Severe anemia (Hgb < 8) — transfusion threshold workup ────────────
+  {
+    key: 'severe_anemia_workup',
+    alreadyRaisedIf: [/severe anemia|transfusion/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const hgb = mark(ctx.labValues, [/^hemoglobin\b(?!\s*a1c)/i, /^hgb\b/i, /^hemoglobina\b(?!\s*a1c)/i]);
+      if (!hgb || hgb.value >= 8) return null;
+      return {
+        name: 'Severe anemia — urgent workup',
+        category: 'hematology',
+        confidence: 'high',
+        evidence: `Hgb ${hgb.value} ${hgb.unit} — below the standard transfusion-consideration threshold (8 g/dL) and well below typical adult reference. This is urgent, not routine: rules out acute bleeding, hemolysis, marrow failure, severe nutrient deficiency. Don't wait for repeat — workup now.`,
+        confirmatory_tests: ['CBC with Differential (urgent)', 'Reticulocyte Count (separates production vs destruction)', 'Iron Panel + Ferritin', 'B12 + Folate + Methylmalonic Acid', 'LDH + Haptoglobin + Indirect Bilirubin (hemolysis workup)', 'Peripheral Blood Smear', 'Stool occult blood / FIT (GI bleed rule-out)', 'Reticulocyte Count', 'Iron Studies'],
+        icd10: 'D64.9',
+        what_to_ask_doctor: "My hemoglobin is severely low. I need an urgent workup — reticulocyte count, iron studies, B12/folate, LDH and haptoglobin for hemolysis, and a stool occult blood test. I don't want to wait for a repeat in a month.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Severe hypertriglyceridemia (TG ≥ 500) — pancreatitis risk ────────
+  {
+    key: 'severe_hypertriglyceridemia',
+    alreadyRaisedIf: [/severe hypertriglyc|pancreatitis risk/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const tg = mark(ctx.labValues, [/^triglyc|^triglicér/i]);
+      if (!tg || tg.value < 500) return null;
+      return {
+        name: 'Severe hypertriglyceridemia — pancreatitis risk',
+        category: 'cardio',
+        confidence: 'high',
+        evidence: `Triglycerides ${tg.value} ${tg.unit} — at or above 500 mg/dL puts you in the acute pancreatitis risk zone. Anything ≥ 1000 is high-risk and warrants urgent intervention. Most common drivers: uncontrolled diabetes, alcohol, hypothyroidism, nephrotic syndrome, certain meds (estrogens, retinoids, thiazides), or familial chylomicronemia.`,
+        confirmatory_tests: ['Repeat Fasting Lipid Panel (12-hr fast — non-fasting inflates TG)', 'Hemoglobin A1c + Fasting Glucose', 'TSH', 'ApoB + Lipoprotein Electrophoresis (rule out familial chylomicronemia)', 'Liver Panel', 'Lipase (rule out subclinical pancreatitis)', 'Urinalysis (proteinuria — nephrotic)', 'Genetic testing if persistent severe + family history'],
+        icd10: 'E78.1',
+        what_to_ask_doctor: "My triglycerides are dangerously high — pancreatitis range. I'd like to recheck fasting, screen for diabetes and thyroid, and start a fibrate or high-dose omega-3 immediately. Also check lipase to make sure there's no subclinical pancreatitis already.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Thrombocytopenia (Plt < 100) — universal workup ───────────────────
+  {
+    key: 'thrombocytopenia_workup',
+    alreadyRaisedIf: [/thrombocytopen|low platelet/i, /itp|ttp|hus|dic/i],
+    skipIfDx: ['itp', 'ttp'],
+    detect: (ctx) => {
+      const plt = mark(ctx.labValues, [/^platelets?\b|^plaquetas\b/i]);
+      if (!plt || plt.value >= 150) return null;
+      const isSevere = plt.value < 50;
+      const isUrgent = plt.value < 20;
+      return {
+        name: isUrgent ? 'Severe thrombocytopenia — urgent hematology' : isSevere ? 'Significant thrombocytopenia — workup needed' : 'Thrombocytopenia — workup needed',
+        category: 'hematology',
+        confidence: isSevere ? 'high' : 'moderate',
+        evidence: `Platelets ${plt.value} ${plt.unit} (below 150). ${isUrgent ? 'Bleeding risk is significant at this level — urgent hematology referral. ' : isSevere ? 'Spontaneous bleeding risk rises sharply below 50. ' : ''}Differential: ITP (immune-mediated), drug-induced (heparin, quinine, sulfa, NSAIDs, valproate), liver disease with splenomegaly, marrow failure, TTP/HUS (always check MAHA pattern), pregnancy, viral infection, alcohol, chronic disease consumption.`,
+        confirmatory_tests: ['Repeat CBC with Manual Differential', 'Peripheral Blood Smear (schistocytes = TTP/HUS — emergency)', 'Reticulocyte + LDH + Haptoglobin + Indirect Bilirubin (MAHA workup)', 'Liver Panel + INR', 'HIV + Hepatitis B + C serology', 'Coombs (DAT) if hemolysis suspected', 'ANA if autoimmune signals', 'Vitamin B12 + Folate (megaloblastic causes)', 'Pregnancy test if female of reproductive age'],
+        icd10: 'D69.6',
+        what_to_ask_doctor: "My platelet count is low. Can we run a peripheral smear to rule out TTP/HUS, plus reticulocyte/LDH/haptoglobin/bilirubin for MAHA, check HIV and hepatitis, and review my meds for drug-induced causes?",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Neutropenia (ANC < 1.5) — universal workup ────────────────────────
+  {
+    key: 'neutropenia_workup',
+    alreadyRaisedIf: [/neutropen|low neutroph/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const neut = mark(ctx.labValues, [/^neutrophil(?!.*%)|^neutrófilos(?!\s*%)/i]);
+      if (!neut || neut.value >= 1.5) return null;
+      const isSevere = neut.value < 0.5;
+      return {
+        name: isSevere ? 'Severe neutropenia — infection precautions' : 'Neutropenia — workup needed',
+        category: 'hematology',
+        confidence: isSevere ? 'high' : 'moderate',
+        evidence: `Neutrophils ${neut.value} ${neut.unit}. ${isSevere ? 'Severe neutropenia (ANC <0.5) means high infection risk — fever workup is empiric IV antibiotics until proven otherwise. ' : ''}Differential: drug-induced (chemo, antibiotics, antithyroids, antipsychotics, sulfasalazine), viral infection (active or recovery phase), autoimmune, B12/folate/copper deficiency, congenital benign neutropenia (esp. African ancestry: Duffy-null phenotype), marrow infiltration, hypersplenism.`,
+        confirmatory_tests: ['Repeat CBC with Manual Differential', 'Peripheral Blood Smear', 'Vitamin B12 + Folate + Copper', 'HIV + Hepatitis B + C + EBV serology', 'ANA + RF (autoimmune)', 'Review every medication for marrow-toxic agents', 'Flow Cytometry if persistent or progressive'],
+        icd10: 'D70.9',
+        what_to_ask_doctor: "My neutrophils are low. Can we figure out the cause — review my meds for marrow toxicity, screen for viral infection (HIV, hepatitis, EBV), and check B12/folate/copper deficiency? I need to know my baseline so I can react fast if I get a fever.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Hyperkalemia (K > 5.5) — cardiac risk ─────────────────────────────
+  {
+    key: 'hyperkalemia_workup',
+    alreadyRaisedIf: [/hyperkalem|high potassium/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const k = mark(ctx.labValues, [/^potassium|^potasio/i]);
+      if (!k || k.value <= 5.4) return null;
+      const isCritical = k.value >= 6.0;
+      return {
+        name: isCritical ? 'Critical hyperkalemia — urgent ECG + intervention' : 'Hyperkalemia — cardiac risk + workup',
+        category: 'renal_endocrine',
+        confidence: isCritical ? 'high' : 'moderate',
+        evidence: `Potassium ${k.value} ${k.unit}${isCritical ? ' — at this level, cardiac arrhythmia risk is significant and an ECG is mandatory (look for peaked T waves, widened QRS).' : ' (above 5.4).'} Differential: ACE/ARB or spironolactone, NSAID-induced renal hypoperfusion, CKD, adrenal insufficiency, rhabdomyolysis, hemolyzed sample (most common false-positive). Always recheck with a clean draw before assuming pathology.`,
+        confirmatory_tests: ['Repeat Potassium with NO tourniquet, fast-spin, no fist-pumping (hemolyzed sample is the #1 cause of falsely high K)', 'ECG immediately if K ≥ 6.0', 'Creatinine + eGFR + BUN', 'Aldosterone + Renin (rule out hyporeninemic hypoaldosteronism)', 'AM Cortisol (rule out adrenal insufficiency)', 'Review meds: ACE/ARB, spironolactone, NSAIDs, trimethoprim, potassium supplements', 'Urinalysis + UACR'],
+        icd10: 'E87.5',
+        what_to_ask_doctor: "My potassium is high. First — can we recheck with a clean draw to rule out hemolysis? If real, I need an ECG, a med review for K-retaining drugs, kidney check, and aldosterone/cortisol screening for adrenal insufficiency.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Hypoglycemia (Glu < 70 fasting) — differential workup ─────────────
+  {
+    key: 'hypoglycemia_workup',
+    alreadyRaisedIf: [/hypoglycem|low (blood )?sugar/i],
+    skipIfDx: ['hypoglycemia'],
+    detect: (ctx) => {
+      const glu = mark(ctx.labValues, [/\bglucose\b(?!.*(?:tolerance|post|random|gtt|\bhr\b|\bpp\b|2[-\s]?hr|1[-\s]?hr))/i, /^glucosa/i]);
+      if (!glu || glu.value >= 70) return null;
+      return {
+        name: 'Hypoglycemia — Whipple triad workup',
+        category: 'metabolic',
+        confidence: 'moderate',
+        evidence: `Glucose ${glu.value} ${glu.unit}${glu.value < 55 ? ' — below the Whipple-triad threshold (55)' : ''}. Differential: reactive hypoglycemia, insulinoma, exogenous insulin / sulfonylurea, adrenal insufficiency, severe liver disease, alcohol with depleted glycogen, sepsis, factitious. A single low draw is often artefact — repeat fasting + post-meal pattern matters.`,
+        confirmatory_tests: ['Repeat fasting Glucose + concurrent Insulin + C-peptide (rules out insulinoma vs exogenous insulin)', 'Proinsulin (insulinoma)', 'Beta-Hydroxybutyrate', 'AM Cortisol + ACTH (adrenal insufficiency)', '72-hour fast if recurrent unexplained hypoglycemia', 'Sulfonylurea screen (factitious)', 'Liver Panel'],
+        icd10: 'E16.2',
+        what_to_ask_doctor: "My glucose came back low. Was it a fasting draw? Can we do a repeat fasting glucose with insulin + C-peptide together to rule out insulinoma vs exogenous insulin, plus check AM cortisol for adrenal insufficiency?",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Hyponatremia (Na < 135) — differential workup ─────────────────────
+  {
+    key: 'hyponatremia_workup',
+    alreadyRaisedIf: [/hyponatrem|low sodium/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const na = mark(ctx.labValues, [/^sodium|^sodio/i, /\bna\b/i]);
+      if (!na || na.value >= 135) return null;
+      const isModerate = na.value < 130;
+      const isSevere = na.value < 125;
+      return {
+        name: isSevere ? 'Severe hyponatremia — urgent workup' : isModerate ? 'Hyponatremia — differential workup' : 'Mild hyponatremia — context-driven workup',
+        category: 'renal_endocrine',
+        confidence: isModerate ? 'high' : 'moderate',
+        evidence: `Sodium ${na.value} ${na.unit}. ${isSevere ? 'Severe — neurologic symptoms (confusion, seizure) emerge at this level. ' : ''}Differential drives entirely by volume status: hypovolemic (GI losses, diuretics, adrenal insufficiency), euvolemic (SIADH — most common; meds like SSRIs, anticonvulsants; hypothyroidism), hypervolemic (CHF, cirrhosis, nephrotic). Pseudohyponatremia (hyperglycemia, hypertriglyceridemia, paraproteinemia) is the false-positive to rule out first.`,
+        confirmatory_tests: ['Repeat Sodium with serum osmolality + urine osmolality + urine sodium (the SIADH workup triad)', 'Glucose + Triglycerides + Total Protein (rule out pseudohyponatremia)', 'TSH (hypothyroidism)', 'AM Cortisol + ACTH (adrenal insufficiency)', 'BUN + Creatinine', 'Comprehensive medication review (SSRIs, thiazides, carbamazepine, NSAIDs, DDAVP)', 'Volume status exam'],
+        icd10: 'E87.1',
+        what_to_ask_doctor: "My sodium is low. We need to figure out if this is real or pseudo-hyponatremia. Can we run serum + urine osmolality, urine sodium, TSH, AM cortisol, and review my meds for SIADH-causing drugs?",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── PSA elevation (≥ 4) — prostate workup ─────────────────────────────
+  {
+    key: 'psa_elevation_workup',
+    alreadyRaisedIf: [/psa elevat|prostate (workup|cancer)/i, /bph/i],
+    skipIfDx: ['prostate_cancer'],
+    detect: (ctx) => {
+      const isMale = (ctx.sex ?? '').toLowerCase() === 'male';
+      if (!isMale) return null;
+      const psa = mark(ctx.labValues, [/^psa\b|^prostate.specific|antígeno prostático/i]);
+      if (!psa || psa.value < 4) return null;
+      return {
+        name: 'PSA elevation — prostate workup',
+        category: 'urology',
+        confidence: psa.value >= 10 ? 'high' : 'moderate',
+        evidence: `PSA ${psa.value} ${psa.unit} (above standard threshold of 4 ng/mL). ${psa.value >= 10 ? 'Risk of prostate cancer rises significantly above 10. ' : ''}Differential: BPH (most common), prostatitis, recent ejaculation/cycling/DRE (false elevation), prostate cancer. Free/Total PSA ratio and PSA velocity refine risk.`,
+        confirmatory_tests: ['Free PSA + Free/Total PSA Ratio (<10% = higher cancer risk)', 'Repeat PSA in 6 weeks (after abstaining from ejaculation 48 hours, cycling 24 hours, no DRE)', 'PSA Velocity (yearly trend)', 'PSA Density (if prostate volume known)', 'Urinalysis + Culture (rule out prostatitis)', 'Multiparametric prostate MRI if persistent elevation or rising velocity', 'Urology referral for biopsy decision'],
+        icd10: 'R97.20',
+        what_to_ask_doctor: "My PSA is elevated. Before jumping to biopsy, can we get a free/total PSA ratio, recheck in 6 weeks with proper prep (no ejaculation 48h, no biking 24h, no DRE pre-draw), check for prostatitis, and consider a prostate MRI?",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Low HDL alone — atherogenic risk modifier ─────────────────────────
+  {
+    key: 'low_hdl_workup',
+    alreadyRaisedIf: [/low hdl/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const hdl = mark(ctx.labValues, [/^hdl\b|\bhdl\b|colesterol hdl/i]);
+      if (!hdl) return null;
+      const isMale = (ctx.sex ?? '').toLowerCase() === 'male';
+      const threshold = isMale ? 40 : 50;
+      if (hdl.value >= threshold) return null;
+      return {
+        name: 'Low HDL — atherogenic risk + workup',
+        category: 'cardio',
+        confidence: 'moderate',
+        evidence: `HDL ${hdl.value} ${hdl.unit} (below ${isMale ? '40 male' : '50 female'} threshold). HDL alone is a weak CV predictor but signals one of: metabolic syndrome / insulin resistance (most common), anabolic steroid use (suppresses HDL ~50%), genetic apoA-I variants, severe hypertriglyceridemia, certain meds. ApoB matters more for atherogenic-particle risk — the right next step is to count particles, not just chase HDL.`,
+        confirmatory_tests: ['ApoB (atherogenic particle count — the actual CV predictor)', 'Lp(a) — once-in-lifetime genetic screen', 'Fasting Insulin + HOMA-IR (insulin resistance is the most common driver)', 'Total Cholesterol + LDL + non-HDL (full lipid context)', 'hs-CRP', 'Hemoglobin A1c'],
+        icd10: 'E78.6',
+        what_to_ask_doctor: "My HDL is low. I know HDL alone isn't great evidence, but it's a signal — can we get ApoB and Lp(a) for the actual atherogenic risk picture, plus fasting insulin to check for insulin resistance which is the most common driver?",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Hypertriglyceridemia (150-499) — mild/moderate workup ─────────────
+  {
+    key: 'hypertriglyceridemia_mild_moderate',
+    alreadyRaisedIf: [/hypertriglyc|severe hypertriglyc|metabolic syndrome/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const tg = mark(ctx.labValues, [/^triglyc|^triglicér/i]);
+      if (!tg || tg.value < 150 || tg.value >= 500) return null;
+      return {
+        name: 'Hypertriglyceridemia — workup + intervention',
+        category: 'cardio',
+        confidence: tg.value >= 200 ? 'high' : 'moderate',
+        evidence: `Triglycerides ${tg.value} ${tg.unit} (150-499 zone). Most often driven by insulin resistance / metabolic syndrome, alcohol intake, refined-carb diet, hypothyroidism, certain meds (estrogens, thiazides, retinoids). High-dose omega-3 (EPA/DHA 2-4g/day) reliably drops TG 20-30%. Addressing the insulin axis (low-carb pattern + exercise + weight loss + GLP-1 if appropriate) drops further.`,
+        confirmatory_tests: ['Repeat Fasting Lipid Panel (must be 12-hr fast)', 'Fasting Insulin + HOMA-IR', 'Hemoglobin A1c', 'TSH', 'Liver Panel (rule out NAFLD)', 'ApoB (atherogenic particle count)', 'Urinalysis (proteinuria suggests nephrotic)'],
+        icd10: 'E78.1',
+        what_to_ask_doctor: "My triglycerides are elevated. Most likely insulin resistance — can we check fasting insulin, A1c, TSH, and a liver panel for NAFLD? Then we can build a real plan instead of just adding a statin.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Elevated Lp(a) — genetic CV risk ──────────────────────────────────
+  {
+    key: 'elevated_lp_a',
+    alreadyRaisedIf: [/elevated lp\(a\)|lipoprotein.a high/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const lpa = mark(ctx.labValues, [/^lp\(a\)|^lipoprotein.?\(?a\)?|^lp-a/i]);
+      if (!lpa) return null;
+      // Universal threshold: ≥ 75 nmol/L (≈ 30 mg/dL) — AHA/ESC consensus.
+      const isHighNmol = lpa.unit.toLowerCase().includes('nmol') && lpa.value >= 75;
+      const isHighMg = lpa.unit.toLowerCase().includes('mg') && lpa.value >= 30;
+      if (!isHighNmol && !isHighMg) return null;
+      return {
+        name: 'Elevated Lp(a) — genetic CV risk',
+        category: 'cardio',
+        confidence: 'high',
+        evidence: `Lp(a) ${lpa.value} ${lpa.unit}. Elevated Lp(a) is genetic — set at birth, not modifiable by lifestyle. ~20% of adults have elevated levels. Independent risk factor for ASCVD, aortic stenosis, and recurrent CV events. Doesn't lower with statins. Treatment is aggressive control of every OTHER risk factor (LDL/ApoB target tighter, BP target tighter), plus eligibility for emerging PCSK9 / Lp(a)-directed therapies.`,
+        confirmatory_tests: ['Confirm with second measurement (mass = mg/dL; molar = nmol/L — labs differ)', 'ApoB (the modifiable lipid target now becomes tighter — <80 mg/dL)', 'CAC Score (calcium burden in someone with genetic CV risk)', 'Family screening — first-degree relatives need Lp(a)', 'Coronary stress test or CT-angiogram if symptomatic + high CAC'],
+        icd10: 'E78.5',
+        what_to_ask_doctor: "My Lp(a) is elevated. That's a genetic risk I can't lower — but I want a tighter ApoB target (under 80), a CAC score for actual plaque burden, and Lp(a) testing for my immediate family because this is inherited.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Isolated AST elevation — workup ───────────────────────────────────
+  {
+    key: 'isolated_ast_elevation',
+    alreadyRaisedIf: [/hepatic stress|nafld|isolated ast|ast elevation/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const ast = mark(ctx.labValues, [/^ast\b|sgot|aspartate[\s-]?amin/i]);
+      const alt = mark(ctx.labValues, [/^alt\b|sgpt|alanine[\s-]?amin/i]);
+      if (!ast || ast.value <= 40) return null;
+      // Only fire if AST is high AND ALT is normal (or near it).
+      // Hepatic_stress already handles ALT-and-AST together.
+      if (alt && alt.value > 40) return null;
+      return {
+        name: 'Isolated AST elevation — non-hepatic workup',
+        category: 'gi',
+        confidence: 'moderate',
+        evidence: `AST ${ast.value} U/L with normal ALT. AST is also released from muscle, heart, and RBCs — isolated elevation often points away from liver. Differential: recent exercise (heavy lifting, marathon), muscle injury / rhabdomyolysis, statin myopathy, hemolysis, thyroid disease, alcohol (typically AST > ALT 2:1), early NAFLD progressing.`,
+        confirmatory_tests: ['Repeat AST + ALT after 48 hours of rest (rules out exercise/muscle source)', 'Creatine Kinase (CK) — muscle marker', 'LDH + Haptoglobin (rule out hemolysis)', 'TSH', 'GGT (true hepatic vs muscle origin — GGT high = liver)', 'Liver Ultrasound if persistent + GGT elevated'],
+        icd10: 'R74.01',
+        what_to_ask_doctor: "My AST is high but my ALT is normal. That's often muscle, not liver — can we recheck after 48 hours of rest plus check CK to confirm it's not liver origin?",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Isolated AlkPhos elevation — biliary vs bone workup ───────────────
+  {
+    key: 'isolated_alkphos_elevation',
+    alreadyRaisedIf: [/isolated alk phos|cholestasis|alk phos elevation/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const alp = mark(ctx.labValues, [/^alkaline\s*phosphatase|^alk\s*phos|^alp\b|^fosfatasa alcalina/i]);
+      if (!alp || alp.value <= 130) return null;
+      return {
+        name: 'Alkaline phosphatase elevation — biliary vs bone',
+        category: 'gi',
+        confidence: 'moderate',
+        evidence: `Alkaline Phosphatase ${alp.value} U/L. AlkPhos comes from liver/biliary AND from bone — the differential splits there. GGT is the discriminator: high GGT = biliary; normal GGT = bone source (Paget's, healing fracture, metastases, vitamin D deficiency, hyperparathyroidism, growing adolescent).`,
+        confirmatory_tests: ['GGT (key discriminator — high = biliary, normal = bone)', 'AlkPhos Isoenzymes / Heat-Stable AlkPhos (bone vs liver separation)', 'Calcium + Phosphorus + PTH + 25-OH Vitamin D (bone workup)', 'Bilirubin (Total + Direct) — biliary obstruction', 'Right Upper Quadrant Ultrasound if biliary suspected', 'Bone scan if persistent bone-source pattern'],
+        icd10: 'R74.8',
+        what_to_ask_doctor: "My alkaline phosphatase is high. Is the source liver or bone? Can we get GGT to separate — if GGT is normal, this is bone and we should check PTH, Vit D, calcium, phosphorus.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Isolated GGT elevation (no ALT/AST) — already has discussion ─────
+  // The discussion point in proseTemplates already covers this clinically.
+  // Adding a formal condition card so the wellness plan / doctor prep show it
+  // as its own pattern.
+  {
+    key: 'isolated_ggt_elevation',
+    alreadyRaisedIf: [/isolated ggt|alcohol pattern|hepatic stress/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const ggt = mark(ctx.labValues, [/^ggt\b|gamma[\s-]?glutamyl/i]);
+      const alt = mark(ctx.labValues, [/^alt\b|sgpt/i]);
+      const ast = mark(ctx.labValues, [/^ast\b|sgot/i]);
+      if (!ggt || ggt.value <= 60) return null;
+      if (alt && alt.value > 40) return null;
+      if (ast && ast.value > 40) return null;
+      return {
+        name: 'Isolated GGT elevation — alcohol vs metabolic liver',
+        category: 'gi',
+        confidence: 'moderate',
+        evidence: `GGT ${ggt.value} U/L with normal AST/ALT. Most common driver in adults: alcohol intake (even moderate — GGT is very sensitive). Other drivers: NAFLD / early metabolic liver stress, medications (statins, anticonvulsants, antibiotics), biliary disease, smoking. Honest alcohol-intake review is the highest-yield next step.`,
+        confirmatory_tests: ['Liver Panel (full) repeated in 4-6 weeks after a 3-week alcohol-abstinence trial', 'Hemoglobin A1c + Fasting Insulin + HOMA-IR (metabolic liver pattern)', 'Right Upper Quadrant Ultrasound (NAFLD)', 'Bilirubin Total + Direct', 'Medication review (statins, anticonvulsants are common drivers)'],
+        icd10: 'R74.01',
+        what_to_ask_doctor: "My GGT is elevated alone. Can we do an honest alcohol intake review, repeat the liver panel after a 3-week abstinence trial, and check for NAFLD with an ultrasound + insulin resistance markers?",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Low testosterone (male) — hypogonadism workup ─────────────────────
+  {
+    key: 'low_testosterone_male',
+    alreadyRaisedIf: [/hypogonad|low (t|testosterone)/i, /supraphysiolog/i],
+    skipIfDx: ['hypogonadism'],
+    detect: (ctx) => {
+      const isMale = (ctx.sex ?? '').toLowerCase() === 'male';
+      if (!isMale) return null;
+      const t = mark(ctx.labValues, [/^testosterone[,\s]+total|^total testosterone|^testosterona[,\s]+total|^total testosterona|^testosterone$|^testosterona$/i]);
+      if (!t) return null;
+      // Convert to ng/dL universal threshold (300 ng/dL is endocrine society cutoff)
+      const isNgPerMl = t.unit.toLowerCase().includes('ng/ml');
+      const valueNgDl = isNgPerMl ? t.value * 100 : t.value;
+      if (valueNgDl >= 300) return null;
+      return {
+        name: 'Low testosterone (male) — hypogonadism workup',
+        category: 'endocrine',
+        confidence: 'high',
+        evidence: `Total Testosterone ${t.value} ${t.unit} (≈${valueNgDl.toFixed(0)} ng/dL) — below the Endocrine Society 300 ng/dL threshold for adult males. Symptoms (low libido, ED, fatigue, weight resistance, mood, low muscle mass) plus two AM fasting low values confirm hypogonadism. Then split: primary (testicular — LH/FSH high) vs secondary (pituitary/hypothalamic — LH/FSH normal or low) drives the workup.`,
+        confirmatory_tests: ['Repeat AM (8-10 AM) fasting Total Testosterone — single low value isn\'t diagnostic', 'Free + Bioavailable Testosterone + SHBG', 'LH + FSH (primary vs secondary split)', 'Prolactin (rule out prolactinoma if LH low)', 'Estradiol (Sensitive, LC-MS/MS) — aromatization issues', 'TSH', 'AM Cortisol (secondary hypogonadism workup)', 'Iron Panel + Ferritin (hemochromatosis impairs testicular function)', 'Pituitary MRI if LH/FSH low + prolactin abnormal', 'Sperm analysis if fertility relevant'],
+        icd10: 'E29.1',
+        what_to_ask_doctor: "My testosterone is below 300. Can we confirm with a second AM fasting draw, then run LH/FSH to split primary vs secondary hypogonadism, plus prolactin, estradiol, and TSH? I want to understand the cause before starting TRT.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Vitamin D toxicity / excess (>100 ng/mL) ──────────────────────────
+  {
+    key: 'vitamin_d_excess',
+    alreadyRaisedIf: [/vitamin d (toxic|excess|hypervitamin)/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const d = mark(ctx.labValues, [/^25.?hydroxy.*vitamin d|^vitamin d.*25|^25\(?oh\)?d|^25-hydroxyvitamin|^vitamin d\b|^vitamina d 25oh|^calcidiol/i]);
+      if (!d) return null;
+      // Universal threshold: ng/mL ≥ 100 OR nmol/L ≥ 250 (these are equivalent)
+      const isNgPerMl = d.unit.toLowerCase().includes('ng/ml');
+      const isNmolPerL = d.unit.toLowerCase().includes('nmol');
+      if (isNgPerMl && d.value < 100) return null;
+      if (isNmolPerL && d.value < 250) return null;
+      if (!isNgPerMl && !isNmolPerL) return null;
+      return {
+        name: 'Vitamin D excess — toxicity surveillance',
+        category: 'endocrine',
+        confidence: 'high',
+        evidence: `25-OH Vitamin D ${d.value} ${d.unit}. Above 100 ng/mL (250 nmol/L) raises concern for hypervitaminosis — most common cause is over-supplementation, occasionally granulomatous disease (sarcoid, TB, lymphoma) which produces 1,25-OH-D extrarenally. Drives hypercalcemia → kidney stones, soft-tissue calcification, neuropsych symptoms.`,
+        confirmatory_tests: ['STOP all Vitamin D supplementation immediately', 'Serum Calcium + Ionized Calcium + Phosphorus + PTH (hypercalcemia workup)', '24-hour Urine Calcium (hypercalciuria)', '1,25-OH Vitamin D (rules out granulomatous source)', 'Repeat 25-OH Vitamin D in 8-12 weeks after stopping supplement', 'BUN + Creatinine + eGFR (renal effect)', 'Chest X-ray + ACE level if granulomatous suspected'],
+        icd10: 'E67.3',
+        what_to_ask_doctor: "My Vitamin D is above 100. I need to STOP supplementing, check my calcium and PTH for hypercalcemia, get a 24-hour urine calcium, and recheck D in 8-12 weeks. If calcium is also high, we need to rule out granulomatous disease.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Elevated CRP / hs-CRP — inflammation differential ─────────────────
+  {
+    key: 'elevated_crp_inflammation',
+    alreadyRaisedIf: [/elevated crp|inflammation pattern/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const crp = mark(ctx.labValues, [/hs[-\s]?crp|c[-\s]?reactive protein|^crp\b|^proteína c reactiva/i]);
+      if (!crp || crp.value <= 3) return null;
+      const isHigh = crp.value > 10;
+      return {
+        name: isHigh ? 'Markedly elevated CRP — active inflammation' : 'Elevated CRP — inflammation workup',
+        category: 'inflammation',
+        confidence: isHigh ? 'high' : 'moderate',
+        evidence: `CRP ${crp.value} ${crp.unit}. ${isHigh ? 'Above 10 mg/L = significant active inflammation — usually acute infection, flare of autoimmune disease, or recent injury/surgery. ' : 'Between 3 and 10 = chronic low-grade inflammation. '}Differential: subclinical infection, autoimmune disease, obesity/insulin resistance, smoking, periodontal disease, recent injury. Independent CV risk factor at any level above optimal.`,
+        confirmatory_tests: ['Repeat hs-CRP in 4-6 weeks (acute spikes resolve; chronic stays up)', 'ESR (different inflammation marker — discordance with CRP is informative)', 'Complete Blood Count + Differential', 'Ferritin (acute-phase reactant)', 'ANA + RF + anti-CCP if autoimmune signals', 'Urinalysis + Hemoglobin A1c + Lipid Panel (metabolic inflammation)', 'Dental review (periodontal is a common silent source)'],
+        icd10: 'R74.0',
+        what_to_ask_doctor: "My CRP is elevated. Can we recheck in 4-6 weeks, run ESR for comparison, screen autoimmune (ANA, RF, anti-CCP) if I have joint symptoms, and check for metabolic inflammation (A1c, lipids)? Also worth asking my dentist about periodontal disease.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Elevated ESR — chronic inflammation ───────────────────────────────
+  {
+    key: 'elevated_esr_chronic_inflammation',
+    alreadyRaisedIf: [/elevated esr|inflammation pattern|elevated crp/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const esr = mark(ctx.labValues, [/^esr\b|sed rate|sedimentation rate/i]);
+      if (!esr || esr.value <= 30) return null;
+      return {
+        name: 'Elevated ESR — chronic inflammation workup',
+        category: 'inflammation',
+        confidence: 'moderate',
+        evidence: `ESR ${esr.value} ${esr.unit}. ESR rises slowly (days) compared to CRP (hours) — picks up chronic, smoldering inflammation. Differential: autoimmune (lupus, RA, vasculitis — esp. giant cell arteritis if over 60), chronic infection (TB, osteomyelitis, endocarditis), malignancy (multiple myeloma, lymphoma), anemia (raises ESR independently). Discordance with CRP is informative — high ESR + normal CRP often points at myeloma, anemia, or pregnancy.`,
+        confirmatory_tests: ['hs-CRP for comparison', 'Complete Blood Count', 'SPEP + Free Light Chains (myeloma rule-out, esp. age 50+)', 'ANA + RF + anti-CCP', 'Temporal Artery Biopsy if age >50 + headache/jaw claudication/vision changes (giant cell arteritis)', 'Imaging directed by symptoms', 'Ferritin'],
+        icd10: 'R70.0',
+        what_to_ask_doctor: "My ESR is high. ESR catches chronic stuff CRP misses. Can we compare with CRP, check SPEP + free light chains for myeloma if I'm over 50, and screen autoimmune with ANA/RF/anti-CCP?",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── High estradiol in male — aromatization / anabolic context ─────────
+  {
+    key: 'elevated_estradiol_male',
+    alreadyRaisedIf: [/elevated estradiol|aromatiz|supraphysiologic/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const isMale = (ctx.sex ?? '').toLowerCase() === 'male';
+      if (!isMale) return null;
+      const e2 = mark(ctx.labValues, [/^estradiol|^e2\b|^estradiol sensitive/i]);
+      if (!e2 || e2.value < 60) return null; // ng/L = pg/mL — universal upper for males ~40-50
+      return {
+        name: 'Elevated estradiol (male) — aromatization workup',
+        category: 'endocrine',
+        confidence: 'moderate',
+        evidence: `Estradiol ${e2.value} ${e2.unit} in a male — above typical reference. Most common cause: aromatization from supraphysiologic testosterone (TRT or anabolic), obesity (adipose aromatase), or excess alcohol intake. Less common: estrogen-secreting tumor, liver disease impaired clearance, hyperthyroidism. Drives gynecomastia, fluid retention, mood lability.`,
+        confirmatory_tests: ['Estradiol Sensitive (LC-MS/MS) — confirm with the more accurate assay', 'Total Testosterone + Free Testosterone + SHBG (check the aromatization substrate)', 'LH + FSH', 'Prolactin', 'Liver Panel (impaired estrogen clearance)', 'TSH', 'Body composition / BMI review (adipose aromatase)'],
+        icd10: 'E28.0',
+        what_to_ask_doctor: "My estradiol is elevated. If I'm on TRT or supplementing testosterone, this is likely aromatization. Can we get a sensitive E2 assay (LC-MS/MS), check total/free T + SHBG, and consider an aromatase inhibitor if symptoms warrant?",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Hyperhomocysteinemia — CV / methylation workup ────────────────────
+  {
+    key: 'hyperhomocysteinemia',
+    alreadyRaisedIf: [/hyperhomocyst|elevated homocyst/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const hcy = mark(ctx.labValues, [/^homocystein/i]);
+      if (!hcy || hcy.value < 13) return null;
+      return {
+        name: 'Hyperhomocysteinemia — CV + methylation workup',
+        category: 'cardio',
+        confidence: 'moderate',
+        evidence: `Homocysteine ${hcy.value} ${hcy.unit} (above 13 µmol/L). Independent CV risk factor + signal for functional B12, folate, or B6 deficiency. Most respond rapidly to methylated B-complex. Persistently elevated despite B-vitamin repletion suggests MTHFR polymorphism (~40% of population) or renal impairment. CBS gene mutations are rare but severe.`,
+        confirmatory_tests: ['B12 + MMA + Methylated B-Complex trial (8-12 weeks)', 'RBC Folate (3-month folate store)', 'Vitamin B6 (P5P plasma)', 'TSH (hypothyroidism elevates homocysteine)', 'Creatinine + eGFR (renal impairment elevates homocysteine)', 'MTHFR genetic testing if persistent despite repletion'],
+        icd10: 'E72.11',
+        what_to_ask_doctor: "My homocysteine is high. Most often this is a functional B12, folate, or B6 deficiency. Can I trial methylated B-complex for 8-12 weeks, recheck, and if it's still elevated consider MTHFR testing?",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Folate deficiency — universal repletion + workup ──────────────────
+  {
+    key: 'folate_deficiency',
+    alreadyRaisedIf: [/folate deficien|low folate/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const fol = mark(ctx.labValues, [/^folate\b|^rbc folate|^serum folate/i]);
+      if (!fol || fol.value >= 4) return null;
+      return {
+        name: 'Folate deficiency — universal repletion + workup',
+        category: 'hematology',
+        confidence: 'high',
+        evidence: `Folate ${fol.value} ${fol.unit}. Drives macrocytic anemia, hyperhomocysteinemia, mood/cognitive symptoms, and (in women of reproductive age) neural tube defect risk. Common drivers: dietary (low leafy greens), alcohol, certain meds (methotrexate, sulfasalazine, phenytoin, oral contraceptives), malabsorption (celiac, IBD), MTHFR variants reducing methylfolate conversion.`,
+        confirmatory_tests: ['Methylfolate (5-MTHF) 400-800 mcg/day — start now', 'Vitamin B12 + MMA (always check B12 BEFORE folate repletion alone — masks B12 deficiency)', 'Homocysteine (functional folate status)', 'Celiac Serology (tTG-IgA + Total IgA) if no obvious dietary cause', 'CBC + MCV (rule out macrocytic anemia)', 'Liver Panel (alcohol screen)', 'Medication review'],
+        icd10: 'D52.9',
+        what_to_ask_doctor: "My folate is low. Before just supplementing, can we also check B12 + MMA so we don't mask a B12 deficiency? And screen for celiac if my diet isn't the obvious cause?",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Anemia (Hgb low, less severe than 8) — universal workup ───────────
+  {
+    key: 'anemia_general_workup',
+    alreadyRaisedIf: [/anemia|iron deficien|severe anemia/i, /sickle|thalassem/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const hgb = mark(ctx.labValues, [/^hemoglobin\b(?!\s*a1c)/i, /^hgb\b/i, /^hemoglobina\b(?!\s*a1c)/i]);
+      if (!hgb) return null;
+      const isMale = (ctx.sex ?? '').toLowerCase() === 'male';
+      const threshold = isMale ? 13.5 : 12.0;
+      if (hgb.value >= threshold) return null;
+      if (hgb.value < 8) return null; // severe handled by severe_anemia_workup
+      return {
+        name: 'Anemia — universal differential workup',
+        category: 'hematology',
+        confidence: 'high',
+        evidence: `Hgb ${hgb.value} ${hgb.unit} (below ${threshold} ${isMale ? 'male' : 'female'} threshold). Differential by MCV: microcytic (iron deficiency, thalassemia, chronic disease, lead) — most common; normocytic (acute blood loss, hemolysis, chronic disease, marrow failure, mixed nutrient deficiency); macrocytic (B12 / folate / hypothyroid / liver / alcohol / myelodysplasia). MCV + reticulocyte count narrow the cause fast.`,
+        confirmatory_tests: ['CBC with Differential + MCV + RDW + Reticulocyte Count', 'Iron Panel (Iron, TIBC, Ferritin, Transferrin Saturation)', 'Vitamin B12 + Methylmalonic Acid', 'Folate (Serum + RBC)', 'Peripheral Blood Smear', 'TSH', 'Creatinine + eGFR (CKD anemia)', 'Stool occult blood / FIT (GI bleed)', 'Hemoglobin Electrophoresis if microcytic + normal iron (thalassemia)'],
+        icd10: 'D64.9',
+        what_to_ask_doctor: "My hemoglobin is low. Can we run the full anemia panel — reticulocyte count, iron studies, B12/folate, TSH, and a smear? And FIT for GI bleed since that's the most-missed cause in adults.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Hyperphosphatemia — renal / endocrine workup ──────────────────────
+  {
+    key: 'hyperphosphatemia',
+    alreadyRaisedIf: [/hyperphosphatem|elevated phosph/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const phos = mark(ctx.labValues, [/^phosphor|^phosphate|^fosfato/i]);
+      if (!phos || phos.value <= 4.5) return null;
+      return {
+        name: 'Hyperphosphatemia — renal / endocrine workup',
+        category: 'renal_endocrine',
+        confidence: 'moderate',
+        evidence: `Phosphorus ${phos.value} ${phos.unit}. Most common driver: reduced renal clearance (CKD stage 3-5). Less common: hypoparathyroidism, vitamin D toxicity, hemolyzed sample (recheck cleanly first), rhabdomyolysis, tumor lysis. Drives soft-tissue calcification + vascular calcification long-term.`,
+        confirmatory_tests: ['Repeat Phosphorus with clean draw (rule out hemolyzed sample)', 'Creatinine + eGFR + Cystatin-C', 'Calcium + Ionized Calcium + PTH + 25-OH Vitamin D', 'CK + LDH (rhabdomyolysis)', 'UACR + Urine Phosphorus (renal vs intake)'],
+        icd10: 'E83.39',
+        what_to_ask_doctor: "My phosphorus is high. Can we check kidney function (creatinine, eGFR, cystatin-C), parathyroid axis (Ca, PTH, Vit D), and rule out a hemolyzed sample with a clean repeat draw?",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Hypocalcemia — workup ─────────────────────────────────────────────
+  {
+    key: 'hypocalcemia_workup',
+    alreadyRaisedIf: [/hypocalcem|low calcium/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const ca = mark(ctx.labValues, [/^calcium\b|^calcio/i]);
+      if (!ca || ca.value >= 8.5) return null;
+      return {
+        name: 'Hypocalcemia — workup',
+        category: 'endocrine',
+        confidence: 'moderate',
+        evidence: `Calcium ${ca.value} ${ca.unit}. First step: correct for albumin (low albumin pseudo-hypocalcemia) or measure ionized calcium directly. True hypocalcemia differential: vitamin D deficiency (most common), hypoparathyroidism, magnesium deficiency, CKD with secondary hyperparathyroidism, pancreatitis, drug-induced (bisphosphonates, denosumab).`,
+        confirmatory_tests: ['Ionized Calcium (the definitive measure — bypasses albumin issue)', 'Albumin + Total Protein (correction calculation)', 'PTH + 25-OH Vitamin D', 'Magnesium', 'Creatinine + eGFR + Phosphorus (CKD-related secondary HPT)', '24-hour Urine Calcium', 'Lipase if abdominal symptoms (pancreatitis)'],
+        icd10: 'E83.51',
+        what_to_ask_doctor: "My calcium is low. Can we measure ionized calcium directly, plus PTH, 25-OH vitamin D, and magnesium? Low magnesium causes functional hypoparathyroidism and gets missed.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Hypomagnesemia — workup (when not med-driven) ─────────────────────
+  {
+    key: 'hypomagnesemia_workup',
+    alreadyRaisedIf: [/hypomagnesem|low magnesium/i, /ppi.*depletion|ppi.*magnesium/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const mg = mark(ctx.labValues, [/^magnesium|^magnesio/i]);
+      if (!mg || mg.value >= 1.8) return null;
+      return {
+        name: 'Hypomagnesemia — workup + repletion',
+        category: 'endocrine',
+        confidence: 'moderate',
+        evidence: `Magnesium ${mg.value} ${mg.unit}. Serum Mg reflects only ~1% of total body Mg — true deficiency is underdetected. Drivers: chronic PPI use (well-established), thiazide / loop diuretics, alcohol, malabsorption (IBD, celiac, post-bariatric), uncontrolled diabetes, hypocalcemia / hypokalemia (often coexist — Mg deficiency causes both). RBC Mg is more sensitive.`,
+        confirmatory_tests: ['RBC Magnesium (more sensitive than serum)', 'Calcium + Potassium (frequently coexisting deficits)', 'PTH + 25-OH Vitamin D', 'Comprehensive medication review (PPIs, diuretics, antibiotics)', 'Celiac Serology if no obvious cause', '24-hour Urine Magnesium (renal vs GI loss)'],
+        icd10: 'E83.42',
+        what_to_ask_doctor: "My magnesium is low. Can we also check potassium and calcium since they often go together, plus RBC magnesium for the actual tissue picture? And review my meds — PPIs and thiazides are the common culprits.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Hyperuricemia — gout / MPN workup ─────────────────────────────────
+  {
+    key: 'hyperuricemia_workup',
+    alreadyRaisedIf: [/hyperuricem|gout|elevated uric/i],
+    skipIfDx: ['gout'],
+    detect: (ctx) => {
+      const ua = mark(ctx.labValues, [/^urate|^uric acid|^urato/i]);
+      if (!ua || ua.value < 7) return null;
+      return {
+        name: 'Hyperuricemia — gout / MPN / metabolic workup',
+        category: 'metabolic',
+        confidence: ua.value >= 9 ? 'high' : 'moderate',
+        evidence: `Uric Acid ${ua.value} ${ua.unit}. Drivers: insulin resistance / metabolic syndrome (most common), alcohol (esp. beer + spirits), high-fructose diet, certain meds (thiazides, loop diuretics, low-dose aspirin, niacin), renal impairment, high cell turnover (MPN, hemolysis, tumor lysis). CV + CKD risk is independent of gout.`,
+        confirmatory_tests: ['Fasting Insulin + HOMA-IR + Hemoglobin A1c (insulin resistance)', 'Lipid Panel (metabolic syndrome cluster)', 'Creatinine + eGFR + UACR', '24-hour Urine Uric Acid (under-excretor vs over-producer)', 'CBC + LDH if very high or persistent (MPN screen)', 'Medication review', 'Joint imaging / arthrocentesis if symptomatic'],
+        icd10: 'E79.0',
+        what_to_ask_doctor: "My uric acid is high. Most of the time this is insulin resistance + diet — can we check fasting insulin, A1c, and lipids, plus get a 24-hour urine to see if I under-excrete or over-produce? Also review my meds for K-wasting diuretics.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Thrombocytosis (Plt > 450) — workup ───────────────────────────────
+  {
+    key: 'thrombocytosis_workup',
+    alreadyRaisedIf: [/thrombocytos|essential thrombocyth/i],
+    skipIfDx: ['et', 'essential_thrombocythemia'],
+    detect: (ctx) => {
+      const plt = mark(ctx.labValues, [/^platelets?\b|^plaquetas\b/i]);
+      if (!plt || plt.value <= 450) return null;
+      return {
+        name: 'Thrombocytosis — reactive vs primary',
+        category: 'hematology',
+        confidence: plt.value > 600 ? 'high' : 'moderate',
+        evidence: `Platelets ${plt.value} ${plt.unit}. Reactive thrombocytosis (most common) drivers: iron deficiency, recent infection / inflammation, splenectomy, malignancy. Primary thrombocytosis is rarer but serious: essential thrombocythemia (JAK2 V617F, CALR, MPL), polycythemia vera (also high Hct), primary myelofibrosis. Persistently > 600 warrants hematology referral.`,
+        confirmatory_tests: ['Repeat CBC with Manual Differential', 'Iron Panel + Ferritin (iron deficiency is the most common reactive cause)', 'hs-CRP + ESR (inflammation)', 'JAK2 V617F mutation (essential thrombocythemia)', 'BCR-ABL (rule out CML)', 'CALR + MPL mutations if JAK2 negative', 'Peripheral Blood Smear', 'Bone marrow biopsy if persistent + age > 50 + primary suspected'],
+        icd10: 'D75.81',
+        what_to_ask_doctor: "My platelets are high. Most often this is iron deficiency or recent infection — can we rule those out first with iron panel + CRP + ESR? If still high after that, JAK2 V617F to rule out essential thrombocythemia.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── BUN elevation (without Cr elevation) — pre-renal / GI workup ──────
+  {
+    key: 'bun_elevation_isolated',
+    alreadyRaisedIf: [/bun.*creatinine ratio|prerenal|isolated bun/i, /ckd|chronic kidney/i],
+    skipIfDx: ['ckd'],
+    detect: (ctx) => {
+      const bun = mark(ctx.labValues, [/^bun\b|urea nitrogen|^urea\b/i]);
+      const cr = mark(ctx.labValues, [/^creatinine\b/i]);
+      if (!bun || bun.value < 25) return null;
+      // Skip if Cr also high — that's CKD territory (already detected)
+      if (cr && cr.value > 1.3) return null;
+      return {
+        name: 'BUN elevation — pre-renal / GI / catabolic workup',
+        category: 'renal_endocrine',
+        confidence: 'moderate',
+        evidence: `BUN ${bun.value} ${bun.unit} with normal creatinine. Differential (BUN/Cr ratio matters): pre-renal (dehydration, heart failure, NSAIDs, diuretics — ratio > 20:1), GI bleed (heme protein → urea load — ratio > 30:1), high-protein diet, catabolic state (steroids, infection, burns, fasting), tetracycline therapy.`,
+        confirmatory_tests: ['Recheck BUN + Creatinine after hydration', 'BUN/Cr Ratio calculation', 'Stool occult blood / FIT (GI bleed)', 'Comprehensive medication review (NSAIDs, diuretics, steroids, tetracyclines)', 'Cystatin-C eGFR (rules out CKD masked by low muscle mass)', 'CBC (anemia from occult blood loss)'],
+        icd10: 'R79.89',
+        what_to_ask_doctor: "My BUN is high but my creatinine is normal. Can we look at the BUN/Cr ratio — if it's >30:1, we should screen for GI bleed with a FIT test. Also worth checking hydration status and reviewing my meds.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Low Free T4 (overt hypothyroid pattern even if TSH still normal) ──
+  {
+    key: 'low_free_t4_workup',
+    alreadyRaisedIf: [/hypothyroid|hashimoto|overt hypothyroidism|central hypothyroidism/i, /thyroid pattern/i],
+    skipIfDx: ['hypothyroidism'],
+    detect: (ctx) => {
+      const ft4 = mark(ctx.labValues, [/free t4|^t4,?\s*free|tiroxina libre/i]);
+      if (!ft4 || ft4.value >= 0.8) return null;
+      const tsh = mark(ctx.labValues, [/^tsh\b/i]);
+      // If TSH is high + Free T4 low, the overt hypothyroidism detector already
+      // handles this. Fire HERE specifically for central hypothyroidism:
+      // Free T4 low + TSH normal-or-low (pituitary problem).
+      const tshNormalOrLow = !tsh || tsh.value <= 4.5;
+      if (!tshNormalOrLow) return null;
+      return {
+        name: 'Low Free T4 with non-elevated TSH — central hypothyroidism workup',
+        category: 'endocrine',
+        confidence: 'high',
+        evidence: `Free T4 ${ft4.value} ${ft4.unit} with TSH ${tsh ? `${tsh.value} ${tsh.unit}` : 'unmeasured'}. Low Free T4 + normal or low TSH = central (pituitary or hypothalamic) hypothyroidism. The pituitary fails to drive TSH up despite low thyroid hormone — very different workup than primary hypothyroidism. Rule out pituitary tumor / infiltration / damage.`,
+        confirmatory_tests: ['Free T3', 'Reverse T3', 'Prolactin (pituitary co-axis)', 'AM Cortisol + ACTH (always confirm adrenal function BEFORE starting levothyroxine in central hypo — replacement can precipitate adrenal crisis)', 'IGF-1 (growth hormone axis)', 'LH + FSH + Testosterone or Estradiol (gonadal axis)', 'Pituitary MRI', 'Endocrine referral'],
+        icd10: 'E03.9',
+        what_to_ask_doctor: "My Free T4 is low but my TSH isn't high — that's central hypothyroidism. Before starting levothyroxine, can we check AM cortisol/ACTH to rule out adrenal insufficiency, run prolactin and IGF-1 for full pituitary axis, and get a pituitary MRI?",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Hypernatremia (Na > 145) — workup ─────────────────────────────────
+  {
+    key: 'hypernatremia_workup',
+    alreadyRaisedIf: [/hypernatrem|high sodium/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const na = mark(ctx.labValues, [/^sodium|^sodio/i]);
+      if (!na || na.value <= 145) return null;
+      return {
+        name: 'Hypernatremia — volume / endocrine workup',
+        category: 'renal_endocrine',
+        confidence: na.value >= 150 ? 'high' : 'moderate',
+        evidence: `Sodium ${na.value} ${na.unit}. Almost always reflects water deficit (not sodium excess). Differential: inadequate water intake (elderly, dementia, immobile), diabetes insipidus (central or nephrogenic — lithium, demeclocycline), osmotic diuresis (uncontrolled diabetes, mannitol), GI / insensible losses without water replacement.`,
+        confirmatory_tests: ['Repeat Sodium + serum osmolality + urine osmolality + urine sodium', 'Glucose + Hemoglobin A1c (rule out osmotic diuresis)', 'Volume status exam', 'Water deprivation test if DI suspected', 'Lithium level if on lithium', 'BUN + Creatinine'],
+        icd10: 'E87.0',
+        what_to_ask_doctor: "My sodium is high. Almost always this means water deficit. Can we check serum + urine osmolality, glucose for osmotic diuresis, and review my fluid intake / any meds that drive water loss?",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Hypokalemia (standalone, no HTN context) ──────────────────────────
+  {
+    key: 'hypokalemia_standalone',
+    alreadyRaisedIf: [/hypokalem|low potassium|primary aldosteron|diuretic.induced hypokalemia/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const k = mark(ctx.labValues, [/^potassium|^potasio/i]);
+      if (!k || k.value >= 3.5) return null;
+      // Skip if HTN-driven path will handle it (already detected by primary_aldosteronism)
+      const hasHtn = /hypertension|htn|high blood pressure/i.test(ctx.conditionsLower ?? '');
+      if (hasHtn && k.value < 3.5) return null; // primary_aldosteronism handles
+      const isSevere = k.value < 3.0;
+      return {
+        name: isSevere ? 'Severe hypokalemia — urgent workup' : 'Hypokalemia — workup',
+        category: 'renal_endocrine',
+        confidence: isSevere ? 'high' : 'moderate',
+        evidence: `Potassium ${k.value} ${k.unit}. ${isSevere ? 'Significant cardiac arrhythmia risk. ' : ''}Differential: GI losses (vomiting, diarrhea, laxative abuse), renal losses (diuretics — most common; primary aldosteronism; Bartter / Gitelman if young), poor intake (rare alone), magnesium deficiency (causes refractory hypokalemia — always check), insulin / β-agonists / refeeding (shift into cells), licorice (real licorice causes pseudoaldosteronism).`,
+        confirmatory_tests: ['Repeat Potassium + Magnesium', '24-hour Urine Potassium + Urine Sodium (renal vs GI loss separator)', 'ECG if K < 3.0', 'Aldosterone + Renin if no obvious cause', 'Bicarbonate / Anion Gap (alkalosis pattern)', 'Medication review (diuretics, laxatives, steroids, β-agonists)'],
+        icd10: 'E87.6',
+        what_to_ask_doctor: "My potassium is low. First step is replete magnesium — low Mg makes K stay low even with supplementation. Then 24-hour urine K to figure out renal vs GI loss, plus a med review for diuretics or laxatives.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Leukopenia (WBC < 3.5) — universal workup ─────────────────────────
+  {
+    key: 'leukopenia_workup',
+    alreadyRaisedIf: [/leukopen|low wbc|neutropen/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const wbc = mark(ctx.labValues, [/^wbc\b|^leucocitos\b|^white blood cell/i]);
+      if (!wbc || wbc.value >= 3.5) return null;
+      return {
+        name: 'Leukopenia — differential workup',
+        category: 'hematology',
+        confidence: wbc.value < 2.0 ? 'high' : 'moderate',
+        evidence: `WBC ${wbc.value} ${wbc.unit}. Differential: drug-induced (chemo, antibiotics, antithyroids, antipsychotics, methotrexate, sulfasalazine), viral infection (HIV, hepatitis, EBV, parvovirus), autoimmune (lupus, RA), B12 / folate / copper deficiency, marrow failure, hypersplenism, post-radiation, congenital benign (esp. African ancestry — Duffy-null phenotype reduces baseline ANC harmlessly).`,
+        confirmatory_tests: ['Repeat CBC with Manual Differential', 'Peripheral Blood Smear', 'Vitamin B12 + Folate + Copper', 'HIV + Hepatitis B + C + EBV serology', 'ANA + RF if autoimmune signals', 'Comprehensive medication review', 'Flow Cytometry if persistent or progressive'],
+        icd10: 'D72.819',
+        what_to_ask_doctor: "My white blood cells are low. Can we figure out why — repeat CBC with manual diff, check for viral infections (HIV, hepatitis, EBV), screen B12/folate/copper, and review my medication list for marrow-suppressive drugs?",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Low DHEA-S — adrenal androgen workup ──────────────────────────────
+  {
+    key: 'low_dhea_s',
+    alreadyRaisedIf: [/low dhea|dhea deficien|adrenal (insuffic|fatigue)/i],
+    skipIfDx: ['adrenal_insufficiency'],
+    detect: (ctx) => {
+      const dheas = mark(ctx.labValues, [/^dhea[\s-]*s\b|^dhea sulfate|^dhea-?s\b/i]);
+      if (!dheas) return null;
+      // Universal age/sex-aware threshold: <80 µg/dL is broadly low for adults
+      // under 50 (declines naturally with age). Use a conservative 50 µg/dL
+      // threshold to fire across all ages, but moderate confidence only.
+      if (dheas.value >= 50) return null;
+      return {
+        name: 'Low DHEA-S — adrenal androgen workup',
+        category: 'endocrine',
+        confidence: 'moderate',
+        evidence: `DHEA-S ${dheas.value} ${dheas.unit}. Drops naturally with age (~10% per decade after 30), but a truly low value in an adult under 50 raises concern: chronic illness / inflammation, adrenal insufficiency (always check cortisol too), pituitary dysfunction, exogenous glucocorticoid use, severe stress / HPA-axis exhaustion. Drives fatigue, low libido, low mood, low muscle mass.`,
+        confirmatory_tests: ['AM Cortisol (8 AM, fasting) — pair with DHEA-S for adrenal axis snapshot', 'ACTH', 'Cosyntropin (ACTH) stimulation test if AM cortisol is borderline low', 'TSH + Free T4', 'Comprehensive medication review (chronic steroid use suppresses DHEA-S)', 'Pituitary MRI if low DHEA-S + low cortisol + other pituitary axis abnormalities'],
+        icd10: 'E27.49',
+        what_to_ask_doctor: "My DHEA-S is low. Can we check AM cortisol + ACTH together for the adrenal axis, and TSH for thyroid? If AM cortisol is also low, I want a cosyntropin stimulation test for adrenal insufficiency.",
+        source: 'deterministic',
+      };
+    },
+  },
+
   // ── Pheochromocytoma — paroxysmal HTN + adrenergic symptoms ──────────
   {
     key: 'pheochromocytoma_workup',
