@@ -834,7 +834,19 @@ function mergeIntoFinalPlan(args: {
     interaction_warnings: [],
     progress_summary: null,
     plan_mode: facts.isOptimizationMode ? 'optimization' : 'treatment',
-    multi_marker_patterns: [],
+    // 2026-05-13-50: wire up deterministic patternDescriptions output. Previously
+    // hardcoded to []. buildPatternDescriptions returns the multi-marker
+    // cross-cluster patterns (anabolic profile, hepatic injury, stress leukogram,
+    // etc.) that integrated lab interpretation is supposed to surface.
+    multi_marker_patterns: Array.isArray(facts.patternDescriptions)
+      ? facts.patternDescriptions.map((p: any) => ({
+          name: p.name ?? p.pattern_name ?? '',
+          markers: p.markers ?? [],
+          description: p.description ?? p.explanation ?? '',
+          severity: p.severity ?? 'moderate',
+          category: p.category ?? 'general',
+        }))
+      : [],
     // 2026-05-12-35: enriched payload so the Medications tab can render
     // every drug the engine recognizes (314 names across 35 classes),
     // not just the 16 hardcoded in the client data file. Each entry

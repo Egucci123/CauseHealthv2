@@ -1256,10 +1256,14 @@ export function evaluateIndications(
     const lines = labsTextLower.split('\n');
     for (const line of lines) {
       if (!markerPattern.test(line)) continue;
-      // Match flag suffix [normal|healthy|optimal] — any of these means
-      // measured and not an outlier. Skip the line if flag is low /
-      // watch / high — those would already trigger a lab_finding rule.
-      if (/\[(normal|healthy|optimal)\]/.test(line)) return true;
+      // 2026-05-13-50: suppress on normal/healthy/optimal AS WELL AS high/critical_high.
+      // Don't supplement what's measured normal — and CRITICALLY, never supplement
+      // what's measured HIGH. Fat-soluble vitamins (D, A, E, K) cause real toxicity
+      // when stacked on top of an already-elevated baseline. Iron toxicity if
+      // ferritin already high. Mg / zinc / selenium overdose risk.
+      // Real case: Vit D 104 ng/mL (high) was getting D3 1000 IU recommended —
+      // would push the patient toward hypercalcemia.
+      if (/\[(normal|healthy|optimal|high|critical_high|watch)\]/.test(line)) return true;
     }
     return false;
   };

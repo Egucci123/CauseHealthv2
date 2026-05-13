@@ -62,12 +62,25 @@ interface BackstopCtx {
   aiSuspectedNamesLower: string[];
 }
 
-function mark(labs: any[], patterns: RegExp[]): { value: number; flag: string } | null {
+function mark(labs: any[], patterns: RegExp[]): { value: number; flag: string; unit: string; standard_high: number | null; standard_low: number | null; marker_name: string } | null {
   for (const v of labs) {
-    const name = String(v.marker_name ?? '');
+    const name = String(v.marker_name ?? v.marker ?? '');
     if (patterns.some(re => re.test(name))) {
       const num = typeof v.value === 'number' ? v.value : parseFloat(String(v.value ?? ''));
-      if (Number.isFinite(num)) return { value: num, flag: (v.optimal_flag ?? '').toLowerCase() };
+      if (Number.isFinite(num)) {
+        const stdHigh = typeof v.standard_high === 'number' ? v.standard_high
+          : (v.standard_high != null && Number.isFinite(parseFloat(String(v.standard_high))) ? parseFloat(String(v.standard_high)) : null);
+        const stdLow = typeof v.standard_low === 'number' ? v.standard_low
+          : (v.standard_low != null && Number.isFinite(parseFloat(String(v.standard_low))) ? parseFloat(String(v.standard_low)) : null);
+        return {
+          value: num,
+          flag: (v.optimal_flag ?? v.flag ?? '').toLowerCase(),
+          unit: String(v.unit ?? ''),
+          standard_high: stdHigh,
+          standard_low: stdLow,
+          marker_name: name,
+        };
+      }
     }
   }
   return null;
@@ -636,6 +649,134 @@ const RULES: BackstopRule[] = [
         confirmatory_tests: ['Aldosterone-to-Renin Ratio (ARR) — morning fasting', 'Plasma Aldosterone Concentration', 'Plasma Renin Activity', 'Adrenal CT if ARR confirms', 'Adrenal vein sampling if unilateral source suspected'],
         icd10: 'E26.9',
         what_to_ask_doctor: "My potassium is low and I'm on multiple BP meds. Can we run an aldosterone-to-renin ratio to screen for primary aldosteronism? It's the most-missed treatable cause of HTN — if positive, spironolactone often normalizes things.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Supraphysiologic testosterone — anabolic / TRT exposure pattern ───
+  //
+  // Universal in males: total testosterone ≥ 1.5x upper lab reference
+  // (typically > 10 ng/mL or > 1000 ng/dL US) almost always means one of:
+  //   1. Anabolic-androgenic steroid use (AAS) — most common in 25-55yo gym
+  //      population; rising rapidly with telehealth TRT clinics
+  //   2. Supraphysiologic TRT dose (legitimate prescription, dose too high)
+  //   3. SARMs / pro-hormones (less common but rising)
+  //   4. Testicular Leydig cell tumor — rare but must rule out, esp. older men
+  //   5. Adrenal androgen-secreting tumor — rare
+  // The biohacker / r/Biohackers / r/ResearchCompounds / r/Testosterone audience
+  // disproportionately presents with this profile. Most PCPs see a high T,
+  // congratulate the patient, and miss the side-effect monitoring (erythrocytosis,
+  // HDL suppression, hepatic stress from oral compounds, prostate, fertility).
+  // 2026-05-13-50: critical universal addition. Detected on the first day of
+  // launch (r/Biohackers traffic).
+  {
+    key: 'supraphysiologic_testosterone',
+    alreadyRaisedIf: [/anabolic|supraphysiolog|aas (use|abuse)|trt (over|excess)|testosterone (excess|abuse)|leydig/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      // Male only — female ranges differ entirely
+      const isMale = (ctx.sex ?? '').toLowerCase() === 'male';
+      if (!isMale) return null;
+      const t = mark(ctx.labValues, [/^testosterone[,\s]+total/i, /^total testosterone/i, /^testosterona[,\s]+total/i, /^total testosterona/i, /^testosterone$/i, /^testosterona$/i]);
+      if (!t) return null;
+      // Universal threshold: ≥ 1.5x the lab's own upper limit when known,
+      // else fall back to absolute thresholds (ng/dL ≥ 1300 or ng/mL ≥ 11).
+      const stdHigh = typeof t.standard_high === 'number' ? t.standard_high : null;
+      const supraThreshold = stdHigh ? stdHigh * 1.5 : (t.unit?.toLowerCase().includes('ng/ml') ? 11 : 1300);
+      if (t.value < supraThreshold) return null;
+      // Build evidence — pull other anabolic-pattern markers when present
+      const hct = mark(ctx.labValues, [/^hematocrit\b/i, /^hct\b/i, /^hematocrito\b/i]);
+      const hdl = mark(ctx.labValues, [/^hdl\b/i, /\bhdl\b/i, /colesterol hdl/i]);
+      const alt = mark(ctx.labValues, [/^alt\b|sgpt|alanine[\s-]?amin/i]);
+      const cluesArr: string[] = [`Testosterone ${t.value} ${t.unit} (${stdHigh ? `>${(supraThreshold).toFixed(0)} = 1.5× upper ${stdHigh}` : 'supraphysiologic'})`];
+      if (hct && hct.value >= 50) cluesArr.push(`Hct ${hct.value}% (high — anabolic erythropoiesis)`);
+      if (hdl && hdl.value < 40) cluesArr.push(`HDL ${hdl.value} mg/dL (low — classic AAS effect)`);
+      if (alt && alt.value > 40) cluesArr.push(`ALT ${alt.value} U/L (high — possible oral compound hepatic stress)`);
+      return {
+        name: 'Supraphysiologic testosterone — anabolic / TRT exposure review',
+        category: 'endocrine',
+        confidence: 'high',
+        evidence: `${cluesArr.join(', ')}. Total T at or above 1.5× the lab's upper limit is almost always exogenous (anabolic steroid use, supraphysiologic TRT dose, SARMs / pro-hormones) — rarely a Leydig cell tumor or adrenal source. Need to differentiate cause AND establish ongoing monitoring (erythrocytosis, lipid, hepatic, prostate, fertility) regardless of source.`,
+        confirmatory_tests: ['LH + FSH (suppressed = exogenous source confirmed; elevated = primary testicular or tumor)', 'Estradiol (Sensitive, LC-MS/MS) — aromatization on supraphysiologic T drives gynecomastia / fluid retention', 'SHBG — typically low on exogenous T', 'Free + Bioavailable Testosterone — confirms biologically active fraction', 'Repeat AM fasting Total T (8-10 AM) to confirm', 'Hematocrit + Hgb — therapeutic phlebotomy threshold typically ≥54%', 'Lipid Panel (HDL especially) — track AAS-mediated suppression', 'Liver Panel + GGT — esp. if on oral compounds (methylated AAS)', 'PSA + DRE — anabolic exposure accelerates BPH/prostate trajectories', 'Sperm analysis if fertility relevant — exogenous T suppresses spermatogenesis'],
+        icd10: 'E27.5',
+        what_to_ask_doctor: "My total testosterone is significantly above the upper limit. I'd like to honestly review what's driving this — whether prescribed TRT, over-the-counter compounds, or something I should investigate. We need LH/FSH to figure out if the source is internal or external, plus ongoing monitoring of my hematocrit, lipids, liver, and prostate.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Leukocytosis pattern — needs differential workup ──────────────────
+  //
+  // Universal: WBC > 12 x10³/uL OR neutrophils > 10 x10³/uL with elevated
+  // lymphocytes %↓ suggests infection, inflammation, steroid/anabolic
+  // effect, or — rarely — early myeloproliferative disorder. Most PCPs
+  // either repeat the CBC and call it normal-variant, OR over-react to
+  // CML. Right step: clinical context + repeat in 4-6 weeks + manual
+  // differential + LDH + smear if persistent.
+  {
+    key: 'leukocytosis_differential',
+    alreadyRaisedIf: [/leukocyt|wbc elevated|neutrophil/i, /leukem/i],
+    skipIfDx: ['leukemia', 'cml', 'aml', 'cll'],
+    detect: (ctx) => {
+      const wbc = mark(ctx.labValues, [/^wbc\b|^leucocitos\b|^white blood cell/i]);
+      const neut = mark(ctx.labValues, [/^neutrophil(?!.*%)|^neutrófilos(?!\s*%)/i]);
+      const lymphPct = mark(ctx.labValues, [/^lymphocyte.*%|^linfocitos\s*%/i]);
+      const wbcHigh = wbc && wbc.value > 12;
+      const neutHigh = neut && neut.value > 10;
+      const lymphLow = lymphPct && lymphPct.value < 20;
+      if (!wbcHigh && !neutHigh) return null;
+      const cluesArr: string[] = [];
+      if (wbcHigh) cluesArr.push(`WBC ${wbc.value} ${wbc.unit} (>12)`);
+      if (neutHigh) cluesArr.push(`Neutrophils ${neut.value} ${neut.unit} (>10)`);
+      if (lymphLow) cluesArr.push(`Lymphocytes ${lymphPct.value}% (<20 — stress-leukogram shift)`);
+      // Common drivers to mention in evidence
+      const drivers: string[] = ['active infection (most common — bacterial)', 'systemic inflammation', 'steroid / anabolic exposure (endogenous or exogenous)', 'chronic stress / smoking', 'early myeloproliferative disorder (CML, ET, PV — rare but rules-out)'];
+      return {
+        name: 'Leukocytosis — needs differential workup',
+        category: 'hematology',
+        confidence: (wbc && wbc.value > 15) ? 'high' : 'moderate',
+        evidence: `${cluesArr.join(', ')}. Differential includes: ${drivers.join('; ')}. The right next step is clinical context + a repeat CBC with manual differential in 4-6 weeks — most reactive leukocytosis resolves; persistent elevation needs hematology workup. Don't accept "normal variant" without a repeat.`,
+        confirmatory_tests: ['CBC with Manual Differential (repeat in 4-6 weeks)', 'Peripheral Blood Smear (immature forms / left shift / blasts)', 'LDH (elevated in MPN, hemolysis, inflammation)', 'Uric Acid (elevated in MPN turnover)', 'CRP + ESR (separates infection/inflammation from MPN)', 'Procalcitonin if bacterial infection suspected', 'JAK2 V617F + BCR-ABL if persistent or atypical features'],
+        icd10: 'D72.829',
+        what_to_ask_doctor: "My white blood cell count is elevated. Before assuming this is a passing infection, can we do a repeat CBC with manual differential in 4-6 weeks, plus LDH and a peripheral smear, to rule out anything chronic?",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Anabolic-induced erythrocytosis — high Hct + high T ───────────────
+  //
+  // Universal: Hct ≥ 50 in a male WITH supraphysiologic T (≥ lab upper)
+  // is almost always anabolic-driven erythropoiesis — NOT primary
+  // erythrocytosis or sleep apnea. Treatment is dose reduction +
+  // therapeutic phlebotomy (target Hct < 52). Most PCPs jump to sleep
+  // study without considering the obvious anabolic axis.
+  {
+    key: 'anabolic_erythrocytosis',
+    alreadyRaisedIf: [/anabolic.*erythrocyt|erythrocyt.*anabolic|trt.*erythrocyt|polycyt|trt.*phlebotomy|therapeutic phlebotomy/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const isMale = (ctx.sex ?? '').toLowerCase() === 'male';
+      if (!isMale) return null;
+      const hct = mark(ctx.labValues, [/^hematocrit\b/i, /^hct\b/i, /^hematocrito\b/i]);
+      const t = mark(ctx.labValues, [/^testosterone[,\s]+total/i, /^total testosterone/i, /^testosterona[,\s]+total/i, /^total testosterona/i, /^testosterone$/i, /^testosterona$/i]);
+      if (!hct || !t) return null;
+      if (hct.value < 50) return null;
+      const stdHigh = typeof t.standard_high === 'number' ? t.standard_high : null;
+      const tHigh = stdHigh ? t.value >= stdHigh : (t.unit?.toLowerCase().includes('ng/ml') ? t.value >= 7 : t.value >= 900);
+      if (!tHigh) return null;
+      const phlebotomyThreshold = hct.value >= 54;
+      return {
+        name: phlebotomyThreshold
+          ? 'Anabolic-induced erythrocytosis — therapeutic phlebotomy threshold reached'
+          : 'Anabolic-induced erythrocytosis — dose review + monitor',
+        category: 'hematology',
+        confidence: 'high',
+        evidence: `Hct ${hct.value}% in a male with Testosterone ${t.value} ${t.unit} (${stdHigh ? `vs lab upper ${stdHigh}` : 'high'}). Exogenous testosterone (AAS or TRT) suppresses hepcidin and directly stimulates erythropoiesis — this is the most common cause of new erythrocytosis in adult men. ${phlebotomyThreshold ? 'Hct ≥54% meets standard threshold for therapeutic phlebotomy and a TRT dose reduction.' : 'Hct 50-53% warrants TRT/AAS dose reduction or split-dose, plus repeat Hct in 6-8 weeks.'} Sleep apnea workup is reasonable to add but the anabolic axis is the dominant driver here.`,
+        confirmatory_tests: ['Therapeutic Phlebotomy (450 mL) if Hct ≥ 54% — drops Hct ~3% per unit', 'TRT dose review with prescriber: split into 2× weekly injections, lower total dose, or consider transdermal', 'Repeat CBC + Hct in 6-8 weeks after intervention', 'Ferritin baseline before phlebotomy (will drop after donations — supplement iron only if ferritin <30)', 'Home sleep apnea test if BMI ≥30 or snoring (additive to anabolic erythropoiesis, not alternative explanation)', 'Erythropoietin level if T is suppressed but Hct still rising (rules out primary polycythemia / JAK2)'],
+        icd10: 'D75.1',
+        what_to_ask_doctor: "My hematocrit is high and my testosterone is also elevated. Can we treat this as anabolic-induced erythrocytosis first — TRT/dose adjustment plus therapeutic phlebotomy if needed — before jumping to a sleep study? I want my Hct under 52% and a plan to keep it there.",
         source: 'deterministic',
       };
     },

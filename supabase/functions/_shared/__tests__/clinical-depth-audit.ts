@@ -460,6 +460,34 @@ const CASES: ClinicalCase[] = [
     ],
   },
 
+  // ── Anabolic/PED user — supraphysiologic T + Hct + low HDL + ALT high ─
+  // The Angel case — found day 1 of Reddit launch (r/Biohackers / r/ResearchCompounds).
+  // This entire archetype was completely silent before 2026-05-13-50.
+  {
+    id: 'supraphysiologic_testosterone_male',
+    description: '58yo male, BMI 27, Total T 13.8 ng/mL (2× upper), Hct 50.8, HDL 37 low, ALT 105 high, WBC 15.3 high',
+    input: makeInput({
+      age: 58, sex: 'male', bmi: 27,
+      labs: [
+        lab('Testosterone Total', 13.8, 'ng/mL', 'high'),
+        lab('Hematocrit', 50.8, '%', 'high'),
+        lab('HDL', 37, 'mg/dL', 'low'),
+        lab('ALT', 105, 'U/L', 'high'),
+        lab('AST', 56, 'U/L', 'high'),
+        lab('WBC', 15.3, 'x10³/uL', 'high'),
+        lab('Neutrophils', 11.6, 'x10³/uL', 'high'),
+        lab('Lymphocytes %', 15.3, '%', 'low'),
+        lab('25-Hydroxy, Vitamin D', 104, 'ng/mL', 'high'),
+      ],
+    }),
+    expectations: [
+      mustHaveCondition(/supraphysiolog|anabolic|trt exposure/i, 'Supraphysiologic T must fire when male T ≥ supra threshold'),
+      mustHaveCondition(/leukocytos/i, 'Leukocytosis differential must fire on WBC >12 + neutrophils >10'),
+      mustHaveCondition(/anabolic.*erythrocyt|erythrocyt.*anabolic/i, 'Anabolic-erythrocytosis must fire on high Hct + high T in male'),
+      mustNotHaveSupplement(/vitamin d|vit_?d|^d3$/i, 'Vit D supplement MUST NOT fire when measured Vit D is high (toxicity risk)'),
+    ],
+  },
+
   // ── Pregnant + IBD ──────────────────────────────────────────────────────
   {
     id: 'pregnant_ibd',
