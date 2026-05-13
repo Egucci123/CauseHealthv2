@@ -644,22 +644,38 @@ export function buildChiefComplaint(facts: ClinicalFacts): string {
 export function buildHpi(facts: ClinicalFacts): string {
   const a = ageLabel(facts.patient.age);
   const s = sexLabel(facts.patient.sex);
+  // 2026-05-13: include BMI in HPI opener when overweight/obese — it's a
+  // significant clinical fact and standard of care to lead with. Universal.
+  const bmi = facts.patient.bmi;
+  const bmiClause = bmi && bmi >= 25
+    ? `, BMI ${bmi.toFixed(1)}${bmi >= 30 ? ` (obese class ${bmi >= 40 ? '3' : bmi >= 35 ? '2' : '1'})` : ' (overweight)'}`
+    : '';
   const pmh = facts.patient.conditions.length > 0
     ? `with ${facts.patient.conditions.join(', ')}`
     : '';
   const meds = facts.patient.meds.length > 0
     ? ` on ${facts.patient.meds.join(', ')}`
     : '';
-  const opener = `${a} ${s}${pmh ? ' ' + pmh : ''}${meds}.`;
+  const opener = `${a} ${s}${bmiClause}${pmh ? ' ' + pmh : ''}${meds}.`;
 
   const outliers = facts.labs.outliers.slice(0, 4);
   const labLine = outliers.length > 0
     ? ` Recent labs reveal ${outliers.map(o => `${o.marker} ${o.value}`).join(', ')}.`
     : '';
 
-  const sxs = facts.patient.symptoms.filter(s => s.severity >= 3).slice(0, 4);
-  const sxLine = sxs.length > 0
-    ? ` Reports ${sxs.map(x => x.name.toLowerCase()).join(', ')}.`
+  // 2026-05-13: prioritize CLINICALLY RED-FLAG symptoms in the HPI
+  // (gynecomastia, galactorrhea, syncope, hemoptysis, visual changes,
+  // night sweats, unintentional weight loss). These deserve to be in
+  // the opening narrative because they each trigger a specific workup
+  // a generalist might miss. Rest of symptoms still listed after.
+  const RED_FLAG_PATTERNS = /gynecomastia|galactorrhea|syncope|hemoptysis|visual change|night sweat|unintentional weight loss|hemoptysis|hematuria|hematochezia|chest pain|severe headache/i;
+  const redFlagSx = facts.patient.symptoms.filter(s => RED_FLAG_PATTERNS.test(s.name));
+  const otherSx = facts.patient.symptoms.filter(s => s.severity >= 3 && !RED_FLAG_PATTERNS.test(s.name)).slice(0, 4);
+  const redFlagLine = redFlagSx.length > 0
+    ? ` Notable: ${redFlagSx.map(x => x.name.toLowerCase()).join(', ')}.`
+    : '';
+  const sxLine = otherSx.length > 0
+    ? ` Reports ${otherSx.map(x => x.name.toLowerCase()).join(', ')}.`
     : '';
 
   const topCondition = facts.conditions[0];
@@ -670,7 +686,7 @@ export function buildHpi(facts: ClinicalFacts): string {
   // 2026-05-12-45: no HPI truncation. Deterministic template can't
   // exceed reasonable length naturally (max 4 outliers + 4 symptoms +
   // condition list = ~500-600 chars worst case for poly-pharmacy patient).
-  return opener + labLine + sxLine + patternLine;
+  return opener + labLine + redFlagLine + sxLine + patternLine;
 }
 
 /** Patient-voice questions — each tied to a specific finding in FACTS.
@@ -744,6 +760,39 @@ export function buildDiscussionPoints(facts: ClinicalFacts): string[] {
     if (out.length >= 6) break;
     out.push(`${o.marker} ${o.value} ${o.unit} is in the critical range — review at the visit and decide on workup or treatment.`);
   }
+
+  // 3. 2026-05-13: GLP-1 / weight-management discussion when BMI ≥35
+  // AND metabolic signals (IR / T2D / sugar cravings / weight resistance)
+  // AND not already on a GLP-1. Universal rule for adults with class-2+
+  // obesity who haven't yet discussed pharmacologic weight management.
+  const bmi = facts.patient.bmi ?? 0;
+  const onGLP1 = facts.patient.meds.join(' ').toLowerCase().match(/semaglutide|ozempic|wegovy|tirzepatide|mounjaro|zepbound|liraglutide|saxenda|dulaglutide/);
+  const condText = (facts.patient.conditions.join(' ') + ' ' + facts.conditions.map(c => c.name).join(' ')).toLowerCase();
+  const sxText = facts.patient.symptoms.map(s => s.name.toLowerCase()).join(' ');
+  const hasMetabolicSignal = /insulin|prediab|t2d|type 2 diabetes|metabolic syndrome|nafld/.test(condText)
+    || /sugar craving|weight resistance|difficulty losing weight|weight gain despite/.test(sxText);
+  if (bmi >= 35 && hasMetabolicSignal && !onGLP1 && out.length < 6) {
+    out.push(`BMI ${bmi.toFixed(1)} with metabolic signals (insulin resistance / weight-resistance pattern) — discuss whether a GLP-1 agonist (semaglutide, tirzepatide) or SGLT2 inhibitor is appropriate alongside lifestyle changes. Both have strong cardiovascular + glycemic outcome data at this BMI.`);
+  }
+
+  // 4. 2026-05-13: psoriasis ↔ metabolic syndrome comorbidity — surface
+  // the link as a discussion point so the patient knows to coordinate
+  // dermatology with metabolic workup.
+  if (/psorias/.test(condText) && bmi >= 27 && out.length < 6) {
+    out.push(`Psoriasis is highly comorbid with metabolic syndrome and insulin resistance — your BMI + lab pattern suggests these should be worked up together. Anti-inflammatory dietary pattern and GLP-1 candidates have both been shown to improve psoriasis activity in addition to metabolic markers.`);
+  }
+
+  // 5. 2026-05-13: OSA ↔ low testosterone link — sleep apnea suppresses
+  // testosterone production. Surface as a discussion point when both
+  // signals are present so the patient asks about CPAP optimization
+  // before chasing TRT.
+  const hasOSA = /sleep apnea|osa|obstructive sleep/.test(condText);
+  const hasLowTSignal = /low t|low testosterone|gynecomastia|low libido|erectile/.test(sxText)
+    || /hypogonadism|low testosterone/.test(condText);
+  if (hasOSA && hasLowTSignal && out.length < 6 && facts.patient.sex === 'male') {
+    out.push(`Sleep apnea suppresses testosterone production — treating OSA (CPAP compliance or optimization) often raises T meaningfully before any TRT decision. Discuss CPAP adherence data + a repeat sleep study before assuming primary hypogonadism.`);
+  }
+
   return out.slice(0, 6);
 }
 

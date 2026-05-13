@@ -193,6 +193,17 @@ export function buildContextFlags(ctx: InjectionContext) {
     hasPCOS: hasCondition(c, 'pcos'),
     hasHTN: hasCondition(c, 'hypertension'),
     hasCKD: hasCondition(c, 'ckd'),
+
+    // 2026-05-13: creatinine elevated OR eGFR borderline (60-75) — triggers
+    // Cystatin-C + UACR rule-out. In BMI ≥30 or muscular men, creatinine
+    // alone can give a false-positive CKD signal; Cystatin-C is the
+    // definitive call.
+    creatinineHighOrEgfrBorderline: (() => {
+      const labs = ctx.labsLower;
+      const crHigh = /creatinine[^a-z0-9]+[12]\.[3-9]/i.test(labs) || /creatinine[^a-z0-9]+[2-9]\.\d/i.test(labs) || /\[(critical_high|high)\][^]*creatinine|creatinine[^]*\[(critical_high|high)\]/i.test(labs);
+      const egfrBorder = /egfr[^a-z0-9]+([56][0-9]|7[0-4])/i.test(labs);
+      return crHigh || egfrBorder;
+    })(),
     hasCAD: hasCondition(c, 'cad'),
     hasLupus: hasCondition(c, 'lupus'),
     hasRA: hasCondition(c, 'ra'),

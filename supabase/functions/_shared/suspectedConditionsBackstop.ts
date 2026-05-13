@@ -1535,6 +1535,44 @@ const RULES: BackstopRule[] = [
     },
   },
 
+  // ── Isolated hyperbilirubinemia → Gilbert syndrome rule-out ──────────
+  // 2026-05-13: when total bilirubin is mildly elevated (1.2-3.0) with
+  // NORMAL ALT/AST/Alk Phos, Gilbert syndrome is the most common cause
+  // (~7% of the population). Engine should suggest indirect/direct
+  // fractionation + fasting repeat to confirm Gilbert vs pathological
+  // hepatobiliary disease. Universal — fires regardless of age/sex.
+  {
+    key: 'gilbert_syndrome_workup',
+    alreadyRaisedIf: [/gilbert/i, /^isolated.*bilirubin/i],
+    skipIfDx: ['gilbert', 'gilbert_syndrome'],
+    detect: (ctx) => {
+      const bili = mark(ctx.labValues, [/^bilirubin.*total\b|^total.*bilirubin\b/i]);
+      const alt = mark(ctx.labValues, [/^alt\b|sgpt/i]);
+      const ast = mark(ctx.labValues, [/^ast\b|sgot/i]);
+      const alkPhos = mark(ctx.labValues, [/^alkaline\s*phosphatase\b|^alk\s*phos/i]);
+      // Must have bili elevated 1.2-3.0 AND normal ALT/AST/AlkPhos
+      if (!bili || bili.value < 1.2 || bili.value > 3.0) return null;
+      const altNormal = !alt || alt.value <= 45;
+      const astNormal = !ast || ast.value <= 40;
+      const alkPhosNormal = !alkPhos || alkPhos.value <= 115;
+      if (!altNormal || !astNormal || !alkPhosNormal) return null; // pathologic pattern, not Gilbert
+      return {
+        name: 'Isolated hyperbilirubinemia — rule out Gilbert syndrome',
+        category: 'gi',
+        confidence: 'high',
+        evidence: `Total bilirubin ${bili.value} mg/dL with otherwise normal liver enzymes (ALT, AST, Alkaline Phosphatase). The most common cause of isolated mild hyperbilirubinemia is Gilbert syndrome — a benign inherited enzyme variant affecting ~7% of the population. Fractionation (indirect vs direct bilirubin) plus a fasting repeat confirms it.`,
+        confirmatory_tests: [
+          'Indirect (unconjugated) + Direct (conjugated) Bilirubin fractionation',
+          'Fasting Bilirubin repeat (Gilbert worsens with fasting; pathology does not)',
+          'Hemolysis workup if indirect bili dominant + low haptoglobin + reticulocytosis (rule out hemolytic anemia)',
+        ],
+        icd10: 'E80.4',
+        what_to_ask_doctor: "My total bilirubin is mildly elevated but my other liver enzymes (ALT, AST, Alk Phos) are normal. Can we get bilirubin fractionation (indirect vs direct) plus a fasting repeat? That confirms whether this is Gilbert syndrome — which is benign and needs no treatment — vs something to investigate further.",
+        source: 'deterministic',
+      };
+    },
+  },
+
   // ════════════════════════════════════════════════════════════════════
   // (Generic borderline-pattern correlation moved to the universal
   // system-drift detector — see detectSystemDrift below the RULES array.

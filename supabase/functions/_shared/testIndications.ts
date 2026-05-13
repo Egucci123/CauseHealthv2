@@ -142,6 +142,18 @@ export const TEST_INDICATIONS: TestIndication[] = [
     triggers: [{ kind: 'flag_true', flag: 'hasCKD' }],
     tests: [{ key: 'cystatin_c_egfr', whyShort: 'Diagnosed CKD — cystatin-C-based eGFR is more accurate than creatinine in muscle-low patients', trigger: 'b' }],
   },
+  // 2026-05-13: elevated creatinine in an obese / high-muscle patient
+  // is the classic Cystatin-C indication — creatinine alone can give a
+  // false-positive CKD signal in BMI >30 or muscular men. Order Cystatin-C
+  // before committing to a CKD diagnosis. Universal rule.
+  {
+    id: 'creatinine_high_cystatin_rule_out',
+    triggers: [{ kind: 'flag_true', flag: 'creatinineHighOrEgfrBorderline' }],
+    tests: [
+      { key: 'cystatin_c_egfr', whyShort: 'Cystatin-C confirms whether the elevated creatinine reflects kidney function or muscle mass — more accurate eGFR in BMI ≥30', trigger: 'b' },
+      { key: 'uacr',            whyShort: 'UACR catches early hypertensive / metabolic kidney damage independent of creatinine', trigger: 'b' },
+    ],
+  },
   {
     id: 'ckd_uacr',
     triggers: [{ kind: 'flag_true', flag: 'hasCKD' }],
