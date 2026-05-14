@@ -142,6 +142,76 @@ export interface WellnessPlanData {
   // Per-symptom how-this-plan-addresses-it list. Populated by
   // generate-wellness-plan after the Symptoms page was deleted (April 2026).
   symptoms_addressed?: { symptom: string; severity?: number; how_addressed: string }[];
+  // ── Engine fields wired in 2026-05-14 (previously orphaned outputs) ──
+  /** Critical labs flagged by buildAlerts — life-threatening values that
+   *  need urgent attention (K >6.5, Na <125, glucose <40 or >400, Hgb <7, etc).
+   *  Rendered at the very top of the wellness plan in a red banner. */
+  emergency_alerts?: Array<{
+    key: string;
+    marker: string;
+    value: number;
+    unit: string;
+    threshold: 'critical_low' | 'critical_high';
+    message: string;
+    severity: 'emergency';
+  }>;
+  /** Suicide-risk language detected in free text. Renders as a top-of-page
+   *  banner with 988 resource. */
+  crisis_alert?: {
+    key: 'crisis_suicide_risk';
+    type: 'suicide_risk';
+    message: string;
+    matchedPhrase?: string;
+  } | string | null;
+  /** Watch-list values: lab-normal but outside optimal range. Lower-priority
+   *  than alerts; rendered as a collapsed section. */
+  suboptimal_flags?: Array<{
+    marker: string;
+    value: number;
+    unit: string;
+    labStandardFlag?: string;
+    optimalLow?: number;
+    optimalHigh?: number;
+    rationale: string;
+    source?: string;
+  }>;
+  /** Named cross-marker patterns (e.g., "Metabolic syndrome", "Hepatic stress
+   *  pattern") that integrate multiple labs into one diagnosis. */
+  multi_marker_patterns?: Array<{
+    name: string;
+    description: string;
+    markers?: string[];
+    severity?: 'high' | 'moderate' | 'low';
+    category?: string;
+    source?: string;
+  }>;
+  /** Computed clinical risk scores. Null entries mean inputs weren't present. */
+  risk_calculators?: {
+    ascvd_10yr?: { value: number; category: string; missingInputs?: string[] } | null;
+    fib4?: { value: number; category: string } | null;
+    homa_ir?: { value: number; category: string } | null;
+    tg_hdl_ratio?: { value: number; category: string } | null;
+  } | null;
+  /** Goal-vs-current targets the patient can track to. */
+  goal_targets?: Array<{
+    key: string;
+    emoji: string;
+    marker: string;
+    today: number;
+    goal: number;
+    unit: string;
+    deltaText: string;
+    confidence: 'high' | 'medium' | 'low';
+  }>;
+  /** Pre-analytical prep instructions (fasting, biotin hold, AM testosterone
+   *  draw, etc.) tied to specific recommended tests. */
+  prep_instructions?: Array<{
+    category: 'fasting' | 'medication' | 'supplement' | 'timing' | 'lifestyle' | 'cycle';
+    triggeredByTest: string;
+    instruction: string;
+    importance: 'critical' | 'recommended';
+    source?: string;
+  }>;
   disclaimer: string;
   plan_mode?: 'treatment' | 'optimization';
 }

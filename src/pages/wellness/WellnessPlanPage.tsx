@@ -15,6 +15,14 @@ import { ActionPlan } from '../../components/wellness/ActionPlan';
 import { InteractionWarnings } from '../../components/wellness/InteractionWarnings';
 import { ProgressSummary } from '../../components/wellness/ProgressSummary';
 import { TransformationForecast } from '../../components/wellness/TransformationForecast';
+// 2026-05-14: wire-up of previously-orphaned engine outputs.
+// Engine has been emitting these fields all along; UI was discarding them.
+import { EmergencyAlertsBanner } from '../../components/wellness/EmergencyAlertsBanner';
+import { MultiMarkerPatterns } from '../../components/wellness/MultiMarkerPatterns';
+import { SuboptimalFlagsList } from '../../components/wellness/SuboptimalFlagsList';
+import { RiskCalculatorsCard } from '../../components/wellness/RiskCalculatorsCard';
+import { GoalTargetsCard } from '../../components/wellness/GoalTargetsCard';
+import { PrepInstructionsList } from '../../components/wellness/PrepInstructionsList';
 import { useWellnessPlan, useGenerateWellnessPlan } from '../../hooks/useWellnessPlan';
 import { useLatestLabDraw, useLatestLabValues } from '../../hooks/useLabData';
 import { buildForecasts } from '../../lib/transformationForecast';
@@ -779,6 +787,16 @@ export const WellnessPlanPage = () => {
         : !ack.complete ? null
         : (
         <div className="space-y-5">
+          {/* 2026-05-14: safety-critical alerts render BEFORE the headline.
+              Engine emits emergency_alerts (critical lab values) and
+              crisis_alert (suicide-risk language) — neither was rendered
+              before this wire-up. Banner only appears when one of them is
+              populated, so healthy patients see nothing change. */}
+          <EmergencyAlertsBanner
+            emergencyAlerts={plan.emergency_alerts}
+            crisisAlert={plan.crisis_alert}
+          />
+
           {/* Headline + actions */}
           <div className="bg-[#131313] rounded-[10px] p-6">
             <div className="flex items-start justify-between gap-3 mb-3 flex-wrap">
@@ -842,6 +860,85 @@ export const WellnessPlanPage = () => {
               by-default folders. The wellness plan now focuses on the
               lifestyle plan; clinicians see the test workup on
               /doctor-prep via the SpecialistTestStacks component. */}
+
+          {/* Multi-marker patterns — cross-cluster clinical syndromes
+              (metabolic syndrome, hepatic stress, anabolic profile, etc).
+              Each integrates multiple labs into a named diagnosis. */}
+          {Array.isArray(plan.multi_marker_patterns) && plan.multi_marker_patterns.length > 0 && (
+            <FolderSection
+              icon="scatter_plot"
+              title="Lab patterns we noticed"
+              count={plan.multi_marker_patterns.length}
+              countLabel={plan.multi_marker_patterns.length === 1 ? 'pattern' : 'patterns'}
+              explanation="Single markers tell part of the story; patterns tell the rest. These cluster multiple labs into a named pattern your doctor will recognize."
+              accentColor="#7B1FA2"
+            >
+              <MultiMarkerPatterns patterns={plan.multi_marker_patterns} />
+            </FolderSection>
+          )}
+
+          {/* Risk calculators — deterministic clinical scores from labs +
+              demographics. Each only renders when inputs were sufficient. */}
+          {plan.risk_calculators && (
+            (plan.risk_calculators.ascvd_10yr || plan.risk_calculators.fib4 ||
+             plan.risk_calculators.homa_ir || plan.risk_calculators.tg_hdl_ratio) && (
+            <FolderSection
+              icon="calculate"
+              title="Clinical risk scores"
+              count={[plan.risk_calculators.ascvd_10yr, plan.risk_calculators.fib4, plan.risk_calculators.homa_ir, plan.risk_calculators.tg_hdl_ratio].filter(Boolean).length}
+              countLabel="scores"
+              explanation="Standard clinician-facing risk scores computed from your labs. Use these to anchor the conversation with your doctor on objective numbers, not just narrative."
+              accentColor="#3A6B8C"
+            >
+              <RiskCalculatorsCard calculators={plan.risk_calculators} />
+            </FolderSection>
+          ))}
+
+          {/* Goal targets — From here / To here. Engine-derived per-marker
+              targets the patient can track to. */}
+          {Array.isArray(plan.goal_targets) && plan.goal_targets.length > 0 && (
+            <FolderSection
+              icon="flag"
+              title="Where you're aiming"
+              count={plan.goal_targets.length}
+              countLabel={plan.goal_targets.length === 1 ? 'target' : 'targets'}
+              explanation="Each marker's current value and the realistic target you're working toward. These are derived from your primary goal — they're not aspirational, they're the next concrete step."
+              accentColor="#2A9D8F"
+            >
+              <GoalTargetsCard targets={plan.goal_targets} />
+            </FolderSection>
+          )}
+
+          {/* Watch list — markers in lab-normal range but outside the
+              age/sex-specific optimal range. Lower priority than the
+              critical-alerts banner above; rendered as collapsed folder. */}
+          {Array.isArray(plan.suboptimal_flags) && plan.suboptimal_flags.length > 0 && (
+            <FolderSection
+              icon="visibility"
+              title="Worth watching — borderline values"
+              count={plan.suboptimal_flags.length}
+              countLabel={plan.suboptimal_flags.length === 1 ? 'value' : 'values'}
+              explanation="These values are inside what your lab calls 'normal,' but outside the tighter range that's optimal for your age and sex. Worth a recheck in 6-12 months."
+              accentColor="#E89D3C"
+            >
+              <SuboptimalFlagsList flags={plan.suboptimal_flags} />
+            </FolderSection>
+          )}
+
+          {/* Prep instructions — pre-analytical guidance for upcoming labs
+              (biotin hold, AM testosterone draw, fasting, etc). */}
+          {Array.isArray(plan.prep_instructions) && plan.prep_instructions.length > 0 && (
+            <FolderSection
+              icon="schedule"
+              title="Before your next blood draw"
+              count={plan.prep_instructions.length}
+              countLabel={plan.prep_instructions.length === 1 ? 'instruction' : 'instructions'}
+              explanation="Concrete prep steps so the next draw reflects your true baseline — biotin holds for thyroid panels, AM windows for testosterone, fasting for lipids, and so on."
+              accentColor="#3A6B8C"
+            >
+              <PrepInstructionsList instructions={plan.prep_instructions} />
+            </FolderSection>
+          )}
 
           {/* Drug-supplement interaction warnings — safety-critical, render
               high on the page so the user sees them before the supplement

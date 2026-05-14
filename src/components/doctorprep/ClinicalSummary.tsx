@@ -82,6 +82,20 @@ export const ClinicalSummary = ({ doc }: { doc: DoctorPrepDocument }) => {
               <p className="text-body text-clinical-charcoal text-sm leading-relaxed">{doc.pmh}</p>
             </div>
           )}
+          {/* BMI + BMI category chip — engine-computed from height/weight on
+              the profile. Helps the doctor frame metabolic conversations
+              without you having to recite the number. */}
+          {(doc as any).bmi != null && (
+            <div>
+              <p className="text-precision text-[0.6rem] font-bold text-clinical-stone tracking-widest uppercase mb-1">BMI</p>
+              <p className="text-body text-clinical-charcoal text-sm">
+                <span className="font-semibold">{Number((doc as any).bmi).toFixed(1)}</span>
+                {(doc as any).bmi_category && (
+                  <span className="text-clinical-stone text-xs ml-2 tracking-wide uppercase">{(doc as any).bmi_category}</span>
+                )}
+              </p>
+            </div>
+          )}
         </div>
       </FolderSection>
 
