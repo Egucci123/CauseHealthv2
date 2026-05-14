@@ -203,6 +203,17 @@ export interface WellnessPlanData {
     deltaText: string;
     confidence: 'high' | 'medium' | 'low';
   }>;
+  /** Engine-derived eating-pattern recommendation. Shape varies (some
+   *  plans use `principles`, others use `eat_more` / `eat_less`). PDF
+   *  renderer accepts both. */
+  eating_pattern?: {
+    name?: string;
+    summary?: string;
+    description?: string;
+    principles?: string[];
+    eat_more?: string[];
+    eat_less?: string[];
+  } | null;
   /** Pre-analytical prep instructions (fasting, biotin hold, AM testosterone
    *  draw, etc.) tied to specific recommended tests. */
   prep_instructions?: Array<{

@@ -46,15 +46,31 @@ export function exportWellnessPlanPDF(plan: WellnessPlanData, userName: string) 
 
   const checkPage = (needed = 20) => { if (y + needed > pageH - margin) { doc.addPage(); y = margin; } };
 
-  const addSection = (title: string) => {
+  // 2026-05-14: section header with optional accent color for safety
+  // banners (red) vs standard sections (green). Same helper used for
+  // every section so the PDF matches the on-screen visual rhythm.
+  const addSection = (title: string, accent: [number, number, number] = [27, 67, 50]) => {
     y += 6; checkPage(15);
-    doc.setFillColor(27, 67, 50); // #1B4332
+    doc.setFillColor(accent[0], accent[1], accent[2]);
     doc.rect(margin, y - 4, contentW, 8, 'F');
     doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(255, 255, 255);
     doc.text(title.toUpperCase(), margin + 3, y + 1); y += 8;
   };
+  // Body paragraph helper — sets standard text style + line height.
+  const para = (text: string, opts: { size?: number; indent?: number; italic?: boolean } = {}) => {
+    if (!text) return;
+    const size = opts.size ?? 9;
+    const indent = opts.indent ?? 0;
+    doc.setFontSize(size);
+    doc.setFont('helvetica', opts.italic ? 'italic' : 'normal');
+    doc.setTextColor(26, 26, 26);
+    const lines = doc.splitTextToSize(stripUnsupportedChars(text), contentW - indent);
+    checkPage(lines.length * (size * 0.42) + 4);
+    doc.text(lines, margin + indent, y);
+    y += lines.length * (size * 0.42) + 2;
+  };
 
-  // Header
+  // ── Header ─────────────────────────────────────────────────────────
   doc.setFillColor(19, 19, 19); // #131313
   doc.rect(0, 0, pageW, 35, 'F');
   doc.setFontSize(22); doc.setFont('helvetica', 'bold'); doc.setTextColor(255, 255, 255);
@@ -62,31 +78,170 @@ export function exportWellnessPlanPDF(plan: WellnessPlanData, userName: string) 
   doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(165, 208, 185);
   doc.text('PERSONALIZED WELLNESS PLAN', margin, 26);
   doc.setTextColor(107, 107, 107);
-  doc.text(`Generated ${format(new Date(plan.generated_at), 'MMMM d, yyyy')} | ${userName}`, margin, 32);
+  const headerMeta = `Generated ${format(new Date(plan.generated_at), 'MMMM d, yyyy')} | ${userName}${plan.plan_mode === 'optimization' ? ' | LONGEVITY MODE' : ''}`;
+  doc.text(headerMeta, margin, 32);
   y = 45;
 
-  // Summary
+  // ── Headline ───────────────────────────────────────────────────────
+  if (plan.headline) {
+    doc.setFontSize(13); doc.setFont('helvetica', 'bold'); doc.setTextColor(19, 19, 19);
+    const hLines = doc.splitTextToSize(stripUnsupportedChars(plan.headline), contentW);
+    checkPage(hLines.length * 6 + 4);
+    doc.text(hLines, margin, y); y += hLines.length * 6 + 3;
+  }
+
+  // ── SAFETY-CRITICAL: crisis_alert + emergency_alerts ──────────────
+  // Render BEFORE any plan content so a user with a critical lab value
+  // (K >6.5, Hgb <7, etc.) or detected suicide-risk language sees it
+  // first when they open the PDF.
+  const crisisMsg = typeof plan.crisis_alert === 'string'
+    ? plan.crisis_alert
+    : (plan.crisis_alert?.message ?? null);
+  if (crisisMsg) {
+    addSection('Please reach out', [201, 79, 79]); // red
+    para(crisisMsg);
+    para('If you are in crisis, call or text 988 (US Suicide & Crisis Lifeline) — 24/7, free, confidential.', { italic: true });
+  }
+  if (Array.isArray(plan.emergency_alerts) && plan.emergency_alerts.length > 0) {
+    addSection(`Critical values — contact your doctor today (${plan.emergency_alerts.length})`, [201, 79, 79]);
+    plan.emergency_alerts.forEach(a => {
+      doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(26, 26, 26);
+      const head = stripUnsupportedChars(`${a.marker}: ${a.value} ${a.unit ?? ''} [${a.threshold.replace('_', ' ')}]`);
+      checkPage(8); doc.text(head, margin, y); y += 4.5;
+      if (a.message) para(a.message, { size: 8, indent: 4 });
+    });
+  }
+
+  // ── Clinical summary ───────────────────────────────────────────────
   addSection('Clinical Summary');
-  doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(26, 26, 26);
-  const summaryLines = doc.splitTextToSize(plan.summary, contentW);
-  doc.text(summaryLines, margin, y); y += summaryLines.length * 4.5 + 4;
+  para(plan.summary, { size: 10 });
 
-  // Supplements
-  addSection('Supplement Protocol');
-  plan.supplement_stack.forEach((sup, i) => {
-    checkPage(20);
-    doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(26, 26, 26);
-    doc.text(`${i + 1}. ${sup.nutrient} — ${sup.form}`, margin, y); y += 5;
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(107, 107, 107);
-    doc.text(`Dose: ${sup.dose}   Timing: ${sup.timing}   Priority: ${sup.priority.toUpperCase()}`, margin + 4, y); y += 4;
-    const whyLines = doc.splitTextToSize(sup.why, contentW - 4);
-    doc.text(whyLines, margin + 4, y); y += whyLines.length * 3.5 + 4;
-  });
+  // ── Multi-marker patterns ──────────────────────────────────────────
+  if (Array.isArray(plan.multi_marker_patterns) && plan.multi_marker_patterns.length > 0) {
+    addSection(`Lab patterns we noticed (${plan.multi_marker_patterns.length})`);
+    plan.multi_marker_patterns.forEach(p => {
+      doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(26, 26, 26);
+      checkPage(8);
+      doc.text(stripUnsupportedChars(p.name + (p.severity ? ` (${p.severity})` : '')), margin, y); y += 4.5;
+      if (p.description) para(p.description, { size: 8, indent: 4 });
+      if (Array.isArray(p.markers) && p.markers.length > 0) {
+        para('Markers: ' + p.markers.join(', '), { size: 7, indent: 4, italic: true });
+      }
+    });
+  }
 
-  // Lifestyle
+  // ── Suspected conditions ───────────────────────────────────────────
+  if (Array.isArray(plan.suspected_conditions) && plan.suspected_conditions.length > 0) {
+    addSection(`Possible conditions to investigate (${plan.suspected_conditions.length})`);
+    plan.suspected_conditions.forEach(c => {
+      doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(26, 26, 26);
+      checkPage(8);
+      const head = stripUnsupportedChars(c.name + (c.confidence ? ` (${c.confidence} confidence)` : ''));
+      doc.text(head, margin, y); y += 4.5;
+      if (c.evidence) para(c.evidence, { size: 8, indent: 4 });
+      if (c.what_to_ask_doctor) para('Ask: ' + c.what_to_ask_doctor, { size: 8, indent: 4, italic: true });
+    });
+  }
+
+  // ── Risk calculators ───────────────────────────────────────────────
+  if (plan.risk_calculators && typeof plan.risk_calculators === 'object') {
+    const r = plan.risk_calculators;
+    const rows: Array<[string, string | null]> = [
+      ['ASCVD 10-year CV risk', r.ascvd_10yr ? `${r.ascvd_10yr.value}% (${r.ascvd_10yr.category})` : null],
+      ['FIB-4 (liver fibrosis)', r.fib4 ? `${r.fib4.value} (${r.fib4.category})` : null],
+      ['HOMA-IR (insulin resistance)', r.homa_ir ? `${r.homa_ir.value} (${r.homa_ir.category})` : null],
+      ['TG:HDL ratio', r.tg_hdl_ratio ? `${r.tg_hdl_ratio.value} (${r.tg_hdl_ratio.category})` : null],
+    ];
+    const present = rows.filter(([, v]) => v != null);
+    if (present.length > 0) {
+      addSection(`Clinical risk scores (${present.length})`);
+      present.forEach(([label, value]) => {
+        checkPage(6);
+        doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(26, 26, 26);
+        doc.text(stripUnsupportedChars(`• ${label}: ${value}`), margin, y); y += 4.5;
+      });
+    }
+  }
+
+  // ── Goal targets ───────────────────────────────────────────────────
+  if (Array.isArray(plan.goal_targets) && plan.goal_targets.length > 0) {
+    addSection(`Where you're aiming (${plan.goal_targets.length})`);
+    plan.goal_targets.forEach(t => {
+      checkPage(6);
+      doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(26, 26, 26);
+      doc.text(stripUnsupportedChars(`• ${t.marker}: ${t.today} -> ${t.goal} ${t.unit}  (${t.deltaText})`), margin, y); y += 4.5;
+    });
+  }
+
+  // ── Suboptimal flags (watch list) ──────────────────────────────────
+  if (Array.isArray(plan.suboptimal_flags) && plan.suboptimal_flags.length > 0) {
+    addSection(`Worth watching — borderline values (${plan.suboptimal_flags.length})`);
+    plan.suboptimal_flags.forEach(f => {
+      doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(26, 26, 26);
+      checkPage(8);
+      const range = (f.optimalLow != null || f.optimalHigh != null) ? `  (optimal ${f.optimalLow ?? '?'}-${f.optimalHigh ?? '?'})` : '';
+      doc.text(stripUnsupportedChars(`${f.marker}: ${f.value} ${f.unit}${range}`), margin, y); y += 4.5;
+      if (f.rationale) para(f.rationale, { size: 8, indent: 4 });
+    });
+  }
+
+  // ── Interaction warnings (drug-supplement safety) ──────────────────
+  if (Array.isArray(plan.interaction_warnings) && plan.interaction_warnings.length > 0) {
+    addSection(`Drug-supplement interactions (${plan.interaction_warnings.length})`, [184, 110, 21]);
+    plan.interaction_warnings.forEach(w => {
+      doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(26, 26, 26);
+      checkPage(8);
+      doc.text(stripUnsupportedChars(`${w.supplement} + ${w.medication}  [${w.severity}]`), margin, y); y += 4.5;
+      if (w.warning) para(w.warning, { size: 8, indent: 4 });
+    });
+  }
+
+  // ── Medication depletions ──────────────────────────────────────────
+  if (Array.isArray((plan as any).medication_depletions) && (plan as any).medication_depletions.length > 0) {
+    addSection(`Medication-related nutrient depletions (${(plan as any).medication_depletions.length})`);
+    (plan as any).medication_depletions.forEach((d: any) => {
+      doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(26, 26, 26);
+      checkPage(8);
+      doc.text(stripUnsupportedChars(d.medication || d.drug || 'Medication'), margin, y); y += 4.5;
+      const nutrients = Array.isArray(d.depleted_nutrients) ? d.depleted_nutrients.join(', ') : (d.depleted ?? d.nutrient ?? '');
+      if (nutrients) para('Depletes: ' + nutrients, { size: 8, indent: 4 });
+      if (d.note || d.explanation) para(d.note ?? d.explanation, { size: 8, indent: 4 });
+    });
+  }
+
+  // ── Medication alternatives ────────────────────────────────────────
+  if (Array.isArray((plan as any).medication_alternatives) && (plan as any).medication_alternatives.length > 0) {
+    addSection(`Medication alternatives to discuss (${(plan as any).medication_alternatives.length})`);
+    (plan as any).medication_alternatives.forEach((m: any) => {
+      doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(26, 26, 26);
+      checkPage(8);
+      doc.text(stripUnsupportedChars(m.medication || m.drug || 'Medication'), margin, y); y += 4.5;
+      if (m.alternative || m.suggestion) para('Alternative: ' + (m.alternative ?? m.suggestion), { size: 8, indent: 4 });
+      if (m.note || m.rationale) para(m.note ?? m.rationale, { size: 8, indent: 4 });
+    });
+  }
+
+  // ── Supplements ────────────────────────────────────────────────────
+  if (Array.isArray(plan.supplement_stack) && plan.supplement_stack.length > 0) {
+    addSection(`Supplement Protocol (${plan.supplement_stack.length})`);
+    plan.supplement_stack.forEach((sup, i) => {
+      checkPage(20);
+      doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(26, 26, 26);
+      doc.text(stripUnsupportedChars(`${i + 1}. ${sup.nutrient} — ${sup.form}`), margin, y); y += 5;
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(107, 107, 107);
+      doc.text(stripUnsupportedChars(`Dose: ${sup.dose}   Timing: ${sup.timing}   Priority: ${sup.priority.toUpperCase()}`), margin + 4, y); y += 4;
+      const why = (sup as any).why ?? (sup as any).why_short ?? (sup as any).whyShort ?? '';
+      if (why) {
+        const whyLines = doc.splitTextToSize(stripUnsupportedChars(why), contentW - 4);
+        doc.text(whyLines, margin + 4, y); y += whyLines.length * 3.5 + 4;
+      }
+    });
+  }
+
+  // ── Lifestyle ──────────────────────────────────────────────────────
   addSection('Lifestyle Interventions');
   (['diet', 'sleep', 'exercise', 'stress'] as const).forEach(cat => {
-    const items = plan.lifestyle_interventions[cat];
+    const items = plan.lifestyle_interventions?.[cat];
     if (!items?.length) return;
     checkPage(12);
     doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(27, 67, 50);
@@ -94,34 +249,116 @@ export function exportWellnessPlanPDF(plan: WellnessPlanData, userName: string) 
     items.forEach(item => {
       checkPage(10);
       doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(26, 26, 26);
-      const tLines = doc.splitTextToSize(`• ${item.intervention}`, contentW - 4);
+      const tLines = doc.splitTextToSize(stripUnsupportedChars(`• ${item.intervention}`), contentW - 4);
       doc.text(tLines, margin + 2, y); y += tLines.length * 3.5 + 1;
       doc.setFont('helvetica', 'normal'); doc.setTextColor(107, 107, 107);
-      const rLines = doc.splitTextToSize(item.rationale, contentW - 8);
+      const rLines = doc.splitTextToSize(stripUnsupportedChars(item.rationale), contentW - 8);
       doc.text(rLines, margin + 6, y); y += rLines.length * 3.5 + 3;
     });
   });
 
-  // 90-Day Plan
-  addSection('90-Day Action Plan');
-  [plan.action_plan.phase_1, plan.action_plan.phase_2, plan.action_plan.phase_3].forEach(phase => {
-    checkPage(18);
-    doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(26, 26, 26);
-    doc.text(phase.name, margin, y); y += 5;
-    doc.setFont('helvetica', 'italic'); doc.setFontSize(8); doc.setTextColor(107, 107, 107);
-    const fLines = doc.splitTextToSize(phase.focus, contentW);
-    doc.text(fLines, margin, y); y += fLines.length * 3.5 + 2;
-    doc.setFont('helvetica', 'normal');
-    phase.actions.forEach(action => { checkPage(6); const aLines = doc.splitTextToSize(`• ${action}`, contentW - 4); doc.text(aLines, margin + 2, y); y += aLines.length * 3.5 + 1; });
-    y += 4;
-  });
+  // ── Eating pattern ─────────────────────────────────────────────────
+  if (plan.eating_pattern && typeof plan.eating_pattern === 'object') {
+    const ep = plan.eating_pattern as any;
+    addSection('Eating Pattern');
+    if (ep.name) { doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(26, 26, 26); checkPage(6); doc.text(stripUnsupportedChars(ep.name), margin, y); y += 5; }
+    if (ep.summary || ep.description) para(ep.summary ?? ep.description, { size: 9 });
+    if (Array.isArray(ep.principles)) {
+      ep.principles.forEach((p: string) => para(`• ${p}`, { size: 8, indent: 2 }));
+    }
+    if (Array.isArray(ep.eat_more) && ep.eat_more.length) { para('Eat more:', { size: 9, italic: true }); ep.eat_more.forEach((s: string) => para(`• ${s}`, { size: 8, indent: 4 })); }
+    if (Array.isArray(ep.eat_less) && ep.eat_less.length) { para('Eat less:', { size: 9, italic: true }); ep.eat_less.forEach((s: string) => para(`• ${s}`, { size: 8, indent: 4 })); }
+  }
 
-  // Disclaimer
+  // ── Workouts ───────────────────────────────────────────────────────
+  if (Array.isArray(plan.workouts) && plan.workouts.length > 0) {
+    addSection(`Workouts (${plan.workouts.length})`);
+    plan.workouts.forEach((w: any) => {
+      doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(26, 26, 26);
+      checkPage(8);
+      const head = stripUnsupportedChars(`${w.name ?? 'Workout'}${w.duration ? '  (' + w.duration + ')' : ''}${w.intensity ? '  ' + w.intensity : ''}`);
+      doc.text(head, margin, y); y += 4.5;
+      if (w.description) para(w.description, { size: 8, indent: 4 });
+      if (w.rationale) para(w.rationale, { size: 8, indent: 4, italic: true });
+    });
+  }
+
+  // ── 90-Day Plan ────────────────────────────────────────────────────
+  if (plan.action_plan && (plan.action_plan.phase_1 || plan.action_plan.phase_2 || plan.action_plan.phase_3)) {
+    addSection('90-Day Action Plan');
+    [plan.action_plan.phase_1, plan.action_plan.phase_2, plan.action_plan.phase_3].forEach(phase => {
+      if (!phase) return;
+      checkPage(18);
+      doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(26, 26, 26);
+      doc.text(stripUnsupportedChars(phase.name ?? ''), margin, y); y += 5;
+      doc.setFont('helvetica', 'italic'); doc.setFontSize(8); doc.setTextColor(107, 107, 107);
+      if (phase.focus) {
+        const fLines = doc.splitTextToSize(stripUnsupportedChars(phase.focus), contentW);
+        doc.text(fLines, margin, y); y += fLines.length * 3.5 + 2;
+      }
+      doc.setFont('helvetica', 'normal');
+      (phase.actions ?? []).forEach((action: string) => {
+        checkPage(6);
+        const aLines = doc.splitTextToSize(stripUnsupportedChars(`• ${action}`), contentW - 4);
+        doc.text(aLines, margin + 2, y); y += aLines.length * 3.5 + 1;
+      });
+      y += 4;
+    });
+  }
+
+  // ── Retest timeline (mirrors what the on-screen ActionPlan would
+  //     render via specialist grouping; PDF lists chronologically). ──
+  if (Array.isArray(plan.retest_timeline) && plan.retest_timeline.length > 0) {
+    addSection(`Retest schedule (${plan.retest_timeline.length})`);
+    plan.retest_timeline.forEach(t => {
+      checkPage(6);
+      doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(26, 26, 26);
+      doc.text(stripUnsupportedChars(`${t.marker}  —  in ${t.retest_at}`), margin, y); y += 4.5;
+      if (t.why) para(t.why, { size: 8, indent: 4 });
+    });
+  }
+
+  // ── Prep instructions ──────────────────────────────────────────────
+  if (Array.isArray(plan.prep_instructions) && plan.prep_instructions.length > 0) {
+    addSection(`Before your next blood draw (${plan.prep_instructions.length})`);
+    plan.prep_instructions.forEach(p => {
+      checkPage(6);
+      doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(26, 26, 26);
+      const tag = `[${p.category.toUpperCase()}]${p.importance === 'critical' ? ' CRITICAL' : ''}`;
+      doc.text(stripUnsupportedChars(`${tag}  ${p.triggeredByTest}`), margin, y); y += 4;
+      para(p.instruction, { size: 8, indent: 4 });
+    });
+  }
+
+  // ── Symptoms addressed ─────────────────────────────────────────────
+  if (Array.isArray(plan.symptoms_addressed) && plan.symptoms_addressed.length > 0) {
+    addSection(`Your symptoms — and how this plan addresses them (${plan.symptoms_addressed.length})`);
+    plan.symptoms_addressed.forEach(s => {
+      doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(26, 26, 26);
+      checkPage(8);
+      doc.text(stripUnsupportedChars(s.symptom), margin, y); y += 4.5;
+      if (s.how_addressed) para(s.how_addressed, { size: 8, indent: 4 });
+    });
+  }
+
+  // ── Progress summary (longitudinal, only if prior draw exists) ─────
+  if (plan.progress_summary && plan.progress_summary.movements?.length > 0) {
+    addSection(`Progress since your last draw (${plan.progress_summary.movements.length} markers)`);
+    para(`Prior draw: ${plan.progress_summary.prior_draw_date} (${plan.progress_summary.weeks_between} weeks ago).`, { size: 8, italic: true });
+    plan.progress_summary.movements.slice(0, 30).forEach(m => {
+      checkPage(5);
+      doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(26, 26, 26);
+      const arrow = m.direction === 'improved' ? '↑' : m.direction === 'worsened' ? '↓' : '→';
+      doc.text(stripUnsupportedChars(`• ${m.marker}: ${m.prior_display} -> ${m.current_display}  [${m.direction} ${arrow}]`), margin, y); y += 4;
+    });
+  }
+
+  // ── Disclaimer (always at bottom of last page) ─────────────────────
   checkPage(25); y = pageH - 25;
   doc.setFillColor(245, 240, 232);
   doc.rect(margin, y - 3, contentW, 20, 'F');
   doc.setFontSize(7); doc.setFont('helvetica', 'italic'); doc.setTextColor(107, 107, 107);
-  const dLines = doc.splitTextToSize(plan.disclaimer, contentW - 4);
+  const dLines = doc.splitTextToSize(stripUnsupportedChars(plan.disclaimer), contentW - 4);
   doc.text(dLines, margin + 2, y + 2);
 
   doc.save(`CauseHealth-WellnessPlan-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
@@ -488,11 +725,82 @@ export function exportDoctorPrepPDF(doc: DoctorPrepDocument, userName: string) {
   const hpiLines = pdf.splitTextToSize(stripUnsupportedChars(doc.hpi), contentW);
   pdf.text(hpiLines, margin, y); y += hpiLines.length * 4.5 + 2;
 
+  // 2026-05-14: render doc.headline at the very top of the body when
+  // present — gives the doctor a one-line framing of the whole visit
+  // before diving into chief complaint / HPI / PMH.
+  if ((doc as any).headline) {
+    pdf.setFontSize(11); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(19, 19, 19);
+    const hLines = pdf.splitTextToSize(stripUnsupportedChars((doc as any).headline), contentW);
+    pdf.text(hLines, margin, y); y += hLines.length * 5 + 3;
+  }
+
   // PMH
   addSectionHeader('Past Medical History');
   pdf.setFontSize(9); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(26, 26, 26);
-  const pmhLines = pdf.splitTextToSize(stripUnsupportedChars(doc.pmh), contentW);
+  const pmhRaw = doc.pmh as unknown;
+  const pmhText = typeof pmhRaw === 'string' ? pmhRaw : Array.isArray(pmhRaw) ? pmhRaw.join('; ') : '';
+  const pmhLines = pdf.splitTextToSize(stripUnsupportedChars(pmhText), contentW);
   pdf.text(pmhLines, margin, y); y += pmhLines.length * 4.5 + 2;
+
+  // BMI + BMI category (engine-computed from height/weight).
+  if ((doc as any).bmi != null) {
+    pdf.setFontSize(8); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(107, 107, 107);
+    const bmiTxt = `BMI: ${Number((doc as any).bmi).toFixed(1)}${(doc as any).bmi_category ? '  (' + (doc as any).bmi_category + ')' : ''}`;
+    pdf.text(stripUnsupportedChars(bmiTxt), margin, y); y += 5;
+  }
+
+  // Emergency alerts — top-priority safety findings (critical lab
+  // values). Render BEFORE meds / labs / tests so the doctor sees the
+  // urgent stuff first.
+  if (Array.isArray((doc as any).emergency_alerts) && (doc as any).emergency_alerts.length > 0) {
+    addSectionHeader('CRITICAL FINDINGS — REVIEW FIRST');
+    (doc as any).emergency_alerts.forEach((a: any) => {
+      checkPage(10);
+      pdf.setFontSize(9); pdf.setFont('helvetica', 'bold'); pdf.setTextColor('#C94F4F');
+      const head = stripUnsupportedChars(`${a.marker}: ${a.value} ${a.unit ?? ''} [${(a.threshold ?? '').replace('_', ' ').toUpperCase()}]`);
+      pdf.text(head, margin, y); y += 4.5;
+      if (a.message) {
+        pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8); pdf.setTextColor(40, 40, 40);
+        const lines = pdf.splitTextToSize(stripUnsupportedChars(a.message), contentW - 4);
+        pdf.text(lines, margin + 4, y); y += lines.length * 3.5 + 2;
+      }
+    });
+  }
+
+  // Executive summary — short, scannable bullets the doctor should read
+  // before anything else clinical.
+  if (Array.isArray((doc as any).executive_summary) && (doc as any).executive_summary.length > 0) {
+    addSectionHeader('Executive Summary');
+    (doc as any).executive_summary.forEach((s: string) => {
+      checkPage(6);
+      pdf.setFontSize(9); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(26, 26, 26);
+      const lines = pdf.splitTextToSize(stripUnsupportedChars('- ' + s), contentW);
+      pdf.text(lines, margin, y); y += lines.length * 4 + 1;
+    });
+  }
+
+  // Functional medicine note — only present when AI added relevant
+  // functional context. Small italic block.
+  if ((doc as any).functional_medicine_note) {
+    addSectionHeader('Functional Medicine Note');
+    pdf.setFontSize(8); pdf.setFont('helvetica', 'italic'); pdf.setTextColor(60, 60, 60);
+    const fnLines = pdf.splitTextToSize(stripUnsupportedChars((doc as any).functional_medicine_note), contentW);
+    pdf.text(fnLines, margin, y); y += fnLines.length * 3.5 + 2;
+  }
+
+  // Review of systems — engine-derived positives from symptom list.
+  const ros = (doc as any).review_of_systems;
+  if (ros) {
+    addSectionHeader('Review of Systems');
+    pdf.setFontSize(8); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(26, 26, 26);
+    const rosText = typeof ros === 'string'
+      ? ros
+      : Array.isArray(ros)
+        ? ros.join('; ')
+        : Object.entries(ros).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`).join('  |  ');
+    const rosLines = pdf.splitTextToSize(stripUnsupportedChars(rosText), contentW);
+    pdf.text(rosLines, margin, y); y += rosLines.length * 3.5 + 2;
+  }
 
   // Medications
   addSectionHeader('Current Medications');
@@ -657,6 +965,99 @@ export function exportDoctorPrepPDF(doc: DoctorPrepDocument, userName: string) {
         });
       }
       y += 4;
+    });
+  }
+
+  // Medication depletions — drug-induced nutrient depletions the
+  // engine surfaces (statin → CoQ10, metformin → B12, PPI → Mg etc).
+  if (Array.isArray((doc as any).medication_depletions) && (doc as any).medication_depletions.length > 0) {
+    addSectionHeader('Drug-Induced Nutrient Depletions');
+    (doc as any).medication_depletions.forEach((d: any) => {
+      checkPage(8);
+      pdf.setFontSize(9); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(19, 19, 19);
+      pdf.text(stripUnsupportedChars(d.medication || d.drug || 'Medication'), margin, y); y += 4.5;
+      const nutrients = Array.isArray(d.depleted_nutrients) ? d.depleted_nutrients.join(', ') : (d.depleted ?? d.nutrient ?? '');
+      if (nutrients) {
+        pdf.setFontSize(8); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(40, 40, 40);
+        pdf.text(stripUnsupportedChars('Depletes: ' + nutrients), margin + 3, y); y += 4;
+      }
+      if (d.note || d.explanation) {
+        pdf.setFont('helvetica', 'italic'); pdf.setTextColor(107, 107, 107);
+        const lines = pdf.splitTextToSize(stripUnsupportedChars(d.note ?? d.explanation), contentW - 6);
+        pdf.text(lines, margin + 3, y); y += lines.length * 3.5 + 2;
+      }
+    });
+  }
+
+  // Advanced screening — labs the engine recommends beyond the standard
+  // baseline set (Lp(a), CAC, ApoB, etc.). Doctor-prep specific.
+  if (Array.isArray((doc as any).advanced_screening) && (doc as any).advanced_screening.length > 0) {
+    addSectionHeader('Advanced Screening to Consider');
+    (doc as any).advanced_screening.forEach((s: any) => {
+      checkPage(8);
+      pdf.setFontSize(9); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(19, 19, 19);
+      pdf.text(stripUnsupportedChars(s.test_name ?? s.name ?? 'Advanced test'), margin, y); y += 4.5;
+      if (s.why_short || s.rationale || s.clinical_justification) {
+        pdf.setFontSize(8); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(40, 40, 40);
+        const lines = pdf.splitTextToSize(stripUnsupportedChars(s.why_short ?? s.rationale ?? s.clinical_justification), contentW - 4);
+        pdf.text(lines, margin + 3, y); y += lines.length * 3.5 + 2;
+      }
+    });
+  }
+
+  // Prep instructions — what the patient must do before the lab draw
+  // (biotin hold, fasting, AM testosterone, etc).
+  if (Array.isArray((doc as any).prep_instructions) && (doc as any).prep_instructions.length > 0) {
+    addSectionHeader('Pre-Draw Prep Instructions');
+    (doc as any).prep_instructions.forEach((p: any) => {
+      checkPage(6);
+      pdf.setFontSize(8); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(19, 19, 19);
+      const tag = `[${String(p.category ?? '').toUpperCase()}]${p.importance === 'critical' ? ' CRITICAL' : ''}`;
+      pdf.text(stripUnsupportedChars(`${tag}  ${p.triggeredByTest ?? ''}`), margin, y); y += 4;
+      pdf.setFont('helvetica', 'normal'); pdf.setTextColor(40, 40, 40);
+      const lines = pdf.splitTextToSize(stripUnsupportedChars(p.instruction ?? ''), contentW - 4);
+      pdf.text(lines, margin + 3, y); y += lines.length * 3.5 + 1;
+    });
+  }
+
+  // What to tell the doctor — patient-facing scripts the doctor sees so
+  // they know the patient is prepared.
+  if (Array.isArray((doc as any).tell_doctor) && (doc as any).tell_doctor.length > 0) {
+    addSectionHeader('Patient Will Tell You');
+    (doc as any).tell_doctor.forEach((t: any) => {
+      checkPage(6);
+      pdf.setFontSize(8); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(26, 26, 26);
+      const text = typeof t === 'string' ? t : (t?.script ?? t?.text ?? t?.message ?? '');
+      if (!text) return;
+      const lines = pdf.splitTextToSize(stripUnsupportedChars('"' + text + '"'), contentW);
+      pdf.text(lines, margin, y); y += lines.length * 3.5 + 1;
+    });
+  }
+
+  // Patient questions — written for the patient to ask the doctor.
+  if (Array.isArray((doc as any).patient_questions) && (doc as any).patient_questions.length > 0) {
+    addSectionHeader('Questions the Patient Has');
+    (doc as any).patient_questions.forEach((q: any) => {
+      checkPage(6);
+      pdf.setFontSize(8); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(26, 26, 26);
+      const text = typeof q === 'string' ? q : (q?.question ?? q?.text ?? '');
+      if (!text) return;
+      const lines = pdf.splitTextToSize(stripUnsupportedChars('Q: ' + text), contentW);
+      pdf.text(lines, margin, y); y += lines.length * 3.5 + 1;
+    });
+  }
+
+  // Questions to ask — clinician-framed equivalents of patient_questions,
+  // worded so the doctor can answer pointedly.
+  if (Array.isArray((doc as any).questions_to_ask) && (doc as any).questions_to_ask.length > 0) {
+    addSectionHeader('Clinical Questions');
+    (doc as any).questions_to_ask.forEach((q: any) => {
+      checkPage(6);
+      pdf.setFontSize(8); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(26, 26, 26);
+      const text = typeof q === 'string' ? q : (q?.question ?? q?.text ?? '');
+      if (!text) return;
+      const lines = pdf.splitTextToSize(stripUnsupportedChars('- ' + text), contentW);
+      pdf.text(lines, margin, y); y += lines.length * 3.5 + 1;
     });
   }
 
