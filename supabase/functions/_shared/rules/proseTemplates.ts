@@ -291,6 +291,35 @@ export interface PatternDescription {
   name: string;
   description: string;
   likely_cause: string;
+  /** Per-pattern severity, derived from the underlying condition's
+   *  confidence. Wellness-plan "Lab patterns we noticed" badge reads
+   *  this. Without it, the wellness UI was rendering every pattern as
+   *  generic "moderate" — even confirmed findings like NAFLD with
+   *  ALT 97 and TG 327 came back as "moderate". Now mirrors the
+   *  doctor-prep "Possible Conditions" confidence labels (high /
+   *  moderate / low), so the same diagnostic finding looks the same on
+   *  both surfaces. */
+  severity: 'high' | 'moderate' | 'low';
+  /** Markers that anchored the pattern. Surfaced as chips in the UI. */
+  markers?: string[];
+  /** Stable category (cardio / liver / metabolic / etc) so the UI can
+   *  group / color-code if needed. */
+  category?: string;
+}
+
+function deriveSeverity(c: { confidence?: string }): 'high' | 'moderate' | 'low' {
+  const conf = String(c.confidence ?? '').toLowerCase();
+  if (conf === 'high' || conf === 'moderate' || conf === 'low') return conf;
+  return 'moderate';
+}
+
+function deriveMarkers(c: { evidence?: string }): string[] {
+  if (!c.evidence) return [];
+  // The evidence string almost always lists the labs that anchored the
+  // pattern. We can't reliably parse them out without a marker list, so
+  // we leave this empty and let the description carry the marker names.
+  // (Future enhancement: thread the canonical_keys through to here.)
+  return [];
 }
 
 export function buildPatternDescriptions(facts: ClinicalFacts): PatternDescription[] {
@@ -298,6 +327,9 @@ export function buildPatternDescriptions(facts: ClinicalFacts): PatternDescripti
     name: c.name,
     description: c.evidence,
     likely_cause: c.what_to_ask_doctor ?? 'Discuss the confirmatory tests with your PCP.',
+    severity: deriveSeverity(c as any),
+    markers: deriveMarkers(c as any),
+    category: (c as any).category ?? 'general',
   }));
 }
 
