@@ -56,12 +56,23 @@ export interface MarkerSystem {
    *  outlier cards; they just don't get a male/female "axis" pattern
    *  card auto-fired without confirmed sex. */
   sexGate?: 'male' | 'female';
+  /** Which direction of drift is clinically concerning for this system.
+   *  - 'high': only fire on drift HIGH (liver enzymes, lipid, inflammation —
+   *    drift LOW is usually not pathological)
+   *  - 'low': only fire on drift LOW (iron stores, testosterone, hormones)
+   *  - 'both' (default): either direction matters
+   *  Daniel real-user audit 2026-05-14: lean 29yo M had AlkPhos 49 (bottom
+   *  15% of range 36-130) + AST 11 (bottom 3% of range 10-40). System drift
+   *  fired "Liver function — multiple markers pressed LOW" — but low liver
+   *  enzymes aren't pathological. */
+  concerningDirection?: 'high' | 'low' | 'both';
 }
 
 export const MARKER_SYSTEMS: MarkerSystem[] = [
   {
     system: 'liver',
     label: 'Liver function',
+    concerningDirection: 'high',
     markers: [
       /^alt$|^sgpt$|^alanine\s+aminotransferase\b/i,
       /^ast$|^sgot$|^aspartate\s+aminotransferase\b/i,
@@ -84,6 +95,7 @@ export const MARKER_SYSTEMS: MarkerSystem[] = [
   },
   {
     system: 'kidney',
+    concerningDirection: 'high',
     label: 'Kidney function',
     markers: [
       /^creatinine(?:,?\s*serum)?$/i,
@@ -105,6 +117,7 @@ export const MARKER_SYSTEMS: MarkerSystem[] = [
   },
   {
     system: 'glucose_metabolism',
+    concerningDirection: 'high',
     label: 'Blood-sugar regulation',
     markers: [
       /^(?:fasting\s+)?glucose(?:,?\s*(?:serum|plasma|fasting|random))?$/i,
@@ -126,6 +139,7 @@ export const MARKER_SYSTEMS: MarkerSystem[] = [
   },
   {
     system: 'lipid',
+    concerningDirection: 'high',
     label: 'Cholesterol & triglycerides',
     markers: [
       /^ldl(?:[\s-]*cholesterol)?$/i,
@@ -199,6 +213,7 @@ export const MARKER_SYSTEMS: MarkerSystem[] = [
   },
   {
     system: 'inflammation',
+    concerningDirection: 'high',
     label: 'Systemic inflammation',
     markers: [
       /^hs[\s-]?crp$|^c[\s-]?reactive\s+protein/i,

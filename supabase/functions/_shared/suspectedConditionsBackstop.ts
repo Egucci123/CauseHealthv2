@@ -1209,11 +1209,25 @@ const RULES: BackstopRule[] = [
       const isNgPerMl = t.unit.toLowerCase().includes('ng/ml');
       const valueNgDl = isNgPerMl ? t.value * 100 : t.value;
       if (valueNgDl >= 300) return null;
+      // 2026-05-14: connect T:E2 ratio when both are present. Healthy male
+      // T:E2 ratio is typically >15 (ng/dL : pg/mL). Lower ratio = relative
+      // aromatization (T being converted to E2 — common in elevated body
+      // fat, alcohol, certain meds). Calling it out helps the PCP target
+      // the workup: aromatase inhibitor consideration vs lifestyle vs
+      // hypogonadism workup alone.
+      const e2 = mark(ctx.labValues, [/^estradiol\b|^e2\b/i]);
+      let e2Note = '';
+      if (e2 && typeof e2.value === 'number' && e2.value > 0) {
+        const ratio = valueNgDl / e2.value;
+        if (ratio < 15) {
+          e2Note = ` T:E2 ratio is ~${ratio.toFixed(1)} (Total T ${valueNgDl.toFixed(0)} ng/dL ÷ E2 ${e2.value} pg/mL) — below the typical >15 threshold for healthy adult males. That points at relative aromatization (T being converted to estradiol) rather than pure hypogonadism; usually driven by body fat, alcohol, or certain medications. Worth bringing up so the workup includes addressing aromatase activity, not just the low-T number alone.`;
+        }
+      }
       return {
         name: 'Low testosterone (male) — hypogonadism workup',
         category: 'endocrine',
         confidence: 'high',
-        evidence: `Total Testosterone ${t.value} ${t.unit} (≈${valueNgDl.toFixed(0)} ng/dL) — below the Endocrine Society 300 ng/dL threshold for adult males. Symptoms (low libido, ED, fatigue, weight resistance, mood, low muscle mass) plus two AM fasting low values confirm hypogonadism. Then split: primary (testicular — LH/FSH high) vs secondary (pituitary/hypothalamic — LH/FSH normal or low) drives the workup.`,
+        evidence: `Total Testosterone ${t.value} ${t.unit} (≈${valueNgDl.toFixed(0)} ng/dL) — below the Endocrine Society 300 ng/dL threshold for adult males. Symptoms (low libido, ED, fatigue, weight resistance, mood, low muscle mass) plus two AM fasting low values confirm hypogonadism. Then split: primary (testicular — LH/FSH high) vs secondary (pituitary/hypothalamic — LH/FSH normal or low) drives the workup.${e2Note}`,
         confirmatory_tests: ['Repeat AM (8-10 AM) fasting Total Testosterone — single low value isn\'t diagnostic', 'Free + Bioavailable Testosterone + SHBG', 'LH + FSH (primary vs secondary split)', 'Prolactin (rule out prolactinoma if LH low)', 'Estradiol (Sensitive, LC-MS/MS) — aromatization issues', 'TSH', 'AM Cortisol (secondary hypogonadism workup)', 'Iron Panel + Ferritin (hemochromatosis impairs testicular function)', 'Pituitary MRI if LH/FSH low + prolactin abnormal', 'Sperm analysis if fertility relevant'],
         icd10: 'E29.1',
         what_to_ask_doctor: "My testosterone is below 300. Can we confirm with a second AM fasting draw, then run LH/FSH to split primary vs secondary hypogonadism, plus prolactin, estradiol, and TSH? I want to understand the cause before starting TRT.",
@@ -2413,19 +2427,72 @@ const RULES: BackstopRule[] = [
       // anemia (low Hgb + low MCV) also independently sufficient.
       // Earlier required BOTH ferritin AND microcytic — missed iron-
       // deficient patients with normal MCV (common in early deficiency).
+      // Additional iron-pattern signals (used to enrich the GI workup
+      // pathway recommendation language).
+      const ironPanel = mark(ctx.labValues, [/^iron\b(?!.*(?:saturation|\bsat\b|binding|tibc|%|capacity))/i]);
+      const ironSat = mark(ctx.labValues, [/^iron sat|transferrin\s*sat|%\s*sat|saturation/i]);
+      const mch = mark(ctx.labValues, [/^mch\b/i]);
+      const ironLow = ironPanel && ironPanel.value < 50;
+      const ironSatCritical = ironSat && ironSat.value < 15;
+      const mchLow = mch && mch.value < 27;
+      const isMale = (ctx.sex ?? '').toLowerCase() === 'male';
+      // Daniel real-user audit (29yo M, ferritin 29, iron 42, Iron Sat 12,
+      // Hgb 13.5): in a MALE or NON-MENSTRUATING female, iron deficiency
+      // is a GI bleed (or celiac, or H. pylori, or IBD) until proven
+      // otherwise. PPI use compounds the urgency. Build a richer
+      // confirmatory_tests list when those risk modifiers are present.
+      const onPPI = /omeprazole|pantoprazole|esomeprazole|rabeprazole|lansoprazole|dexlansoprazole|prilosec|protonix|nexium|prevacid|aciphex|zegerid/i.test(ctx.medsLower ?? '');
+      const hasGISx = /\b(bloating|alternating bowel|diarrhea|constipation|reflux|heartburn|abdominal pain|nausea)\b/i.test(ctx.symptomsLower ?? '');
+      const needsGIWorkup = isMale || (!isMale && (ctx.age ?? 0) >= 55); // male of any age, or post-menopausal female
+
       if (ferritinLow || (hgbLow && microcytic)) {
         const ev: string[] = [];
         if (hgbLow) ev.push(`Hgb ${hgb!.value}`);
         if (ferritinLow) ev.push(`Ferritin ${ferritin!.value}`);
         if (microcytic) ev.push(`MCV ${mcv!.value}`);
+        if (mchLow) ev.push(`MCH ${mch!.value} (microcytic pattern)`);
+        if (ironLow) ev.push(`Iron ${ironPanel!.value}`);
+        if (ironSatCritical) ev.push(`Iron Sat ${ironSat!.value}% (critical low)`);
+
+        // Differentiate the two clinical phases:
+        //   Stage 2: Iron-deficient erythropoiesis — Hgb still normal, but
+        //   stores empty + microcytic shift. Easier to dismiss; needs the
+        //   "without overt anemia" framing so the PCP takes it seriously.
+        //   Stage 3: Iron-deficiency anemia — Hgb crossed below the floor.
+        const isAnemicPhase = !!hgbLow;
+        const name = isAnemicPhase
+          ? 'Iron Deficiency Anemia'
+          : 'Iron Deficiency (no overt anemia yet) — workup before Hgb drops';
+        const icd10 = isAnemicPhase ? 'D50.9' : 'D50.8';
+
+        // GI workup tests — front-loaded for males / post-menopausal
+        // females. For premenopausal females, keep brief mention; main
+        // driver is menstrual blood loss.
+        const giTests = needsGIWorkup
+          ? [
+              'Fecal Occult Blood / FIT — rule out GI bleed (the #1 cause in non-menstruating adults)',
+              ...(onPPI ? ['H. pylori stool antigen or urea breath test — strongly indicated on PPI + iron deficiency'] : []),
+              'Celiac Serology (tTG-IgA + Total IgA) — celiac is the most-missed silent cause of iron deficiency in young adults',
+              ...(hasGISx ? ['Fecal Calprotectin — rule out IBD given your GI symptoms (bloating / alternating bowel / heartburn)'] : []),
+              'Colonoscopy + EGD if FIT positive, anemic, or symptoms persist',
+            ]
+          : [
+              'Discuss menstrual history with your doctor — heavy menstrual bleeding is the most common driver of iron deficiency in premenopausal women',
+              'Celiac Serology (tTG-IgA + Total IgA) if no obvious menstrual driver',
+            ];
+
         return {
-          name: 'Iron Deficiency Anemia',
+          name,
           category: 'hematology',
           confidence: 'high',
-          evidence: `Microcytic + low iron stores: ${ev.join(', ')}.`,
-          confirmatory_tests: ['Iron Panel (Iron, TIBC, Transferrin Saturation, Ferritin)', 'Reticulocyte count', 'Stool occult blood (rule out GI source)'],
-          icd10: 'D50.9',
-          what_to_ask_doctor: "I have iron-deficiency anemia. Can we do a full iron panel and a young-red-cell (retic) count, and rule out bleeding from the gut? (A colonoscopy if I\'m 45+ or have family history.)",
+          evidence: `${isAnemicPhase ? 'Microcytic anemia' : 'Iron-deficient erythropoiesis pattern (Hgb still in range — caught early)'}: ${ev.join(', ')}. ${needsGIWorkup
+            ? `In a ${isMale ? 'male' : 'post-menopausal female'}, iron deficiency is a GI bleed (or celiac, or H. pylori, or IBD) until proven otherwise.${onPPI ? ' PPI use makes H. pylori / peptic ulcer the leading concern.' : ''} Don\'t accept "your Hgb is normal" as the end of the conversation — your iron stores tell the truth about where this is headed if untreated.`
+            : 'Most common cause in menstruating women is heavy menstrual bleeding; secondary causes (celiac, GI, malabsorption) worth screening if menstrual history doesn\'t explain it.'}`,
+          confirmatory_tests: ['Iron Panel (Iron, TIBC, Transferrin Saturation, Ferritin)', 'Reticulocyte count', ...giTests],
+          icd10,
+          what_to_ask_doctor: needsGIWorkup
+            ? `My iron stores are depleted${isAnemicPhase ? ' and my hemoglobin is dropping' : " but my hemoglobin is still normal — that's the early-warning window"}. I want to find the source: FIT for GI bleed${onPPI ? ', H. pylori test (I\'m on a PPI)' : ''}, celiac antibodies${hasGISx ? ', fecal calprotectin for IBD' : ''}. If the FIT is positive or things look pathologic, we can talk about EGD / colonoscopy. I also want to start iron repletion alongside the workup — fixing both ends.`
+            : "My iron stores are low. Can we run the full iron panel, talk about menstrual history, and consider celiac serology if there's no clear menstrual driver?",
           source: 'deterministic',
         };
       }
@@ -3449,6 +3516,15 @@ function detectSystemDrift(ctx: SystemDriftCtx): SuspectedConditionEntry[] {
       driftMarkers = lowSide;
     }
     if (!direction) continue;
+
+    // 2026-05-14 Daniel real-user audit: only fire when the drift direction
+    // is clinically concerning for this system. Liver enzymes pressed LOW
+    // aren't pathological; lipid pressed LOW isn't either. The
+    // concerningDirection field on each system declares which direction
+    // matters. Default 'both' (no filter) preserves old behavior.
+    const concerning = (sys as any).concerningDirection ?? 'both';
+    if (concerning === 'high' && direction === 'low') continue;
+    if (concerning === 'low' && direction === 'high') continue;
 
     // Fire on ≥ 2 markers on the same side regardless of borderline vs
     // out-of-range. Earlier draft required at least one borderline marker
