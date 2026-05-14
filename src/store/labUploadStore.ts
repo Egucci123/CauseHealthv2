@@ -683,6 +683,20 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
         // 8s/12s was firing client-side even though the writes succeeded
         // server-side. The browser thought it failed, fell into catch, and
         // fired analyze-labs from a non-resolved state — analyze never landed.
+        //
+        // 2026-05-14 Daniel real-user bug: if delete succeeds and insert
+        // fails (validation / timeout / RLS) the user ends up with 0
+        // lab_values for the draw — analyze-labs then marks the draw as
+        // failed. Fix: snapshot existing rows first, INSERT new rows
+        // BEFORE deleting old ones, then delete the snapshot ids on
+        // success. If insert fails, we abort BEFORE touching the data
+        // and the user keeps their pre-review values.
+        const { data: priorRows } = await withTimeout(
+          supabase.from('lab_values').select('id').eq('draw_id', drawId),
+          30000, 'values snapshot',
+        ) as any;
+        const priorIds: string[] = Array.isArray(priorRows) ? priorRows.map((r: any) => r.id).filter(Boolean) : [];
+
         await Promise.all([
           withTimeout(
             supabase.from('lab_draws').update({
@@ -692,8 +706,24 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
             30000, 'metadata update'
           ),
           (async () => {
-            await withTimeout(supabase.from('lab_values').delete().eq('draw_id', drawId), 30000, 'values delete');
-            await withTimeout(supabase.from('lab_values').insert(cleaned), 30000, 'values insert');
+            // INSERT first. If this fails, the old rows are still there.
+            const { error: insertErr } = await withTimeout(
+              supabase.from('lab_values').insert(cleaned),
+              30000, 'values insert',
+            ) as any;
+            if (insertErr) {
+              console.error('[LabUpload] values insert failed — keeping prior rows intact:', insertErr.message ?? insertErr);
+              // Re-throw so the outer catch fires and the user sees an
+              // error rather than the draw silently going to "analyze 0".
+              throw new Error(`Couldn't save your lab values: ${insertErr.message ?? insertErr}. Try again, or use Manual Entry.`);
+            }
+            // Insert succeeded — now safe to delete the old (now-duplicate) rows.
+            if (priorIds.length > 0) {
+              await withTimeout(
+                supabase.from('lab_values').delete().in('id', priorIds),
+                30000, 'values dedupe delete',
+              );
+            }
           })(),
         ]);
 
