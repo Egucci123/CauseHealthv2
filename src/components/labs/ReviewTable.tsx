@@ -25,6 +25,19 @@ export const ReviewTable = ({ values: initialValues, drawDate, labName, onConfir
   const filteredValues = filter === 'all' ? values : values.filter(v => v.category === filter);
   const categories = [...new Set(values.map(v => v.category))];
 
+  // ── Hardening: classify rows that need a second look ──
+  // Severity tiers (visual only — doesn't block confirm):
+  //   • critical: standard_flag in critical_high/critical_low — red
+  //   • warn:    validation/sanity/ref/dedup/disambig notes, low confidence — amber
+  //   • info:    auto-corrected (decimal fix), 2nd-pass confirmed — neutral
+  const flaggedRows = values.filter(v =>
+    v.standard_flag === 'critical_high' || v.standard_flag === 'critical_low'
+    || v.validation_warning || v.sanity_warning || v.ref_mismatch_warning
+    || v.dedup_note || v.confidence === 'low'
+  );
+  const criticalCount = values.filter(v => v.standard_flag === 'critical_high' || v.standard_flag === 'critical_low').length;
+  const warnCount = flaggedRows.length - criticalCount;
+
   return (
     <div className="space-y-6">
       <div className="bg-primary-container/5 border border-primary-container/20 rounded-[10px] p-5">
@@ -36,6 +49,24 @@ export const ReviewTable = ({ values: initialValues, drawDate, labName, onConfir
           </div>
         </div>
       </div>
+
+      {/* Hardening summary banner — only renders when there's something to flag. */}
+      {(criticalCount > 0 || warnCount > 0) && (
+        <div className="bg-[#FFF4E5] border border-[#E89D3C]/30 rounded-[10px] p-4">
+          <div className="flex items-start gap-3">
+            <span className="material-symbols-outlined text-[#B86E15] text-[20px] flex-shrink-0 mt-0.5">warning</span>
+            <div className="flex-1">
+              <p className="text-body text-[#B86E15] font-semibold">
+                {criticalCount > 0 && <>{criticalCount} critical value{criticalCount > 1 ? 's' : ''}{warnCount > 0 ? ' · ' : ''}</>}
+                {warnCount > 0 && <>{warnCount} row{warnCount > 1 ? 's' : ''} flagged for review</>}
+              </p>
+              <p className="text-body text-[#8B5512] text-sm mt-0.5">
+                Hover the ⚠ icon next to a row to see why. You can edit any value before confirming.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="bg-clinical-white rounded-[10px] p-6 border border-outline-variant/10">
         <SectionLabel>Lab Report Details</SectionLabel>
@@ -70,7 +101,8 @@ export const ReviewTable = ({ values: initialValues, drawDate, labName, onConfir
         <table className="w-full min-w-[400px]">
           <thead>
             <tr className="text-precision text-[0.68rem] text-clinical-stone border-b border-outline-variant/10 bg-clinical-cream">
-              <th className="text-left px-5 py-3 font-medium">MARKER</th>
+              <th className="px-2 py-3 font-medium w-8" />
+              <th className="text-left px-3 py-3 font-medium">MARKER</th>
               <th className="text-left px-3 py-3 font-medium">VALUE</th>
               <th className="text-left px-3 py-3 font-medium">UNIT</th>
               <th className="text-left px-3 py-3 font-medium hidden md:table-cell">CATEGORY</th>
@@ -78,9 +110,42 @@ export const ReviewTable = ({ values: initialValues, drawDate, labName, onConfir
             </tr>
           </thead>
           <tbody>
-            {filteredValues.map(val => (
-              <tr key={val.id} className="border-b border-outline-variant/5 last:border-0 hover:bg-clinical-cream/30 transition-colors">
-                <td className="px-5 py-3"><input type="text" value={val.marker_name} onChange={e => updateValue(val.id, 'marker_name', e.target.value)} className="text-body text-clinical-charcoal text-sm font-medium bg-transparent border-0 focus:outline-none focus:ring-1 focus:ring-primary-container/30 rounded px-1 w-full min-w-[120px]" /></td>
+            {filteredValues.map(val => {
+              // Compose the per-row warning tooltip from all annotation fields.
+              // Critical lab flag dominates; then warnings; then info-level notes.
+              const isCritical = val.standard_flag === 'critical_high' || val.standard_flag === 'critical_low';
+              const warnMsgs = [
+                val.validation_warning,
+                val.sanity_warning,
+                val.ref_mismatch_warning,
+                val.dedup_note,
+                val.confidence === 'low' ? 'Vision model reported LOW confidence on this value — verify against your source image.' : null,
+              ].filter(Boolean) as string[];
+              const infoMsgs = [
+                val.validation_note,
+                val.disambiguation_note,
+                val.reconciliation_note,
+                val.original_value != null ? `Originally extracted as ${val.original_value} ${val.unit ?? ''}; auto-corrected.` : null,
+              ].filter(Boolean) as string[];
+              const tier: 'critical' | 'warn' | 'info' | null = isCritical ? 'critical' : warnMsgs.length ? 'warn' : infoMsgs.length ? 'info' : null;
+              const tooltipText = [
+                isCritical ? `Lab flagged as ${val.standard_flag}` : null,
+                ...warnMsgs, ...infoMsgs,
+              ].filter(Boolean).join('\n\n');
+              const badge = tier === 'critical' ? { icon: 'error', color: '#C94F4F', bg: '#FFE8E8' }
+                          : tier === 'warn'     ? { icon: 'warning', color: '#B86E15', bg: '#FFF4E5' }
+                          : tier === 'info'     ? { icon: 'info', color: '#3A6B8C', bg: '#E8F1FB' }
+                          : null;
+              return (
+              <tr key={val.id} className={`border-b border-outline-variant/5 last:border-0 hover:bg-clinical-cream/30 transition-colors ${tier === 'critical' ? 'bg-[#FFF7F7]' : tier === 'warn' ? 'bg-[#FFFCF5]' : ''}`}>
+                <td className="px-2 py-3 align-middle">
+                  {badge && (
+                    <span title={tooltipText} className="inline-flex items-center justify-center w-6 h-6 rounded-full cursor-help" style={{ backgroundColor: badge.bg }}>
+                      <span className="material-symbols-outlined text-[14px]" style={{ color: badge.color }}>{badge.icon}</span>
+                    </span>
+                  )}
+                </td>
+                <td className="px-3 py-3"><input type="text" value={val.marker_name} onChange={e => updateValue(val.id, 'marker_name', e.target.value)} className="text-body text-clinical-charcoal text-sm font-medium bg-transparent border-0 focus:outline-none focus:ring-1 focus:ring-primary-container/30 rounded px-1 w-full min-w-[120px]" /></td>
                 <td className="px-3 py-3"><input type="number" value={val.value} onChange={e => updateValue(val.id, 'value', parseFloat(e.target.value) || 0)} className="text-precision text-sm text-clinical-charcoal bg-transparent border-0 focus:outline-none focus:ring-1 focus:ring-primary-container/30 rounded px-1 w-24" step="any" /></td>
                 <td className="px-3 py-3"><input type="text" value={val.unit} onChange={e => updateValue(val.id, 'unit', e.target.value)} className="text-body text-clinical-stone text-sm bg-transparent border-0 focus:outline-none focus:ring-1 focus:ring-primary-container/30 rounded px-1 w-20" /></td>
                 <td className="px-3 py-3 hidden md:table-cell">
@@ -91,7 +156,8 @@ export const ReviewTable = ({ values: initialValues, drawDate, labName, onConfir
                 </td>
                 <td className="px-3 py-3"><button onClick={() => removeValue(val.id)} className="text-clinical-stone/40 hover:text-[#C94F4F] transition-colors"><span className="material-symbols-outlined text-[16px]">close</span></button></td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>

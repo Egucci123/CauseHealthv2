@@ -1,6 +1,10 @@
 // supabase/functions/extract-labs/index.ts
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { canonicalize, canonicalKey } from '../_shared/markerCanonical.ts';
+import { crossMarkerSanity } from '../_shared/crossMarkerSanity.ts';
+import { disambiguateMarkers } from '../_shared/markerDisambiguator.ts';
+import { sexAwareRefSweep, type Sex, type AgeBand } from '../_shared/markerReferenceRanges.ts';
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -35,7 +39,11 @@ serve(async (req) => {
     }
     const credits = (prof as any)?.upload_credits ?? 0;
     const body = await req.json();
-    const { pdfText, pdfBase64, imageBase64, imageMimeType, drawDate, appendToDrawId } = body;
+    const { pdfText, pdfBase64, imageBase64, imageMimeType, drawDate, appendToDrawId, patientSex, patientAgeBand } = body;
+    // patientSex: 'male' | 'female' | undefined — used for sex-aware ref check.
+    // patientAgeBand: 'pre_meno' | 'post_meno' | undefined — used for women's hormones.
+    const sex: Sex | null = (patientSex === 'male' || patientSex === 'female') ? patientSex : null;
+    const ageBand: AgeBand = (patientAgeBand === 'pre_meno' || patientAgeBand === 'post_meno') ? patientAgeBand : null;
 
     // Append-mode: user is adding markers to an EXISTING lab draw they
     // already paid for. Skip the upload-credit check, but verify they
@@ -58,11 +66,18 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'No upload credits remaining', code: 'NO_CREDITS' }), { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // Shared prompt — same parser instructions for PDF and image inputs
-    const PARSER_PROMPT = `You are a medical lab report parser. ANY of the following IS a valid lab source — extract every lab value you can read:\n  • Traditional PDF lab reports (LabCorp, Quest, hospital lab printouts)\n  • Patient portal SCREENSHOTS from any portal — Quest MyQuest, LabCorp Patient, MyChart (Epic), athenaPatient, FollowMyHealth, Cerner HealtheLife, Walgreens, CVS, etc.\n  • Mobile app screenshots showing test names + values + reference ranges (these are real lab data even if the UI looks app-like rather than paper-like)\n  • Photos of paper lab reports\n  • Cropped or partial views — even ONE visible test result is a valid lab\n\nReject ONLY if there is genuinely no lab data on the image (bank statement, resume, photo of food, blank screenshot). When in doubt, extract whatever values you can see. Empty 'values' array should be RARE — if you can read ANY test name + number, include it.\n\nReturn ONLY valid JSON — no markdown, no explanation.\n\nReturn: { "draw_date": "YYYY-MM-DD or null", "lab_name": "name or null", "ordering_provider": "name or null", "values": [{ "marker_name": "name", "value": 97.0, "unit": "IU/L", "standard_low": 0, "standard_high": 44, "standard_flag": "normal|low|high|critical_low|critical_high", "category": "metabolic|cardiovascular|liver|kidney|thyroid|hormones|nutrients|cbc|inflammation|other" }] }\n\nInclude every single lab value visible on the screen — even ones that look like sub-items, reference values, or "negative" qualitative results. value must be a number; for qualitative results (NEGATIVE / POSITIVE / NON-REACTIVE), skip the row unless there's an associated numeric (e.g. S/CO, titer). IMPORTANT: If lab values use international units (mmol/L, umol/L, nmol/L), convert them to US conventional units (mg/dL, ng/mL, ug/dL) before returning. Common conversions: glucose mmol/L x 18 = mg/dL, cholesterol mmol/L x 38.67 = mg/dL, triglycerides mmol/L x 88.57 = mg/dL, creatinine umol/L / 88.4 = mg/dL, calcium mmol/L x 4.0 = mg/dL, uric acid umol/L / 59.48 = mg/dL. Always return values in US conventional units with the US unit label.\n\nFor IMAGES of lab paperwork (photos taken with a phone camera) OR patient portal screenshots: focus on result values. Skip headers, footers, navigation chrome. If you see a green/red/colored result tag (common in portal apps) that has a number next to it, that IS a lab value — extract it. If the image is genuinely blurry or you can't read a value confidently, omit that single row rather than guess.`;
+    // Shared prompt — same parser instructions for PDF and image inputs.
+    //
+    // Per-value `confidence` field added 2026-05-14: vision models KNOW
+    // when they're guessing vs reading clearly. Surfacing that signal lets
+    // downstream stages (two-pass reconciliation, UI badges) treat
+    // uncertain rows differently than confident ones. Rather than ask for
+    // a number (which models tend to hedge to 0.7), we ask for a 3-level
+    // bucket — concrete enough that the model actually distinguishes.
+    const PARSER_PROMPT = `You are a medical lab report parser. ANY of the following IS a valid lab source — extract every lab value you can read:\n  • Traditional PDF lab reports (LabCorp, Quest, hospital lab printouts)\n  • Patient portal SCREENSHOTS from any portal — Quest MyQuest, LabCorp Patient, MyChart (Epic), athenaPatient, FollowMyHealth, Cerner HealtheLife, Walgreens, CVS, etc.\n  • Mobile app screenshots showing test names + values + reference ranges (these are real lab data even if the UI looks app-like rather than paper-like)\n  • Photos of paper lab reports\n  • Cropped or partial views — even ONE visible test result is a valid lab\n\nReject ONLY if there is genuinely no lab data on the image (bank statement, resume, photo of food, blank screenshot). When in doubt, extract whatever values you can see. Empty 'values' array should be RARE — if you can read ANY test name + number, include it.\n\nReturn ONLY valid JSON — no markdown, no explanation.\n\nReturn: { "draw_date": "YYYY-MM-DD or null", "lab_name": "name or null", "ordering_provider": "name or null", "values": [{ "marker_name": "name", "value": 97.0, "unit": "IU/L", "standard_low": 0, "standard_high": 44, "standard_flag": "normal|low|high|critical_low|critical_high", "category": "metabolic|cardiovascular|liver|kidney|thyroid|hormones|nutrients|cbc|inflammation|other", "confidence": "high|medium|low" }] }\n\nThe \`confidence\` field is REQUIRED for every value and must reflect how clearly you can read the value from the source:\n  • "high" — value is clearly printed, no smudges, you would bet \\$100 you read it right.\n  • "medium" — readable but you had to interpret (handwritten, slight blur, unusual layout, partially obscured).\n  • "low" — you're guessing on at least one digit, decimal point unclear, or unit ambiguous. If confidence would be lower than "low" (you literally cannot read it), omit the row instead.\n\nInclude every single lab value visible on the screen — even ones that look like sub-items, reference values, or "negative" qualitative results. value must be a number; for qualitative results (NEGATIVE / POSITIVE / NON-REACTIVE), skip the row unless there's an associated numeric (e.g. S/CO, titer). IMPORTANT: If lab values use international units (mmol/L, umol/L, nmol/L), convert them to US conventional units (mg/dL, ng/mL, ug/dL) before returning. Common conversions: glucose mmol/L x 18 = mg/dL, cholesterol mmol/L x 38.67 = mg/dL, triglycerides mmol/L x 88.57 = mg/dL, creatinine umol/L / 88.4 = mg/dL, calcium mmol/L x 4.0 = mg/dL, uric acid umol/L / 59.48 = mg/dL. Always return values in US conventional units with the US unit label.\n\nFor IMAGES of lab paperwork (photos taken with a phone camera) OR patient portal screenshots: focus on result values. Skip headers, footers, navigation chrome. If you see a green/red/colored result tag (common in portal apps) that has a number next to it, that IS a lab value — extract it. If the image is genuinely blurry or you can't read a value confidently, omit that single row rather than guess.`;
 
     // Build the message content based on what the client sent
-    let messages;
+    let messages: any;
 
     if (imageBase64 && imageMimeType) {
       // Phone-camera photo of a paper lab report
@@ -87,7 +102,7 @@ serve(async (req) => {
       }];
     } else if (pdfText && pdfText.length >= 50) {
       // Pre-extracted text sent from client
-      const prompt = `You are a medical lab report parser. Extract all laboratory test values from the following lab report text.\n\nReturn ONLY valid JSON — no markdown, no explanation.\n\nLab report text:\n${pdfText.slice(0, 12000)}\n\nReturn: { "draw_date": "YYYY-MM-DD or null", "lab_name": "name or null", "ordering_provider": "name or null", "values": [{ "marker_name": "name", "value": 97.0, "unit": "IU/L", "standard_low": 0, "standard_high": 44, "standard_flag": "normal|low|high|critical_low|critical_high", "category": "metabolic|cardiovascular|liver|kidney|thyroid|hormones|nutrients|cbc|inflammation|other" }] }\n\nInclude every single lab value. value must be a number. IMPORTANT: If lab values use international units (mmol/L, umol/L, nmol/L), convert them to US conventional units (mg/dL, ng/mL, ug/dL) before returning. Common conversions: glucose mmol/L x 18 = mg/dL, cholesterol mmol/L x 38.67 = mg/dL, triglycerides mmol/L x 88.57 = mg/dL, creatinine umol/L / 88.4 = mg/dL, calcium mmol/L x 4.0 = mg/dL, uric acid umol/L / 59.48 = mg/dL. Always return values in US conventional units with the US unit label.`;
+      const prompt = `You are a medical lab report parser. Extract all laboratory test values from the following lab report text.\n\nReturn ONLY valid JSON — no markdown, no explanation.\n\nLab report text:\n${pdfText.slice(0, 12000)}\n\nReturn: { "draw_date": "YYYY-MM-DD or null", "lab_name": "name or null", "ordering_provider": "name or null", "values": [{ "marker_name": "name", "value": 97.0, "unit": "IU/L", "standard_low": 0, "standard_high": 44, "standard_flag": "normal|low|high|critical_low|critical_high", "category": "metabolic|cardiovascular|liver|kidney|thyroid|hormones|nutrients|cbc|inflammation|other", "confidence": "high|medium|low" }] }\n\nEvery value MUST include a confidence: "high" (cleanly readable text), "medium" (interpreted from messy text), "low" (guessing on at least one digit). Include every single lab value. value must be a number. IMPORTANT: If lab values use international units (mmol/L, umol/L, nmol/L), convert them to US conventional units (mg/dL, ng/mL, ug/dL) before returning. Common conversions: glucose mmol/L x 18 = mg/dL, cholesterol mmol/L x 38.67 = mg/dL, triglycerides mmol/L x 88.57 = mg/dL, creatinine umol/L / 88.4 = mg/dL, calcium mmol/L x 4.0 = mg/dL, uric acid umol/L / 59.48 = mg/dL. Always return values in US conventional units with the US unit label.`;
       messages = [{ role: 'user', content: prompt }];
     } else {
       return new Response(JSON.stringify({ error: 'No PDF data provided' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -170,7 +185,7 @@ serve(async (req) => {
       // Caller already verified it's a lab image by going through the
       // dropzone — if Claude can read ANYTHING test-shaped, we want it.
       if (isEmptyValuesOnImage) {
-        const PERMISSIVE_PROMPT = `Extract EVERY lab test value visible in this image. Do not refuse based on document format. The image is from a real lab source — extract everything you can read: test names, numeric values, units, reference ranges, flags.\n\nReturn ONLY valid JSON: { "draw_date": "YYYY-MM-DD or null", "lab_name": "name or null", "ordering_provider": "name or null", "values": [{ "marker_name": "name", "value": 97.0, "unit": "IU/L", "standard_low": 0, "standard_high": 44, "standard_flag": "normal|low|high|critical_low|critical_high", "category": "metabolic|cardiovascular|liver|kidney|thyroid|hormones|nutrients|cbc|inflammation|other" }] }\n\nEven if the layout is unusual (mobile app screenshot, patient portal UI, cropped photo, single result detail page), if there's ANY visible test name with a number, include it. Skip ONLY rows where the value field is purely qualitative text (POSITIVE, NEGATIVE, NON-REACTIVE) with no numeric. Do NOT return an empty values array unless the image truly contains zero numeric test results.`;
+        const PERMISSIVE_PROMPT = `Extract EVERY lab test value visible in this image. Do not refuse based on document format. The image is from a real lab source — extract everything you can read: test names, numeric values, units, reference ranges, flags.\n\nReturn ONLY valid JSON: { "draw_date": "YYYY-MM-DD or null", "lab_name": "name or null", "ordering_provider": "name or null", "values": [{ "marker_name": "name", "value": 97.0, "unit": "IU/L", "standard_low": 0, "standard_high": 44, "standard_flag": "normal|low|high|critical_low|critical_high", "category": "metabolic|cardiovascular|liver|kidney|thyroid|hormones|nutrients|cbc|inflammation|other", "confidence": "high|medium|low" }] }\n\nEvery value MUST include a confidence: "high" (cleanly readable), "medium" (interpreted from messy text), "low" (guessing on at least one digit). Even if the layout is unusual (mobile app screenshot, patient portal UI, cropped photo, single result detail page), if there's ANY visible test name with a number, include it. Skip ONLY rows where the value field is purely qualitative text (POSITIVE, NEGATIVE, NON-REACTIVE) with no numeric. Do NOT return an empty values array unless the image truly contains zero numeric test results.`;
         messages = [{
           role: 'user',
           content: [
@@ -200,9 +215,115 @@ serve(async (req) => {
     if (drawDate) parsed.draw_date = drawDate;
     if (drawDate) parsed.draw_date = drawDate;
 
-    // ── DEDUPE + VALIDATE ───────────────────────────────────────────────────
+    // ── DEDUPE + DISAMBIGUATE + VALIDATE + CROSS-MARKER SANITY ─────────────
+    // Pipeline order matters:
+    //   1. dedupe — collapse aliases (SGPT → ALT) using canonical keys.
+    //   2. disambiguate — promote rows whose (unit, value) say they're a
+    //      sibling canonical (Calcium mmol/L → Ionized Calcium; Iron %
+    //      → TSat; B12 pmol/L → pg/mL conversion). Must run BEFORE sanity
+    //      so cross-marker checks operate on correct canonicals.
+    //   3. validate — per-marker plausibility + decimal auto-correction.
+    //   4. cross-marker sanity — arithmetic identities (Hgb*3≈Hct,
+    //      LDL≤TC-HDL, Friedewald, diff sums, etc).
     parsed.values = dedupeValues(parsed.values);
+    const disambigResult = disambiguateMarkers(parsed.values);
+    parsed.values = disambigResult.values;
+    if (disambigResult.rulesFired.length > 0) {
+      parsed.disambiguation_rules_fired = disambigResult.rulesFired;
+      console.log('[extract-labs] disambiguation fired:', disambigResult.rulesFired.join(', '));
+    }
     parsed.values = validateValues(parsed.values);
+    const sanityResult = crossMarkerSanity(parsed.values);
+    parsed.values = sanityResult.values;
+    if (sanityResult.warningsFired.length > 0) {
+      parsed.sanity_warnings_fired = sanityResult.warningsFired;
+      console.log('[extract-labs] cross-marker sanity warnings:', sanityResult.warningsFired.join(', '));
+    }
+    // Sex-aware reference range check — only fires when caller passed a known sex.
+    // Detects when the lab report printed the opposite-sex column (rare but
+    // real on multi-column reports). Annotates the row but never modifies value.
+    if (sex) {
+      const refResult = sexAwareRefSweep(parsed.values, sex, ageBand);
+      parsed.values = refResult.values;
+      if (refResult.mismatched.length > 0) {
+        parsed.ref_mismatches = refResult.mismatched;
+        console.log('[extract-labs] sex-aware ref mismatches:', refResult.mismatched.join(', '));
+      }
+    }
+
+    // ── (7) TWO-PASS RECONCILIATION ────────────────────────────────────────
+    // For IMAGES only: if any rows came back low-confidence, critical, or
+    // tripped a sanity/ref/validation warning, ask the AI to re-read JUST
+    // those specific markers from the same image and reconcile.
+    // We pass the first-pass values back to the model and ask it to flag
+    // any disagreements. Each disputed row gets `reconciliation_note` and,
+    // when the second pass had stronger evidence, the value is rewritten.
+    //
+    // Cost: at most ONE extra Anthropic call per upload, only when there's
+    // a reason to doubt the first pass. Most clean labs skip this entirely.
+    if (imageBase64 && parsed.values?.length > 0) {
+      const suspect = parsed.values.filter((v: any) =>
+        v.confidence === 'low'
+        || v.standard_flag === 'critical_high' || v.standard_flag === 'critical_low'
+        || v.validation_warning || v.sanity_warning || v.ref_mismatch_warning
+      );
+      if (suspect.length > 0 && suspect.length <= 20) {
+        console.log('[extract-labs] running 2nd-pass reconciliation on', suspect.length, 'suspect rows');
+        const suspectSummary = suspect.map((v: any) => {
+          const reasons: string[] = [];
+          if (v.confidence === 'low') reasons.push('LOW_CONFIDENCE');
+          if (v.standard_flag === 'critical_high' || v.standard_flag === 'critical_low') reasons.push('CRITICAL_VALUE');
+          if (v.validation_warning) reasons.push('PLAUSIBILITY');
+          if (v.sanity_warning) reasons.push('CROSS_MARKER_INCONSISTENCY');
+          if (v.ref_mismatch_warning) reasons.push('REF_MISMATCH');
+          return `  - "${v.marker_name}" = ${v.value} ${v.unit ?? ''} (flagged: ${reasons.join(', ')})`;
+        }).join('\n');
+        const RECONCILE_PROMPT = `You previously extracted lab values from this image. The following rows were flagged for review — they had low confidence, critical values, or failed an arithmetic consistency check. Re-read the image carefully and confirm whether each value below is correct. If it's wrong, return the corrected value. If it's correct, repeat it back unchanged.\n\nFlagged rows from first pass:\n${suspectSummary}\n\nReturn ONLY valid JSON: { "reconciled": [{ "marker_name": "exact name as above", "value": 97.0, "unit": "IU/L", "confidence": "high|medium|low", "agrees_with_first_pass": true|false, "note": "short reason if changed" }] }\n\nBe pedantic — re-read each digit, confirm the decimal point, confirm the unit. If you genuinely cannot read a value with confidence, set agrees_with_first_pass=false, confidence="low", and note="unreadable in image".`;
+        const reconcileMessages: any = [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: imageMimeType, data: imageBase64 } },
+            { type: 'text', text: RECONCILE_PROMPT },
+          ],
+        }];
+        try {
+          const reconcileResp = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+            body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 8000, messages: reconcileMessages }),
+          });
+          if (reconcileResp.ok) {
+            const reconcileBody = await reconcileResp.json();
+            const reconcileRaw = (reconcileBody.content?.[0]?.text ?? '').replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+            const reconciledParsed = (() => { try { return JSON.parse(reconcileRaw.slice(0, reconcileRaw.lastIndexOf('}') + 1)); } catch { return null; }})();
+            if (reconciledParsed && Array.isArray(reconciledParsed.reconciled)) {
+              for (const r of reconciledParsed.reconciled) {
+                if (!r.marker_name) continue;
+                const target = parsed.values.find((v: any) => v.marker_name === r.marker_name || (v.canonical_key && v.canonical_key === canonicalKey(r.marker_name)));
+                if (!target) continue;
+                target.reconciliation_note = r.agrees_with_first_pass
+                  ? `2nd-pass re-read CONFIRMED ${target.value} ${target.unit ?? ''} (confidence: ${r.confidence ?? 'unknown'}).`
+                  : `2nd-pass re-read DISAGREED: first pass said ${target.value} ${target.unit ?? ''}, second pass says ${r.value} ${r.unit ?? ''}${r.note ? ` (${r.note})` : ''}.`;
+                // Only auto-replace when both passes agree on a non-trivial change AND second pass is at least as confident
+                if (!r.agrees_with_first_pass && typeof r.value === 'number' && r.confidence !== 'low') {
+                  target.first_pass_value = target.value;
+                  target.value = r.value;
+                  if (r.unit) target.unit = r.unit;
+                  target.reconciliation_applied = true;
+                }
+              }
+              parsed.reconciliation_ran = true;
+              parsed.reconciliation_count = suspect.length;
+              console.log('[extract-labs] reconciliation: rewrote', parsed.values.filter((v:any) => v.reconciliation_applied).length, 'of', suspect.length);
+            }
+          } else {
+            console.warn('[extract-labs] reconciliation call failed:', reconcileResp.status);
+          }
+        } catch (e) {
+          console.warn('[extract-labs] reconciliation threw:', (e as Error).message);
+        }
+      }
+    }
 
     return new Response(JSON.stringify(parsed), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (err) {
@@ -213,13 +334,14 @@ serve(async (req) => {
 // ── Dedupe ────────────────────────────────────────────────────────────────────
 // Lab PDFs frequently repeat markers across overlapping panels (CMP, BMP, hepatic
 // function, etc). Group by canonical key, then keep the most complete row.
+//
+// 2026-05-14 hardening: switched the dedupe key from a shallow string-strip
+// (which left "SGPT", "ALT", "Alanine Aminotransferase" as three separate keys)
+// to the shared canonicalKey() — every alias of the same analyte now collapses.
+// Same key drives plausibility lookups so "SGPT 97" gets validated against the
+// "alt" plausibility entry.
 function normalizeMarker(name: string): string {
-  return (name || '')
-    .toLowerCase()
-    .replace(/,?\s*(serum|plasma|whole blood|blood|capillary|venous)\s*$/i, '')
-    .replace(/\s+/g, ' ')
-    .replace(/[()]/g, '')
-    .trim();
+  return canonicalKey(name);
 }
 function completenessScore(v: any): number {
   let s = 0;
@@ -258,80 +380,29 @@ function dedupeValues(values: any[]): any[] {
       out.push(best);
     }
   }
-  return out;
+  // Enrich every surviving row with the canonical name + key so downstream
+  // consumers (engine, audits, UI) never have to re-derive them.
+  return out.map(v => {
+    const c = canonicalize(v.marker_name);
+    return c ? { ...v, canonical_name: c.canonical, canonical_key: c.key, canonical_category: c.category }
+             : { ...v, canonical_key: canonicalKey(v.marker_name) };
+  });
 }
 
 // ── Validation ────────────────────────────────────────────────────────────────
-// Plausibility ranges for common markers — values WAY outside these ranges almost
-// always indicate an extraction error (decimal lost, units misread, etc).
-// We try to auto-correct obvious 10x/100x decimal errors; otherwise flag for review.
-const PLAUSIBILITY: Record<string, { min: number; max: number; unit?: string }> = {
-  'glucose': { min: 30, max: 800, unit: 'mg/dl' },
-  'hemoglobin a1c': { min: 3, max: 20, unit: '%' },
-  'a1c': { min: 3, max: 20, unit: '%' },
-  'alt': { min: 1, max: 2000, unit: 'iu/l' },
-  'sgpt': { min: 1, max: 2000, unit: 'iu/l' },
-  'ast': { min: 1, max: 2000, unit: 'iu/l' },
-  'sgot': { min: 1, max: 2000, unit: 'iu/l' },
-  'ggt': { min: 1, max: 2000 },
-  'alkaline phosphatase': { min: 5, max: 1500 },
-  'bilirubin total': { min: 0.1, max: 30, unit: 'mg/dl' },
-  'creatinine': { min: 0.1, max: 15, unit: 'mg/dl' },
-  'bun': { min: 1, max: 200, unit: 'mg/dl' },
-  'sodium': { min: 110, max: 170, unit: 'mmol/l' },
-  'potassium': { min: 1.5, max: 8, unit: 'mmol/l' },
-  'chloride': { min: 70, max: 130, unit: 'mmol/l' },
-  'calcium': { min: 5, max: 16, unit: 'mg/dl' },
-  'magnesium': { min: 0.5, max: 5, unit: 'mg/dl' },
-  'phosphorus': { min: 1, max: 10, unit: 'mg/dl' },
-  'total cholesterol': { min: 50, max: 600, unit: 'mg/dl' },
-  'cholesterol, total': { min: 50, max: 600, unit: 'mg/dl' },
-  'ldl': { min: 10, max: 500, unit: 'mg/dl' },
-  'hdl': { min: 5, max: 200, unit: 'mg/dl' },
-  'triglycerides': { min: 10, max: 5000, unit: 'mg/dl' },
-  'tsh': { min: 0.001, max: 200 },
-  'free t3': { min: 0.5, max: 30 },
-  'free t4': { min: 0.1, max: 15 },
-  'vitamin d': { min: 1, max: 250, unit: 'ng/ml' },
-  '25-hydroxy vitamin d': { min: 1, max: 250, unit: 'ng/ml' },
-  'vitamin b12': { min: 50, max: 5000, unit: 'pg/ml' },
-  'ferritin': { min: 1, max: 5000, unit: 'ng/ml' },
-  'iron': { min: 5, max: 1000, unit: 'ug/dl' },
-  'wbc': { min: 0.5, max: 100 },
-  'rbc': { min: 1, max: 10 },
-  'hemoglobin': { min: 3, max: 25, unit: 'g/dl' },
-  'hematocrit': { min: 10, max: 70, unit: '%' },
-  'platelets': { min: 5, max: 2000 },
-  'mcv': { min: 50, max: 130 },
-  'mch': { min: 10, max: 50 },
-  'mchc': { min: 25, max: 40 },
-  'rdw': { min: 8, max: 30 },
-  'hs-crp': { min: 0.01, max: 100 },
-  'crp': { min: 0.01, max: 500 },
-  'esr': { min: 1, max: 200 },
-  'homocysteine': { min: 1, max: 200 },
-  'uric acid': { min: 0.5, max: 20, unit: 'mg/dl' },
-  'albumin': { min: 1, max: 7, unit: 'g/dl' },
-  'total protein': { min: 3, max: 12, unit: 'g/dl' },
-  'globulin': { min: 0.5, max: 8, unit: 'g/dl' },
-  'testosterone': { min: 5, max: 2500 },
-  'estradiol': { min: 1, max: 1500 },
-  'cortisol': { min: 0.1, max: 100 },
-  'dhea-s': { min: 1, max: 1500 },
-  'prolactin': { min: 0.1, max: 500 },
-  'fsh': { min: 0.1, max: 200 },
-  'lh': { min: 0.1, max: 200 },
-  'progesterone': { min: 0.01, max: 100 },
-  'insulin': { min: 0.1, max: 500 },
-};
-
+// Plausibility ranges come from the canonical marker registry itself
+// (markerCanonical.ts → MARKER.plausibleRange). One source of truth means
+// new markers added to the canonical list are automatically validated;
+// the legacy alias-keyed map below was the source of "SGPT 97 didn't match
+// 'alt' so it wasn't validated" bugs. validateValues() looks up by
+// canonical key so every alias of a marker uses the same plausibility band.
 function validateValues(values: any[]): any[] {
   return values.map(v => {
-    const key = normalizeMarker(v.marker_name);
-    const rule = PLAUSIBILITY[key];
-    if (!rule || v.value == null) return v;
+    const c = canonicalize(v.marker_name);
+    if (!c || !c.plausibleRange || v.value == null) return v;
     const val = Number(v.value);
     if (Number.isNaN(val)) return v;
+    const rule = c.plausibleRange;
     if (val >= rule.min && val <= rule.max) return v;
 
     // Try common decimal errors — divide by 10 or 100 if that lands in range

@@ -265,7 +265,7 @@ const RULES: BackstopRule[] = [
     alreadyRaisedIf: [/hashimoto/i, /hypothyroid/i, /autoimmune thyroid/i, /chronic thyroiditis/i, /thyroid dysfunction/i],
     skipIfDx: ['hashimotos'],
     detect: (ctx) => {
-      const tsh = mark(ctx.labValues, [/^tsh\b/i]);
+      const tsh = mark(ctx.labValues, [/^tsh\b/i, /^thyroid stim/i, /\btsh\b/i]);
       const tpo = mark(ctx.labValues, [/tpo|thyroid peroxidase/i]);
       const tgab = mark(ctx.labValues, [/thyroglobulin antibod/i]);
       const ft4 = mark(ctx.labValues, [/free t4|t4,?\s*free/i]);
@@ -327,14 +327,22 @@ const RULES: BackstopRule[] = [
       // ≥4.5 is already a hard signal — the right answer is "get a
       // full thyroid panel + antibodies." Confidence: high (TSH out
       // of standard range is unambiguous), name: hypothyroid pattern.
-      if (tsh.value >= 4.5 && tsh.value < 10 && !ft4) {
+      // Fires when TSH is between the lab upper reference and overt-hypo
+      // threshold (10), regardless of whether Free T4 was drawn or is in
+      // standard range. Captures both classic subclinical (TSH↑, FT4
+      // normal) and "FT4 not drawn" cases. Discordant (FT4↑) is handled
+      // by the dedicated thyroid_discordant_pattern rule.
+      if (tsh.value >= 4.5 && tsh.value < 10 && (!ft4 || ft4.value >= 0.9)) {
+        const ft4InRange = ft4 && ft4.value >= 0.9 && ft4.value <= (ft4.standard_high ?? 1.77);
         return {
-          name: 'Hypothyroid pattern — TSH above range, Free T4 needed',
+          name: ft4InRange
+            ? 'Subclinical hypothyroidism (TSH above range, Free T4 normal)'
+            : 'Hypothyroid pattern — TSH above range, Free T4 needed',
           category: 'endocrine',
           confidence: 'high',
-          evidence: `TSH ${tsh.value} mIU/L is above the standard lab reference (~4.5). Free T4 wasn't drawn — without it we can't separate overt from subclinical hypothyroidism, but the TSH alone is enough to act on.`,
+          evidence: `TSH ${tsh.value} mIU/L is above the standard lab reference (~4.5).${ft4InRange ? ` Free T4 ${ft4!.value} ng/dL is in standard range — fits subclinical hypothyroidism.` : ` Free T4 wasn't drawn — without it we can't fully separate overt from subclinical, but the TSH alone is enough to act on.`} Hashimoto's is the most common driver; antibody testing confirms.`,
           confirmatory_tests: ['Free T4', 'Free T3', 'Reverse T3', 'TPO Antibodies', 'Thyroglobulin Antibodies (Tg-Ab)'],
-          icd10: 'E03.9',
+          icd10: ft4InRange ? 'E02' : 'E03.9',
           what_to_ask_doctor: "My TSH is above the standard lab reference range. Can we get a full thyroid panel (Free T4, Free T3) and thyroid antibodies (TPO, Tg-Ab) to see if this is Hashimoto's or another cause?",
           source: 'deterministic',
         };
@@ -364,7 +372,7 @@ const RULES: BackstopRule[] = [
       const dheaS = mark(ctx.labValues, [/^dhea\s*sulfate/i]);
       const lh = mark(ctx.labValues, [/^lh\b/i]);
       const fsh = mark(ctx.labValues, [/^fsh\b/i]);
-      const a1c = mark(ctx.labValues, [/^hemoglobin a1c/i, /^a1c\b/i]);
+      const a1c = mark(ctx.labValues, [/^hemoglobin a1c/i, /^a1c\b/i, /^hba1c\b/i, /^hb\s*a1c\b/i]);
       const acne = symptom(ctx.symptomsLower, [/\bacne\b/i]);
       const cycleIssues = symptom(ctx.symptomsLower, [/irregular (cycle|period)/i, /heavy period/i, /missed period/i, /infertil/i]);
       const weight = symptom(ctx.symptomsLower, [/weight gain/i, /can'?t lose weight/i]);
@@ -411,7 +419,7 @@ const RULES: BackstopRule[] = [
     alreadyRaisedIf: [/type 2 diab/i, /\bt2d\b/i, /diabetes mellitus/i, /\bdm2\b/i, /diabetic\b/i],
     skipIfDx: ['t2d'],
     detect: (ctx) => {
-      const a1c = mark(ctx.labValues, [/^hemoglobin a1c/i, /^a1c\b/i, /glycohemoglobin/i]);
+      const a1c = mark(ctx.labValues, [/^hemoglobin a1c/i, /^a1c\b/i, /^hba1c\b/i, /^hb\s*a1c\b/i, /glycohemoglobin/i]);
       // Exclude "Glucose Tolerance Test", "Glucose, Random", "Glucose, 2-hr post" etc.
       // — those are OGTT/post-load values that would falsely trigger diabetes flags.
       const glucose = mark(ctx.labValues, [/^glucose\b(?!.*(?:tolerance|post|random|gtt|\bhr\b|\bpp\b|2[-\s]?hr|1[-\s]?hr))/i, /^fasting glucose/i]);
@@ -442,7 +450,7 @@ const RULES: BackstopRule[] = [
     alreadyRaisedIf: [/prediab/i, /pre[- ]diab/i, /insulin resistance/i, /metabolic syndrome/i],
     skipIfDx: ['t2d'],
     detect: (ctx) => {
-      const a1c = mark(ctx.labValues, [/^hemoglobin a1c/i, /^a1c\b/i]);
+      const a1c = mark(ctx.labValues, [/^hemoglobin a1c/i, /^a1c\b/i, /^hba1c\b/i, /^hb\s*a1c\b/i]);
       // Exclude "Glucose Tolerance Test", "Glucose, Random", "Glucose, 2-hr post" etc.
       // — those are OGTT/post-load values that would falsely trigger diabetes flags.
       const glucose = mark(ctx.labValues, [/^glucose\b(?!.*(?:tolerance|post|random|gtt|\bhr\b|\bpp\b|2[-\s]?hr|1[-\s]?hr))/i, /^fasting glucose/i]);
@@ -966,9 +974,10 @@ const RULES: BackstopRule[] = [
   {
     key: 'hyperkalemia_workup',
     alreadyRaisedIf: [/hyperkalem|high potassium/i],
+    // (regex widened below — match Potassium, Potasio, K, K+)
     skipIfDx: [],
     detect: (ctx) => {
-      const k = mark(ctx.labValues, [/^potassium|^potasio/i]);
+      const k = mark(ctx.labValues, [/^potassium/i, /^potasio/i, /^k\b/i, /^k\+/i, /^k,\s*serum/i]);
       if (!k || k.value <= 5.4) return null;
       const isCritical = k.value >= 6.0;
       return {
@@ -1539,7 +1548,7 @@ const RULES: BackstopRule[] = [
     detect: (ctx) => {
       const ft4 = mark(ctx.labValues, [/free t4|^t4,?\s*free|tiroxina libre/i]);
       if (!ft4 || ft4.value >= 0.8) return null;
-      const tsh = mark(ctx.labValues, [/^tsh\b/i]);
+      const tsh = mark(ctx.labValues, [/^tsh\b/i, /^thyroid stim/i]);
       // If TSH is high + Free T4 low, the overt hypothyroidism detector already
       // handles this. Fire HERE specifically for central hypothyroidism:
       // Free T4 low + TSH normal-or-low (pituitary problem).
@@ -1585,7 +1594,7 @@ const RULES: BackstopRule[] = [
     alreadyRaisedIf: [/hypokalem|low potassium|primary aldosteron|diuretic.induced hypokalemia/i],
     skipIfDx: [],
     detect: (ctx) => {
-      const k = mark(ctx.labValues, [/^potassium|^potasio/i]);
+      const k = mark(ctx.labValues, [/^potassium/i, /^potasio/i, /^k\b/i, /^k\+/i, /^k,\s*serum/i]);
       if (!k || k.value >= 3.5) return null;
       // Skip if HTN-driven path will handle it (already detected by primary_aldosteronism)
       const hasHtn = /hypertension|htn|high blood pressure/i.test(ctx.conditionsLower ?? '');
@@ -2181,14 +2190,19 @@ const RULES: BackstopRule[] = [
       const ldl = mark(ctx.labValues, [/(?<!v)\bldl\b(?!\s*p)/i, /(?<!v)ldl chol/i, /(?<!v)colesterol ldl/i]);
       const tg = mark(ctx.labValues, [/^triglyc|^triglicér/i]);
       const apob = mark(ctx.labValues, [/\bapob\b|apolipoprotein b/i]);
+      const tc = mark(ctx.labValues, [/total cholesterol|^cholesterol\b/i]);
       const ldlAtGoal = !ldl || ldl.value < 100;
       const tgAtGoal = !tg || tg.value < 200;
       const apobAtGoal = !apob || apob.value < 90;
-      if (ldlAtGoal && tgAtGoal && apobAtGoal) return null;
+      // TC >200 on statin = not at guideline goal — handles the case
+      // where LDL was not measured or not parsed (NHANES fuzz 2026-05-14).
+      const tcAtGoal = !tc || tc.value < 200;
+      if (ldlAtGoal && tgAtGoal && apobAtGoal && tcAtGoal) return null;
       const ev: string[] = [];
       if (ldl) ev.push(`LDL ${ldl.value} mg/dL${ldl.value >= 100 ? ' (≥100 — not at goal)' : ''}`);
       if (tg) ev.push(`TG ${tg.value} mg/dL${tg.value >= 200 ? ' (≥200 — not at goal)' : ''}`);
       if (apob) ev.push(`ApoB ${apob.value} mg/dL${apob.value >= 90 ? ' (≥90 — not at goal)' : ''}`);
+      if (tc && tc.value >= 200) ev.push(`Total Cholesterol ${tc.value} mg/dL (≥200 — not at goal)`);
       const drug = onStatin[0];
       return {
         name: 'Lipids above guideline targets on current therapy — discuss with your doctor',
@@ -3038,7 +3052,7 @@ const RULES: BackstopRule[] = [
     alreadyRaisedIf: [/vitamin d def/i, /\bd deficien/i, /vit.?d.*low/i, /25.?oh.?d.*low/i],
     skipIfDx: ['vitamin_d_deficiency'],
     detect: (ctx) => {
-      const d = mark(ctx.labValues, [/25.?hydroxy.*vitamin d|vitamin d.*25|25\(?oh\)?d|25-hydroxyvitamin|^vitamin d\b/i]);
+      const d = mark(ctx.labValues, [/25.?hydroxy.*vitamin d|vitamin d.*25|25[\s\-(]*oh[\s\-)]*(?:vitamin\s*)?d\b|25-hydroxyvitamin|^vitamin d\b/i]);
       if (!d) return null;
       const isDeficient = d.value < 20;
       const isInsufficient = d.value >= 20 && d.value < 30;
@@ -3153,8 +3167,11 @@ const RULES: BackstopRule[] = [
       const ldl = mark(ctx.labValues, [/^ldl\b(?! p)/i, /(?<!v)ldl chol/i]);
       const tc = mark(ctx.labValues, [/total cholesterol|^cholesterol\b/i]);
       const apob = mark(ctx.labValues, [/apolipoprotein b|\bapob\b|apo b/i]);
-      const ldlHigh = ldl && ldl.value > 130;
-      const tcHigh = tc && tc.value > 240;
+      // Threshold lowered (2026-05-14): LDL >125, TC >220 (was 230),
+      // ApoB >100. NHANES fuzz showed TC 220-229 cases silently dropped
+      // when LDL not measured / not flagged.
+      const ldlHigh = ldl && ldl.value > 125;
+      const tcHigh = tc && tc.value > 220;
       const apobHigh = apob && apob.value > 100;
       if (!ldlHigh && !tcHigh && !apobHigh) return null;
       const ev: string[] = [];
@@ -3300,6 +3317,729 @@ const RULES: BackstopRule[] = [
     },
   },
 
+  // ── Macrocytosis (high MCV) workup ───────────────────────────────────
+  // MCV ≥100 fL is macrocytic. Common causes: B12 deficiency, folate
+  // deficiency, hypothyroidism, alcohol use, certain meds. Often the
+  // only early hematologic clue. Real-user gap surfaced 2026-05-14 by
+  // realistic-fuzz seed 1033 / 1394 (high MCV silently dropped).
+  {
+    key: 'macrocytosis_workup',
+    alreadyRaisedIf: [/macrocyt/i, /\bmcv\s+(high|elev)/i],
+    skipIfDx: ['b12_deficiency', 'folate_deficiency', 'hypothyroidism', 'hashimoto'],
+    detect: (ctx) => {
+      const mcv = mark(ctx.labValues, [/^mcv\b/i, /mean corpuscular volume/i]);
+      if (!mcv || mcv.value < 100) return null;
+      const severe = mcv.value >= 110;
+      return {
+        name: severe
+          ? 'Macrocytosis (MCV ≥110) — workup'
+          : 'Macrocytosis (high MCV) — B12 / folate / thyroid / alcohol workup',
+        category: 'hematology',
+        confidence: severe ? 'high' : 'moderate',
+        evidence: `MCV ${mcv.value} fL (above the ${mcv.standard_high ?? 100} fL upper bound). High MCV alone — even before anemia — is most often driven by B12 deficiency, folate deficiency, hypothyroidism, or alcohol intake. Worth characterizing before the red-cell line drops.`,
+        confirmatory_tests: [
+          'Serum B12 + MMA + Homocysteine (functional B12 deficiency)',
+          'Serum + RBC Folate',
+          'TSH + Free T4 (hypothyroidism causes macrocytosis)',
+          'Reticulocyte count (rule out hemolytic causes)',
+          'Liver enzymes + GGT (alcohol-related macrocytosis)',
+        ],
+        icd10: 'R71.8',
+        what_to_ask_doctor: "My MCV is elevated. Can we run B12 + MMA + homocysteine, serum + RBC folate, and TSH? Macrocytosis is usually B12, folate, thyroid, or alcohol — worth pinning down before it becomes anemia.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Microcytosis (low MCV) workup ────────────────────────────────────
+  // MCV <80 fL is microcytic. Common causes: iron deficiency,
+  // thalassemia trait, chronic-disease anemia. Should trigger iron panel
+  // + hemoglobin electrophoresis before assuming iron def. Fuzz surfaced
+  // 2026-05-14 (seed 1187 low MCV silently dropped).
+  {
+    key: 'microcytosis_workup',
+    alreadyRaisedIf: [/microcyt/i, /thalassem/i, /iron deficien/i],
+    skipIfDx: ['iron_deficiency_anemia', 'iron_deficiency', 'thalassemia'],
+    detect: (ctx) => {
+      const mcv = mark(ctx.labValues, [/^mcv\b/i, /mean corpuscular volume/i]);
+      if (!mcv || mcv.value >= 80) return null;
+      return {
+        name: 'Microcytosis (low MCV) — iron / thalassemia workup',
+        category: 'hematology',
+        confidence: 'high',
+        evidence: `MCV ${mcv.value} fL (below the ${mcv.standard_low ?? 80} fL lower bound). Microcytosis is most often iron deficiency, but thalassemia trait and chronic-disease anemia look similar on CBC alone. Iron studies + hemoglobin electrophoresis differentiate.`,
+        confirmatory_tests: [
+          'Iron Panel (Iron, TIBC, Ferritin, Transferrin Saturation)',
+          'Reticulocyte Count',
+          'Hemoglobin Electrophoresis (rule out thalassemia trait — esp. if Mediterranean / SE Asian / African ancestry)',
+          'hs-CRP (chronic-disease anemia clue)',
+        ],
+        icd10: 'D64.9',
+        what_to_ask_doctor: "My MCV is low. Can we run a full iron panel (iron, TIBC, ferritin, transferrin saturation) and a hemoglobin electrophoresis to tell the difference between iron deficiency and thalassemia trait?",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Thrombocytosis (high platelets) workup ───────────────────────────
+  // Platelets >450 K/uL. Reactive (inflammation, iron def, post-splenectomy,
+  // infection) vs primary (essential thrombocythemia, MPN). Should always
+  // get a basic workup — JAK2 if persistent + isolated. Fuzz surfaced
+  // 2026-05-14 (seed 1230 PLT 443 silently dropped).
+  {
+    key: 'thrombocytosis_workup',
+    alreadyRaisedIf: [/thrombocytos|essential thrombocyth|myeloprolif/i],
+    skipIfDx: ['essential_thrombocythemia', 'mpn'],
+    detect: (ctx) => {
+      const plt = mark(ctx.labValues, [/^platelets?\b/i, /^plt\b/i, /platelet count/i]);
+      if (!plt || plt.value < 450) return null;
+      const severe = plt.value >= 600;
+      return {
+        name: severe
+          ? 'Marked thrombocytosis (PLT ≥600) — workup'
+          : 'Thrombocytosis (high platelets) — reactive vs primary workup',
+        category: 'hematology',
+        confidence: severe ? 'high' : 'moderate',
+        evidence: `Platelets ${plt.value} ×10³/µL (above the ${plt.standard_high ?? 400} upper bound). Most thrombocytosis is reactive (iron deficiency, inflammation, post-infection); a smaller share is primary (essential thrombocythemia / MPN). Repeat to confirm persistence first; if persistent and isolated, JAK2/CALR testing is the right next step.`,
+        confirmatory_tests: [
+          'Repeat CBC in 4-8 weeks (rule out transient reactive cause)',
+          'Iron Panel + Ferritin (iron deficiency drives platelets up)',
+          'hs-CRP + ESR (occult inflammation)',
+          'JAK2 V617F mutation (if persistent + isolated)',
+          'Peripheral blood smear',
+        ],
+        icd10: 'D75.838',
+        what_to_ask_doctor: "My platelets are elevated. Can we repeat the CBC in a few weeks to see if it's persistent, and check iron stores + inflammation markers? If it stays high in isolation, JAK2 testing rules out essential thrombocythemia.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Lymphopenia workup ───────────────────────────────────────────────
+  // Absolute Lymphocyte Count <0.8 K/uL (some labs use <1.0). Causes:
+  // HIV, chronic stress / cortisol, autoimmune, lymphoma, post-viral,
+  // chemo, immunosuppressants. Fuzz surfaced 2026-05-14 (seed 1066 / 1187
+  // severe lymphopenia silently dropped).
+  {
+    key: 'lymphopenia_workup',
+    alreadyRaisedIf: [/lymphopen/i, /low lymphocyt/i],
+    skipIfDx: ['lymphopenia', 'hiv', 'lymphoma'],
+    detect: (ctx) => {
+      const alc = markAbsoluteCount(ctx.labValues, [/absolute lymphocyt/i, /lymphocytes?\s*\(?absolute/i, /lymph\s*#/i]);
+      if (!alc || alc.value >= 0.8) return null;
+      const severe = alc.value < 0.5;
+      return {
+        name: severe
+          ? 'Severe lymphopenia (ALC <0.5) — workup'
+          : 'Lymphopenia (low absolute lymphocytes) — workup',
+        category: 'hematology',
+        confidence: severe ? 'high' : 'moderate',
+        evidence: `Absolute lymphocyte count ${alc.value} ×10³/µL (below the ${alc.standard_low ?? 0.85} lower bound). Persistent lymphopenia is worth tracing — common drivers include chronic cortisol elevation, post-viral state, HIV, autoimmune disease, or marrow suppression. Repeat first to confirm persistence.`,
+        confirmatory_tests: [
+          'Repeat CBC w/ differential in 4-6 weeks (rule out transient post-viral cause)',
+          'HIV 4th-gen Ag/Ab screen (if not done in past year)',
+          'AM Cortisol (chronic cortisol drives lymphopenia)',
+          'ANA + basic autoimmune screen if other clues',
+          'Peripheral blood smear (look for abnormal lymphocyte morphology)',
+        ],
+        icd10: 'D72.810',
+        what_to_ask_doctor: "My absolute lymphocyte count is low. Can we repeat the CBC to confirm it's persistent, screen for HIV if it's been a while, and check cortisol? Persistent lymphopenia has a defined workup and shouldn't be ignored.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Anemia (low Hgb / Hct) — non-iron-deficient workup ──────────────
+  // Sex-aware: Hgb <13.0 male / <12.0 female OR Hct <39 male / <36 female.
+  // Doesn't replace IDA detector — fires when iron studies don't fit and
+  // engine still needs to acknowledge the anemia rather than silently
+  // drop it. Fuzz surfaced 2026-05-14 (seed 1319 female with Hct 35.5 no
+  // condition fired).
+  {
+    key: 'anemia_workup',
+    alreadyRaisedIf: [/iron deficien/i, /\banemia\b/i, /\bida\b/i, /b12 deficien/i, /folate deficien/i],
+    skipIfDx: ['anemia', 'iron_deficiency_anemia'],
+    detect: (ctx) => {
+      const sex = (ctx.sex ?? '').toLowerCase();
+      const hgb = mark(ctx.labValues, [/^hemoglobin\b(?!\s*a1c)/i, /^hgb\b/i, /^hb\b(?!\s*a1c)/i]);
+      const hct = mark(ctx.labValues, [/^hematocrit\b/i, /^hct\b/i]);
+      const hgbLow = hgb && hgb.value < (sex === 'female' ? 12.0 : 13.0);
+      const hctLow = hct && hct.value < (sex === 'female' ? 36.0 : 39.0);
+      if (!hgbLow && !hctLow) return null;
+      const ev: string[] = [];
+      if (hgbLow) ev.push(`Hgb ${hgb!.value} g/dL`);
+      if (hctLow) ev.push(`Hct ${hct!.value}%`);
+      return {
+        name: 'Anemia — full workup',
+        category: 'hematology',
+        confidence: 'high',
+        evidence: `${ev.join(', ')} (below ${sex === 'female' ? 'female' : 'male'} thresholds). Iron studies + B12/folate + reticulocyte count + MCV-guided differential separate iron-deficiency, B12/folate, hemolytic, and chronic-disease anemias. In males and post-menopausal females, GI bleed must be ruled out.`,
+        confirmatory_tests: [
+          'Iron Panel (Iron, TIBC, Ferritin, Transferrin Saturation)',
+          'Serum B12 + MMA + Homocysteine',
+          'Serum + RBC Folate',
+          'Reticulocyte count + Peripheral smear',
+          'Haptoglobin + LDH (hemolysis screen if indirect bili high)',
+          ...(sex === 'male' || (ctx.age ?? 0) >= 55 ? ['FIT / FOBT', 'H. pylori screen if on PPI', 'Colonoscopy if >50 or symptomatic'] : []),
+        ],
+        icd10: 'D64.9',
+        what_to_ask_doctor: `My ${hgbLow ? 'hemoglobin' : 'hematocrit'} is below the ${sex} threshold. Can we run iron studies, B12/folate, and a reticulocyte count to figure out what kind of anemia this is and what's driving it?`,
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Neutrophilia / Leukocytosis ──────────────────────────────────────
+  // ANC >7 or WBC >11 (sustained). Causes: bacterial infection, stress
+  // response (cortisol / adrenaline / surgery), corticosteroids,
+  // smoking, MPN/leukemia (if very high + persistent).
+  {
+    key: 'neutrophilia_leukocytosis_workup',
+    alreadyRaisedIf: [/neutrophil|leukocytos|leukemoid/i],
+    skipIfDx: ['leukemia', 'mpn', 'cml'],
+    detect: (ctx) => {
+      const wbc = mark(ctx.labValues, [/^wbc\b/i, /^white blood cell/i]);
+      const anc = markAbsoluteCount(ctx.labValues, [/absolute neutrophil/i, /neutrophils?\s*\(?absolute/i, /neut\s*#/i, /^anc\b/i]);
+      const wbcHigh = wbc && wbc.value > 11;
+      const ancHigh = anc && anc.value > 7;
+      if (!wbcHigh && !ancHigh) return null;
+      const severe = (wbc && wbc.value > 20) || (anc && anc.value > 15);
+      const ev: string[] = [];
+      if (anc) ev.push(`ANC ${anc.value} ×10³/µL`);
+      if (wbc) ev.push(`WBC ${wbc.value} ×10³/µL`);
+      return {
+        name: severe ? 'Marked leukocytosis — workup' : 'Neutrophilia / leukocytosis — workup',
+        category: 'hematology',
+        confidence: severe ? 'high' : 'moderate',
+        evidence: `${ev.join(', ')}. Common drivers: bacterial infection, recent stress / surgery / strenuous exercise, corticosteroids, smoking, obesity-related chronic inflammation. Marked or persistent elevation warrants a smear + repeat to rule out MPN / leukemia.`,
+        confirmatory_tests: [
+          'Repeat CBC with manual differential in 2-4 weeks',
+          'Peripheral blood smear (blasts, immature granulocytes, left shift)',
+          'hs-CRP + ESR (occult infection / inflammation)',
+          'Urinalysis + chest exam if infection suspected',
+          'Medication review (corticosteroids, lithium, beta-agonists raise WBC)',
+        ],
+        icd10: 'D72.829',
+        what_to_ask_doctor: "My white blood cells / neutrophils are elevated. Can we repeat the CBC with a manual differential and a smear? If it stays high without an obvious infection, that warrants follow-up.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Statin-eligible by guideline but NOT on statin ───────────────────
+  // ASCVD primary-prevention guidelines: anyone with diabetes (40-75),
+  // established CV disease, CKD with eGFR <60, or LDL ≥190 should be on
+  // a statin. Real-world treatment-gap is wide. Fires if patient has a
+  // qualifying condition + LDL ≥100 + NO lipid-lowering med.
+  {
+    key: 'statin_eligible_untreated',
+    alreadyRaisedIf: [/statin.*not on board|untreated.*lipid|known hyperlipidemia/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const c = ctx.conditionsLower ?? '';
+      const hasDM   = /\bdiabet/i.test(c);
+      const hasCAD  = /coronary|heart attack history|stroke history|congestive heart failure|peripheral artery/i.test(c);
+      const hasCKD  = /\bckd\b|chronic kidney/i.test(c);
+      const eligible = hasDM || hasCAD || hasCKD;
+      if (!eligible) return null;
+      const meds = (ctx.medsLower ?? '');
+      const onLipidRx = /\b(atorvastatin|simvastatin|rosuvastatin|pravastatin|lovastatin|pitavastatin|fluvastatin|crestor|lipitor|zocor|pravachol|livalo|lescol|ezetimib|zetia|repatha|praluent|evolocumab|alirocumab|bempedoic|nexletol)\b/.test(meds);
+      if (onLipidRx) return null;
+      const ldl = mark(ctx.labValues, [/(?<!v)\bldl\b(?!\s*p)/i, /(?<!v)ldl chol/i]);
+      const tc = mark(ctx.labValues, [/total cholesterol|^cholesterol\b/i]);
+      if (!(ldl && ldl.value >= 100) && !(tc && tc.value >= 200)) return null;
+      const driver = hasCAD ? 'established cardiovascular disease' :
+                     hasCKD ? 'chronic kidney disease' :
+                     'diabetes';
+      return {
+        name: 'Statin-eligible by guideline, not on therapy — discuss with your doctor',
+        category: 'cardiovascular',
+        confidence: 'high',
+        evidence: `${driver.charAt(0).toUpperCase() + driver.slice(1)} is on your problem list${ldl ? `, LDL ${ldl.value} mg/dL` : ''}${tc ? `, Total Cholesterol ${tc.value} mg/dL` : ''}, and no lipid-lowering medication appears on the current med list. ASCVD primary-prevention guidelines support statin therapy for adults with ${driver} when LDL ≥100 (or in high-risk profiles regardless). Skipping that conversation is the avoidable miss; refusing therapy is a fine outcome — not having the conversation isn't.`,
+        confirmatory_tests: [
+          'ApoB + Lp(a) + hs-CRP',
+          'Coronary Artery Calcium (CAC) score if borderline',
+          '10-year ASCVD risk calculator review',
+          'Liver enzymes baseline (pre-statin)',
+        ],
+        icd10: hasCAD ? 'I25.10' : (hasCKD ? 'N18.9' : 'E78.5'),
+        what_to_ask_doctor: `I have ${driver} on my chart and I'm not on a lipid-lowering medication. Per ASCVD guidelines I may be statin-eligible. Can we talk about whether I should start, ideally after checking ApoB / Lp(a) and reviewing my 10-year risk?`,
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Diabetic, glycemia above target — intensify therapy discussion ───
+  // Patient already has diabetes on file. A1c ≥7.0 (ADA general target)
+  // or fasting glucose ≥130 → fire "not at glycemic goal" card. Distinct
+  // from undiagnosed_t2d (which only fires when dx is NOT on file).
+  // Real-world driver: large slice of US diabetics (~50%) aren't at goal.
+  {
+    key: 'diabetes_not_at_goal',
+    alreadyRaisedIf: [/not at goal|uncontrolled diabet|diabet.*intensif|glycemic.*target/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const hasDmDx = /\bdiabet/i.test(ctx.conditionsLower ?? '');
+      if (!hasDmDx) return null;
+      // T1 / pump / continuous-glucose-managed patients are usually under
+      // endocrinology — still surface, but soften wording.
+      const a1c = mark(ctx.labValues, [/^hemoglobin a1c/i, /^a1c\b/i, /^hba1c\b/i, /^hb\s*a1c\b/i, /glycohemoglobin/i]);
+      const glucose = mark(ctx.labValues, [/^glucose\b(?!.*(?:tolerance|post|random|gtt|\bhr\b|\bpp\b|2[-\s]?hr|1[-\s]?hr))/i, /^fasting glucose/i]);
+      const a1cAbove = a1c && a1c.value >= 7.0;
+      const glucoseAbove = glucose && glucose.value >= 130;
+      if (!a1cAbove && !glucoseAbove) return null;
+      const severe = (a1c && a1c.value >= 9.0) || (glucose && glucose.value >= 250);
+      const ev: string[] = [];
+      if (a1c) ev.push(`A1c ${a1c.value}%`);
+      if (glucose) ev.push(`fasting glucose ${glucose.value} mg/dL`);
+      return {
+        name: severe
+          ? 'Diabetes well above target — urgent therapy intensification'
+          : 'Diabetes not at glycemic goal — discuss intensification',
+        category: 'metabolic',
+        confidence: severe ? 'high' : 'high',
+        evidence: `${ev.join(', ')}. ADA general A1c target is <7.0% (individualized to ~6.5% in younger / lower-risk patients, ~8.0% in older / complex patients). Persistent A1c above target raises microvascular risk (retinopathy, neuropathy, nephropathy). Options: metformin if not already, GLP-1 agonist (semaglutide / tirzepatide — also help weight + CV), SGLT2 inhibitor (also help kidney + heart), basal insulin, lifestyle support.`,
+        confirmatory_tests: [
+          'Urine Albumin/Creatinine Ratio (UACR) — kidney',
+          'Lipid panel + ApoB',
+          'Dilated eye exam (retinopathy screen)',
+          'Foot exam + monofilament neuropathy screen',
+          'Comprehensive Metabolic Panel + eGFR',
+          'C-peptide if T1 suspected and not yet characterized',
+        ],
+        icd10: 'E11.65',
+        what_to_ask_doctor: `My ${a1c ? `A1c ${a1c.value}%` : ''}${(a1c && glucose) ? ' and ' : ''}${glucose ? `fasting glucose ${glucose.value}` : ''} is above target. Can we talk about intensifying therapy — GLP-1 agonist (helps weight + CV), SGLT2 inhibitor (helps kidney + heart), or basal insulin? And complete the diabetes-care set: UACR, eye exam, foot exam.`,
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Known hyperlipidemia, lipids still elevated, NOT on statin ───────
+  // Patient has hyperlipidemia / high cholesterol on file but lipids
+  // remain above guideline targets AND no lipid-lowering therapy is in
+  // the medication list. Real-world gap surfaced by NHANES fuzz —
+  // about 25% of US adults with self-reported hyperlipidemia are
+  // untreated. Universal across age / sex.
+  {
+    key: 'untreated_known_hyperlipidemia',
+    alreadyRaisedIf: [/untreated hyperlip|lipids? untreated|not on statin/i, /lipids? above guideline/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const conditions = (ctx.conditionsLower ?? '');
+      const hasDx = /hyperlipid|high cholesterol|dyslipid/.test(conditions);
+      if (!hasDx) return null;
+      const meds = (ctx.medsLower ?? '');
+      const onLipidRx = /\b(atorvastatin|simvastatin|rosuvastatin|pravastatin|lovastatin|pitavastatin|fluvastatin|crestor|lipitor|zocor|pravachol|livalo|lescol|ezetimib|zetia|repatha|praluent|evolocumab|alirocumab|bempedoic|nexletol|red yeast rice|rosuvastat)\b/.test(meds);
+      if (onLipidRx) return null;
+      const ldl = mark(ctx.labValues, [/(?<!v)\bldl\b(?!\s*p)/i, /(?<!v)ldl chol/i]);
+      const tc = mark(ctx.labValues, [/total cholesterol|^cholesterol\b/i]);
+      const apob = mark(ctx.labValues, [/apolipoprotein b|\bapob\b/i]);
+      const ldlHigh = ldl && ldl.value >= 100;
+      const tcHigh = tc && tc.value >= 200;
+      const apobHigh = apob && apob.value >= 90;
+      if (!ldlHigh && !tcHigh && !apobHigh) return null;
+      const ev: string[] = [];
+      if (ldl) ev.push(`LDL ${ldl.value}`);
+      if (tc) ev.push(`Total Cholesterol ${tc.value}`);
+      if (apob) ev.push(`ApoB ${apob.value}`);
+      return {
+        name: 'Known hyperlipidemia, untreated — discuss lipid-lowering therapy',
+        category: 'cardiovascular',
+        confidence: 'high',
+        evidence: `Hyperlipidemia is on your problem list, but lipids remain above guideline targets and no lipid-lowering medication is on the current med list. ${ev.join(', ')}. The 10-year ASCVD calculator + Coronary Artery Calcium score sharpen whether a statin (or ezetimibe / bempedoic / PCSK9) is the right move; doing nothing with a known diagnosis is the avoidable miss.`,
+        confirmatory_tests: [
+          'ApoB (atherogenic particle count)',
+          'Lp(a) — once-in-lifetime genetic marker',
+          'hs-CRP',
+          'Coronary Artery Calcium (CAC) score',
+          '10-year ASCVD risk calculator review',
+        ],
+        icd10: 'E78.5',
+        what_to_ask_doctor: "Hyperlipidemia is on my chart but I'm not on a lipid-lowering medication. Can we talk about whether I should be — ideally with my ASCVD risk score, ApoB, Lp(a), and (if borderline) a coronary calcium score to decide?",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Vitamin D toxicity / hypervitaminosis D ─────────────────────────
+  // 25-OH-D >100 ng/mL is the toxicity threshold (Endocrine Society).
+  // Nearly always supplement-induced. >150 is meaningful risk for
+  // hypercalcemia / nephrocalcinosis. Surfaced by NHANES fuzz 2026-05-14.
+  {
+    key: 'vitamin_d_toxicity',
+    alreadyRaisedIf: [/vitamin d toxicity|hypervitaminosis d/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const d = mark(ctx.labValues, [/25.?hydroxy.*vitamin d|vitamin d.*25|25[\s\-(]*oh[\s\-)]*(?:vitamin\s*)?d\b|25-hydroxyvitamin|^vitamin d\b/i]);
+      if (!d || d.value <= 100) return null;
+      const severe = d.value >= 150;
+      return {
+        name: severe
+          ? 'Vitamin D toxicity (>150 ng/mL) — hold supplement, check calcium'
+          : 'Hypervitaminosis D (>100 ng/mL) — review supplement dose',
+        category: 'nutritional',
+        confidence: severe ? 'high' : 'moderate',
+        evidence: `25-OH Vitamin D ${d.value} ng/mL (above the 100 ng/mL toxicity threshold). Almost always supplement-driven. Risks rise with serum levels — hypercalcemia, hyperphosphatemia, soft-tissue calcification, nephrocalcinosis, kidney stones. The fix is to hold supplementation and recheck.`,
+        confirmatory_tests: [
+          'Hold ALL vitamin D supplements (including multivitamins)',
+          'Repeat 25-OH Vitamin D in 4-8 weeks',
+          'Calcium (ionized + total) + Phosphorus',
+          'PTH',
+          '24-hour Urine Calcium',
+          'Basic metabolic panel (creatinine)',
+        ],
+        icd10: 'E67.3',
+        what_to_ask_doctor: "My vitamin D is above the toxicity threshold. Can I stop all vitamin D supplements and recheck in 4-8 weeks? Please also check my calcium, phosphorus, and PTH to make sure there's no hypercalcemia.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Isolated mild ALT elevation — early hepatic stress ──────────────
+  // ALT 50-150 with normal AST, AlkPhos, bilirubin is the most common
+  // early hepatic stress pattern. Causes: NAFLD (most common), alcohol,
+  // medication-induced, viral hepatitis (rule out), muscle source
+  // (esp. statins / strenuous exercise). NAFLD-named card is more
+  // restrictive (uses BMI + multiple markers); this is the long tail.
+  {
+    key: 'isolated_alt_elevation',
+    alreadyRaisedIf: [/nafld|fatty liver|hepatitis|liver\s+inflammation|hepatic stress|isolated alt/i],
+    skipIfDx: ['nafld', 'hepatitis_c', 'hepatitis_b'],
+    detect: (ctx) => {
+      const alt = mark(ctx.labValues, [/^alt\b/i, /^sgpt\b/i, /alanine aminotrans/i, /alt[\/\(]sgpt/i]);
+      const ast = mark(ctx.labValues, [/^ast\b/i, /^sgot\b/i, /aspartate aminotrans/i, /ast[\/\(]sgot/i]);
+      const alkPhos = mark(ctx.labValues, [/^alkaline\s*phosphatase\b/i, /^alk\s*phos/i]);
+      const bili = mark(ctx.labValues, [/^bilirubin.*total\b|^total.*bilirubin\b/i]);
+      if (!alt || alt.value < 50) return null;
+      if (alt.value > 200) return null; // marked elevations should fire a different (more urgent) card — leave room for that
+      // Suppress if a clearly pathologic mixed pattern is present.
+      const astHigh = ast && ast.value > (ast.standard_high ?? 40);
+      const alkPhosHigh = alkPhos && alkPhos.value > (alkPhos.standard_high ?? 130);
+      const biliHigh = bili && bili.value > (bili.standard_high ?? 1.2);
+      if (astHigh && (alkPhosHigh || biliHigh)) return null;
+      return {
+        name: 'Isolated ALT elevation — hepatic stress workup',
+        category: 'gi',
+        confidence: 'moderate',
+        evidence: `ALT ${alt.value} U/L (above the ${alt.standard_high ?? 46} U/L upper bound)${ast ? `, AST ${ast.value} U/L (${astHigh ? 'also high' : 'in range'})` : ''}${alkPhos ? `, Alk Phos ${alkPhos.value} U/L (${alkPhosHigh ? 'high' : 'in range'})` : ''}${bili ? `, Bilirubin ${bili.value} mg/dL (${biliHigh ? 'high' : 'in range'})` : ''}. Most common driver in US adults is NAFLD (often subclinical) — also worth screening alcohol intake, hepatitis B/C, and medication side effects.`,
+        confirmatory_tests: [
+          'Repeat AST/ALT in 4-8 weeks (transient muscle / exercise / alcohol-related rises resolve)',
+          'GGT (alcohol + biliary)',
+          'Hepatitis B surface Ag + Hepatitis C antibody (one-time screen)',
+          'Liver ultrasound or FibroScan if persistent',
+          'AST:ALT ratio + Fibrosis-4 (FIB-4) score',
+          'Medication review (acetaminophen, statins, antifungals, anabolic steroids)',
+        ],
+        icd10: 'R74.0',
+        what_to_ask_doctor: "My ALT is mildly elevated. Can we repeat it in a few weeks, screen for hepatitis B/C, check GGT, and review medications? If it stays elevated, an ultrasound or FibroScan rules out fatty liver.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Isolated high serum iron — workup ────────────────────────────────
+  // Iron >175 mcg/dL OR TSat >45% WITHOUT elevated ferritin (so the
+  // hemochromatosis rule doesn't fire). Common causes: recent supplement
+  // intake / iron-containing multi, early hemochromatosis pre-storage,
+  // hemolysis. Worth a recheck fasting + repeat ferritin in 4-8 weeks.
+  {
+    key: 'iron_elevated_isolated',
+    alreadyRaisedIf: [/hemochromatos|iron overload|elevated iron/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const iron = mark(ctx.labValues, [/^iron\b(?!.*(?:saturation|\bsat\b|binding|tibc|%|capacity))/i]);
+      const tsat = mark(ctx.labValues, [/transferrin\s*saturation|tsat|iron\s*sat|%\s*saturation/i]);
+      const ferritin = mark(ctx.labValues, [/^ferritin/i]);
+      const ironHigh = iron && iron.value > 175;
+      const tsatHigh = tsat && tsat.value > 45;
+      if (!ironHigh && !tsatHigh) return null;
+      // If ferritin is also up, hemochromatosis rule covers it.
+      if (ferritin && ferritin.value > 200) return null;
+      const ev: string[] = [];
+      if (iron) ev.push(`Iron ${iron.value} mcg/dL`);
+      if (tsat) ev.push(`TSat ${tsat.value}%`);
+      if (ferritin) ev.push(`Ferritin ${ferritin.value} ng/mL (within range)`);
+      return {
+        name: 'Elevated serum iron / TSat — recheck fasting',
+        category: 'hematology',
+        confidence: 'moderate',
+        evidence: `${ev.join(', ')}. High iron / saturation without high ferritin can reflect recent iron-containing supplement or multivitamin intake, early hemochromatosis before storage accumulates, or hemolysis. A fasting recheck with repeat ferritin in 4-8 weeks settles it.`,
+        confirmatory_tests: [
+          'Repeat fasting AM Iron + Ferritin + TIBC + Transferrin Saturation in 4-8 weeks',
+          'Review iron-containing supplements / multivitamins (hold ≥3 days before recheck)',
+          'HFE genetic testing if pattern persists (C282Y / H63D)',
+          'Reticulocyte count + Haptoglobin + LDH (rule out hemolysis)',
+        ],
+        icd10: 'E83.119',
+        what_to_ask_doctor: "My iron / iron saturation is elevated but ferritin is in range. Can I hold any iron-containing supplements for a few days, then repeat with a fasting draw? If it persists in isolation, HFE testing rules out hereditary hemochromatosis.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Hypocholesterolemia (low total cholesterol) workup ───────────────
+  // TC <120 in an adult is unusual. Causes: hyperthyroidism, severe liver
+  // disease, malabsorption (celiac), severe malnutrition, statins (if on
+  // therapy this is the goal). Suppress if patient is on a statin.
+  {
+    key: 'hypocholesterolemia_workup',
+    alreadyRaisedIf: [/hypocholesterol|low cholesterol/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const tc = mark(ctx.labValues, [/total cholesterol|^cholesterol\b/i]);
+      if (!tc || tc.value > 120) return null;
+      const onStatin = (ctx.medsLower ?? '').match(/\b(atorvastatin|simvastatin|rosuvastatin|pravastatin|lovastatin|pitavastatin|fluvastatin)\b/i);
+      if (onStatin) return null;
+      return {
+        name: 'Low Total Cholesterol — workup',
+        category: 'gi',
+        confidence: 'moderate',
+        evidence: `Total Cholesterol ${tc.value} mg/dL (below 120). In adults not on a statin, this is unusual. Differential: hyperthyroidism (cholesterol falls with high thyroid hormone), severe liver synthetic dysfunction, malabsorption (celiac, IBD, post-bariatric), severe malnutrition, chronic inflammation, rare genetic hypobetalipoproteinemia.`,
+        confirmatory_tests: [
+          'TSH + Free T4 (hyperthyroidism)',
+          'Liver enzymes + Albumin + PT/INR (synthetic function)',
+          'Celiac Serology (tTG-IgA + Total IgA)',
+          'Comprehensive nutritional review',
+        ],
+        icd10: 'E78.6',
+        what_to_ask_doctor: "My total cholesterol is unusually low. Can we check thyroid function and liver synthetic function, and consider a celiac screen? Low cholesterol in someone not on a statin usually has a specific driver.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Hypoproteinemia / hypoalbuminemia workup ─────────────────────────
+  // Total protein <6.0 or albumin <3.5 (esp. both low) raises concern for
+  // malnutrition, liver synthetic dysfunction, nephrotic protein loss,
+  // chronic inflammation, or malabsorption.
+  {
+    key: 'hypoproteinemia_workup',
+    alreadyRaisedIf: [/hypoproteinem|hypoalbuminem|nephrotic|malnutri/i],
+    skipIfDx: ['nephrotic_syndrome', 'cirrhosis', 'liver_failure'],
+    detect: (ctx) => {
+      const tp = mark(ctx.labValues, [/^protein,\s*total/i, /^total protein/i, /^tp\b/i]);
+      const alb = mark(ctx.labValues, [/^albumin\b/i, /albumin,\s*serum/i]);
+      const tpLow = tp && tp.value < 6.0;
+      const albLow = alb && alb.value < 3.5;
+      if (!tpLow && !albLow) return null;
+      const ev: string[] = [];
+      if (tpLow) ev.push(`Total Protein ${tp!.value} g/dL`);
+      if (albLow) ev.push(`Albumin ${alb!.value} g/dL`);
+      return {
+        name: 'Low total protein / albumin — workup',
+        category: 'gi',
+        confidence: 'moderate',
+        evidence: `${ev.join(', ')} (below the lab lower bound). Differential: protein malnutrition, malabsorption (celiac, IBD, post-bariatric), nephrotic-range proteinuria (urine dipstick + UACR), liver synthetic dysfunction (ALT/AST/PT-INR), chronic inflammation (negative acute-phase reactant).`,
+        confirmatory_tests: [
+          'Urine Albumin/Creatinine Ratio (UACR) — rule out protein-losing nephropathy',
+          'Comprehensive Metabolic Panel + Liver enzymes + PT/INR',
+          'Celiac Serology (tTG-IgA + Total IgA)',
+          'hs-CRP (chronic inflammation lowers albumin)',
+          'Repeat after hydration / dietary review',
+        ],
+        icd10: 'E77.8',
+        what_to_ask_doctor: "My total protein / albumin is low. Can we check a urine protein, liver function, and celiac screen to figure out whether this is intake, absorption, kidney loss, or liver synthesis?",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Hyperalbuminemia / dehydration pattern ───────────────────────────
+  // Albumin >5.1 in a non-pregnant adult almost always reflects volume
+  // contraction (dehydration) — sometimes with hemoconcentration in the
+  // CBC. Worth flagging because it skews calcium correction calcs and
+  // hides true low-protein states.
+  {
+    key: 'hyperalbuminemia_dehydration',
+    alreadyRaisedIf: [/hyperalbumin|dehydration|volume contrac|hemoconcentrat/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const alb = mark(ctx.labValues, [/^albumin\b/i, /albumin,\s*serum/i]);
+      if (!alb || alb.value <= 5.2) return null;
+      return {
+        name: 'Hyperalbuminemia — likely dehydration / hemoconcentration',
+        category: 'fluid_electrolyte',
+        confidence: 'moderate',
+        evidence: `Albumin ${alb.value} g/dL (above the ${alb.standard_high ?? 5.1} g/dL upper bound). In adults, elevated albumin almost always reflects volume contraction rather than a primary protein issue. Worth checking hydration status, hematocrit, and BUN:Creat ratio to confirm.`,
+        confirmatory_tests: [
+          'Repeat BMP / CMP after adequate hydration',
+          'Hematocrit + Hemoglobin (hemoconcentration pattern)',
+          'BUN : Creatinine ratio (>20 suggests prerenal / dehydration)',
+          'Review diuretic or laxative use',
+        ],
+        icd10: 'E87.1',
+        what_to_ask_doctor: "My albumin is elevated — usually that means I was dehydrated at draw. Can we recheck after good hydration and look at my hematocrit and BUN:Cr ratio to confirm?",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Hypernatremia ────────────────────────────────────────────────────
+  // Na >145. Almost always free-water deficit (dehydration). >150 needs
+  // closer attention; >160 is severe.
+  {
+    key: 'hypernatremia_workup',
+    alreadyRaisedIf: [/hypernatrem|high sodium/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const na = mark(ctx.labValues, [/^sodium\b/i, /^na\b/i, /sodium,\s*serum/i]);
+      if (!na || na.value < 146) return null;
+      const severe = na.value >= 150;
+      return {
+        name: severe ? 'Marked hypernatremia — urgent workup' : 'Hypernatremia — workup',
+        category: 'fluid_electrolyte',
+        confidence: severe ? 'high' : 'moderate',
+        evidence: `Sodium ${na.value} mmol/L (above the ${na.standard_high ?? 145} mmol/L upper bound). Almost always a free-water deficit — inadequate intake (esp. elderly), GI losses, osmotic diuresis (uncontrolled diabetes), diabetes insipidus. Older adults are particularly vulnerable.`,
+        confirmatory_tests: [
+          'Repeat BMP after hydration',
+          'Urine osmolality + serum osmolality (DI workup if persistent)',
+          'Glucose (rule out osmotic diuresis from hyperglycemia)',
+          'Medication review (lithium, demeclocycline can cause nephrogenic DI)',
+        ],
+        icd10: 'E87.0',
+        what_to_ask_doctor: "My sodium is elevated. Can we recheck after good hydration and — if it stays high — get urine + serum osmolality to rule out diabetes insipidus?",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Hyperproteinemia → MGUS / Myeloma rule-out ───────────────────────
+  // Total Protein >8.5 with normal albumin (or elevated globulin gap)
+  // can flag monoclonal gammopathy. SPEP is the workup. Complements
+  // mm_red_flag (which requires multiple CRAB features).
+  {
+    key: 'hyperproteinemia_spep',
+    alreadyRaisedIf: [/myeloma|\bmgus\b|monoclonal gammopath|hyperprotein|hypergammaglobulin/i],
+    skipIfDx: ['myeloma', 'mgus'],
+    detect: (ctx) => {
+      const tp = mark(ctx.labValues, [/^protein,\s*total/i, /^total protein/i, /^tp\b/i]);
+      if (!tp || tp.value < 8.5) return null;
+      const alb = mark(ctx.labValues, [/^albumin\b/i, /albumin,\s*serum/i]);
+      // If albumin is also high → likely dehydration not gammopathy. Skip.
+      if (alb && alb.value > 5.1) return null;
+      return {
+        name: 'Hyperproteinemia — rule out monoclonal gammopathy (SPEP)',
+        category: 'hematology',
+        confidence: 'moderate',
+        evidence: `Total Protein ${tp.value} g/dL (above the ${tp.standard_high ?? 8.3} g/dL upper bound)${alb ? `, albumin ${alb.value} (within range — suggests the rise is in the globulin fraction)` : ''}. Elevated total protein with a normal albumin almost always means elevated globulins — either chronic inflammation, infection, or a monoclonal gammopathy. SPEP differentiates polyclonal from monoclonal.`,
+        confirmatory_tests: [
+          'SPEP (Serum Protein Electrophoresis)',
+          'Serum Free Light Chains',
+          'Immunofixation if SPEP shows a band',
+          'Albumin / globulin ratio (calculated)',
+          'Calcium + Creatinine + CBC (CRAB features)',
+        ],
+        icd10: 'D89.2',
+        what_to_ask_doctor: "My total protein is elevated but albumin isn't — meaning my globulins are high. Can we run SPEP and serum free light chains to separate normal chronic-inflammation pattern from a monoclonal gammopathy?",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── High B12 (>900-1100) workup ──────────────────────────────────────
+  // Elevated B12 without supplementation can flag liver disease, MPN,
+  // or solid tumor. Supplemented patients get a different note.
+  {
+    key: 'high_b12_workup',
+    alreadyRaisedIf: [/high b12|elevated b12|b12 excess/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const b12 = mark(ctx.labValues, [/^b12\b/i, /vitamin b12/i, /cobalamin/i]);
+      if (!b12 || b12.value <= 900) return null;
+      // Suppress if patient is on B12 / methylcobalamin supplement (will be in supps list)
+      // — we don't have that here; skipIfDx empty intentionally. Note in evidence.
+      return {
+        name: 'Elevated B12 — workup if not supplementing',
+        category: 'hematology',
+        confidence: 'moderate',
+        evidence: `Vitamin B12 ${b12.value} pg/mL (above ~900). If you are NOT taking a B12 / methylcobalamin / multivitamin supplement, elevated B12 can flag liver disease (hepatocyte release), myeloproliferative disorders, or rarely solid tumors. If supplementing, this is expected and benign; consider whether the dose can be reduced.`,
+        confirmatory_tests: [
+          'Confirm supplement history first (multi-vitamins, energy drinks often contain B12)',
+          'Liver enzymes (ALT, AST, GGT, Alkaline Phosphatase)',
+          'CBC with differential (rule out MPN)',
+          'LDH + Haptoglobin if hemolysis suspected',
+        ],
+        icd10: 'E67.8',
+        what_to_ask_doctor: "My B12 is elevated. Am I taking anything that explains it? If not, can we check liver enzymes and a CBC to rule out the less common causes?",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Discordant thyroid pattern (high TSH + high Free T4) ─────────────
+  // Normally TSH and Free T4 move in opposite directions. Both high is
+  // unusual: TSH-secreting adenoma, thyroid hormone resistance, assay
+  // interference (biotin, heterophile Abs), or recent dose change.
+  {
+    key: 'thyroid_discordant_pattern',
+    alreadyRaisedIf: [/tshoma|tsh-secreting|thyroid hormone resistance|biotin interfer/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      const tsh = mark(ctx.labValues, [/^tsh\b/i, /thyroid stimulating hormone/i]);
+      const ft4 = mark(ctx.labValues, [/^free\s*t4\b/i, /^t4,?\s*free/i, /^ft4\b/i]);
+      if (!tsh || !ft4) return null;
+      const tshHigh = tsh.value > (tsh.standard_high ?? 4.5);
+      const ft4High = ft4.value > (ft4.standard_high ?? 1.77);
+      if (!tshHigh || !ft4High) return null;
+      return {
+        name: 'Discordant thyroid pattern (high TSH + high Free T4) — workup',
+        category: 'endocrine',
+        confidence: 'moderate',
+        evidence: `TSH ${tsh.value} mIU/L and Free T4 ${ft4.value} ng/dL — both elevated. Normally these move in opposite directions. Most common explanations: biotin or heterophile-antibody assay interference (very common), recent levothyroxine dose change, then rarer causes — TSH-secreting pituitary adenoma, thyroid hormone resistance.`,
+        confirmatory_tests: [
+          'Hold biotin supplements ≥3 days, repeat TSH + Free T4 on a different assay platform',
+          'Free T3',
+          'Alpha subunit (elevated in TSH-oma)',
+          'Pituitary MRI if pattern persists after biotin washout',
+          'Thyroid hormone receptor / SHBG (resistance workup)',
+        ],
+        icd10: 'E07.9',
+        what_to_ask_doctor: "My TSH and Free T4 are both high — that combination is unusual. Can we hold any biotin / B-complex for 3 days, recheck on a different assay, and add Free T3 + alpha subunit? Biotin interference is the most common cause; the rare ones (TSH-oma, hormone resistance) need imaging or genetic workup.",
+        source: 'deterministic',
+      };
+    },
+  },
+
+  // ── Supraphysiologic androgen pattern in male (TRT misuse) ───────────
+  // Total or Free testosterone above lab upper limit in a male — usually
+  // exogenous testosterone or anabolic steroid use. Aromatization
+  // (high E2) compounds CV / mood / fertility risk.
+  {
+    key: 'supraphysiologic_androgen_male',
+    alreadyRaisedIf: [/exogenous test|androgen abuse|anabolic steroid|aromatiz/i],
+    skipIfDx: [],
+    detect: (ctx) => {
+      if ((ctx.sex ?? '').toLowerCase() !== 'male') return null;
+      const totalT = mark(ctx.labValues, [/^testosterone,?\s*total/i, /^total testosterone/i]);
+      const freeT = mark(ctx.labValues, [/^free testosterone/i, /^testosterone,?\s*free/i]);
+      const e2 = mark(ctx.labValues, [/^estradiol\b/i, /^e2\b/i]);
+      const tHigh = totalT && totalT.value > (totalT.standard_high ?? 1100);
+      const fHigh = freeT && freeT.value > (freeT.standard_high ?? 155);
+      if (!tHigh && !fHigh) return null;
+      const e2High = e2 && e2.value > (e2.standard_high ?? 39);
+      const ev: string[] = [];
+      if (totalT) ev.push(`Total T ${totalT.value} ng/dL`);
+      if (freeT) ev.push(`Free T ${freeT.value} pg/mL`);
+      if (e2High) ev.push(`Estradiol ${e2!.value} pg/mL (high — aromatization)`);
+      return {
+        name: 'Supraphysiologic androgens — discuss with your doctor',
+        category: 'endocrine',
+        confidence: 'high',
+        evidence: `${ev.join(', ')}. Testosterone above the lab upper limit in a male almost always reflects exogenous testosterone or anabolic steroid use. ${e2High ? 'Elevated estradiol confirms peripheral aromatization. ' : ''}Risks at supraphysiologic levels: erythrocytosis (high Hct → thrombosis), suppressed HPG axis / fertility, lipid shifts, mood / aggression, sleep apnea worsening.`,
+        confirmatory_tests: [
+          'Hematocrit + Hemoglobin (erythrocytosis screen — donate blood if Hct >54%)',
+          'LH + FSH (suppressed on exogenous T)',
+          'PSA baseline if ≥40',
+          'Lipid panel + ApoB',
+          'Sleep apnea screen if symptomatic',
+        ],
+        icd10: 'E27.0',
+        what_to_ask_doctor: "My testosterone is well above the upper limit. Can we review my dose / source, check hematocrit for erythrocytosis, look at LH/FSH, and discuss aromatase management if my estradiol is also high?",
+        source: 'deterministic',
+      };
+    },
+  },
+
   // ════════════════════════════════════════════════════════════════════
   // (Generic borderline-pattern correlation moved to the universal
   // system-drift detector — see detectSystemDrift below the RULES array.
@@ -3422,7 +4162,7 @@ const SYSTEM_NAMED_RULE_DEDUP: Record<string, string[]> = {
   // ANY specific lipid card has fired.
   lipid:               ['ldl_high_for_age', 'particle_pattern_atherogenic', 'inflammation_cv_amplifier', 'hypercholesterolemia_pattern', 'familial_hypercholesterolemia', 'severe_hypertriglyceridemia', 'hypertriglyceridemia_mild_moderate', 'statin_not_at_goal', 'elevated_lp_a', 'low_hdl_workup', 'insulin_resistance_dyslipidemia'],
   thyroid:             ['hashimoto_or_hypothyroid', 'subclinical_hypothyroidism', 'hyperthyroidism_rule_out_graves'],
-  iron_hematology:     ['iron_deficiency_anemia', 'hemoconcentration_dehydration', 'b12_deficiency', 'hemochromatosis', 'early_hypochromic_pattern'],
+  iron_hematology:     ['iron_deficiency_anemia', 'hemoconcentration_dehydration', 'b12_deficiency', 'hemochromatosis', 'early_hypochromic_pattern', 'macrocytosis_workup', 'microcytosis_workup', 'thrombocytosis_workup', 'lymphopenia_workup'],
   adrenal:             ['cushing_syndrome_workup', 'adrenal_insufficiency', 'primary_aldosteronism', 'pheochromocytoma_workup'],
   parathyroid_calcium: ['primary_hyperparathyroidism'],
   vitamin_d:           ['vitamin_d_deficiency'],

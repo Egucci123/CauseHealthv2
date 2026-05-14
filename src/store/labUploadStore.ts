@@ -15,6 +15,26 @@ export interface ExtractedValue {
   id: string; marker_name: string; value: number; unit: string;
   standard_low: number | null; standard_high: number | null;
   standard_flag: string; category: string;
+  // ── Hardening annotations from extract-labs pipeline (all optional) ──
+  // These are surfaced inline in ReviewTable so users can spot rows where
+  // the extraction is uncertain or auto-corrected. None of them block the
+  // confirm flow; they're visual signals only.
+  canonical_name?: string;
+  canonical_key?: string;
+  canonical_category?: string;
+  confidence?: 'high' | 'medium' | 'low';
+  original_value?: number;          // value before plausibility auto-correct
+  first_pass_value?: number;        // value before reconciliation rewrite
+  reconciliation_applied?: boolean;
+  reconciliation_note?: string;
+  validation_note?: string;         // "auto-corrected from X → Y"
+  validation_warning?: string;      // plausibility failed without correction
+  sanity_warning?: string;          // cross-marker arithmetic mismatch
+  dedup_note?: string;              // conflicting values for same marker
+  disambiguation_note?: string;     // unit-based reclassification
+  ref_mismatch_warning?: string;    // sex-mismatched lab reference range
+  canonical_ref_low?: number;
+  canonical_ref_high?: number;
 }
 
 export interface ExtractionResult {
@@ -344,8 +364,12 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
               const base64 = btoa(binary);
               let mime = file.type || 'image/jpeg';
               if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(mime)) mime = 'image/jpeg';
+              // patientSex enables the sex-aware reference range check in
+              // extract-labs (catches when a lab report printed the opposite
+              // sex's reference column). Skipped server-side when missing.
+              const profile = useAuthStore.getState().profile;
               const { data: imgData, error: invokeErr } = await supabase.functions.invoke('extract-labs', {
-                body: { imageBase64: base64, imageMimeType: mime },
+                body: { imageBase64: base64, imageMimeType: mime, patientSex: profile?.sex ?? null },
               });
               if (invokeErr) {
                 const ctx = (invokeErr as any).context;
@@ -408,8 +432,9 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
               const base64 = btoa(binary);
 
               // Use supabase.functions.invoke — it auto-refreshes the JWT
+              const profile = useAuthStore.getState().profile;
               const { data: pdfData, error: invokeErr } = await supabase.functions.invoke('extract-labs', {
-                body: { pdfBase64: base64 },
+                body: { pdfBase64: base64, patientSex: profile?.sex ?? null },
               });
               stopProgress();
               if (invokeErr) {
@@ -463,8 +488,9 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
             // truncation here is rare and harmless because we're not
             // splicing across documents anymore.
             const text = allTexts[i].slice(0, 24000);
+            const profilePdf = useAuthStore.getState().profile;
             const { data: textData, error: textErr } = await supabase.functions.invoke('extract-labs', {
-              body: { pdfText: text },
+              body: { pdfText: text, patientSex: profilePdf?.sex ?? null },
             });
             logEvent('extract_labs_returned', {
               file_index: i,

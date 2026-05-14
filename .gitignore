@@ -28,3 +28,7 @@ public/version.json
 *.njsproj
 *.sln
 *.sw?
+
+# NHANES local download cache and large generated fixture (~93 MB)
+scripts/.nhanes-cache/
+supabase/functions/_shared/__tests__/nhanes-fixture.json
