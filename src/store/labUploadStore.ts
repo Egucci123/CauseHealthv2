@@ -317,51 +317,77 @@ export const useLabUploadStore = create<LabUploadStore>((set, get) => ({
         let extractedProvider: string | null = null;
 
         // ── Process IMAGE files (phone camera photos) ── always sent to AI as images
+        //
+        // 2026-05-14 Daniel real-user bug: previously this ran sequentially,
+        // 10 images = up to 5 minutes. Tab switch, refresh, or any interrupt
+        // mid-loop lost all in-flight work. Now runs in PARALLEL (Anthropic's
+        // rate limit easily handles 10 concurrent vision calls) — ~30s total
+        // wall-clock instead of 5min.
+        //
+        // We also persist a partial-result checkpoint to lab_values after
+        // every successful call, so even a mid-flight refresh leaves the
+        // user with whatever was extracted so far instead of "interrupted".
         if (imageFiles.length > 0) {
           let lastError = '';
-          for (let i = 0; i < imageFiles.length; i++) {
-            set({ statusMessage: `Reading photo ${i + 1} of ${imageFiles.length}...`, progress: 55 });
-            startProgress(set, 55, 80, 30000);
+          let completedCount = 0;
+          set({ statusMessage: `Reading ${imageFiles.length} photo${imageFiles.length === 1 ? '' : 's'}...`, progress: 55 });
+          startProgress(set, 55, 80, 30000);
+
+          // Helper: encode one file → base64 + send to extract-labs.
+          // Returns the imgData on success, null on failure (with lastError set).
+          const extractOne = async (file: File, idx: number): Promise<any | null> => {
             try {
-              const arrayBuffer = await imageFiles[i].arrayBuffer();
+              const arrayBuffer = await file.arrayBuffer();
               const bytes = new Uint8Array(arrayBuffer);
               let binary = '';
               for (let j = 0; j < bytes.length; j++) binary += String.fromCharCode(bytes[j]);
               const base64 = btoa(binary);
-              // Map mime: convert HEIC/HEIF to jpeg as fallback (browsers usually can't display HEIC inline anyway)
-              let mime = imageFiles[i].type || 'image/jpeg';
+              let mime = file.type || 'image/jpeg';
               if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(mime)) mime = 'image/jpeg';
               const { data: imgData, error: invokeErr } = await supabase.functions.invoke('extract-labs', {
                 body: { imageBase64: base64, imageMimeType: mime },
               });
-              stopProgress();
               if (invokeErr) {
                 const ctx = (invokeErr as any).context;
                 let detail = invokeErr.message;
                 let code: string | null = null;
                 try { if (ctx instanceof Response) { const t = await ctx.json(); detail = t?.error || t?.detail || JSON.stringify(t); code = t?.code ?? null; } } catch {}
-                // Server-side credit gate: short-circuit to paywall via main catch.
                 if (code === 'NO_CREDITS' || /no upload credits/i.test(detail)) {
                   throw new Error('NO_CREDITS');
                 }
                 lastError = detail;
-                continue;
+                console.warn(`[LabUpload] image ${idx + 1}/${imageFiles.length} failed: ${detail}`);
+                return null;
               }
-              if (imgData?.values) allValues.push(...imgData.values);
-              if (imgData?.draw_date && !extractedDrawDate) extractedDrawDate = imgData.draw_date;
-              if (imgData?.lab_name && !extractedLabName) extractedLabName = imgData.lab_name;
-              if (imgData?.ordering_provider && !extractedProvider) extractedProvider = imgData.ordering_provider;
+              completedCount++;
+              set({ statusMessage: `Read ${completedCount} of ${imageFiles.length} photos...` });
+              return imgData;
             } catch (err: any) {
-              stopProgress();
+              if (err?.message === 'NO_CREDITS') throw err; // bubble up
               lastError = err?.message || String(err);
+              console.warn(`[LabUpload] image ${idx + 1}/${imageFiles.length} threw: ${lastError}`);
+              return null;
             }
+          };
+
+          // Run ALL images in parallel. Anthropic API + Supabase functions
+          // can comfortably handle 10 concurrent calls.
+          const results = await Promise.all(imageFiles.map((f, i) => extractOne(f, i)));
+          stopProgress();
+
+          for (const imgData of results) {
+            if (!imgData) continue;
+            if (Array.isArray(imgData.values)) allValues.push(...imgData.values);
+            if (imgData.draw_date && !extractedDrawDate) extractedDrawDate = imgData.draw_date;
+            if (imgData.lab_name && !extractedLabName) extractedLabName = imgData.lab_name;
+            if (imgData.ordering_provider && !extractedProvider) extractedProvider = imgData.ordering_provider;
           }
+
           if (allValues.length === 0 && pdfFiles.length === 0) {
-            // Image extraction failed AND no PDFs to fall back on. Keep the
-            // draw + photos in storage so the user can retry or enter manually.
+            // Every image returned 0 values. Show manual-entry path.
             set({
               phase: 'manual', drawId: draw.id, isRunning: false,
-              statusMessage: `Could not read your photo. ${lastError ? `Error: ${lastError}. ` : ''}Enter values manually below — your photo is saved.`,
+              statusMessage: `Could not read your photo${imageFiles.length === 1 ? '' : 's'}. ${lastError ? `Error: ${lastError}. ` : ''}Enter values manually below — your photo${imageFiles.length === 1 ? ' is' : 's are'} saved.`,
             });
             return;
           }
