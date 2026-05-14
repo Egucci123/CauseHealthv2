@@ -59,7 +59,7 @@ serve(async (req) => {
     }
 
     // Shared prompt — same parser instructions for PDF and image inputs
-    const PARSER_PROMPT = `You are a medical lab report parser. First determine if this is a medical laboratory report. If it is NOT a lab report (e.g. bank statement, resume, invoice, or any non-medical document), return: { "draw_date": null, "lab_name": null, "ordering_provider": null, "values": [] }\n\nIf it IS a lab report, extract all laboratory test values.\n\nReturn ONLY valid JSON — no markdown, no explanation.\n\nReturn: { "draw_date": "YYYY-MM-DD or null", "lab_name": "name or null", "ordering_provider": "name or null", "values": [{ "marker_name": "name", "value": 97.0, "unit": "IU/L", "standard_low": 0, "standard_high": 44, "standard_flag": "normal|low|high|critical_low|critical_high", "category": "metabolic|cardiovascular|liver|kidney|thyroid|hormones|nutrients|cbc|inflammation|other" }] }\n\nInclude every single lab value. value must be a number. IMPORTANT: If lab values use international units (mmol/L, umol/L, nmol/L), convert them to US conventional units (mg/dL, ng/mL, ug/dL) before returning. Common conversions: glucose mmol/L x 18 = mg/dL, cholesterol mmol/L x 38.67 = mg/dL, triglycerides mmol/L x 88.57 = mg/dL, creatinine umol/L / 88.4 = mg/dL, calcium mmol/L x 4.0 = mg/dL, uric acid umol/L / 59.48 = mg/dL. Always return values in US conventional units with the US unit label.\n\nFor IMAGES of lab paperwork (photos taken with a phone camera): focus on the printed result columns. Skip handwritten notes. If the image is blurry or you can't read a value confidently, omit that row rather than guess.`;
+    const PARSER_PROMPT = `You are a medical lab report parser. ANY of the following IS a valid lab source — extract every lab value you can read:\n  • Traditional PDF lab reports (LabCorp, Quest, hospital lab printouts)\n  • Patient portal SCREENSHOTS from any portal — Quest MyQuest, LabCorp Patient, MyChart (Epic), athenaPatient, FollowMyHealth, Cerner HealtheLife, Walgreens, CVS, etc.\n  • Mobile app screenshots showing test names + values + reference ranges (these are real lab data even if the UI looks app-like rather than paper-like)\n  • Photos of paper lab reports\n  • Cropped or partial views — even ONE visible test result is a valid lab\n\nReject ONLY if there is genuinely no lab data on the image (bank statement, resume, photo of food, blank screenshot). When in doubt, extract whatever values you can see. Empty 'values' array should be RARE — if you can read ANY test name + number, include it.\n\nReturn ONLY valid JSON — no markdown, no explanation.\n\nReturn: { "draw_date": "YYYY-MM-DD or null", "lab_name": "name or null", "ordering_provider": "name or null", "values": [{ "marker_name": "name", "value": 97.0, "unit": "IU/L", "standard_low": 0, "standard_high": 44, "standard_flag": "normal|low|high|critical_low|critical_high", "category": "metabolic|cardiovascular|liver|kidney|thyroid|hormones|nutrients|cbc|inflammation|other" }] }\n\nInclude every single lab value visible on the screen — even ones that look like sub-items, reference values, or "negative" qualitative results. value must be a number; for qualitative results (NEGATIVE / POSITIVE / NON-REACTIVE), skip the row unless there's an associated numeric (e.g. S/CO, titer). IMPORTANT: If lab values use international units (mmol/L, umol/L, nmol/L), convert them to US conventional units (mg/dL, ng/mL, ug/dL) before returning. Common conversions: glucose mmol/L x 18 = mg/dL, cholesterol mmol/L x 38.67 = mg/dL, triglycerides mmol/L x 88.57 = mg/dL, creatinine umol/L / 88.4 = mg/dL, calcium mmol/L x 4.0 = mg/dL, uric acid umol/L / 59.48 = mg/dL. Always return values in US conventional units with the US unit label.\n\nFor IMAGES of lab paperwork (photos taken with a phone camera) OR patient portal screenshots: focus on result values. Skip headers, footers, navigation chrome. If you see a green/red/colored result tag (common in portal apps) that has a number next to it, that IS a lab value — extract it. If the image is genuinely blurry or you can't read a value confidently, omit that single row rather than guess.`;
 
     // Build the message content based on what the client sent
     let messages;
@@ -147,18 +147,48 @@ serve(async (req) => {
 
     // Auto-retry once on transient failure: 5xx Anthropic, or 200 with
     // unparseable response (truncation / malformed JSON / apology text).
-    // Backoff 1.5s before retrying — long enough that Anthropic's transient
-    // blip clears, short enough that user doesn't notice in the upload UI.
     const isTransient = attempt.status >= 500 || (attempt.status === 200 && parsed === null);
-    if (isTransient) {
-      console.warn(`[extract-labs] Attempt 1 failed (status=${attempt.status}, parsed=${parsed !== null}), retrying once...`);
+
+    // 2026-05-14: ALSO retry once when Claude returned 200 + parseable JSON
+    // but values:[] for an IMAGE input. Real-user bug (Daniel): 10 Quest
+    // patient-portal iPhone screenshots all returned values:[] on first
+    // pass — Claude classified the portal UI as "not a lab report" despite
+    // visible test results. The retry uses a more permissive prompt that
+    // explicitly tells Claude to extract whatever it can read.
+    const isEmptyValuesOnImage = !isTransient
+      && attempt.status === 200
+      && parsed !== null
+      && Array.isArray(parsed.values)
+      && parsed.values.length === 0
+      && !!imageBase64;
+
+    if (isTransient || isEmptyValuesOnImage) {
+      console.warn(`[extract-labs] Attempt 1 ${isTransient ? 'failed' : 'returned 0 values on image'} (status=${attempt.status}, parsed=${parsed !== null}, values=${parsed?.values?.length ?? 'n/a'}), retrying ${isEmptyValuesOnImage ? 'with permissive prompt' : ''}...`);
       await new Promise(r => setTimeout(r, 1500));
+      // For empty-values retries on image input, swap in a more aggressive
+      // extractor prompt that overrides the "is this a lab report?" check.
+      // Caller already verified it's a lab image by going through the
+      // dropzone — if Claude can read ANYTHING test-shaped, we want it.
+      if (isEmptyValuesOnImage) {
+        const PERMISSIVE_PROMPT = `Extract EVERY lab test value visible in this image. Do not refuse based on document format. The image is from a real lab source — extract everything you can read: test names, numeric values, units, reference ranges, flags.\n\nReturn ONLY valid JSON: { "draw_date": "YYYY-MM-DD or null", "lab_name": "name or null", "ordering_provider": "name or null", "values": [{ "marker_name": "name", "value": 97.0, "unit": "IU/L", "standard_low": 0, "standard_high": 44, "standard_flag": "normal|low|high|critical_low|critical_high", "category": "metabolic|cardiovascular|liver|kidney|thyroid|hormones|nutrients|cbc|inflammation|other" }] }\n\nEven if the layout is unusual (mobile app screenshot, patient portal UI, cropped photo, single result detail page), if there's ANY visible test name with a number, include it. Skip ONLY rows where the value field is purely qualitative text (POSITIVE, NEGATIVE, NON-REACTIVE) with no numeric. Do NOT return an empty values array unless the image truly contains zero numeric test results.`;
+        messages = [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: imageMimeType, data: imageBase64 } },
+            { type: 'text', text: PERMISSIVE_PROMPT },
+          ],
+        }];
+      }
       try { attempt = await callAnthropic(); }
       catch (e: any) {
         if (e?.name === 'AbortError') return new Response(JSON.stringify({ error: 'Extraction timed out' }), { status: 504, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         throw e;
       }
       parsed = attempt.status === 200 ? tryParse(attempt.rawText) : null;
+      // Log the count after retry for observability
+      if (parsed) {
+        console.log(`[extract-labs] retry result: status=${attempt.status}, values=${parsed?.values?.length ?? 'n/a'}`);
+      }
     }
 
     if (attempt.status !== 200) {
