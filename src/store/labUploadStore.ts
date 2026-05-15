@@ -1052,8 +1052,12 @@ export function checkWatchList(
       return `Borderline-low HDL (${isFemale ? 'female target ≥60' : 'male target ≥50'}) — exercise and omega-3 raise it.`;
     }
   }
-  // hs-CRP / CRP ≥1.0 (backend: high 1.0 — AHA/CDC: 1-3 = moderate CV risk).
-  if (/(\bhs-?crp\b|\bcrp\b|c-reactive protein|high sensitivity c)/.test(n) && value >= 1.0 && value < 3)
+  // hs-CRP / CRP >1.0 (backend optimalRanges.ts uses strict > 1.0 — value
+  // exactly at 1.0 is the AHA "low risk" boundary, not yet moderate. Was
+  // `value >= 1.0` here, which stamped 1.0 mg/L as watch at upload time
+  // while the backend recompute called it healthy → stale-flag bug on
+  // every lab analytics page reload.)
+  if (/(\bhs-?crp\b|\bcrp\b|c-reactive protein|high sensitivity c)/.test(n) && value > 1.0 && value < 3)
     return 'Detectable inflammation — track and reduce.';
   // Homocysteine ≥10 — frontend-only (no backend rule yet).
   if (/homocysteine/.test(n) && value >= 10 && value < 15)
