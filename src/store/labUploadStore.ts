@@ -1032,17 +1032,19 @@ export function checkWatchList(
   const isMale = sex === 'male';
   const isFemale = sex === 'female';
 
-  // HbA1c ≥5.4 (backend: high 5.4 — borderline-high above this).
-  if (/\b(hba1c|hemoglobin a1c|a1c)\b/.test(n) && value >= 5.4 && value <= 5.6)
+  // HbA1c >5.4 (backend: high 5.4 — strict >, so 5.4 exactly stays healthy).
+  // Operator drift on this rule was producing watch stamps that the
+  // analysis-time recompute disagreed with → stale-flag bug.
+  if (/\b(hba1c|hemoglobin a1c|a1c)\b/.test(n) && value > 5.4 && value <= 5.6)
     return 'Borderline-high A1c — early dysglycemia signal before prediabetes (≥5.7).';
-  // Fasting glucose ≥90 (backend: high 90 — borderline-high above this).
-  if ((/fasting glucose/.test(n) || /^glucose/.test(n) || /glucose,? serum/.test(n)) && value >= 90 && value <= 99)
+  // Fasting glucose >90 (backend: high 90 — strict >).
+  if ((/fasting glucose/.test(n) || /^glucose/.test(n) || /glucose,? serum/.test(n)) && value > 90 && value <= 99)
     return 'Borderline-high blood sugar — early signal before prediabetes.';
-  // ApoB ≥90 — atherogenic-particle borderline (no backend equivalent yet, kept frontend-only).
-  if (/(apolipoprotein b|\bapo\s*b\b|apob)/.test(n) && value >= 90)
+  // ApoB >90 — atherogenic-particle borderline (no backend equivalent yet, kept frontend-only).
+  if (/(apolipoprotein b|\bapo\s*b\b|apob)/.test(n) && value > 90)
     return 'Borderline-high atherogenic-particle count — CV risk worth lowering.';
-  // Triglycerides ≥100 (backend: high 100).
-  if (/triglyceride/.test(n) && value >= 100 && value < 150)
+  // Triglycerides >100 (backend: high 100 — strict >).
+  if (/triglyceride/.test(n) && value > 100 && value < 150)
     return 'Borderline-high triglycerides — early insulin-resistance signal.';
   // HDL: borderline-low if below sex-stratified threshold (backend: male
   // <50, female <60).
@@ -1095,6 +1097,26 @@ export function checkWatchList(
       return 'Borderline-low testosterone — full hormonal panel worth running.';
     }
   }
+  // ── 2026-05-15 parity rules — added so frontend stamp matches the
+  //    backend's optimalRanges.ts recompute. Missing these rules meant
+  //    the lab analytics page never surfaced early-iron-deficiency and
+  //    low-B12 watch flags even though the engine's analysis-time
+  //    recompute would have flagged them. ──
+  // B12 <500 (backend: low 500) — in-range-low B12 signal.
+  if (/\bvitamin b[\s-]?12\b|^b12$|cobalamin\b/.test(n) && value < 500 && value >= 232)
+    return 'Borderline-low B12 — track and consider MMA + Homocysteine.';
+  // MCV <88 (backend: low 88) — early microcytic / iron-deficient erythropoiesis.
+  if (/^mcv$|mean corpuscular volume/.test(n) && value < 88 && value >= 79)
+    return 'Low-normal MCV — early microcytic / iron-deficient pattern worth tracking.';
+  // MCH <28 (backend: low 28) — early hypochromia signal.
+  if (/^mch$(?!c)|mean corpuscular hemoglobin(?! concentration)/.test(n) && value < 28 && value >= 26.6)
+    return 'Low-normal MCH — early hypochromic pattern (iron or thalassemia trait).';
+  // MCHC <33 (backend: low 33) — early hypochromia signal.
+  if (/^mchc$|mean corpuscular hemoglobin concentration/.test(n) && value < 33 && value >= 31.5)
+    return 'Low-normal MCHC — often precedes overt iron-deficiency anemia.';
+  // RDW >13 (backend: high 13) — earliest CBC sign of disordered erythropoiesis.
+  if (/^rdw(?:[-\s]*cv)?$|red cell distribution width/.test(n) && value > 13.0 && value <= 15.4)
+    return 'Elevated RDW — earliest CBC sign of disordered erythropoiesis.';
 
   return null;
 }
