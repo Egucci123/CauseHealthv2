@@ -141,7 +141,9 @@ function runAudit(name, file) {
   }
   const start = Date.now();
   process.stdout.write(`  ${dim('•')}  ${name.padEnd(28)} ${dim('running...')}`);
-  const r = spawnSync(DENO, ['run', '-A', '--allow-net', '--allow-env', '--allow-read', file], {
+  // -A grants all permissions (net, env, read, write, run, sys, ffi).
+  // Don't combine with --allow-net etc. — Deno rejects that.
+  const r = spawnSync(DENO, ['run', '-A', file], {
     cwd: ROOT, encoding: 'utf8', shell: false,
   });
   const elapsed = ((Date.now() - start) / 1000).toFixed(1);

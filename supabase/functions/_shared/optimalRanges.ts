@@ -312,20 +312,17 @@ export function detectSuboptimalValues(
  * 0.5 mg/L showing as `watch` even after we lowered the watch threshold
  * to >1.0 mg/L.
  *
- * Returns one of the canonical flag values:
+ * Returns one of the canonical flag values (matches frontend taxonomy):
  *   'critical_high' | 'critical_low'  — outside the lab's reference
  *                                        range AND in the safety-net
  *                                        emergency zone
  *   'high' | 'low'                    — outside the lab's reference
  *                                        range (per standard_flag)
- *   'suboptimal_high'                 — INSIDE the lab's reference range
- *                                        but ABOVE the watch-tier
+ *   'watch'                           — INSIDE the lab's reference range
+ *                                        but outside the watch-tier
  *                                        threshold from optimalRanges
- *                                        rules (borderline-high)
- *   'suboptimal_low'                  — INSIDE the lab's reference range
- *                                        but BELOW the watch-tier
- *                                        threshold (borderline-low)
- *   'normal'                          — fully within range, no signal
+ *                                        rules (borderline)
+ *   'healthy'                         — fully within range, no signal
  *
  * Caller responsible for handing in demographic context — testosterone
  * + ferritin rules are sex-stratified, A1c is not, etc.
@@ -333,9 +330,9 @@ export function detectSuboptimalValues(
 export function recomputeFlag(
   lab: LabRow,
   ctx: DemographicContext,
-): 'critical_high' | 'critical_low' | 'high' | 'low' | 'suboptimal_high' | 'suboptimal_low' | 'normal' {
+): 'critical_high' | 'critical_low' | 'high' | 'low' | 'watch' | 'healthy' {
   const val = num(lab.value);
-  if (val === null) return 'normal';
+  if (val === null) return 'healthy';
 
   // 1) Trust the lab's own out-of-range determination first. The lab is
   //    the authority on its own reference range — if it says high/low we
@@ -346,17 +343,28 @@ export function recomputeFlag(
   if (stdRaw === 'low' || stdRaw === 'deficient') return 'low';
 
   // 2) In-range — check the watch-tier rules to surface borderline drift.
+  //
+  // 2026-05-15: canonical-flag alignment. recomputeFlag previously
+  // returned 'suboptimal_high' / 'suboptimal_low' / 'normal' which is
+  // a separate flag taxonomy from the rest of the app. Frontend
+  // checkWatchList, LabValue.flag type, and every UI consumer use the
+  // canonical set { critical_high, critical_low, high, low, watch,
+  // healthy }. Returning 'suboptimal_high' meant analyze-labs-v2,
+  // generate-wellness-plan-v2, and generate-doctor-prep-v2 produced
+  // LabValue objects whose `flag` field downstream filters didn't
+  // recognize — anything matching `flag === 'watch'` silently missed
+  // these rows. Same parity drift class as the frontend/backend
+  // boundary bug fixed in 3678036.
   const rules = getRulesForPatient(ctx);
   const name = String(lab.marker_name ?? '');
   for (const rule of rules) {
     if (!rule.marker.test(name)) continue;
     const lowMiss  = rule.low  !== undefined && val < rule.low;
     const highMiss = rule.high !== undefined && val > rule.high;
-    if (highMiss) return 'suboptimal_high';
-    if (lowMiss)  return 'suboptimal_low';
-    return 'normal'; // matched a rule and value is in the watch-tier safe zone
+    if (highMiss || lowMiss) return 'watch';
+    return 'healthy'; // matched a rule, value is in the watch-tier safe zone
   }
   // No rule matched at all — value is in lab range, no curated watch
-  // threshold available. Treat as normal.
-  return 'normal';
+  // threshold available. Treat as healthy.
+  return 'healthy';
 }

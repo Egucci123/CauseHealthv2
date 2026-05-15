@@ -133,11 +133,68 @@ for (const rule of BACKEND_WATCH_RULES) {
   }
 }
 
+// ── Flag-taxonomy parity check ───────────────────────────────────────
+// Frontend canonical set: critical_high, critical_low, high, low, watch, healthy.
+// Backend recomputeFlag must return values from this exact set — any
+// other value (e.g. legacy 'suboptimal_high' / 'normal') silently fails
+// downstream filters that match by flag name.
+const FRONTEND_CANONICAL_FLAGS = new Set(['critical_high', 'critical_low', 'high', 'low', 'watch', 'healthy', 'unknown']);
+
+// Import the live backend recompute. If it ever drifts, this test trips.
+const { recomputeFlag } = await import('../optimalRanges.ts');
+
+interface TaxonomyProbe { name: string; lab: any; ctx: any; }
+const TAXONOMY_PROBES: TaxonomyProbe[] = [
+  // Watch-tier values (should return 'watch', not 'suboptimal_*' or 'normal')
+  { name: 'A1c 5.5 (in-range but above watch threshold)',
+    lab: { marker_name: 'Hemoglobin A1c', value: 5.5, standard_flag: 'normal' },
+    ctx: { age: 30, sex: 'male' } },
+  { name: 'CRP 1.5 (watch-tier moderate CV)',
+    lab: { marker_name: 'C-Reactive Protein', value: 1.5, standard_flag: 'normal' },
+    ctx: { age: 30, sex: 'male' } },
+  { name: 'MCV 85 (low-normal microcytic signal)',
+    lab: { marker_name: 'MCV', value: 85, standard_flag: 'normal' },
+    ctx: { age: 30, sex: 'male' } },
+  // Healthy values (should return 'healthy', not 'normal')
+  { name: 'A1c 5.0 (squarely healthy)',
+    lab: { marker_name: 'Hemoglobin A1c', value: 5.0, standard_flag: 'normal' },
+    ctx: { age: 30, sex: 'male' } },
+  { name: 'TSH 1.5 (healthy mid-range)',
+    lab: { marker_name: 'TSH', value: 1.5, standard_flag: 'normal' },
+    ctx: { age: 30, sex: 'male' } },
+  // Out-of-range — preserved from lab's own flag
+  { name: 'Hgb 6 (critical_low from lab)',
+    lab: { marker_name: 'Hemoglobin', value: 6, standard_flag: 'critical_low' },
+    ctx: { age: 30, sex: 'male' } },
+  { name: 'ALT 97 (high from lab)',
+    lab: { marker_name: 'ALT', value: 97, standard_flag: 'high' },
+    ctx: { age: 30, sex: 'male' } },
+];
+
+const taxonomyFailures: string[] = [];
+for (const p of TAXONOMY_PROBES) {
+  const result = recomputeFlag(p.lab, p.ctx);
+  if (!FRONTEND_CANONICAL_FLAGS.has(result)) {
+    taxonomyFailures.push(`  ❌ ${p.name}\n     backend returned: ${result} (not in canonical set)`);
+  }
+}
+
 console.log('======================================================');
 console.log('  WATCH-FLAG PARITY — frontend stamp = backend recompute');
 console.log('======================================================');
 console.log(`  Rules probed: ${BACKEND_WATCH_RULES.length}`);
 console.log(`  Boundary disagreements: ${failures.length}`);
+console.log(`  Flag-taxonomy probes: ${TAXONOMY_PROBES.length}`);
+console.log(`  Taxonomy failures: ${taxonomyFailures.length}`);
+if (taxonomyFailures.length > 0) {
+  console.log('');
+  for (const f of taxonomyFailures) console.log(f);
+  console.log('');
+  console.log('  Backend recomputeFlag must return a value from the frontend canonical set:');
+  console.log('  { critical_high, critical_low, high, low, watch, healthy, unknown }');
+  console.log('  Fix: align recomputeFlag in supabase/functions/_shared/optimalRanges.ts.');
+  Deno.exit(1);
+}
 if (failures.length > 0) {
   console.log('');
   for (const f of failures) {
