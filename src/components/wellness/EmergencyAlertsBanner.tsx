@@ -30,39 +30,39 @@ export const EmergencyAlertsBanner = ({ emergencyAlerts, crisisAlert }: Props) =
   return (
     <div className="space-y-3">
       {crisis && (
-        <div className="bg-[#FFE8E8] border-2 border-[#C94F4F] rounded-[10px] p-5">
+        <div className="bg-[#FFF4E5] border border-[#E89D3C]/40 rounded-[10px] p-5">
           <div className="flex items-start gap-3">
-            <span className="material-symbols-outlined text-[#C94F4F] text-[24px] flex-shrink-0 mt-0.5">support</span>
+            <span className="material-symbols-outlined text-[#B86E15] text-[22px] flex-shrink-0 mt-0.5">support</span>
             <div className="flex-1">
-              <p className="text-precision text-[0.68rem] text-[#C94F4F] font-bold tracking-widest uppercase mb-1">Please reach out</p>
+              <p className="text-precision text-[0.68rem] text-[#B86E15] font-bold tracking-widest uppercase mb-1">Worth talking to someone</p>
               <p className="text-body text-clinical-charcoal font-semibold leading-relaxed">{crisis}</p>
               <p className="text-body text-clinical-charcoal text-sm mt-2 leading-relaxed">
-                If you're in crisis, call or text <a href="tel:988" className="font-bold underline">988</a> (US Suicide & Crisis Lifeline) — 24/7, free, confidential.
+                Free, confidential support is available 24/7 — call or text <a href="tel:988" className="font-bold underline">988</a> (US Suicide & Crisis Lifeline), or bring this up with your doctor.
               </p>
             </div>
           </div>
         </div>
       )}
       {alerts.length > 0 && (
-        <div className="bg-[#FFE8E8] border-2 border-[#C94F4F] rounded-[10px] p-5">
+        <div className="bg-[#FFF4E5] border border-[#E89D3C]/40 rounded-[10px] p-5">
           <div className="flex items-start gap-3 mb-3">
-            <span className="material-symbols-outlined text-[#C94F4F] text-[24px] flex-shrink-0 mt-0.5">emergency</span>
+            <span className="material-symbols-outlined text-[#B86E15] text-[22px] flex-shrink-0 mt-0.5">priority_high</span>
             <div className="flex-1">
-              <p className="text-precision text-[0.68rem] text-[#C94F4F] font-bold tracking-widest uppercase">
-                {alerts.length} critical lab {alerts.length === 1 ? 'value' : 'values'} — contact your doctor today
+              <p className="text-precision text-[0.68rem] text-[#B86E15] font-bold tracking-widest uppercase">
+                {alerts.length} {alerts.length === 1 ? 'lab value' : 'lab values'} to discuss with your doctor promptly
               </p>
               <p className="text-body text-clinical-charcoal text-sm mt-1 leading-relaxed">
-                The values below are outside the range a clinician would consider safe to leave untreated. Don't wait for your next appointment — call your provider or visit urgent care.
+                These values are outside the range that's typically considered safe to leave untreated. Worth bringing to your doctor's attention soon rather than waiting for your next routine appointment.
               </p>
             </div>
           </div>
           <div className="space-y-2 pl-9">
             {alerts.map((a, i) => (
-              <div key={a.key ?? i} className="bg-clinical-white rounded-[6px] p-3 border border-[#C94F4F]/30">
+              <div key={a.key ?? i} className="bg-clinical-white rounded-[6px] p-3 border border-[#E89D3C]/30">
                 <div className="flex items-baseline justify-between gap-3">
                   <p className="text-body text-clinical-charcoal font-semibold text-sm">{a.marker}</p>
-                  <p className="text-precision text-sm text-[#C94F4F] font-bold">
-                    {a.value} {a.unit} <span className="text-[0.65rem] tracking-wide uppercase ml-1">{a.threshold.replace('_', ' ')}</span>
+                  <p className="text-precision text-sm text-[#B86E15] font-bold">
+                    {a.value} {a.unit} <span className="text-[0.65rem] tracking-wide uppercase ml-1">{a.threshold === 'critical_low' ? 'well below range' : 'well above range'}</span>
                   </p>
                 </div>
                 {a.message && <p className="text-body text-clinical-stone text-xs mt-1 leading-relaxed">{a.message}</p>}

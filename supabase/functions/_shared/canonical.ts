@@ -179,23 +179,29 @@ export interface CriticalThreshold {
 // Any healthy user uploading a CBC + CMP would get 5+ "call your doctor
 // TODAY" alerts on perfectly normal values. The anchored regexes below
 // only match the actual marker each threshold is calibrated for.
+// 2026-05-14: messages rewritten to match the canonical "discuss with
+// your doctor promptly" framing. Prior messages used "call your doctor
+// today / go to urgent care" — exactly the directive language the
+// FORBIDDEN-PHRASE list above prohibits. Same clinical urgency is
+// communicated through specificity (which body system, what's at risk)
+// rather than through imperative verbs.
 export const CRITICAL_VALUE_THRESHOLDS: CriticalThreshold[] = [
   // Electrolytes — anchored start; allow optional ", Serum" / ", Plasma" suffix.
-  { marker: /^potassium(?:,?\s*(?:serum|plasma))?$|^k\+?$/i, low: 2.5, high: 6.0, unit: 'mEq/L', message: 'Severe potassium derangement — call your doctor today or go to urgent care; can affect heart rhythm.' },
-  { marker: /^sodium(?:,?\s*(?:serum|plasma))?$|^na\+?$/i, low: 125, high: 150, unit: 'mEq/L', message: 'Severe sodium derangement — call your doctor today; can cause confusion and seizures if untreated.' },
+  { marker: /^potassium(?:,?\s*(?:serum|plasma))?$|^k\+?$/i, low: 2.5, high: 6.0, unit: 'mEq/L', message: 'Potassium is well outside the safe range — worth discussing with your doctor promptly. At these levels potassium can affect heart rhythm; your doctor will likely recheck and may recommend an ECG.' },
+  { marker: /^sodium(?:,?\s*(?:serum|plasma))?$|^na\+?$/i, low: 125, high: 150, unit: 'mEq/L', message: 'Sodium is well outside the safe range — worth discussing with your doctor promptly. At these levels sodium can affect mental clarity and, if persistent, seizure threshold.' },
   // Glucose — accept "Glucose", "Glucose, Serum", "Fasting Glucose", but NOT "Hemoglobin A1c (Glucose)" etc.
-  { marker: /^(?:fasting\s+)?glucose(?:,?\s*(?:serum|plasma|fasting|random))?$/i, low: 50, high: 400, unit: 'mg/dL', message: 'Severe blood sugar derangement — call your doctor today; if hypoglycemic and symptomatic, eat sugar and get help.' },
+  { marker: /^(?:fasting\s+)?glucose(?:,?\s*(?:serum|plasma|fasting|random))?$/i, low: 50, high: 400, unit: 'mg/dL', message: 'Blood sugar is well outside the safe range — worth discussing with your doctor promptly. If you are experiencing symptoms of low blood sugar (shakiness, sweating, confusion), having something sugary on hand is reasonable while you arrange follow-up.' },
   // Hemoglobin — exact match, NOT "Mean Corpuscular Hemoglobin" / "MCHC".
-  { marker: /^(?:hemoglobin|hgb|hb)$/i, low: 7, high: 20, unit: 'g/dL', message: 'Severe hemoglobin abnormality — call your doctor today; severe anemia or polycythemia needs prompt evaluation.' },
+  { marker: /^(?:hemoglobin|hgb|hb)$/i, low: 7, high: 20, unit: 'g/dL', message: 'Hemoglobin is well outside the safe range — worth discussing with your doctor promptly. Severely low values point toward anemia that warrants prompt workup; severely high values toward polycythemia or dehydration.' },
   // Platelets — exact, NOT "Mean Platelet Volume" / "Immature Platelet Fraction".
-  { marker: /^platelets?(?:\s+count)?$|^plt$/i, low: 50, high: 1000, unit: 'k/uL', message: 'Severe platelet derangement — call your doctor today; bleeding or clotting risk depending on direction.' },
+  { marker: /^platelets?(?:\s+count)?$|^plt$/i, low: 50, high: 1000, unit: 'k/uL', message: 'Platelet count is well outside the safe range — worth discussing with your doctor promptly. Severely low values raise bleeding risk; severely high values raise clotting risk.' },
   // Creatinine — exact, NOT "BUN/Creatinine Ratio" or "Creatinine Clearance".
-  { marker: /^creatinine(?:,?\s*(?:serum|plasma))?$/i, high: 3.0, unit: 'mg/dL', message: 'Markedly elevated creatinine — call your doctor today; possible acute kidney injury.' },
+  { marker: /^creatinine(?:,?\s*(?:serum|plasma))?$/i, high: 3.0, unit: 'mg/dL', message: 'Creatinine is markedly elevated — worth discussing with your doctor promptly. This pattern can fit acute kidney injury and typically warrants a same-week repeat with eGFR + urinalysis.' },
   // ALT — keep loose since "ALT" / "SGPT" / "Alanine Aminotransferase" all valid.
   // Word-boundary anchored to avoid matching "ALT" inside other words (e.g. "salt").
-  { marker: /^(?:alt|sgpt|alanine\s+aminotransferase)\b/i, high: 500, unit: 'IU/L', message: 'Markedly elevated liver enzyme — call your doctor today; possible acute hepatitis.' },
+  { marker: /^(?:alt|sgpt|alanine\s+aminotransferase)\b/i, high: 500, unit: 'IU/L', message: 'Liver enzyme (ALT) is markedly elevated — worth discussing with your doctor promptly. This pattern can fit acute hepatitis or drug-induced liver injury; a repeat with AST, bilirubin, and INR is the standard next step.' },
   // Calcium — total serum calcium only, NOT "Ionized Calcium" (different thresholds).
-  { marker: /^calcium(?:,?\s*(?:serum|plasma|total))?$/i, low: 7, high: 12, unit: 'mg/dL', message: 'Severe calcium derangement — call your doctor today; affects nerve and heart function.' },
+  { marker: /^calcium(?:,?\s*(?:serum|plasma|total))?$/i, low: 7, high: 12, unit: 'mg/dL', message: 'Calcium is well outside the safe range — worth discussing with your doctor promptly. Severe abnormalities affect nerve and heart function; ionized calcium + PTH usually clarify whether it is the calcium itself or albumin shifting the total.' },
 ];
 
 // ──────────────────────────────────────────────────────────────────────

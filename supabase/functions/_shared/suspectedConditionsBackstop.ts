@@ -2311,7 +2311,7 @@ const RULES: BackstopRule[] = [
         name: 'Adrenergic crisis pattern — rule out pheochromocytoma',
         category: 'endocrine',
         confidence: tetradCount >= 3 ? 'high' : 'moderate',
-        evidence: `HTN with the classic adrenergic cluster (${[hasPalpitations && 'palpitations', hasSweating && 'sweating', hasHeadaches && 'headaches', hasAnxiety && 'anxiety'].filter(Boolean).join(', ')}). Pheochromocytoma is rare (0.1-0.6% of HTN) but catastrophic if missed — hypertensive crisis during anesthesia/surgery is the classic killer. Once-in-lifetime screen worth doing in any patient with this cluster.`,
+        evidence: `HTN with the classic adrenergic cluster (${[hasPalpitations && 'palpitations', hasSweating && 'sweating', hasHeadaches && 'headaches', hasAnxiety && 'anxiety'].filter(Boolean).join(', ')}). Pheochromocytoma is rare (0.1-0.6% of HTN) but consequential if missed — the classic concern is a hypertensive episode during anesthesia or surgery. A once-in-lifetime screen is worth discussing with your doctor in any patient with this cluster.`,
         confirmatory_tests: ['24-hour Urinary Fractionated Metanephrines (×2)', 'Plasma Free Metanephrines (alternate)', 'Adrenal CT/MRI if biochemistry positive', 'MIBG scan if extra-adrenal suspected'],
         icd10: 'E27.5',
         what_to_ask_doctor: "I'm having episodic palpitations + sweating + headaches with my high blood pressure. Can we run 24-hour urinary fractionated metanephrines (or plasma free metanephrines) to rule out pheochromocytoma? It's rare but dangerous to miss if I ever need surgery.",

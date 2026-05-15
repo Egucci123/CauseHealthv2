@@ -98,15 +98,17 @@ export function exportWellnessPlanPDF(plan: WellnessPlanData, userName: string) 
     ? plan.crisis_alert
     : (plan.crisis_alert?.message ?? null);
   if (crisisMsg) {
-    addSection('Please reach out', [201, 79, 79]); // red
+    addSection('Worth talking to someone', [184, 110, 21]); // amber, not red
     para(crisisMsg);
-    para('If you are in crisis, call or text 988 (US Suicide & Crisis Lifeline) — 24/7, free, confidential.', { italic: true });
+    para('Free, confidential support is available 24/7 — call or text 988 (US Suicide & Crisis Lifeline), or bring this up with your doctor.', { italic: true });
   }
   if (Array.isArray(plan.emergency_alerts) && plan.emergency_alerts.length > 0) {
-    addSection(`Critical values — contact your doctor today (${plan.emergency_alerts.length})`, [201, 79, 79]);
+    addSection(`To discuss with your doctor promptly (${plan.emergency_alerts.length} ${plan.emergency_alerts.length === 1 ? 'value' : 'values'})`, [184, 110, 21]);
+    para('These values are outside the range typically considered safe to leave untreated. Worth bringing to your doctor soon rather than waiting for your next routine appointment.', { size: 8, italic: true });
     plan.emergency_alerts.forEach(a => {
       doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(26, 26, 26);
-      const head = stripUnsupportedChars(`${a.marker}: ${a.value} ${a.unit ?? ''} [${a.threshold.replace('_', ' ')}]`);
+      const direction = a.threshold === 'critical_low' ? 'well below range' : 'well above range';
+      const head = stripUnsupportedChars(`${a.marker}: ${a.value} ${a.unit ?? ''} (${direction})`);
       checkPage(8); doc.text(head, margin, y); y += 4.5;
       if (a.message) para(a.message, { size: 8, indent: 4 });
     });
@@ -753,11 +755,12 @@ export function exportDoctorPrepPDF(doc: DoctorPrepDocument, userName: string) {
   // values). Render BEFORE meds / labs / tests so the doctor sees the
   // urgent stuff first.
   if (Array.isArray((doc as any).emergency_alerts) && (doc as any).emergency_alerts.length > 0) {
-    addSectionHeader('CRITICAL FINDINGS — REVIEW FIRST');
+    addSectionHeader('Values to Discuss Promptly');
     (doc as any).emergency_alerts.forEach((a: any) => {
       checkPage(10);
-      pdf.setFontSize(9); pdf.setFont('helvetica', 'bold'); pdf.setTextColor('#C94F4F');
-      const head = stripUnsupportedChars(`${a.marker}: ${a.value} ${a.unit ?? ''} [${(a.threshold ?? '').replace('_', ' ').toUpperCase()}]`);
+      pdf.setFontSize(9); pdf.setFont('helvetica', 'bold'); pdf.setTextColor('#B86E15');
+      const direction = a.threshold === 'critical_low' ? 'well below range' : 'well above range';
+      const head = stripUnsupportedChars(`${a.marker}: ${a.value} ${a.unit ?? ''} (${direction})`);
       pdf.text(head, margin, y); y += 4.5;
       if (a.message) {
         pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8); pdf.setTextColor(40, 40, 40);
